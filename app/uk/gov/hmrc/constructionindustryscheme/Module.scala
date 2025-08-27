@@ -16,16 +16,11 @@
 
 package uk.gov.hmrc.constructionindustryscheme
 
-import play.api.{Configuration, Environment}
-import play.api.inject.{Binding, Module => AppModule}
+import com.google.inject.AbstractModule
+import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 
-import java.time.Clock
+class Module extends AbstractModule {
 
-class Module extends AppModule:
-
-  override def bindings(
-    environment  : Environment,
-    configuration: Configuration
-  ): Seq[Binding[_]] =
-    bind[Clock].toInstance(Clock.systemDefaultZone) :: // inject if current time needs to be controlled in unit tests
-    Nil
+  override def configure(): Unit =
+    bind(classOf[AppConfig]).asEagerSingleton()
+}
