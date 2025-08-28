@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme
 
+import itutil.ApplicationWithWiremock
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -29,7 +30,8 @@ class HealthEndpointIntegrationSpec
      with Matchers
      with ScalaFutures
      with IntegrationPatience
-     with GuiceOneServerPerSuite:
+     with GuiceOneServerPerSuite
+     with ApplicationWithWiremock:
 
   private val wsClient = app.injector.instanceOf[WSClient]
   private val baseUrl  = s"http://localhost:$port"
