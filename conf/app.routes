@@ -1,3 +1,3 @@
 # microservice specific routes
 
-GET        /monthly-returns            uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.retrieveMonthlyReturns(firstRecordNumber: Option[Int], maxRecords: Option[Int])
+GET        /monthly-returns            uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.retrieveMonthlyReturns

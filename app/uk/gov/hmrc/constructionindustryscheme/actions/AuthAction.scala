@@ -17,10 +17,11 @@
 package uk.gov.hmrc.constructionindustryscheme.actions
 
 import play.api.Logging
+import play.api.libs.json.Json
 import play.api.mvc.*
-import play.api.mvc.Results.Unauthorized
-import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals
-import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisationException, AuthorisedFunctions}
+import uk.gov.hmrc.auth.core.retrieve.~
+import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals.{allEnrolments, internalId}
+import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisationException, AuthorisedFunctions, NoActiveSession}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.AuthenticatedRequest
 import uk.gov.hmrc.http.{HeaderCarrier, UnauthorizedException}
 import uk.gov.hmrc.play.http.HeaderCarrierConverter
@@ -39,16 +40,21 @@ class DefaultAuthAction @Inject()(
 
     val sessionId = hc.sessionId.getOrElse(throw new UnauthorizedException("Unable to retrieve session ID from headers"))
 
-    authorised().retrieve(Retrievals.internalId) {
-      _.map:
-        internalId => block(AuthenticatedRequest(request, internalId, sessionId))
-      .getOrElse(throw new UnauthorizedException("Unable to retrieve internal ID from headers"))
-      .recover:
+    authorised()
+      .retrieve(allEnrolments and internalId) {
+        case enrols ~ Some(intId) =>
+          block(AuthenticatedRequest(request, intId, sessionId, enrols))
+        case _ =>
+          Future.failed(new UnauthorizedException("Unable to retrieve internal ID from auth"))
+      }
+      .recover {
+        case _: NoActiveSession =>
+          Results.Unauthorized(Json.obj("message" -> "No active session"))
         case _: AuthorisationException =>
-          val error = "Failed to authorise requests"
-          logger.warn(error)
-          Unauthorized(error)
-    }(using hc)
+          val msg = "Failed to authorise request"
+          logger.warn(msg)
+          Results.Unauthorized(Json.obj("message" -> msg))
+      }
 
 trait AuthAction
   extends ActionBuilder[AuthenticatedRequest, AnyContent] with ActionFunction[Request, AuthenticatedRequest]

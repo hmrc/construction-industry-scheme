@@ -17,10 +17,12 @@
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.mvc.{Request, WrappedRequest}
+import uk.gov.hmrc.auth.core.Enrolments
 import uk.gov.hmrc.http.SessionId
 
 case class AuthenticatedRequest[A](
                                     private val request: Request[A],
                                     internalId: String,
-                                    sessionId: SessionId
+                                    sessionId: SessionId,
+                                    enrolments: Enrolments
                                   ) extends WrappedRequest[A](request)

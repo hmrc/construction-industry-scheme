@@ -16,7 +16,7 @@
 
 package connectors
 
-import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, equalTo, get, stubFor, urlPathEqualTo}
+import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, get, stubFor, urlPathEqualTo}
 import itutil.ApplicationWithWiremock
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
@@ -36,11 +36,11 @@ class MonthlyReturnConnectorSpec extends ApplicationWithWiremock
 
   val connector: MonthlyReturnConnector = app.injector.instanceOf[MonthlyReturnConnector]
 
-  val testEmptyDataCacheResponse: RDSDatacacheResponse = RDSDatacacheResponse(monthlyReturnCount = 0, monthlyReturnList = Seq.empty)
-  val testDataCacheResponse: RDSDatacacheResponse = RDSDatacacheResponse(monthlyReturnCount = 2,
+  val testEmptyDataCacheResponse: RDSDatacacheResponse = RDSDatacacheResponse(monthlyReturnList = Seq.empty)
+  val testDataCacheResponse: RDSDatacacheResponse = RDSDatacacheResponse(
     monthlyReturnList = Seq(
-      RDSMonthlyReturnDetails(monthlyReturnId = "testRef1", taxYear = 2025, taxMonth = 1),
-      RDSMonthlyReturnDetails(monthlyReturnId = "testRef2", taxYear = 2025, taxMonth = 7)
+      RDSMonthlyReturnDetails(monthlyReturnId = 66666L, taxYear = 2025, taxMonth = 1),
+      RDSMonthlyReturnDetails(monthlyReturnId = 66667L, taxYear = 2025, taxMonth = 7)
     ))
 
   "MonthlyReturnConnector" should {
@@ -48,7 +48,6 @@ class MonthlyReturnConnectorSpec extends ApplicationWithWiremock
       "successfully retrieve monthly returns" in {
         stubFor(
           get(urlPathEqualTo("/rds-datacache-proxy/monthly-returns"))
-            .withQueryParam("maxRecords", equalTo("2"))
             .willReturn(
               aResponse()
                 .withStatus(OK)
@@ -56,15 +55,14 @@ class MonthlyReturnConnectorSpec extends ApplicationWithWiremock
             )
         )
 
-        val result = connector.retrieveMonthlyReturns(2).futureValue
+        val result = connector.retrieveMonthlyReturns("111","test111").futureValue
 
         result mustBe testDataCacheResponse
       }
 
-      "successfully retrieve empty direct debits" in {
+      "successfully retrieve empty monthly return" in {
         stubFor(
           get(urlPathEqualTo("/rds-datacache-proxy/monthly-returns"))
-            .withQueryParam("maxRecords", equalTo("0"))
             .willReturn(
               aResponse()
                 .withStatus(OK)
@@ -72,7 +70,7 @@ class MonthlyReturnConnectorSpec extends ApplicationWithWiremock
             )
         )
 
-        val result = connector.retrieveMonthlyReturns(0).futureValue
+        val result = connector.retrieveMonthlyReturns("111","test111").futureValue
 
         result mustBe testEmptyDataCacheResponse
       }
@@ -80,7 +78,6 @@ class MonthlyReturnConnectorSpec extends ApplicationWithWiremock
       "must fail when the result is parsed as an UpstreamErrorResponse" in {
         stubFor(
           get(urlPathEqualTo("/rds-datacache-proxy/monthly-returns"))
-            .withQueryParam("maxRecords", equalTo("2"))
             .willReturn(
               aResponse()
                 .withStatus(INTERNAL_SERVER_ERROR)
@@ -88,7 +85,7 @@ class MonthlyReturnConnectorSpec extends ApplicationWithWiremock
             )
         )
 
-        val result = intercept[Exception](connector.retrieveMonthlyReturns(2).futureValue)
+        val result = intercept[Exception](connector.retrieveMonthlyReturns("111","test111").futureValue)
 
         result.getMessage must include("returned 500. Response body: 'test error'")
       }
@@ -96,14 +93,13 @@ class MonthlyReturnConnectorSpec extends ApplicationWithWiremock
       "must fail when the result is a failed future" in {
         stubFor(
           get(urlPathEqualTo("/rds-datacache-proxy/monthly-returns"))
-            .withQueryParam("maxRecords", equalTo("2"))
             .willReturn(
               aResponse()
                 .withStatus(0)
             )
         )
 
-        val result = intercept[Exception](connector.retrieveMonthlyReturns(2).futureValue)
+        val result = intercept[Exception](connector.retrieveMonthlyReturns("111","test111").futureValue)
 
         result.getMessage must include("The future returned an exception")
       }

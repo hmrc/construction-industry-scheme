@@ -31,8 +31,13 @@ class MonthlyReturnConnector @Inject()(
 
   private val rdsDatacacheProxyBaseUrl: String = config.baseUrl("rds-datacache-proxy") + "/rds-datacache-proxy"
 
-  def retrieveMonthlyReturns(limit: Int)(implicit hc: HeaderCarrier): Future[RDSDatacacheResponse] = {
-    http.get(url"$rdsDatacacheProxyBaseUrl/monthly-returns?maxRecords=$limit")(hc)
+  def retrieveMonthlyReturns(taxOfficeNumber: String, taxOfficeReference: String)(implicit hc: HeaderCarrier): Future[RDSDatacacheResponse] = {
+    http
+      .get(url"$rdsDatacacheProxyBaseUrl/monthly-returns")
+      .setHeader(
+        "X-Tax-Office-Number"    -> taxOfficeNumber,
+        "X-Tax-Office-Reference" -> taxOfficeReference
+      )
       .execute[RDSDatacacheResponse]
   }
 

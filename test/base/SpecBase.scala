@@ -24,10 +24,10 @@ import org.scalatest.matchers.must.Matchers
 import org.scalatestplus.play.{BaseOneAppPerSuite, FakeApplicationFactory}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.JsValue
 import play.api.mvc.{AnyContentAsEmpty, ControllerComponents, PlayBodyParsers}
-import play.api.test.{DefaultAwaitTimeout, FakeHeaders, FakeRequest}
+import play.api.test.{DefaultAwaitTimeout, FakeRequest}
 import play.api.test.Helpers.stubControllerComponents
+import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext
@@ -57,10 +57,13 @@ trait SpecBase
   val cc: ControllerComponents = stubControllerComponents()
   val fakeRequest: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
   val bodyParsers: PlayBodyParsers = app.injector.instanceOf[PlayBodyParsers]
-  val fakeAuthAction = new FakeAuthAction(bodyParsers)
-
-  def fakeRequestWithJsonBody(json: JsValue): FakeRequest[JsValue] = FakeRequest("", "/", FakeHeaders(), json)
 
   implicit val hc: HeaderCarrier = HeaderCarrier()
   implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
+
+  def fakeAuthAction(ton: String = "123", tor: String = "AB456"): AuthAction =
+    FakeAuthAction.withCisIdentifiers(ton, tor, bodyParsers)
+
+  def noCisAuthAction: AuthAction =
+    FakeAuthAction.empty(bodyParsers)
 }

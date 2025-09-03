@@ -17,22 +17,38 @@
 package actions
 
 import play.api.mvc.{AnyContent, BodyParser, PlayBodyParsers, Request, Result}
+import uk.gov.hmrc.auth.core.{Enrolment, EnrolmentIdentifier, Enrolments}
 import uk.gov.hmrc.http.SessionId
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.requests.AuthenticatedRequest
 
-import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class FakeAuthAction @Inject()(bodyParsers: PlayBodyParsers) extends AuthAction {
+final class FakeAuthAction(enrols: Enrolments, parsers: PlayBodyParsers)
+                          (implicit ec: ExecutionContext) extends AuthAction {
 
-  override def parser: BodyParser[AnyContent] = bodyParsers.defaultBodyParser
+  override def parser: BodyParser[AnyContent] = parsers.defaultBodyParser
+  override protected def executionContext: ExecutionContext = ec
 
-  override def invokeBlock[A](request: Request[A], block: AuthenticatedRequest[A] => Future[Result]): Future[Result] =
-    block(
-      AuthenticatedRequest(request, "internalId", SessionId("sessionId"))
+  override def invokeBlock[A](request: Request[A],
+                              block: AuthenticatedRequest[A] => Future[Result]): Future[Result] =
+    block(AuthenticatedRequest(request, "internalId", SessionId("sessionId"), enrols))
+}
+
+object FakeAuthAction {
+  def withCisIdentifiers(ton: String, tor: String, parsers: PlayBodyParsers)
+                        (implicit ec: ExecutionContext): FakeAuthAction = {
+    val cis = Enrolment(
+      key = "HMRC-CIS-ORG",
+      identifiers = Seq(
+        EnrolmentIdentifier("TaxOfficeNumber", ton),
+        EnrolmentIdentifier("TaxOfficeReference", tor)
+      ),
+      state = "Activated"
     )
+    new FakeAuthAction(Enrolments(Set(cis)), parsers)
+  }
 
-  override protected def executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
-
+  def empty(parsers: PlayBodyParsers)(implicit ec: ExecutionContext): FakeAuthAction =
+    new FakeAuthAction(Enrolments(Set.empty), parsers)
 }

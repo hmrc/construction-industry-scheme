@@ -27,8 +27,8 @@ class MonthlyReturnService @Inject()(
                                     connector: MonthlyReturnConnector
                                   ) {
 
-  def retrieveMonthlyReturns(limit: Int)(implicit hc: HeaderCarrier): Future[RDSDatacacheResponse] = {
-    connector.retrieveMonthlyReturns(limit = limit)
+  def retrieveMonthlyReturns(taxOfficeNumber: String, taxOfficeReference: String)(implicit hc: HeaderCarrier): Future[RDSDatacacheResponse] = {
+    connector.retrieveMonthlyReturns(taxOfficeNumber, taxOfficeReference)
   }
 
 }

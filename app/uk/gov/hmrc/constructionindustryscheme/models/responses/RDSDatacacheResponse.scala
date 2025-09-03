@@ -18,16 +18,27 @@ package uk.gov.hmrc.constructionindustryscheme.models.responses
 
 import play.api.libs.json.{Json, OFormat}
 
-case class RDSMonthlyReturnDetails(monthlyReturnId: String,
-                            taxYear: Int,
-                            taxMonth: Int)
+import java.time.LocalDateTime
+
+case class RDSMonthlyReturnDetails(monthlyReturnId: Long,
+                                   taxYear: Int,
+                                   taxMonth: Int,
+                                   nilReturnIndicator: Option[String] = None,
+                                   decEmpStatusConsidered: Option[String] = None,
+                                   decAllSubsVerified: Option[String] = None,
+                                   decInformationCorrect: Option[String] = None,
+                                   decNoMoreSubPayments: Option[String] = None,
+                                   decNilReturnNoPayments: Option[String] = None,
+                                   status: Option[String] = None,
+                                   lastUpdate: Option[LocalDateTime] = None,
+                                   amendment: Option[String] = None,
+                                   supersededBy: Option[Long] = None)
   
 object RDSMonthlyReturnDetails {
   implicit val format: OFormat[RDSMonthlyReturnDetails] = Json.format[RDSMonthlyReturnDetails]
 }
 
-case class RDSDatacacheResponse(monthlyReturnCount: Int,
-                                monthlyReturnList: Seq[RDSMonthlyReturnDetails])
+case class RDSDatacacheResponse(monthlyReturnList: Seq[RDSMonthlyReturnDetails])
 
 object RDSDatacacheResponse {
   

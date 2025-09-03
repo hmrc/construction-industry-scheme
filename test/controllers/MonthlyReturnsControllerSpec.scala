@@ -27,6 +27,7 @@ import play.api.test.Helpers.{contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController
 import uk.gov.hmrc.constructionindustryscheme.models.responses.{RDSDatacacheResponse, RDSMonthlyReturnDetails}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
+import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.Future
 class MonthlyReturnsControllerSpec extends SpecBase {
@@ -34,20 +35,26 @@ class MonthlyReturnsControllerSpec extends SpecBase {
   "MonthlyReturnsController" - {
     "retrieveDirectDebits method" - {
       "return 200 and a successful response when the max number of records is supplied" in new SetUp {
-        when(mockMonthlyReturnService.retrieveMonthlyReturns(any())(any()))
-          .thenReturn(Future.successful(testDataCacheResponse))
+        when(mockMonthlyReturnService.retrieveMonthlyReturns(
+            any[String],
+            any[String]
+          )(any[HeaderCarrier])
+        ).thenReturn(Future.successful(testDataCacheResponse))
 
-        val result: Future[Result] = controller.retrieveMonthlyReturns(firstRecordNumber = None, maxRecords = Some(2))(fakeRequest)
+        val result: Future[Result] = controller.retrieveMonthlyReturns(fakeRequest)
 
         status(result) mustBe OK
         contentAsJson(result) mustBe Json.toJson(testDataCacheResponse)
       }
 
       "return 200 and a successful response with 0 when the no value of max records is supplied" in new SetUp {
-        when(mockMonthlyReturnService.retrieveMonthlyReturns(any())(any()))
-          .thenReturn(Future.successful(testEmptyDataCacheResponse))
+        when(mockMonthlyReturnService.retrieveMonthlyReturns(
+          any[String],
+          any[String]
+        )(any[HeaderCarrier])
+        ).thenReturn(Future.successful(testEmptyDataCacheResponse))
 
-        val result: Future[Result] = controller.retrieveMonthlyReturns(firstRecordNumber = None, maxRecords = None)(fakeRequest)
+        val result: Future[Result] = controller.retrieveMonthlyReturns(fakeRequest)
 
         status(result) mustBe OK
         contentAsJson(result) mustBe Json.toJson(testEmptyDataCacheResponse)
@@ -58,17 +65,12 @@ class MonthlyReturnsControllerSpec extends SpecBase {
   class SetUp {
     val mockMonthlyReturnService: MonthlyReturnService = mock[MonthlyReturnService]
 
-    val testEmptyDataCacheResponse: RDSDatacacheResponse = RDSDatacacheResponse(monthlyReturnCount = 0, monthlyReturnList = Seq.empty)
-    val testDataCacheResponse: RDSDatacacheResponse = RDSDatacacheResponse(monthlyReturnCount = 2,
-      monthlyReturnList = Seq(
-        RDSMonthlyReturnDetails(monthlyReturnId = "testRef1", taxYear = 2025, taxMonth = 1),
-        RDSMonthlyReturnDetails(monthlyReturnId = "testRef2", taxYear = 2025, taxMonth = 7)
+    val testEmptyDataCacheResponse: RDSDatacacheResponse = RDSDatacacheResponse(monthlyReturnList = Seq.empty)
+    val testDataCacheResponse: RDSDatacacheResponse = RDSDatacacheResponse(monthlyReturnList = Seq(
+        RDSMonthlyReturnDetails(monthlyReturnId = 66666L, taxYear = 2025, taxMonth = 1),
+        RDSMonthlyReturnDetails(monthlyReturnId = 66667L, taxYear = 2025, taxMonth = 7)
       ))
 
-    val controller = new MonthlyReturnsController(fakeAuthAction, mockMonthlyReturnService, cc)
+    val controller = new MonthlyReturnsController(fakeAuthAction(), mockMonthlyReturnService, cc)
   }
-  
-  
-  
-  
 }

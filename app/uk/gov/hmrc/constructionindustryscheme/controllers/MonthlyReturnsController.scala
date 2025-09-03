@@ -17,29 +17,38 @@
 package uk.gov.hmrc.constructionindustryscheme.controllers
 
 import com.google.inject.Inject
+import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 class MonthlyReturnsController @Inject()(
                                          authorise: AuthAction,
                                          service: MonthlyReturnService,
                                          val cc: ControllerComponents
-                                       )(implicit ec: ExecutionContext) extends BackendController(cc) {
+                                       )(implicit ec: ExecutionContext) extends BackendController(cc) with Logging {
 
-
-  def retrieveMonthlyReturns(firstRecordNumber: Option[Int], maxRecords: Option[Int]): Action[AnyContent] =
+  def retrieveMonthlyReturns: Action[AnyContent] =
     authorise.async {
       implicit request =>
-        service.retrieveMonthlyReturns(maxRecords.getOrElse(0)).map { response =>
-          Ok(Json.toJson(response))
+        val fromEnrolments: Option[(String, String)] =
+          for {
+            enrol <- request.enrolments.getEnrolment("HMRC-CIS-ORG")
+            ton <- enrol.getIdentifier("TaxOfficeNumber")
+            tor <- enrol.getIdentifier("TaxOfficeReference")
+          } yield (ton.value, tor.value)
+
+        fromEnrolments match {
+          case Some((ton, tor)) =>
+            service.retrieveMonthlyReturns(ton, tor).map(res => Ok(Json.toJson(res)))
+          case None =>
+            Future.successful(BadRequest(Json.obj("message" -> "Missing CIS enrolment identifiers")))
         }
     }
-
 }
 
 
