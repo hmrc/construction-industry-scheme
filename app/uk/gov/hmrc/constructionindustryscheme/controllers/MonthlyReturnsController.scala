@@ -21,6 +21,7 @@ import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
+import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -35,16 +36,16 @@ class MonthlyReturnsController @Inject()(
   def retrieveMonthlyReturns: Action[AnyContent] =
     authorise.async {
       implicit request =>
-        val fromEnrolments: Option[(String, String)] =
+        val enrolmentsOpt: Option[EmployerReference] =
           for {
             enrol <- request.enrolments.getEnrolment("HMRC-CIS-ORG")
             ton <- enrol.getIdentifier("TaxOfficeNumber")
             tor <- enrol.getIdentifier("TaxOfficeReference")
-          } yield (ton.value, tor.value)
+          } yield EmployerReference(ton.value, tor.value)
 
-        fromEnrolments match {
-          case Some((ton, tor)) =>
-            service.retrieveMonthlyReturns(ton, tor).map(res => Ok(Json.toJson(res)))
+        enrolmentsOpt match {
+          case Some(er) =>
+            service.retrieveMonthlyReturns(er).map(res => Ok(Json.toJson(res)))
           case None =>
             Future.successful(BadRequest(Json.obj("message" -> "Missing CIS enrolment identifiers")))
         }

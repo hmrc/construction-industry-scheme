@@ -17,8 +17,7 @@
 package base
 
 import actions.FakeAuthAction
-import org.scalatest.{BeforeAndAfterEach, OptionValues, TryValues}
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatestplus.play.{BaseOneAppPerSuite, FakeApplicationFactory}
@@ -35,12 +34,8 @@ import scala.concurrent.ExecutionContext
 trait SpecBase
   extends AnyFreeSpec
     with Matchers
-    with TryValues
     with DefaultAwaitTimeout
-    with OptionValues
     with ScalaFutures
-    with IntegrationPatience
-    with BeforeAndAfterEach
     with FakeApplicationFactory
     with BaseOneAppPerSuite {
 
@@ -59,7 +54,7 @@ trait SpecBase
   val bodyParsers: PlayBodyParsers = app.injector.instanceOf[PlayBodyParsers]
 
   implicit val hc: HeaderCarrier = HeaderCarrier()
-  implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
+  implicit val ec: ExecutionContext = cc.executionContext
 
   def fakeAuthAction(ton: String = "123", tor: String = "AB456"): AuthAction =
     FakeAuthAction.withCisIdentifiers(ton, tor, bodyParsers)

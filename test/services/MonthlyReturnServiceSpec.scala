@@ -22,6 +22,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.scalatestplus.mockito.MockitoSugar.mock
 import uk.gov.hmrc.constructionindustryscheme.connectors.MonthlyReturnConnector
+import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
 import uk.gov.hmrc.constructionindustryscheme.models.responses.{RDSDatacacheResponse, RDSMonthlyReturnDetails}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -40,13 +41,14 @@ class MonthlyReturnServiceSpec extends SpecBase {
   "MonthlyReturnService" - {
     "retrieveMonthlyReturns method" - {
       "must return the response from the connector" in {
+        val er = EmployerReference("123", "AB456")
+
         when(mockConnector.retrieveMonthlyReturns(
-          any[String],
-          any[String]
+          any[EmployerReference]
         )(any[HeaderCarrier])
         ).thenReturn(Future.successful(testDataCacheResponse))
 
-        val result = testService.retrieveMonthlyReturns("123","AB456").futureValue
+        val result = testService.retrieveMonthlyReturns(er).futureValue
 
         result mustBe testDataCacheResponse
       }
@@ -55,14 +57,15 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "propagates failures from the connector" in {
     val boom = new RuntimeException("rds-datacache-proxy call failed")
+    val er = EmployerReference("123", "AB456")
+
     when(
       mockConnector.retrieveMonthlyReturns(
-        any[String],
-        any[String]
+        any[EmployerReference]
       )(any[HeaderCarrier])
     ).thenReturn(Future.failed(boom))
 
-    val ex = testService.retrieveMonthlyReturns("123","AB456").failed.futureValue
+    val ex = testService.retrieveMonthlyReturns(er).failed.futureValue
     ex mustBe a [RuntimeException]
     ex.getMessage mustBe "rds-datacache-proxy call failed"
   }

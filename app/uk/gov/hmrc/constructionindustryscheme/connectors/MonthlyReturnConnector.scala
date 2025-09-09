@@ -17,6 +17,9 @@
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
 import com.google.inject.Inject
+import play.api.libs.json.{JsValue, Json}
+import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
+import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpReadsInstances, StringContextOps}
 import uk.gov.hmrc.constructionindustryscheme.models.responses.RDSDatacacheResponse
@@ -31,13 +34,13 @@ class MonthlyReturnConnector @Inject()(
 
   private val rdsDatacacheProxyBaseUrl: String = config.baseUrl("rds-datacache-proxy") + "/rds-datacache-proxy"
 
-  def retrieveMonthlyReturns(taxOfficeNumber: String, taxOfficeReference: String)(implicit hc: HeaderCarrier): Future[RDSDatacacheResponse] = {
+  def retrieveMonthlyReturns(er: EmployerReference)(implicit hc: HeaderCarrier): Future[RDSDatacacheResponse] = {
+
+    val payload: JsValue = Json.toJson(er)
+
     http
-      .get(url"$rdsDatacacheProxyBaseUrl/monthly-returns")
-      .setHeader(
-        "X-Tax-Office-Number"    -> taxOfficeNumber,
-        "X-Tax-Office-Reference" -> taxOfficeReference
-      )
+      .post(url"$rdsDatacacheProxyBaseUrl/monthly-returns")
+      .withBody(payload)
       .execute[RDSDatacacheResponse]
   }
 

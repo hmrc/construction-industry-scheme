@@ -16,7 +16,7 @@
 
 package connectors
 
-import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, get, stubFor, urlPathEqualTo}
+import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, equalTo, equalToJson, post, stubFor, urlPathEqualTo}
 import itutil.ApplicationWithWiremock
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
@@ -25,6 +25,7 @@ import play.api.http.Status.{INTERNAL_SERVER_ERROR, OK}
 import play.api.libs.json.Json
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.MonthlyReturnConnector
+import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
 import uk.gov.hmrc.constructionindustryscheme.models.responses.{RDSDatacacheResponse, RDSMonthlyReturnDetails}
 
 class MonthlyReturnConnectorSpec extends ApplicationWithWiremock
@@ -43,11 +44,15 @@ class MonthlyReturnConnectorSpec extends ApplicationWithWiremock
       RDSMonthlyReturnDetails(monthlyReturnId = 66667L, taxYear = 2025, taxMonth = 7)
     ))
 
+  val er: EmployerReference = EmployerReference("111", "test111")
+
   "MonthlyReturnConnector" should {
     "retrieveMonthlyReturns" should {
       "successfully retrieve monthly returns" in {
         stubFor(
-          get(urlPathEqualTo("/rds-datacache-proxy/monthly-returns"))
+          post(urlPathEqualTo("/rds-datacache-proxy/monthly-returns"))
+            .withHeader("Content-Type", equalTo("application/json"))
+            .withRequestBody(equalToJson(Json.toJson(er).toString(), true, true))
             .willReturn(
               aResponse()
                 .withStatus(OK)
@@ -55,14 +60,16 @@ class MonthlyReturnConnectorSpec extends ApplicationWithWiremock
             )
         )
 
-        val result = connector.retrieveMonthlyReturns("111","test111").futureValue
+        val result = connector.retrieveMonthlyReturns(er).futureValue
 
         result mustBe testDataCacheResponse
       }
 
       "successfully retrieve empty monthly return" in {
         stubFor(
-          get(urlPathEqualTo("/rds-datacache-proxy/monthly-returns"))
+          post(urlPathEqualTo("/rds-datacache-proxy/monthly-returns"))
+            .withHeader("Content-Type", equalTo("application/json"))
+            .withRequestBody(equalToJson(Json.toJson(er).toString(), true, true))
             .willReturn(
               aResponse()
                 .withStatus(OK)
@@ -70,14 +77,16 @@ class MonthlyReturnConnectorSpec extends ApplicationWithWiremock
             )
         )
 
-        val result = connector.retrieveMonthlyReturns("111","test111").futureValue
+        val result = connector.retrieveMonthlyReturns(er).futureValue
 
         result mustBe testEmptyDataCacheResponse
       }
 
       "must fail when the result is parsed as an UpstreamErrorResponse" in {
         stubFor(
-          get(urlPathEqualTo("/rds-datacache-proxy/monthly-returns"))
+          post(urlPathEqualTo("/rds-datacache-proxy/monthly-returns"))
+            .withHeader("Content-Type", equalTo("application/json"))
+            .withRequestBody(equalToJson(Json.toJson(er).toString(), true, true))
             .willReturn(
               aResponse()
                 .withStatus(INTERNAL_SERVER_ERROR)
@@ -85,21 +94,23 @@ class MonthlyReturnConnectorSpec extends ApplicationWithWiremock
             )
         )
 
-        val result = intercept[Exception](connector.retrieveMonthlyReturns("111","test111").futureValue)
+        val result = intercept[Exception](connector.retrieveMonthlyReturns(er).futureValue)
 
         result.getMessage must include("returned 500. Response body: 'test error'")
       }
 
       "must fail when the result is a failed future" in {
         stubFor(
-          get(urlPathEqualTo("/rds-datacache-proxy/monthly-returns"))
+          post(urlPathEqualTo("/rds-datacache-proxy/monthly-returns"))
+            .withHeader("Content-Type", equalTo("application/json"))
+            .withRequestBody(equalToJson(Json.toJson(er).toString(), true, true))
             .willReturn(
               aResponse()
                 .withStatus(0)
             )
         )
 
-        val result = intercept[Exception](connector.retrieveMonthlyReturns("111","test111").futureValue)
+        val result = intercept[Exception](connector.retrieveMonthlyReturns(er).futureValue)
 
         result.getMessage must include("The future returned an exception")
       }

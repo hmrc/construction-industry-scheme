@@ -25,6 +25,7 @@ import play.api.libs.json.Json
 import play.api.mvc.Result
 import play.api.test.Helpers.{contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController
+import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
 import uk.gov.hmrc.constructionindustryscheme.models.responses.{RDSDatacacheResponse, RDSMonthlyReturnDetails}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -36,9 +37,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
     "retrieveDirectDebits method" - {
       "return 200 and a successful response when the max number of records is supplied" in new SetUp {
         when(mockMonthlyReturnService.retrieveMonthlyReturns(
-            any[String],
-            any[String]
-          )(any[HeaderCarrier])
+          any[EmployerReference]
+        )(any[HeaderCarrier])
         ).thenReturn(Future.successful(testDataCacheResponse))
 
         val result: Future[Result] = controller.retrieveMonthlyReturns(fakeRequest)
@@ -49,8 +49,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
 
       "return 200 and a successful response with 0 when the no value of max records is supplied" in new SetUp {
         when(mockMonthlyReturnService.retrieveMonthlyReturns(
-          any[String],
-          any[String]
+          any[EmployerReference]
         )(any[HeaderCarrier])
         ).thenReturn(Future.successful(testEmptyDataCacheResponse))
 

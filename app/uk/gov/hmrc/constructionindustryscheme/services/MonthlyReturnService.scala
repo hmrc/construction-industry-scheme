@@ -19,6 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 import com.google.inject.Inject
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.MonthlyReturnConnector
+import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
 import uk.gov.hmrc.constructionindustryscheme.models.responses.RDSDatacacheResponse
 
 import scala.concurrent.Future
@@ -27,8 +28,8 @@ class MonthlyReturnService @Inject()(
                                     connector: MonthlyReturnConnector
                                   ) {
 
-  def retrieveMonthlyReturns(taxOfficeNumber: String, taxOfficeReference: String)(implicit hc: HeaderCarrier): Future[RDSDatacacheResponse] = {
-    connector.retrieveMonthlyReturns(taxOfficeNumber, taxOfficeReference)
+  def retrieveMonthlyReturns(er: EmployerReference)(implicit hc: HeaderCarrier): Future[RDSDatacacheResponse] = {
+    connector.retrieveMonthlyReturns(er)
   }
 
 }
