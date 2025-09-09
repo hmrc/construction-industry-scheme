@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme
+package uk.gov.hmrc.constructionindustryscheme.models
 
-import com.google.inject.AbstractModule
-import uk.gov.hmrc.constructionindustryscheme.actions.{AuthAction, DefaultAuthAction}
-import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
+import play.api.libs.json.{Json, OFormat}
 
-class Module extends AbstractModule {
+case class EmployerReference(taxOfficeNumber: String, taxOfficeReference: String)
 
-  override def configure(): Unit = {
-    bind(classOf[AuthAction]).to(classOf[DefaultAuthAction]).asEagerSingleton()
-    bind(classOf[AppConfig]).asEagerSingleton()
-  }
+object EmployerReference {
+  implicit val format: OFormat[EmployerReference] = Json.format[EmployerReference]
 }
