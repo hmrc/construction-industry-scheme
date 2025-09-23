@@ -16,21 +16,23 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services
 
-import com.google.inject.Inject
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.constructionindustryscheme.connectors.MonthlyReturnConnector
-import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
-import uk.gov.hmrc.constructionindustryscheme.models.responses.RDSDatacacheResponse
+import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
+import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, UserMonthlyReturns}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
+import javax.inject.{Inject, Singleton}
 
+@Singleton
 class MonthlyReturnService @Inject()(
-                                    connector: MonthlyReturnConnector
-                                  ) {
+                                      datacache: DatacacheProxyConnector,
+                                      formp: FormpProxyConnector
+                                    )(implicit ec: ExecutionContext) {
 
-  def retrieveMonthlyReturns(er: EmployerReference)(implicit hc: HeaderCarrier): Future[RDSDatacacheResponse] = {
-    connector.retrieveMonthlyReturns(er)
-  }
-
+  def retrieveMonthlyReturns(er: EmployerReference)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
+    for {
+      instanceId <- datacache.getInstanceId(er)
+      result     <- formp.getMonthlyReturns(instanceId)
+    } yield result
 }
 

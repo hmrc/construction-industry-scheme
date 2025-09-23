@@ -16,16 +16,17 @@
 
 package uk.gov.hmrc.constructionindustryscheme.controllers
 
-import com.google.inject.Inject
 import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
+import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import scala.concurrent.{ExecutionContext, Future}
+import javax.inject.Inject
 
 class MonthlyReturnsController @Inject()(
                                          authorise: AuthAction,
@@ -45,7 +46,16 @@ class MonthlyReturnsController @Inject()(
 
         enrolmentsOpt match {
           case Some(er) =>
-            service.retrieveMonthlyReturns(er).map(res => Ok(Json.toJson(res)))
+            service
+              .retrieveMonthlyReturns(er)
+              .map(res => Ok(Json.toJson(res)))
+              .recover {
+                case u: UpstreamErrorResponse =>
+                  Status(u.statusCode)(Json.obj("message" -> u.message))
+                case t: Throwable =>
+                  logger.error("[retrieveMonthlyReturns] failed", t)
+                  InternalServerError(Json.obj("message" -> "Unexpected error"))
+              }
           case None =>
             Future.successful(BadRequest(Json.obj("message" -> "Missing CIS enrolment identifiers")))
         }

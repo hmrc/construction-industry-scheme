@@ -16,57 +16,88 @@
 
 package services
 
-import base.SpecBase
-import org.mockito.ArgumentMatchers
-import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.when
-import org.scalatestplus.mockito.MockitoSugar.mock
-import uk.gov.hmrc.constructionindustryscheme.connectors.MonthlyReturnConnector
-import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
-import uk.gov.hmrc.constructionindustryscheme.models.responses.{RDSDatacacheResponse, RDSMonthlyReturnDetails}
+import org.mockito.ArgumentMatchers.{any, eq as eqTo}
+import org.mockito.Mockito.*
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.must.Matchers
+import org.scalatestplus.mockito.MockitoSugar
+import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
+import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-class MonthlyReturnServiceSpec extends SpecBase {
+class MonthlyReturnServiceSpec
+  extends AnyFreeSpec
+    with Matchers
+    with ScalaFutures
+    with MockitoSugar{
 
-  val mockConnector: MonthlyReturnConnector = mock[MonthlyReturnConnector]
-  val testService: MonthlyReturnService = new MonthlyReturnService(connector = mockConnector)
-  val testDataCacheResponse: RDSDatacacheResponse = RDSDatacacheResponse(monthlyReturnList = Seq(
-      RDSMonthlyReturnDetails(monthlyReturnId = 66666L, taxYear = 2025, taxMonth = 1),
-      RDSMonthlyReturnDetails(monthlyReturnId = 66667L, taxYear = 2025, taxMonth = 7)
-    ))
+  implicit val ec: ExecutionContext = ExecutionContext.global
+  implicit val hc: HeaderCarrier = HeaderCarrier()
 
-  "MonthlyReturnService" - {
-    "retrieveMonthlyReturns method" - {
-      "must return the response from the connector" in {
-        val er = EmployerReference("123", "AB456")
+  case class Ctx() {
+    val datacache = mock[DatacacheProxyConnector]            
+    val formp     = mock[FormpProxyConnector]                
+    val service   = new MonthlyReturnService(datacache, formp)
 
-        when(mockConnector.retrieveMonthlyReturns(
-          any[EmployerReference]
-        )(any[HeaderCarrier])
-        ).thenReturn(Future.successful(testDataCacheResponse))
+    val er         = EmployerReference("123", "AB456")
+    val instanceId = "abc-123"
 
-        val result = testService.retrieveMonthlyReturns(er).futureValue
-
-        result mustBe testDataCacheResponse
-      }
-    }
+    val sampleWrapper: UserMonthlyReturns = UserMonthlyReturns(
+      Seq(MonthlyReturn(66666L, 2025, 1))
+    )
   }
 
-  "propagates failures from the connector" in {
-    val boom = new RuntimeException("rds-datacache-proxy call failed")
-    val er = EmployerReference("123", "AB456")
+  "MonthlyReturnService.retrieveMonthlyReturns" - {
 
-    when(
-      mockConnector.retrieveMonthlyReturns(
-        any[EmployerReference]
-      )(any[HeaderCarrier])
-    ).thenReturn(Future.failed(boom))
+    "calls rds-datacache then formp and returns the wrapper (happy path)" in {
+      val c = Ctx()                                          // ✅ NEW: fresh mocks
 
-    val ex = testService.retrieveMonthlyReturns(er).failed.futureValue
-    ex mustBe a [RuntimeException]
-    ex.getMessage mustBe "rds-datacache-proxy call failed"
+      when(c.datacache.getInstanceId(eqTo(c.er))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(c.instanceId))
+      when(c.formp.getMonthlyReturns(eqTo(c.instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(c.sampleWrapper))
+
+      val out = c.service.retrieveMonthlyReturns(c.er).futureValue
+      out mustBe c.sampleWrapper
+
+      verify(c.datacache).getInstanceId(eqTo(c.er))(any[HeaderCarrier])
+      verify(c.formp).getMonthlyReturns(eqTo(c.instanceId))(any[HeaderCarrier])
+      verifyNoMoreInteractions(c.datacache, c.formp)
+    }
+
+    "propagates rds-datacache failure and does NOT call formp" in {
+      val c = Ctx()                                          
+      val boom = UpstreamErrorResponse("SP1 failed", 500)
+
+      when(c.datacache.getInstanceId(eqTo(c.er))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = c.service.retrieveMonthlyReturns(c.er).failed.futureValue
+      ex mustBe boom
+
+      verify(c.datacache).getInstanceId(eqTo(c.er))(any[HeaderCarrier])
+      verifyNoInteractions(c.formp)                           
+    }
+
+    "propagates formp failure when rds-datacache succeeds" in {
+      val c = Ctx()                                          
+      val boom = UpstreamErrorResponse("SP2 failed", 500)
+
+      when(c.datacache.getInstanceId(eqTo(c.er))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(c.instanceId))
+      when(c.formp.getMonthlyReturns(eqTo(c.instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = c.service.retrieveMonthlyReturns(c.er).failed.futureValue
+      ex mustBe boom
+
+      verify(c.datacache).getInstanceId(eqTo(c.er))(any[HeaderCarrier])
+      verify(c.formp).getMonthlyReturns(eqTo(c.instanceId))(any[HeaderCarrier])
+      verifyNoMoreInteractions(c.datacache, c.formp)
+    }
   }
 }
