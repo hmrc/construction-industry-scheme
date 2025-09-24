@@ -59,6 +59,6 @@ trait SpecBase
   def fakeAuthAction(ton: String = "123", tor: String = "AB456"): AuthAction =
     FakeAuthAction.withCisIdentifiers(ton, tor, bodyParsers)
 
-  def noCisAuthAction: AuthAction =
+  def noEnrolmentReferenceAuthAction: AuthAction =
     FakeAuthAction.empty(bodyParsers)
 }

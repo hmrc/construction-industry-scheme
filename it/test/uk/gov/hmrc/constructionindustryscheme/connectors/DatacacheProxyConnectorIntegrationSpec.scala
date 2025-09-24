@@ -25,7 +25,7 @@ import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
 import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
 import uk.gov.hmrc.http.HeaderCarrier
 
-class DatacacheProxyConnectorSpec
+class DatacacheProxyConnectorIntegrationSpec
   extends ApplicationWithWiremock
     with Matchers
     with ScalaFutures

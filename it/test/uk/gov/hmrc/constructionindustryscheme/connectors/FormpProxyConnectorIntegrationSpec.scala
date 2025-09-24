@@ -25,7 +25,7 @@ import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
 import uk.gov.hmrc.constructionindustryscheme.models.UserMonthlyReturns
 import uk.gov.hmrc.http.HeaderCarrier
 
-class FormpProxyConnectorSpec
+class FormpProxyConnectorIntegrationSpec
   extends ApplicationWithWiremock
     with Matchers
     with ScalaFutures

@@ -34,32 +34,50 @@ class MonthlyReturnsController @Inject()(
                                          val cc: ControllerComponents
                                        )(implicit ec: ExecutionContext) extends BackendController(cc) with Logging {
 
-  def retrieveMonthlyReturns: Action[AnyContent] =
-    authorise.async {
-      implicit request =>
-        val enrolmentsOpt: Option[EmployerReference] =
-          for {
-            enrol <- request.enrolments.getEnrolment("HMRC-CIS-ORG")
-            ton <- enrol.getIdentifier("TaxOfficeNumber")
-            tor <- enrol.getIdentifier("TaxOfficeReference")
-          } yield EmployerReference(ton.value, tor.value)
+  def getInstanceId: Action[AnyContent] = authorise.async { implicit request =>
+    val enrolmentsOpt: Option[EmployerReference] =
+      for {
+        enrol <- request.enrolments.getEnrolment("HMRC-CIS-ORG")
+        ton   <- enrol.getIdentifier("TaxOfficeNumber")
+        tor   <- enrol.getIdentifier("TaxOfficeReference")
+      } yield EmployerReference(ton.value, tor.value)
 
-        enrolmentsOpt match {
-          case Some(er) =>
-            service
-              .retrieveMonthlyReturns(er)
-              .map(res => Ok(Json.toJson(res)))
-              .recover {
-                case u: UpstreamErrorResponse =>
-                  Status(u.statusCode)(Json.obj("message" -> u.message))
-                case t: Throwable =>
-                  logger.error("[retrieveMonthlyReturns] failed", t)
-                  InternalServerError(Json.obj("message" -> "Unexpected error"))
-              }
-          case None =>
-            Future.successful(BadRequest(Json.obj("message" -> "Missing CIS enrolment identifiers")))
-        }
+    enrolmentsOpt match {
+      case Some(er) =>
+        service.getInstanceId(er)
+          .map(cisId => Ok(Json.obj("cisId" -> cisId)))
+          .recover {
+            case u: UpstreamErrorResponse if u.statusCode == NOT_FOUND =>
+              NotFound(Json.obj("message" -> "CIS taxpayer not found"))
+            case u: UpstreamErrorResponse =>
+              Status(u.statusCode)(Json.obj("message" -> u.message))
+            case t: Throwable =>
+              logger.error("[getInstanceId] failed", t)
+              InternalServerError(Json.obj("message" -> "Unexpected error"))
+          }
+
+      case None =>
+        Future.successful(BadRequest(Json.obj("message" -> "Missing CIS enrolment identifiers")))
     }
+  }
+
+  def getAllMonthlyReturns(cisId: Option[String]): Action[AnyContent] = authorise.async { implicit request =>
+    cisId match {
+      case Some(id) if id.trim.nonEmpty =>
+        service.getAllMonthlyReturnsByCisId(id)
+          .map(res => Ok(Json.toJson(res)))
+          .recover {
+            case u: UpstreamErrorResponse =>
+              Status(u.statusCode)(Json.obj("message" -> u.message))
+            case t: Throwable =>
+              logger.error("[getMonthlyReturns] failed", t)
+              InternalServerError(Json.obj("message" -> "Unexpected error"))
+          }
+
+      case _ =>
+        Future.successful(BadRequest(Json.obj("message" -> "Missing 'cisId'")))
+    }
+  }
 }
 
 

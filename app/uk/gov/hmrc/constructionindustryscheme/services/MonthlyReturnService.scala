@@ -20,19 +20,19 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, UserMonthlyReturns}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}
 
 @Singleton
 class MonthlyReturnService @Inject()(
                                       datacache: DatacacheProxyConnector,
                                       formp: FormpProxyConnector
-                                    )(implicit ec: ExecutionContext) {
+                                    ) {
 
-  def retrieveMonthlyReturns(er: EmployerReference)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
-    for {
-      instanceId <- datacache.getInstanceId(er)
-      result     <- formp.getMonthlyReturns(instanceId)
-    } yield result
+  def getInstanceId(er: EmployerReference)(implicit hc: HeaderCarrier): Future[String] =
+    datacache.getInstanceId(er)
+
+  def getAllMonthlyReturnsByCisId(cisId: String)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
+    formp.getMonthlyReturns(cisId)
 }
 

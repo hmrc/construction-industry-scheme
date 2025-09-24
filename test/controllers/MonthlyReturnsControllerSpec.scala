@@ -18,9 +18,9 @@ package controllers
 
 import base.SpecBase
 import org.mockito.ArgumentMatchers
-import org.mockito.ArgumentMatchers.{any,eq  => eqTo}
+import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
-import play.api.http.Status.{BAD_REQUEST, INTERNAL_SERVER_ERROR, OK}
+import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, INTERNAL_SERVER_ERROR, NOT_FOUND, OK}
 import play.api.libs.json.Json
 import play.api.mvc.Result
 import play.api.test.Helpers.{contentAsJson, status}
@@ -31,63 +31,104 @@ import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
 import scala.concurrent.{ExecutionContext, Future}
+
 class MonthlyReturnsControllerSpec extends SpecBase {
 
   "MonthlyReturnsController" - {
 
-    "GET /cis/monthly-returns (retrieveMonthlyReturns)" - {
+    "GET /cis/instance-id (getInstanceId)" - {
 
-      "return 200 with wrapper when service succeeds (happy path)" in new SetupWithCis {
-        when(mockMonthlyReturnService.retrieveMonthlyReturns(any[EmployerReference])(any[HeaderCarrier]))
+      "return 200 with {cisId} when service resolves it (happy path)" in new SetupWithEnrolmentReference {
+        when(mockMonthlyReturnService.getInstanceId(any[EmployerReference])(any[HeaderCarrier]))
+          .thenReturn(Future.successful("CIS-123"))
+
+        val result: Future[Result] = controller.getInstanceId(fakeRequest)
+
+        status(result) mustBe OK
+        contentAsJson(result) mustBe Json.obj("cisId" -> "CIS-123")
+        verify(mockMonthlyReturnService).getInstanceId(eqTo(EmployerReference("123", "AB456")))(any[HeaderCarrier])
+      }
+
+      "return 404 when datacache says not found" in new SetupWithEnrolmentReference {
+        when(mockMonthlyReturnService.getInstanceId(any[EmployerReference])(any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("not found", NOT_FOUND)))
+
+        val result = controller.getInstanceId(fakeRequest)
+        status(result) mustBe NOT_FOUND
+        (contentAsJson(result) \ "message").as[String].toLowerCase must include ("not found")
+      }
+
+      "map other UpstreamErrorResponse to same status with message" in new SetupWithEnrolmentReference {
+        when(mockMonthlyReturnService.getInstanceId(any[EmployerReference])(any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("boom from upstream", BAD_GATEWAY)))
+
+        val result = controller.getInstanceId(fakeRequest)
+        status(result) mustBe BAD_GATEWAY
+        (contentAsJson(result) \ "message").as[String] must include ("boom from upstream")
+      }
+
+      "return 500 Unexpected error on unknown exception" in new SetupWithEnrolmentReference {
+        when(mockMonthlyReturnService.getInstanceId(any[EmployerReference])(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("unexpected-exception")))
+
+        val result = controller.getInstanceId(fakeRequest)
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        (contentAsJson(result) \ "message").as[String] must equal ("Unexpected error")
+      }
+    }
+
+    "GET /cis/monthly-returns (getAllMonthlyReturns)" - {
+
+      "return 200 with wrapper when service succeeds (happy path)" in new SetupAuthOnly {
+        when(mockMonthlyReturnService.getAllMonthlyReturnsByCisId(eqTo("CIS-123"))(any[HeaderCarrier]))
           .thenReturn(Future.successful(sampleWrapper))
 
-        val result: Future[Result] = controller.retrieveMonthlyReturns(fakeRequest)
+        val result: Future[Result] = controller.getAllMonthlyReturns(Some("CIS-123"))(fakeRequest)
 
         status(result) mustBe OK
         contentAsJson(result) mustBe Json.toJson(sampleWrapper)
-        verify(mockMonthlyReturnService).retrieveMonthlyReturns(eqTo(EmployerReference("123","AB456")))(any[HeaderCarrier])
+        verify(mockMonthlyReturnService).getAllMonthlyReturnsByCisId(eqTo("CIS-123"))(any[HeaderCarrier])
       }
 
-      "return 200 with empty wrapper when service returns empty" in new SetupWithCis {
-        when(mockMonthlyReturnService.retrieveMonthlyReturns(any[EmployerReference])(any[HeaderCarrier]))
+      "return 200 with empty wrapper when service returns empty" in new SetupAuthOnly {
+        when(mockMonthlyReturnService.getAllMonthlyReturnsByCisId(eqTo("CIS-123"))(any[HeaderCarrier]))
           .thenReturn(Future.successful(UserMonthlyReturns(Seq.empty)))
 
-        val result: Future[Result] = controller.retrieveMonthlyReturns(fakeRequest)
+        val result: Future[Result] = controller.getAllMonthlyReturns(Some("CIS-123"))(fakeRequest)
 
         status(result) mustBe OK
         contentAsJson(result) mustBe Json.toJson(UserMonthlyReturns(Seq.empty))
       }
 
-      "return 400 when CIS enrolment identifiers are missing" in new SetupWithoutCis {
-        val result: Future[Result] = controller.retrieveMonthlyReturns(fakeRequest)
+      "return 400 when cisId query param is missing" in new SetupAuthOnly {
+        val result: Future[Result] = controller.getAllMonthlyReturns(None)(fakeRequest)
 
         status(result) mustBe BAD_REQUEST
-        (contentAsJson(result) \ "message").as[String].toLowerCase must include ("missing cis enrolment")
+        (contentAsJson(result) \ "message").as[String].toLowerCase must include ("missing 'cisid'")
         verifyNoInteractions(mockMonthlyReturnService)
       }
 
-      "map UpstreamErrorResponse to same status with message" in new SetupWithCis {
-        when(mockMonthlyReturnService.retrieveMonthlyReturns(any[EmployerReference])(any[HeaderCarrier]))
-          .thenReturn(Future.failed(UpstreamErrorResponse("boom from upstream", 502)))
+      "map UpstreamErrorResponse to same status with message" in new SetupAuthOnly {
+        when(mockMonthlyReturnService.getAllMonthlyReturnsByCisId(eqTo("CIS-123"))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("boom from upstream", BAD_GATEWAY)))
 
-        val result: Future[Result] = controller.retrieveMonthlyReturns(fakeRequest)
+        val result: Future[Result] = controller.getAllMonthlyReturns(Some("CIS-123"))(fakeRequest)
 
-        status(result) mustBe 502
+        status(result) mustBe BAD_GATEWAY
         (contentAsJson(result) \ "message").as[String] must include ("boom from upstream")
       }
 
-      "return 500 Unexpected error on unknown exception" in new SetupWithCis {
-        when(mockMonthlyReturnService.retrieveMonthlyReturns(any[EmployerReference])(any[HeaderCarrier]))
-          .thenReturn(Future.failed(new RuntimeException("kaboom")))
+      "return 500 Unexpected error on unknown exception" in new SetupAuthOnly {
+        when(mockMonthlyReturnService.getAllMonthlyReturnsByCisId(eqTo("CIS-123"))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("unexpected-exception")))
 
-        val result: Future[Result] = controller.retrieveMonthlyReturns(fakeRequest)
+        val result: Future[Result] = controller.getAllMonthlyReturns(Some("CIS-123"))(fakeRequest)
 
         status(result) mustBe INTERNAL_SERVER_ERROR
         (contentAsJson(result) \ "message").as[String] must equal ("Unexpected error")
       }
     }
   }
-
 
   private lazy val sampleWrapper: UserMonthlyReturns = UserMonthlyReturns(
     Seq(
@@ -110,13 +151,13 @@ class MonthlyReturnsControllerSpec extends SpecBase {
     implicit val hc: HeaderCarrier   = HeaderCarrier()
   }
 
-  private trait SetupWithCis extends BaseSetup {
+  private trait SetupWithEnrolmentReference extends BaseSetup {
     private val auth: AuthAction = fakeAuthAction(ton = "123", tor = "AB456")
     val controller = new MonthlyReturnsController(auth, mockMonthlyReturnService, cc)
   }
 
-  private trait SetupWithoutCis extends BaseSetup {
-    private val auth: AuthAction = noCisAuthAction
+  private trait SetupAuthOnly extends BaseSetup {
+    private val auth: AuthAction = noEnrolmentReferenceAuthAction
     val controller = new MonthlyReturnsController(auth, mockMonthlyReturnService, cc)
   }
 }

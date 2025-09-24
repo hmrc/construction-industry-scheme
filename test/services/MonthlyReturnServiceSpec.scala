@@ -33,71 +33,72 @@ class MonthlyReturnServiceSpec
   extends AnyFreeSpec
     with Matchers
     with ScalaFutures
-    with MockitoSugar{
+    with MockitoSugar {
 
   implicit val ec: ExecutionContext = ExecutionContext.global
-  implicit val hc: HeaderCarrier = HeaderCarrier()
+  implicit val hc: HeaderCarrier    = HeaderCarrier()
 
-  case class Ctx() {
-    val datacache = mock[DatacacheProxyConnector]            
-    val formp     = mock[FormpProxyConnector]                
-    val service   = new MonthlyReturnService(datacache, formp)
+  "getInstanceId" - {
 
-    val er         = EmployerReference("123", "AB456")
-    val instanceId = "abc-123"
+    "returns instance id when datacache succeeds" in new Setup {
+      when(datacacheProxy.getInstanceId(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(cisInstanceId))
 
-    val sampleWrapper: UserMonthlyReturns = UserMonthlyReturns(
-      Seq(MonthlyReturn(66666L, 2025, 1))
-    )
+      val out = service.getInstanceId(employerRef).futureValue
+      out mustBe cisInstanceId
+
+      verify(datacacheProxy).getInstanceId(eqTo(employerRef))(any[HeaderCarrier])
+      verifyNoInteractions(formpProxy)
+    }
+
+    "propagates failure from datacache" in new Setup {
+      val boom = UpstreamErrorResponse("rds-datacache proxy error", 502)
+
+      when(datacacheProxy.getInstanceId(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.getInstanceId(employerRef).failed.futureValue
+      ex mustBe boom
+
+      verify(datacacheProxy).getInstanceId(eqTo(employerRef))(any[HeaderCarrier])
+      verifyNoInteractions(formpProxy)
+    }
   }
 
-  "MonthlyReturnService.retrieveMonthlyReturns" - {
+  "getAllMonthlyReturnsByCisId" - {
 
-    "calls rds-datacache then formp and returns the wrapper (happy path)" in {
-      val c = Ctx()                                          // ✅ NEW: fresh mocks
+    "returns wrapper when formp succeeds" in new Setup {
+      when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(returnsFixture))
 
-      when(c.datacache.getInstanceId(eqTo(c.er))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(c.instanceId))
-      when(c.formp.getMonthlyReturns(eqTo(c.instanceId))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(c.sampleWrapper))
+      val out = service.getAllMonthlyReturnsByCisId(cisInstanceId).futureValue
+      out mustBe returnsFixture
 
-      val out = c.service.retrieveMonthlyReturns(c.er).futureValue
-      out mustBe c.sampleWrapper
-
-      verify(c.datacache).getInstanceId(eqTo(c.er))(any[HeaderCarrier])
-      verify(c.formp).getMonthlyReturns(eqTo(c.instanceId))(any[HeaderCarrier])
-      verifyNoMoreInteractions(c.datacache, c.formp)
+      verify(formpProxy).getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
     }
 
-    "propagates rds-datacache failure and does NOT call formp" in {
-      val c = Ctx()                                          
-      val boom = UpstreamErrorResponse("SP1 failed", 500)
+    "propagates failure from formp" in new Setup {
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
 
-      when(c.datacache.getInstanceId(eqTo(c.er))(any[HeaderCarrier]))
+      when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
         .thenReturn(Future.failed(boom))
 
-      val ex = c.service.retrieveMonthlyReturns(c.er).failed.futureValue
+      val ex = service.getAllMonthlyReturnsByCisId(cisInstanceId).failed.futureValue
       ex mustBe boom
 
-      verify(c.datacache).getInstanceId(eqTo(c.er))(any[HeaderCarrier])
-      verifyNoInteractions(c.formp)                           
+      verify(formpProxy).getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
     }
+  }
 
-    "propagates formp failure when rds-datacache succeeds" in {
-      val c = Ctx()                                          
-      val boom = UpstreamErrorResponse("SP2 failed", 500)
+  trait Setup {
+    val datacacheProxy = mock[DatacacheProxyConnector]
+    val formpProxy = mock[FormpProxyConnector]
+    val service = new MonthlyReturnService(datacacheProxy, formpProxy)
 
-      when(c.datacache.getInstanceId(eqTo(c.er))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(c.instanceId))
-      when(c.formp.getMonthlyReturns(eqTo(c.instanceId))(any[HeaderCarrier]))
-        .thenReturn(Future.failed(boom))
-
-      val ex = c.service.retrieveMonthlyReturns(c.er).failed.futureValue
-      ex mustBe boom
-
-      verify(c.datacache).getInstanceId(eqTo(c.er))(any[HeaderCarrier])
-      verify(c.formp).getMonthlyReturns(eqTo(c.instanceId))(any[HeaderCarrier])
-      verifyNoMoreInteractions(c.datacache, c.formp)
-    }
+    val employerRef = EmployerReference("123", "AB456")
+    val cisInstanceId = "abc-123"
+    val returnsFixture = UserMonthlyReturns(Seq(MonthlyReturn(66666L, 2025, 1)))
   }
 }
