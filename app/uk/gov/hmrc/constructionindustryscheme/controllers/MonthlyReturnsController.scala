@@ -34,7 +34,7 @@ class MonthlyReturnsController @Inject()(
                                          val cc: ControllerComponents
                                        )(implicit ec: ExecutionContext) extends BackendController(cc) with Logging {
 
-  def getInstanceId: Action[AnyContent] = authorise.async { implicit request =>
+  def getCisTaxpayer: Action[AnyContent] = authorise.async { implicit request =>
     val enrolmentsOpt: Option[EmployerReference] =
       for {
         enrol <- request.enrolments.getEnrolment("HMRC-CIS-ORG")
@@ -44,15 +44,15 @@ class MonthlyReturnsController @Inject()(
 
     enrolmentsOpt match {
       case Some(er) =>
-        service.getInstanceId(er)
-          .map(cisId => Ok(Json.obj("cisId" -> cisId)))
+        service.getCisTaxpayer(er)
+          .map(tp => Ok(Json.toJson(tp)))
           .recover {
             case u: UpstreamErrorResponse if u.statusCode == NOT_FOUND =>
               NotFound(Json.obj("message" -> "CIS taxpayer not found"))
             case u: UpstreamErrorResponse =>
               Status(u.statusCode)(Json.obj("message" -> u.message))
             case t: Throwable =>
-              logger.error("[getInstanceId] failed", t)
+              logger.error("[getCisTaxpayer] failed", t)
               InternalServerError(Json.obj("message" -> "Unexpected error"))
           }
 

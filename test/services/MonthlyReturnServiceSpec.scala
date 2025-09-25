@@ -16,51 +16,44 @@
 
 package services
 
+import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
-import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers
-import org.scalatestplus.mockito.MockitoSugar
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class MonthlyReturnServiceSpec
-  extends AnyFreeSpec
-    with Matchers
-    with ScalaFutures
-    with MockitoSugar {
-
-  implicit val ec: ExecutionContext = ExecutionContext.global
-  implicit val hc: HeaderCarrier    = HeaderCarrier()
+  extends SpecBase {
 
   "getInstanceId" - {
 
     "returns instance id when datacache succeeds" in new Setup {
-      when(datacacheProxy.getInstanceId(eqTo(employerRef))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(cisInstanceId))
+      val taxpayer = mkTaxpayer()
+      when(datacacheProxy.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(taxpayer))
 
-      val out = service.getInstanceId(employerRef).futureValue
-      out mustBe cisInstanceId
+      val out = service.getCisTaxpayer(employerRef).futureValue
+      out mustBe taxpayer
 
-      verify(datacacheProxy).getInstanceId(eqTo(employerRef))(any[HeaderCarrier])
+      verify(datacacheProxy).getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier])
       verifyNoInteractions(formpProxy)
     }
 
     "propagates failure from datacache" in new Setup {
       val boom = UpstreamErrorResponse("rds-datacache proxy error", 502)
 
-      when(datacacheProxy.getInstanceId(eqTo(employerRef))(any[HeaderCarrier]))
+      when(datacacheProxy.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
         .thenReturn(Future.failed(boom))
 
-      val ex = service.getInstanceId(employerRef).failed.futureValue
+      val ex = service.getCisTaxpayer(employerRef).failed.futureValue
       ex mustBe boom
 
-      verify(datacacheProxy).getInstanceId(eqTo(employerRef))(any[HeaderCarrier])
+      verify(datacacheProxy).getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier])
       verifyNoInteractions(formpProxy)
     }
   }

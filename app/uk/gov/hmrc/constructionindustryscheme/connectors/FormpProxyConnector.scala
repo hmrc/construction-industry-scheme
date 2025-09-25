@@ -20,7 +20,6 @@ import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
-import uk.gov.hmrc.constructionindustryscheme.connectors.dto.InstanceIdRequest
 import uk.gov.hmrc.constructionindustryscheme.models.UserMonthlyReturns
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
@@ -36,6 +35,6 @@ class FormpProxyConnector @Inject()(
 
   def getMonthlyReturns(instanceId: String)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
     http.post(url"$base/monthly-returns")           
-      .withBody(Json.toJson(InstanceIdRequest(instanceId)))
+      .withBody(Json.obj("instanceId" -> instanceId))
       .execute[UserMonthlyReturns]                  
 }

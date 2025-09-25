@@ -20,8 +20,7 @@ import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
-import uk.gov.hmrc.constructionindustryscheme.connectors.dto.InstanceIdResponse
-import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference}
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
@@ -33,11 +32,10 @@ class DatacacheProxyConnector @Inject()(
                                        )(implicit ec: ExecutionContext) extends HttpReadsInstances {
 
   private val base = config.baseUrl("rds-datacache-proxy") + "/rds-datacache-proxy"
-  
-  def getInstanceId(er: EmployerReference)(implicit hc: HeaderCarrier): Future[String] = {
-    http.post(url"$base/cis-taxpayer/instance-id")               
+
+  def getCisTaxpayer(er: EmployerReference)(implicit hc: HeaderCarrier): Future[CisTaxpayer] =
+    http
+      .post(url"$base/cis-taxpayer")
       .withBody(Json.toJson(er))
-      .execute[InstanceIdResponse]
-      .map(_.instanceId)
-  }
+      .execute[CisTaxpayer]
 }

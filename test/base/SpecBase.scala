@@ -20,6 +20,7 @@ import actions.FakeAuthAction
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.{BaseOneAppPerSuite, FakeApplicationFactory}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
@@ -27,6 +28,7 @@ import play.api.mvc.{AnyContentAsEmpty, ControllerComponents, PlayBodyParsers}
 import play.api.test.{DefaultAwaitTimeout, FakeRequest}
 import play.api.test.Helpers.stubControllerComponents
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
+import uk.gov.hmrc.constructionindustryscheme.models.CisTaxpayer
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.ExecutionContext
@@ -37,7 +39,8 @@ trait SpecBase
     with DefaultAwaitTimeout
     with ScalaFutures
     with FakeApplicationFactory
-    with BaseOneAppPerSuite {
+    with BaseOneAppPerSuite
+    with MockitoSugar {
 
   override def fakeApplication(): Application =
     new GuiceApplicationBuilder()
@@ -61,4 +64,29 @@ trait SpecBase
 
   def noEnrolmentReferenceAuthAction: AuthAction =
     FakeAuthAction.empty(bodyParsers)
+
+  def mkTaxpayer(
+    id: String = "CIS-123",
+    ton: String = "123",
+    tor: String = "AB456",
+    employerName1: Option[String] = Some("TEST LTD")
+                ): CisTaxpayer =
+    CisTaxpayer(
+      uniqueId         = id,
+      taxOfficeNumber  = ton,
+      taxOfficeRef     = tor,
+      aoDistrict       = None,
+      aoPayType        = None,
+      aoCheckCode      = None,
+      aoReference      = None,
+      validBusinessAddr= None,
+      correlation      = None,
+      ggAgentId        = None,
+      employerName1    = employerName1,
+      employerName2    = None,
+      agentOwnRef      = None,
+      schemeName       = None,
+      utr              = None,
+      enrolledSig      = None
+    )
 }

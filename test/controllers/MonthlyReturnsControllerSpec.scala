@@ -36,42 +36,43 @@ class MonthlyReturnsControllerSpec extends SpecBase {
 
   "MonthlyReturnsController" - {
 
-    "GET /cis/instance-id (getInstanceId)" - {
+    "GET /cis/taxpayer (getCisTaxpayer)" - {
 
       "return 200 with {cisId} when service resolves it (happy path)" in new SetupWithEnrolmentReference {
-        when(mockMonthlyReturnService.getInstanceId(any[EmployerReference])(any[HeaderCarrier]))
-          .thenReturn(Future.successful("CIS-123"))
+        val taxpayer = mkTaxpayer()
+        when(mockMonthlyReturnService.getCisTaxpayer(any[EmployerReference])(any[HeaderCarrier]))
+          .thenReturn(Future.successful(taxpayer))
 
-        val result: Future[Result] = controller.getInstanceId(fakeRequest)
+        val result: Future[Result] = controller.getCisTaxpayer(fakeRequest)
 
         status(result) mustBe OK
-        contentAsJson(result) mustBe Json.obj("cisId" -> "CIS-123")
-        verify(mockMonthlyReturnService).getInstanceId(eqTo(EmployerReference("123", "AB456")))(any[HeaderCarrier])
+        contentAsJson(result) mustBe Json.toJson(taxpayer)
+        verify(mockMonthlyReturnService).getCisTaxpayer(eqTo(EmployerReference("123", "AB456")))(any[HeaderCarrier])
       }
 
       "return 404 when datacache says not found" in new SetupWithEnrolmentReference {
-        when(mockMonthlyReturnService.getInstanceId(any[EmployerReference])(any[HeaderCarrier]))
+        when(mockMonthlyReturnService.getCisTaxpayer(any[EmployerReference])(any[HeaderCarrier]))
           .thenReturn(Future.failed(UpstreamErrorResponse("not found", NOT_FOUND)))
 
-        val result = controller.getInstanceId(fakeRequest)
+        val result = controller.getCisTaxpayer(fakeRequest)
         status(result) mustBe NOT_FOUND
         (contentAsJson(result) \ "message").as[String].toLowerCase must include ("not found")
       }
 
       "map other UpstreamErrorResponse to same status with message" in new SetupWithEnrolmentReference {
-        when(mockMonthlyReturnService.getInstanceId(any[EmployerReference])(any[HeaderCarrier]))
+        when(mockMonthlyReturnService.getCisTaxpayer(any[EmployerReference])(any[HeaderCarrier]))
           .thenReturn(Future.failed(UpstreamErrorResponse("boom from upstream", BAD_GATEWAY)))
 
-        val result = controller.getInstanceId(fakeRequest)
+        val result = controller.getCisTaxpayer(fakeRequest)
         status(result) mustBe BAD_GATEWAY
         (contentAsJson(result) \ "message").as[String] must include ("boom from upstream")
       }
 
       "return 500 Unexpected error on unknown exception" in new SetupWithEnrolmentReference {
-        when(mockMonthlyReturnService.getInstanceId(any[EmployerReference])(any[HeaderCarrier]))
+        when(mockMonthlyReturnService.getCisTaxpayer(any[EmployerReference])(any[HeaderCarrier]))
           .thenReturn(Future.failed(new RuntimeException("unexpected-exception")))
 
-        val result = controller.getInstanceId(fakeRequest)
+        val result = controller.getCisTaxpayer(fakeRequest)
         status(result) mustBe INTERNAL_SERVER_ERROR
         (contentAsJson(result) \ "message").as[String] must equal ("Unexpected error")
       }
@@ -146,7 +147,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
   )
 
   private trait BaseSetup {
-    val mockMonthlyReturnService: MonthlyReturnService = mock(classOf[MonthlyReturnService])
+    val mockMonthlyReturnService: MonthlyReturnService = mock[MonthlyReturnService]
     implicit val ec: ExecutionContext = cc.executionContext
     implicit val hc: HeaderCarrier   = HeaderCarrier()
   }

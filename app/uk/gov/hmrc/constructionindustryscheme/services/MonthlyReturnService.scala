@@ -18,7 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, UserMonthlyReturns}
 
 import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}
@@ -29,8 +29,8 @@ class MonthlyReturnService @Inject()(
                                       formp: FormpProxyConnector
                                     ) {
 
-  def getInstanceId(er: EmployerReference)(implicit hc: HeaderCarrier): Future[String] =
-    datacache.getInstanceId(er)
+  def getCisTaxpayer(er: EmployerReference)(implicit hc: HeaderCarrier): Future[CisTaxpayer] =
+    datacache.getCisTaxpayer(er)
 
   def getAllMonthlyReturnsByCisId(cisId: String)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
     formp.getMonthlyReturns(cisId)

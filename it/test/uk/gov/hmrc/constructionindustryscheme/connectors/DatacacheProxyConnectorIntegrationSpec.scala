@@ -38,33 +38,52 @@ class DatacacheProxyConnectorIntegrationSpec
   private val er = EmployerReference("111", "test111")
   private val erJson = Json.toJson(er)
 
-  "DatacacheProxyConnector getInstanceId" should {
+  "DatacacheProxyConnector getCisTaxpayer" should {
 
-    "POST Employer Reference to /rds-datacache-proxy/cis-taxpayer/instance-id and return instanceId (200)" in {
+    "POST Employer Reference to /rds-datacache-proxy/cis-taxpayer and return CisTaxpayer (200)" in {
       stubFor(
-        post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer/instance-id"))
+        post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(erJson.toString(), true, true))
           .willReturn(
-            aResponse()
-              .withStatus(200)
-              .withBody("""{"instanceId":"abc-123"}""") 
+            aResponse().withStatus(200).withBody(
+              """{
+                |  "uniqueId": "abc-123",
+                |  "taxOfficeNumber": "111",
+                |  "taxOfficeRef": "test111",
+                |  "employerName1": "TEST LTD"
+                |}""".stripMargin
+            )
           )
       )
 
-      val out = connector.getInstanceId(er).futureValue
-      out mustBe "abc-123"
+      val out = connector.getCisTaxpayer(er).futureValue
+      out.uniqueId mustBe "abc-123"
+      out.taxOfficeNumber mustBe "111"
+      out.taxOfficeRef mustBe "test111"
+      out.employerName1 mustBe Some("TEST LTD")
     }
 
     "fail the future when upstream returns a non-2xx (e.g. 500)" in {
       stubFor(
-        post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer/instance-id"))
+        post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer"))
           .withRequestBody(equalToJson(erJson.toString(), true, true))
           .willReturn(aResponse().withStatus(500).withBody("rds datacache error"))
       )
 
-      val ex = intercept[Throwable](connector.getInstanceId(er).futureValue)
+      val ex = intercept[Throwable](connector.getCisTaxpayer(er).futureValue)
       ex.getMessage must include ("500")
+    }
+    
+    "propagate 404 not found when taxpayer does not exist" in {
+      stubFor(
+        post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer")) // CHANGED
+          .withRequestBody(equalToJson(erJson.toString(), true, true))
+          .willReturn(aResponse().withStatus(404))
+      )
+
+      val ex = connector.getCisTaxpayer(er).failed.futureValue
+      ex.getMessage must include ("404")
     }
   }
 }

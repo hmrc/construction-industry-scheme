@@ -31,21 +31,28 @@ class MonthlyReturnsControllerIntegrationSpec
     with ScalaFutures
     with IntegrationPatience {
 
-  private val instanceIdUrl     = s"http://localhost:$port/cis/instance-id"
+  private val instanceIdUrl     = s"http://localhost:$port/cis/taxpayer"
   private val monthlyReturnsUrl = s"http://localhost:$port/cis/monthly-returns"
 
-  "GET /cis/instance-id" should {
+  "GET /cis/taxpayer" should {
 
-    "return 200 with {cisId} when authorised and datacache proxy succeeds" in {
+    "return 200 with {CisTaxpayer} when authorised and datacache proxy succeeds" in {
       AuthStub.authorisedWithCisEnrolment(ton = "111", tor = "test111")
 
       stubFor(
-        post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer/instance-id"))
+        post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer"))
           .withRequestBody(equalToJson(
             """{"taxOfficeNumber":"111","taxOfficeReference":"test111"}""",
             true, true
           ))
-          .willReturn(aResponse().withStatus(200).withBody("""{"instanceId":"abc-123"}"""))
+          .willReturn(aResponse().withStatus(200).withBody(
+            """{
+              |  "uniqueId": "abc-123",
+              |  "taxOfficeNumber": "111",
+              |  "taxOfficeRef": "test111",
+              |  "employerName1": "TEST LTD"
+              |}""".stripMargin
+          ))
       )
 
       val resp = wsClient.url(instanceIdUrl)
@@ -54,9 +61,12 @@ class MonthlyReturnsControllerIntegrationSpec
         .futureValue
 
       resp.status mustBe OK
-      (resp.json \ "cisId").as[String] mustBe "abc-123"
+      (resp.json \ "uniqueId").as[String] mustBe "abc-123"
+      (resp.json \ "taxOfficeNumber").as[String] mustBe "111"
+      (resp.json \ "taxOfficeRef").as[String] mustBe "test111"
+      (resp.json \ "employerName1").asOpt[String] mustBe Some("TEST LTD")
 
-      verify(postRequestedFor(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer/instance-id")))
+      verify(postRequestedFor(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer")))
     }
 
     "return 404 when contractor not found on datacache proxy" in {
@@ -89,7 +99,7 @@ class MonthlyReturnsControllerIntegrationSpec
       AuthStub.authorisedWithCisEnrolment(ton = "111", tor = "test111")
 
       stubFor(
-        post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer/instance-id"))
+        post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer"))
           .willReturn(aResponse().withStatus(502).withBody("bad gateway"))
       )
 
