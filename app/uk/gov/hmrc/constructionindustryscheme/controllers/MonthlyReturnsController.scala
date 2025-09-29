@@ -37,14 +37,14 @@ class MonthlyReturnsController @Inject()(
   def getCisTaxpayer: Action[AnyContent] = authorise.async { implicit request =>
     val enrolmentsOpt: Option[EmployerReference] =
       for {
-        enrol <- request.enrolments.getEnrolment("HMRC-CIS-ORG")
-        ton   <- enrol.getIdentifier("TaxOfficeNumber")
-        tor   <- enrol.getIdentifier("TaxOfficeReference")
-      } yield EmployerReference(ton.value, tor.value)
+        enrol                <- request.enrolments.getEnrolment("HMRC-CIS-ORG")
+        taxOfficeNumber      <- enrol.getIdentifier("TaxOfficeNumber")
+        taxOfficeReference   <- enrol.getIdentifier("TaxOfficeReference")
+      } yield EmployerReference(taxOfficeNumber.value, taxOfficeReference.value)
 
     enrolmentsOpt match {
-      case Some(er) =>
-        service.getCisTaxpayer(er)
+      case Some(enrolmentReference) =>
+        service.getCisTaxpayer(enrolmentReference)
           .map(tp => Ok(Json.toJson(tp)))
           .recover {
             case u: UpstreamErrorResponse if u.statusCode == NOT_FOUND =>

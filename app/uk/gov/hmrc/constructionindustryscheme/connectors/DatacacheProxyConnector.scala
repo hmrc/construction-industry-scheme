@@ -33,9 +33,9 @@ class DatacacheProxyConnector @Inject()(
 
   private val base = config.baseUrl("rds-datacache-proxy") + "/rds-datacache-proxy"
 
-  def getCisTaxpayer(er: EmployerReference)(implicit hc: HeaderCarrier): Future[CisTaxpayer] =
+  def getCisTaxpayer(employerReference: EmployerReference)(implicit hc: HeaderCarrier): Future[CisTaxpayer] =
     http
       .post(url"$base/cis-taxpayer")
-      .withBody(Json.toJson(er))
+      .withBody(Json.toJson(employerReference))
       .execute[CisTaxpayer]
 }

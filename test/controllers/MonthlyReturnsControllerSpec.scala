@@ -50,7 +50,16 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         verify(mockMonthlyReturnService).getCisTaxpayer(eqTo(EmployerReference("123", "AB456")))(any[HeaderCarrier])
       }
 
-      "return 404 when datacache says not found" in new SetupWithEnrolmentReference {
+      "return 400 when datacache says not found" in new SetupAuthOnly {
+        val result = controller.getCisTaxpayer(fakeRequest)
+
+        status(result) mustBe BAD_REQUEST
+        (contentAsJson(result) \ "message").as[String] mustBe "Missing CIS enrolment identifiers"
+
+        verifyNoInteractions(mockMonthlyReturnService)
+      }
+
+        "return 404 when datacache says not found" in new SetupWithEnrolmentReference {
         when(mockMonthlyReturnService.getCisTaxpayer(any[EmployerReference])(any[HeaderCarrier]))
           .thenReturn(Future.failed(UpstreamErrorResponse("not found", NOT_FOUND)))
 

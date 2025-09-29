@@ -17,6 +17,7 @@
 package base
 
 import actions.FakeAuthAction
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
@@ -40,7 +41,8 @@ trait SpecBase
     with ScalaFutures
     with FakeApplicationFactory
     with BaseOneAppPerSuite
-    with MockitoSugar {
+    with MockitoSugar 
+    with BeforeAndAfterEach{
 
   override def fakeApplication(): Application =
     new GuiceApplicationBuilder()

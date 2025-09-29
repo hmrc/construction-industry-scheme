@@ -30,9 +30,17 @@ import scala.concurrent.Future
 class MonthlyReturnServiceSpec
   extends SpecBase {
 
-  "getInstanceId" - {
+  var setup: Setup = _
+  override def beforeEach(): Unit = {
+    setup = new Setup {}
+  }
 
-    "returns instance id when datacache succeeds" in new Setup {
+  "getCisTaxpayer" - {
+
+    "returns cis taxpayer when datacache succeeds" in {
+      val s = setup
+      import s._
+
       val taxpayer = mkTaxpayer()
       when(datacacheProxy.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
         .thenReturn(Future.successful(taxpayer))
@@ -44,7 +52,10 @@ class MonthlyReturnServiceSpec
       verifyNoInteractions(formpProxy)
     }
 
-    "propagates failure from datacache" in new Setup {
+    "propagates failure from datacache" in {
+      val s = setup
+      import s._
+
       val boom = UpstreamErrorResponse("rds-datacache proxy error", 502)
 
       when(datacacheProxy.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
@@ -60,7 +71,10 @@ class MonthlyReturnServiceSpec
 
   "getAllMonthlyReturnsByCisId" - {
 
-    "returns wrapper when formp succeeds" in new Setup {
+    "returns wrapper when formp succeeds" in {
+      val s = setup
+      import s._
+
       when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
         .thenReturn(Future.successful(returnsFixture))
 
@@ -71,7 +85,10 @@ class MonthlyReturnServiceSpec
       verifyNoInteractions(datacacheProxy)
     }
 
-    "propagates failure from formp" in new Setup {
+    "propagates failure from formp" in {
+      val s = setup
+      import s._
+
       val boom = UpstreamErrorResponse("formp proxy failure", 500)
 
       when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))

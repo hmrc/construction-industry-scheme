@@ -29,8 +29,8 @@ class MonthlyReturnService @Inject()(
                                       formp: FormpProxyConnector
                                     ) {
 
-  def getCisTaxpayer(er: EmployerReference)(implicit hc: HeaderCarrier): Future[CisTaxpayer] =
-    datacache.getCisTaxpayer(er)
+  def getCisTaxpayer(employerReference: EmployerReference)(implicit hc: HeaderCarrier): Future[CisTaxpayer] =
+    datacache.getCisTaxpayer(employerReference)
 
   def getAllMonthlyReturnsByCisId(cisId: String)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
     formp.getMonthlyReturns(cisId)
