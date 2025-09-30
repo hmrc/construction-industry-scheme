@@ -16,21 +16,23 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services
 
-import com.google.inject.Inject
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.constructionindustryscheme.connectors.MonthlyReturnConnector
-import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
-import uk.gov.hmrc.constructionindustryscheme.models.responses.RDSDatacacheResponse
+import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, UserMonthlyReturns}
 
 import scala.concurrent.Future
+import javax.inject.{Inject, Singleton}
 
+@Singleton
 class MonthlyReturnService @Inject()(
-                                    connector: MonthlyReturnConnector
-                                  ) {
+                                      datacache: DatacacheProxyConnector,
+                                      formp: FormpProxyConnector
+                                    ) {
 
-  def retrieveMonthlyReturns(er: EmployerReference)(implicit hc: HeaderCarrier): Future[RDSDatacacheResponse] = {
-    connector.retrieveMonthlyReturns(er)
-  }
+  def getCisTaxpayer(employerReference: EmployerReference)(implicit hc: HeaderCarrier): Future[CisTaxpayer] =
+    datacache.getCisTaxpayer(employerReference)
 
+  def getAllMonthlyReturnsByCisId(cisId: String)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
+    formp.getMonthlyReturns(cisId)
 }
 

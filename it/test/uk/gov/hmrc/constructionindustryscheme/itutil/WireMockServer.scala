@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package itutil
+package uk.gov.hmrc.constructionindustryscheme.itutil
 
 import com.github.tomakehurst.wiremock.WireMockServer
-import com.github.tomakehurst.wiremock.client.{WireMock => WireMockClient}
+import com.github.tomakehurst.wiremock.client.WireMock as WireMockClient
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig
 
 object WireMockConstants:

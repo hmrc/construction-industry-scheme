@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package itutil
+package uk.gov.hmrc.constructionindustryscheme.itutil
 
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
@@ -27,7 +27,7 @@ trait ApplicationWithWiremock
   extends AnyWordSpec
     with GuiceOneServerPerSuite
     with BeforeAndAfterAll
-    with BeforeAndAfterEach:
+    with BeforeAndAfterEach {
 
   lazy val wireMock = new WireMock
 
@@ -36,7 +36,9 @@ trait ApplicationWithWiremock
       "microservice.services.auth.host" -> WireMockConstants.stubHost,
       "microservice.services.auth.port" -> WireMockConstants.stubPort,
       "microservice.services.rds-datacache-proxy.host" -> WireMockConstants.stubHost,
-      "microservice.services.rds-datacache-proxy.port" -> WireMockConstants.stubPort
+      "microservice.services.rds-datacache-proxy.port" -> WireMockConstants.stubPort,
+      "microservice.services.formp-proxy.host"      -> WireMockConstants.stubHost,
+      "microservice.services.formp-proxy.port"      -> WireMockConstants.stubPort
     )
   }
 
@@ -57,5 +59,4 @@ trait ApplicationWithWiremock
   override def afterAll(): Unit =
     wireMock.stop()
     super.afterAll()
-
-  val baseUrl: String = s"http://localhost:$port/rds-datacache-proxy"
+}

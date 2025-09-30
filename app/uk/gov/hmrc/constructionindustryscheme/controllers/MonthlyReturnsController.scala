@@ -16,16 +16,17 @@
 
 package uk.gov.hmrc.constructionindustryscheme.controllers
 
-import com.google.inject.Inject
 import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
+import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import scala.concurrent.{ExecutionContext, Future}
+import javax.inject.Inject
 
 class MonthlyReturnsController @Inject()(
                                          authorise: AuthAction,
@@ -33,23 +34,50 @@ class MonthlyReturnsController @Inject()(
                                          val cc: ControllerComponents
                                        )(implicit ec: ExecutionContext) extends BackendController(cc) with Logging {
 
-  def retrieveMonthlyReturns: Action[AnyContent] =
-    authorise.async {
-      implicit request =>
-        val enrolmentsOpt: Option[EmployerReference] =
-          for {
-            enrol <- request.enrolments.getEnrolment("HMRC-CIS-ORG")
-            ton <- enrol.getIdentifier("TaxOfficeNumber")
-            tor <- enrol.getIdentifier("TaxOfficeReference")
-          } yield EmployerReference(ton.value, tor.value)
+  def getCisTaxpayer: Action[AnyContent] = authorise.async { implicit request =>
+    val enrolmentsOpt: Option[EmployerReference] =
+      for {
+        enrol                <- request.enrolments.getEnrolment("HMRC-CIS-ORG")
+        taxOfficeNumber      <- enrol.getIdentifier("TaxOfficeNumber")
+        taxOfficeReference   <- enrol.getIdentifier("TaxOfficeReference")
+      } yield EmployerReference(taxOfficeNumber.value, taxOfficeReference.value)
 
-        enrolmentsOpt match {
-          case Some(er) =>
-            service.retrieveMonthlyReturns(er).map(res => Ok(Json.toJson(res)))
-          case None =>
-            Future.successful(BadRequest(Json.obj("message" -> "Missing CIS enrolment identifiers")))
-        }
+    enrolmentsOpt match {
+      case Some(enrolmentReference) =>
+        service.getCisTaxpayer(enrolmentReference)
+          .map(tp => Ok(Json.toJson(tp)))
+          .recover {
+            case u: UpstreamErrorResponse if u.statusCode == NOT_FOUND =>
+              NotFound(Json.obj("message" -> "CIS taxpayer not found"))
+            case u: UpstreamErrorResponse =>
+              Status(u.statusCode)(Json.obj("message" -> u.message))
+            case t: Throwable =>
+              logger.error("[getCisTaxpayer] failed", t)
+              InternalServerError(Json.obj("message" -> "Unexpected error"))
+          }
+
+      case None =>
+        Future.successful(BadRequest(Json.obj("message" -> "Missing CIS enrolment identifiers")))
     }
+  }
+
+  def getAllMonthlyReturns(cisId: Option[String]): Action[AnyContent] = authorise.async { implicit request =>
+    cisId match {
+      case Some(id) if id.trim.nonEmpty =>
+        service.getAllMonthlyReturnsByCisId(id)
+          .map(res => Ok(Json.toJson(res)))
+          .recover {
+            case u: UpstreamErrorResponse =>
+              Status(u.statusCode)(Json.obj("message" -> u.message))
+            case t: Throwable =>
+              logger.error("[getMonthlyReturns] failed", t)
+              InternalServerError(Json.obj("message" -> "Unexpected error"))
+          }
+
+      case _ =>
+        Future.successful(BadRequest(Json.obj("message" -> "Missing 'cisId'")))
+    }
+  }
 }
 
 

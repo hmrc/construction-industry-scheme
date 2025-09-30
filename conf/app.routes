@@ -1,3 +1,4 @@
 # microservice specific routes
 
-GET        /monthly-returns            uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.retrieveMonthlyReturns
+GET        /taxpayer                          uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getCisTaxpayer
+GET        /monthly-returns                      uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getAllMonthlyReturns(cisId: Option[String])

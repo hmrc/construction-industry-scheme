@@ -17,56 +17,98 @@
 package services
 
 import base.SpecBase
-import org.mockito.ArgumentMatchers
-import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.when
-import org.scalatestplus.mockito.MockitoSugar.mock
-import uk.gov.hmrc.constructionindustryscheme.connectors.MonthlyReturnConnector
-import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
-import uk.gov.hmrc.constructionindustryscheme.models.responses.{RDSDatacacheResponse, RDSMonthlyReturnDetails}
+import org.mockito.ArgumentMatchers.{any, eq as eqTo}
+import org.mockito.Mockito.*
+import org.scalatest.freespec.AnyFreeSpec
+import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
+import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
 import scala.concurrent.Future
 
-class MonthlyReturnServiceSpec extends SpecBase {
+class MonthlyReturnServiceSpec
+  extends SpecBase {
 
-  val mockConnector: MonthlyReturnConnector = mock[MonthlyReturnConnector]
-  val testService: MonthlyReturnService = new MonthlyReturnService(connector = mockConnector)
-  val testDataCacheResponse: RDSDatacacheResponse = RDSDatacacheResponse(monthlyReturnList = Seq(
-      RDSMonthlyReturnDetails(monthlyReturnId = 66666L, taxYear = 2025, taxMonth = 1),
-      RDSMonthlyReturnDetails(monthlyReturnId = 66667L, taxYear = 2025, taxMonth = 7)
-    ))
+  var setup: Setup = _
+  override def beforeEach(): Unit = {
+    setup = new Setup {}
+  }
 
-  "MonthlyReturnService" - {
-    "retrieveMonthlyReturns method" - {
-      "must return the response from the connector" in {
-        val er = EmployerReference("123", "AB456")
+  "getCisTaxpayer" - {
 
-        when(mockConnector.retrieveMonthlyReturns(
-          any[EmployerReference]
-        )(any[HeaderCarrier])
-        ).thenReturn(Future.successful(testDataCacheResponse))
+    "returns cis taxpayer when datacache succeeds" in {
+      val s = setup
+      import s._
 
-        val result = testService.retrieveMonthlyReturns(er).futureValue
+      val taxpayer = mkTaxpayer()
+      when(datacacheProxy.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(taxpayer))
 
-        result mustBe testDataCacheResponse
-      }
+      val out = service.getCisTaxpayer(employerRef).futureValue
+      out mustBe taxpayer
+
+      verify(datacacheProxy).getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier])
+      verifyNoInteractions(formpProxy)
+    }
+
+    "propagates failure from datacache" in {
+      val s = setup
+      import s._
+
+      val boom = UpstreamErrorResponse("rds-datacache proxy error", 502)
+
+      when(datacacheProxy.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.getCisTaxpayer(employerRef).failed.futureValue
+      ex mustBe boom
+
+      verify(datacacheProxy).getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier])
+      verifyNoInteractions(formpProxy)
     }
   }
 
-  "propagates failures from the connector" in {
-    val boom = new RuntimeException("rds-datacache-proxy call failed")
-    val er = EmployerReference("123", "AB456")
+  "getAllMonthlyReturnsByCisId" - {
 
-    when(
-      mockConnector.retrieveMonthlyReturns(
-        any[EmployerReference]
-      )(any[HeaderCarrier])
-    ).thenReturn(Future.failed(boom))
+    "returns wrapper when formp succeeds" in {
+      val s = setup
+      import s._
 
-    val ex = testService.retrieveMonthlyReturns(er).failed.futureValue
-    ex mustBe a [RuntimeException]
-    ex.getMessage mustBe "rds-datacache-proxy call failed"
+      when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(returnsFixture))
+
+      val out = service.getAllMonthlyReturnsByCisId(cisInstanceId).futureValue
+      out mustBe returnsFixture
+
+      verify(formpProxy).getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp" in {
+      val s = setup
+      import s._
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.getAllMonthlyReturnsByCisId(cisInstanceId).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
+  trait Setup {
+    val datacacheProxy = mock[DatacacheProxyConnector]
+    val formpProxy = mock[FormpProxyConnector]
+    val service = new MonthlyReturnService(datacacheProxy, formpProxy)
+
+    val employerRef = EmployerReference("123", "AB456")
+    val cisInstanceId = "abc-123"
+    val returnsFixture = UserMonthlyReturns(Seq(MonthlyReturn(66666L, 2025, 1)))
   }
 }
