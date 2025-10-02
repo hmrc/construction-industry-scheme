@@ -29,11 +29,11 @@ class ChrisService @Inject()(
                             )(implicit ec: ExecutionContext) extends Logging {
 
   def submitNilMonthlyReturn(
-                              req: ChrisSubmissionRequest,
-                              authReq: AuthenticatedRequest[_]
+                              chrisRequest: ChrisSubmissionRequest,
+                              authRequest: AuthenticatedRequest[_]
                             )(implicit hc: HeaderCarrier): Future[HttpResponse] = {
 
-    val envelopeXml = ChrisEnvelopeBuilder.build(req, authReq)
+    val envelopeXml = ChrisEnvelopeBuilder.build(chrisRequest, authRequest)
 
     connector.submitEnvelope(envelopeXml)
       .map { response =>
