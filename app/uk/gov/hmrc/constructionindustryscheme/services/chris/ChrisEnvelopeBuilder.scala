@@ -80,7 +80,7 @@ object ChrisEnvelopeBuilder extends Logging {
         </GovTalkDetails>
 
         <Body>
-          <IRenvelope xmlns={"http://www.govtalk.gov.uk/taxation/CISreturn"}>
+          <IRenvelope xmlns={""}>
             <IRheader>
               <Keys>
                 <Key Type="TaxOfficeNumber">{taxOfficeNumber}</Key>
