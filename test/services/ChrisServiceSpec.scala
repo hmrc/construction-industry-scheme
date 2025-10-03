@@ -42,7 +42,7 @@ class ChrisServiceSpec
   "submitNilMonthlyReturn" - {
 
     "returns HttpResponse when connector returns 2xx" in {
-      val s = setup;
+      val s = setup
       import s._
 
       when(mockConnector.submitEnvelope(any[Elem])(any[HeaderCarrier]))
@@ -57,7 +57,7 @@ class ChrisServiceSpec
     }
 
     "fails the future with RuntimeException when connector returns non-2xx (e.g. 400)" in {
-      val s = setup;
+      val s = setup
       import s._
 
       when(mockConnector.submitEnvelope(any[Elem])(any[HeaderCarrier]))
@@ -73,7 +73,7 @@ class ChrisServiceSpec
     }
 
     "propagates a failure from the connector (e.g. UpstreamErrorResponse)" in {
-      val s = setup;
+      val s = setup
       import s._
 
       val boom = UpstreamErrorResponse("upstream failed", 502)
@@ -88,7 +88,7 @@ class ChrisServiceSpec
     }
 
     "fails with IllegalStateException when CIS enrolment is missing" in {
-      val s = setup;
+      val s = setup
       import s._
       val authReqWithoutEnrol = authRequestWith(Enrolments(Set.empty))
 
@@ -101,7 +101,7 @@ class ChrisServiceSpec
     }
 
     "exclude inactivity from generated xml when inactivity is no in ChrisSubmissionRequest" in {
-      val s = setup;
+      val s = setup
       import s._
 
       when(mockConnector.submitEnvelope(any[Elem])(any[HeaderCarrier]))
