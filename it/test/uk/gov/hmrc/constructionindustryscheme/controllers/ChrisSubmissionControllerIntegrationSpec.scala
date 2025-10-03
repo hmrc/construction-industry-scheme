@@ -24,7 +24,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import play.api.http.Status.{BAD_REQUEST, INTERNAL_SERVER_ERROR, OK, UNAUTHORIZED}
 import play.api.libs.json.{JsValue, Json}
-import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, AuthStub, ItResources}
+import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, AuthStub}
 
 class ChrisSubmissionControllerIntegrationSpec
   extends ApplicationWithWiremock
