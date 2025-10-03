@@ -24,8 +24,8 @@ object AuthStub:
 
   def authorisedWithCisEnrolment(
                                   internalId: String = "test-internal-id",
-                                  ton: String = "111",
-                                  tor: String = "test111"
+                                  taxOfficeNumber: String = "111",
+                                  taxOfficeReference: String = "test111"
                                 ): StubMapping =
     stubFor(
       post(urlPathEqualTo("/auth/authorise"))
@@ -41,8 +41,8 @@ object AuthStub:
                  |    {
                  |      "key": "HMRC-CIS-ORG",
                  |      "identifiers": [
-                 |        { "key": "TaxOfficeNumber",    "value": "$ton" },
-                 |        { "key": "TaxOfficeReference", "value": "$tor" }
+                 |        { "key": "TaxOfficeNumber",    "value": "$taxOfficeNumber" },
+                 |        { "key": "TaxOfficeReference", "value": "$taxOfficeReference" }
                  |      ],
                  |      "state": "Activated"
                  |    }
