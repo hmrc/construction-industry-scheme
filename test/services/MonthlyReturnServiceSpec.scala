@@ -21,7 +21,7 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
@@ -98,6 +98,32 @@ class MonthlyReturnServiceSpec
       ex mustBe boom
 
       verify(formpProxy).getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
+  "createNilMonthlyReturn" - {
+
+    "orchestrates calls in sequence and completes" in {
+      val s = setup; import s._
+
+      val payload = NilMonthlyReturnRequest("abc-123", 2024, 3, Some("option1"), Some("confirmed"))
+
+      when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(returnsFixture))
+      when(formpProxy.createMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+      when(formpProxy.updateSchemeVersion(eqTo(payload.instanceId), any[Int])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+      when(formpProxy.updateMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.createNilMonthlyReturn(payload).futureValue
+
+      verify(formpProxy).getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verify(formpProxy).createMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      verify(formpProxy).updateSchemeVersion(eqTo(payload.instanceId), any[Int])(any[HeaderCarrier])
+      verify(formpProxy).updateMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
   }
