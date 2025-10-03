@@ -18,21 +18,35 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, NilMonthlyReturnRequest, UserMonthlyReturns}
 
 import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}
+import scala.concurrent.ExecutionContext
 
 @Singleton
 class MonthlyReturnService @Inject()(
                                       datacache: DatacacheProxyConnector,
                                       formp: FormpProxyConnector
-                                    ) {
+                                    )(implicit ec: ExecutionContext) {
 
   def getCisTaxpayer(employerReference: EmployerReference)(implicit hc: HeaderCarrier): Future[CisTaxpayer] =
     datacache.getCisTaxpayer(employerReference)
 
   def getAllMonthlyReturnsByCisId(cisId: String)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
     formp.getMonthlyReturns(cisId)
+
+  def createNilMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    for {
+      // 1) read current returns to derive scheme version (placeholder logic; map from returned schema)
+      existing <- formp.getMonthlyReturns(req.instanceId)
+      currentVersion = 1 // TODO: map from scheme in existing payload
+      // 2) create bare record
+      _ <- formp.createMonthlyReturn(req)
+      // 3) update scheme version
+      _ <- formp.updateSchemeVersion(req.instanceId, currentVersion + 1)
+      // 4) update monthly return with full details
+      _ <- formp.updateMonthlyReturn(req)
+    } yield ()
 }
 

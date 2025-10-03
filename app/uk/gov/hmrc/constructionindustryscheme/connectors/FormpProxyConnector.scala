@@ -20,7 +20,7 @@ import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
-import uk.gov.hmrc.constructionindustryscheme.models.UserMonthlyReturns
+import uk.gov.hmrc.constructionindustryscheme.models.{NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
@@ -37,4 +37,19 @@ class FormpProxyConnector @Inject()(
     http.post(url"$base/monthly-returns")           
       .withBody(Json.obj("instanceId" -> instanceId))
       .execute[UserMonthlyReturns]                  
+
+  def createMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    http.post(url"$base/monthly-return/create")
+      .withBody(Json.toJson(req))
+      .execute[Unit]
+
+  def updateSchemeVersion(instanceId: String, version: Int)(implicit hc: HeaderCarrier): Future[Unit] =
+    http.post(url"$base/scheme/update-version")
+      .withBody(Json.obj("instanceId" -> instanceId, "version" -> version))
+      .execute[Unit]
+
+  def updateMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    http.post(url"$base/monthly-return/update")
+      .withBody(Json.toJson(req))
+      .execute[Unit]
 }
