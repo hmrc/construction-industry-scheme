@@ -97,7 +97,7 @@ object ChrisEnvelopeBuilder extends Logging {
                   </Reference>
                 </Contains>
               </Manifest>
-              {/* IRmark optional; add when implemented */}
+              <IRmark Type="generic"/>
               <Sender>{ChrisEnvelopeConstants.Sender}</Sender>
             </IRheader>
 
