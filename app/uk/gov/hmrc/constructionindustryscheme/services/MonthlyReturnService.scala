@@ -18,21 +18,35 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, NilMonthlyReturnRequest, UserMonthlyReturns}
 
 import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}
+import scala.concurrent.ExecutionContext
 
 @Singleton
 class MonthlyReturnService @Inject()(
                                       datacache: DatacacheProxyConnector,
                                       formp: FormpProxyConnector
-                                    ) {
+                                    )(implicit ec: ExecutionContext) {
 
   def getCisTaxpayer(employerReference: EmployerReference)(implicit hc: HeaderCarrier): Future[CisTaxpayer] =
     datacache.getCisTaxpayer(employerReference)
 
   def getAllMonthlyReturnsByCisId(cisId: String)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
     formp.getMonthlyReturns(cisId)
+
+  def createNilMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    for {
+      existing <- formp.getMonthlyReturns(req.instanceId)
+      duplicateExists = existing.monthlyReturnList.exists(r => r.taxYear == req.taxYear && r.taxMonth == req.taxMonth)
+      _ <- if (duplicateExists) Future.unit
+           else for {
+             // placeholder: scheme version mapping to be implemented when proxy returns scheme data
+             _ <- formp.createMonthlyReturn(req)
+             _ <- formp.updateSchemeVersion(req.instanceId, 2) // temporary increment
+             _ <- formp.updateMonthlyReturn(req)
+           } yield ()
+    } yield ()
 }
 
