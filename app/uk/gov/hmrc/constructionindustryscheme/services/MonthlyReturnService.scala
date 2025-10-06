@@ -40,11 +40,11 @@ class MonthlyReturnService @Inject()(
     for {
       existing <- formp.getMonthlyReturns(req.instanceId)
       duplicateExists = existing.monthlyReturnList.exists(r => r.taxYear == req.taxYear && r.taxMonth == req.taxMonth)
+      schemeVersion = existing.schemeVersion.getOrElse(0)
       _ <- if (duplicateExists) Future.unit
            else for {
-             // placeholder: scheme version mapping to be implemented when proxy returns scheme data
              _ <- formp.createMonthlyReturn(req)
-             _ <- formp.updateSchemeVersion(req.instanceId, 2) // temporary increment
+             _ <- formp.updateSchemeVersion(req.instanceId, schemeVersion + 1)
              _ <- formp.updateMonthlyReturn(req)
            } yield ()
     } yield ()
