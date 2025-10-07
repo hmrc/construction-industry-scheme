@@ -114,8 +114,8 @@ class MonthlyReturnServiceSpec
       when(formpProxy.createMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
       when(formpProxy.updateSchemeVersion(eqTo(payload.instanceId), any[Int])(any[HeaderCarrier]))
-        .thenReturn(Future.successful(()))
-      when(formpProxy.updateMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(2))
+      when(formpProxy.updateMonthlyReturn(eqTo(payload), any[Int])(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
 
       service.createNilMonthlyReturn(payload).futureValue
@@ -123,7 +123,7 @@ class MonthlyReturnServiceSpec
       verify(formpProxy).getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
       verify(formpProxy).createMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
       verify(formpProxy).updateSchemeVersion(eqTo(payload.instanceId), any[Int])(any[HeaderCarrier])
-      verify(formpProxy).updateMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      verify(formpProxy).updateMonthlyReturn(eqTo(payload), any[Int])(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
   }
