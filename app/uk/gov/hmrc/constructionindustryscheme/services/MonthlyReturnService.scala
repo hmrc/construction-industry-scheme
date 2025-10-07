@@ -43,9 +43,9 @@ class MonthlyReturnService @Inject()(
       schemeVersion = existing.schemeVersion.getOrElse(0)
       _ <- if (duplicateExists) Future.unit
            else for {
-             _ <- formp.createMonthlyReturn(req)
-             _ <- formp.updateSchemeVersion(req.instanceId, schemeVersion + 1)
-             _ <- formp.updateMonthlyReturn(req)
+             _        <- formp.createMonthlyReturn(req)
+             newVer   <- formp.updateSchemeVersion(req.instanceId, schemeVersion)
+             _        <- formp.updateMonthlyReturn(req, newVer)
            } yield ()
     } yield ()
 }

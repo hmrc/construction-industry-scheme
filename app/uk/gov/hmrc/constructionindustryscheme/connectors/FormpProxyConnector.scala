@@ -40,16 +40,39 @@ class FormpProxyConnector @Inject()(
 
   def createMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http.post(url"$base/monthly-return/create")
-      .withBody(Json.toJson(req))
+      .withBody(
+        Json.obj(
+          "instanceId" -> req.instanceId,
+          "taxYear" -> req.taxYear,
+          "taxMonth" -> req.taxMonth,
+          "nilReturnIndicator" -> "Y"
+        )
+      )
       .execute[Unit]
 
-  def updateSchemeVersion(instanceId: String, version: Int)(implicit hc: HeaderCarrier): Future[Unit] =
+  def updateSchemeVersion(instanceId: String, version: Int)(implicit hc: HeaderCarrier): Future[Int] =
     http.post(url"$base/scheme/update-version")
       .withBody(Json.obj("instanceId" -> instanceId, "version" -> version))
-      .execute[Unit]
+      .execute[JsValue]
+      .map(js => (js \ "version").as[Int])
 
-  def updateMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+  def updateMonthlyReturn(req: NilMonthlyReturnRequest, version: Int)(implicit hc: HeaderCarrier): Future[Unit] =
     http.post(url"$base/monthly-return/update")
-      .withBody(Json.toJson(req))
+      .withBody(
+        Json.obj(
+          "instanceId" -> req.instanceId,
+          "taxYear" -> req.taxYear,
+          "taxMonth" -> req.taxMonth,
+          "amendment" -> "N",
+          "decEmpStatusConsidered" -> req.decEmpStatusConsidered,
+          "decAllSubsVerified" -> "Y",
+          "decInformationCorrect" -> req.decInformationCorrect,
+          "decNoMoreSubPayments" -> "Y",
+          "decNilReturnNoPayments" -> "Y",
+          "nilReturnIndicator" -> "Y",
+          "status" -> "STARTED",
+          "version" -> version
+        )
+      )
       .execute[Unit]
 }
