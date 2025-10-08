@@ -20,9 +20,8 @@ import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
+import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, NilMonthlyReturnRequest, MonthlyReturn}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
-import uk.gov.hmrc.constructionindustryscheme.models.NilMonthlyReturnRequest
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -85,7 +84,7 @@ class MonthlyReturnsController @Inject()(
       _ => Future.successful(BadRequest(Json.obj("message" -> "Invalid payload"))),
       payload =>
         service.createNilMonthlyReturn(payload)
-          .map(_ => NoContent)
+          .map(monthlyReturn => Ok(Json.toJson(monthlyReturn)))
           .recover { case u: UpstreamErrorResponse => Status(u.statusCode)(Json.obj("message" -> u.message)) }
     )
   }

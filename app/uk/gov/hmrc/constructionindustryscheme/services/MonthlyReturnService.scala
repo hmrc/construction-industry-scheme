@@ -18,7 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, NilMonthlyReturnRequest, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, NilMonthlyReturnRequest, MonthlyReturn, UserMonthlyReturns}
 
 import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}
@@ -36,17 +36,17 @@ class MonthlyReturnService @Inject()(
   def getAllMonthlyReturnsByCisId(cisId: String)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
     formp.getMonthlyReturns(cisId)
 
-  def createNilMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+  def createNilMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[MonthlyReturn] =
     for {
       existing <- formp.getMonthlyReturns(req.instanceId)
       duplicateExists = existing.monthlyReturnList.exists(r => r.taxYear == req.taxYear && r.taxMonth == req.taxMonth)
-      schemeVersion = existing.schemeVersion.getOrElse(0)
-      _ <- if (duplicateExists) Future.unit
-           else for {
-             _        <- formp.createMonthlyReturn(req)
-             newVer   <- formp.updateSchemeVersion(req.instanceId, schemeVersion)
-             _        <- formp.updateMonthlyReturn(req, newVer)
-           } yield ()
-    } yield ()
+      result <- if (duplicateExists) {
+        // Return existing monthly return if duplicate
+        Future.successful(existing.monthlyReturnList.find(r => r.taxYear == req.taxYear && r.taxMonth == req.taxMonth).get)
+      } else {
+        // Create new nil monthly return using single endpoint
+        formp.createNilMonthlyReturn(req)
+      }
+    } yield result
 }
 

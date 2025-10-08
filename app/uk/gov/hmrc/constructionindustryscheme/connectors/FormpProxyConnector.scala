@@ -20,7 +20,7 @@ import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
-import uk.gov.hmrc.constructionindustryscheme.models.{NilMonthlyReturnRequest, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.{NilMonthlyReturnRequest, UserMonthlyReturns, MonthlyReturn}
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
@@ -38,41 +38,16 @@ class FormpProxyConnector @Inject()(
       .withBody(Json.obj("instanceId" -> instanceId))
       .execute[UserMonthlyReturns]                  
 
-  def createMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
-    http.post(url"$base/monthly-return/create")
+  def createNilMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[MonthlyReturn] =
+    http.post(url"$base/monthly-return/nil")
       .withBody(
         Json.obj(
           "instanceId" -> req.instanceId,
           "taxYear" -> req.taxYear,
           "taxMonth" -> req.taxMonth,
-          "nilReturnIndicator" -> "Y"
-        )
-      )
-      .execute[Unit]
-
-  def updateSchemeVersion(instanceId: String, version: Int)(implicit hc: HeaderCarrier): Future[Int] =
-    http.post(url"$base/scheme/update-version")
-      .withBody(Json.obj("instanceId" -> instanceId, "version" -> version))
-      .execute[JsValue]
-      .map(js => (js \ "version").as[Int])
-
-  def updateMonthlyReturn(req: NilMonthlyReturnRequest, version: Int)(implicit hc: HeaderCarrier): Future[Unit] =
-    http.post(url"$base/monthly-return/update")
-      .withBody(
-        Json.obj(
-          "instanceId" -> req.instanceId,
-          "taxYear" -> req.taxYear,
-          "taxMonth" -> req.taxMonth,
-          "amendment" -> "N",
           "decEmpStatusConsidered" -> req.decEmpStatusConsidered,
-          "decAllSubsVerified" -> "Y",
-          "decInformationCorrect" -> req.decInformationCorrect,
-          "decNoMoreSubPayments" -> "Y",
-          "decNilReturnNoPayments" -> "Y",
-          "nilReturnIndicator" -> "Y",
-          "status" -> "STARTED",
-          "version" -> version
+          "decInformationCorrect" -> req.decInformationCorrect
         )
       )
-      .execute[Unit]
+      .execute[MonthlyReturn]
 }
