@@ -22,6 +22,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequ
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, YearMonth, ZoneOffset}
+import java.util.Locale
 import scala.util.Try
 import scala.xml.{Elem, NodeSeq, PrettyPrinter, XML}
 
@@ -35,7 +36,7 @@ object ChrisEnvelopeBuilder extends Logging {
              authRequest: AuthenticatedRequest[_]
            ): Elem = {
 
-    val correlatingId = java.util.UUID.randomUUID().toString.replace("-", "")
+    val correlatingId = java.util.UUID.randomUUID().toString.replace("-", "").toUpperCase(Locale.ROOT)
     val gatewayTimestamp = LocalDateTime.now(ZoneOffset.UTC).format(gatewayTimestampFormatter)
 
     val (taxOfficeNumber, taxOfficeReference) =
@@ -97,7 +98,7 @@ object ChrisEnvelopeBuilder extends Logging {
                   </Reference>
                 </Contains>
               </Manifest>
-              <IRmark Type="generic"/>
+              <IRmark Type="generic">TBC</IRmark>
               <Sender>{ChrisEnvelopeConstants.Sender}</Sender>
             </IRheader>
 
