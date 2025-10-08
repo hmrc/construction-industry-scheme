@@ -104,26 +104,86 @@ class MonthlyReturnServiceSpec
 
   "createNilMonthlyReturn" - {
 
-    "orchestrates calls in sequence and completes" in {
+    "calls single endpoint and returns monthly return" in {
       val s = setup; import s._
 
       val payload = NilMonthlyReturnRequest("abc-123", 2024, 3, Some("option1"), Some("confirmed"))
+      val expectedMonthlyReturn = MonthlyReturn(
+        monthlyReturnId = 12345L,
+        taxYear = 2024,
+        taxMonth = 3,
+        nilReturnIndicator = Some("Y"),
+        decEmpStatusConsidered = Some("Y"),
+        decAllSubsVerified = Some("Y"),
+        decInformationCorrect = Some("Y"),
+        decNoMoreSubPayments = Some("Y"),
+        decNilReturnNoPayments = Some("Y"),
+        status = Some("STARTED"),
+        lastUpdate = Some(java.time.LocalDateTime.now()),
+        amendment = Some("N"),
+        supersededBy = None
+      )
 
       when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
         .thenReturn(Future.successful(returnsFixture))
-      when(formpProxy.createMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(()))
-      when(formpProxy.updateSchemeVersion(eqTo(payload.instanceId), any[Int])(any[HeaderCarrier]))
-        .thenReturn(Future.successful(2))
-      when(formpProxy.updateMonthlyReturn(eqTo(payload), any[Int])(any[HeaderCarrier]))
-        .thenReturn(Future.successful(()))
+      when(formpProxy.createNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(expectedMonthlyReturn))
 
-      service.createNilMonthlyReturn(payload).futureValue
+      val result = service.createNilMonthlyReturn(payload).futureValue
+
+      result mustBe expectedMonthlyReturn
+      verify(formpProxy).getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verify(formpProxy).createNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "returns existing monthly return when duplicate exists" in {
+      val s = setup; import s._
+
+      val payload = NilMonthlyReturnRequest("abc-123", 2025, 1, Some("option1"), Some("confirmed"))
+      val existingReturn = MonthlyReturn(
+        monthlyReturnId = 66666L,
+        taxYear = 2025,
+        taxMonth = 1,
+        nilReturnIndicator = Some("Y"),
+        decEmpStatusConsidered = Some("Y"),
+        decAllSubsVerified = Some("Y"),
+        decInformationCorrect = Some("Y"),
+        decNoMoreSubPayments = Some("Y"),
+        decNilReturnNoPayments = Some("Y"),
+        status = Some("STARTED"),
+        lastUpdate = Some(java.time.LocalDateTime.now()),
+        amendment = Some("N"),
+        supersededBy = None
+      )
+
+      when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(UserMonthlyReturns(Seq(existingReturn), Some(2))))
+
+      val result = service.createNilMonthlyReturn(payload).futureValue
+
+      result mustBe existingReturn
+      verify(formpProxy).getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verify(formpProxy, never).createNilMonthlyReturn(any[NilMonthlyReturnRequest])(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp proxy" in {
+      val s = setup; import s._
+
+      val payload = NilMonthlyReturnRequest("abc-123", 2024, 3, Some("option1"), Some("confirmed"))
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(returnsFixture))
+      when(formpProxy.createNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.createNilMonthlyReturn(payload).failed.futureValue
+      ex mustBe boom
 
       verify(formpProxy).getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
-      verify(formpProxy).createMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
-      verify(formpProxy).updateSchemeVersion(eqTo(payload.instanceId), any[Int])(any[HeaderCarrier])
-      verify(formpProxy).updateMonthlyReturn(eqTo(payload), any[Int])(any[HeaderCarrier])
+      verify(formpProxy).createNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
   }
