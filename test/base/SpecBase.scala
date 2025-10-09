@@ -28,9 +28,11 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.mvc.{AnyContentAsEmpty, ControllerComponents, PlayBodyParsers}
 import play.api.test.{DefaultAwaitTimeout, FakeRequest}
 import play.api.test.Helpers.stubControllerComponents
+import uk.gov.hmrc.auth.core.{Enrolment, EnrolmentIdentifier, Enrolments}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.CisTaxpayer
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
+import uk.gov.hmrc.http.{HeaderCarrier, SessionId}
 
 import scala.concurrent.ExecutionContext
 
@@ -90,5 +92,43 @@ trait SpecBase
       schemeName       = None,
       utr              = None,
       enrolledSig      = None
+    )
+
+  def cisEnrolment(taxOfficeNumber: String = "123", taxOfficeReference: String = "AB456"): Enrolment =
+    Enrolment(
+      key = "HMRC-CIS-ORG",
+      identifiers = Seq(
+        EnrolmentIdentifier("TaxOfficeNumber", taxOfficeNumber),
+        EnrolmentIdentifier("TaxOfficeReference", taxOfficeReference)
+      ),
+      state = "Activated"
+    )
+
+  def createAuthReq(
+                 request: FakeRequest[_] = fakeRequest,
+                 internalId: String = "internalId-123",
+                 session: SessionId = SessionId("session-123"),
+                 enrols: Enrolments = Enrolments(Set(cisEnrolment()))
+               ): AuthenticatedRequest[_] =
+    AuthenticatedRequest(
+      request = request,
+      internalId = internalId,
+      sessionId = session,
+      enrolments = enrols
+    )
+
+  def createChrisRequest(
+                  utr: String = "1234567890",
+                  aoRef: String = "123/AB456",
+                  infoCorrect: String = "yes",
+                  inactivity: String = "yes",
+                  monthYear: String = "2025-09"
+                ): ChrisSubmissionRequest =
+    ChrisSubmissionRequest(
+      utr = utr,
+      aoReference = aoRef,
+      informationCorrect = infoCorrect,
+      inactivity = inactivity,
+      monthYear = monthYear
     )
 }
