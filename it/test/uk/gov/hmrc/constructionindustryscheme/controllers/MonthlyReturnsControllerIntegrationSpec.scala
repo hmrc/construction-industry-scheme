@@ -184,6 +184,12 @@ class MonthlyReturnsControllerIntegrationSpec
       AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
 
       stubFor(
+        post(urlPathEqualTo("/formp-proxy/monthly-returns"))
+          .withRequestBody(equalToJson("""{"instanceId": "abc-123"}"""))
+          .willReturn(aResponse().withStatus(200).withBody("""{"monthlyReturnList": [], "schemeVersion": 1}"""))
+      )
+
+      stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-return/nil"))
           .withRequestBody(equalToJson(
             """{
@@ -233,6 +239,12 @@ class MonthlyReturnsControllerIntegrationSpec
 
     "bubble up error when FormP fails" in {
       AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/monthly-returns"))
+          .withRequestBody(equalToJson("""{"instanceId": "abc-123"}"""))
+          .willReturn(aResponse().withStatus(200).withBody("""{"monthlyReturnList": [], "schemeVersion": 1}"""))
+      )
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-return/nil"))
