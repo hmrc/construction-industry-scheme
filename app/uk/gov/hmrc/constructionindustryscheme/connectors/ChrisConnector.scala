@@ -32,7 +32,7 @@ class ChrisConnector @Inject()(
                               )(implicit ec: ExecutionContext) {
   
   private val chrisCisReturnUrl: String =
-    servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.affix-url")
+    servicesConfig.getString("microservice.services.chris.url")
 
   def submitEnvelope(envelope: Elem)(implicit hc: HeaderCarrier): Future[HttpResponse] =
       httpClient
