@@ -31,13 +31,13 @@ class ChrisConnector @Inject()(
                                 servicesConfig: ServicesConfig
                               )(implicit ec: ExecutionContext) {
   
-  private val baseUrl: String =
-    servicesConfig.baseUrl("chris") + "/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+  private val chrisCisReturnUrl: String =
+    servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.affix-url")
 
   def submitEnvelope(envelope: Elem)(implicit hc: HeaderCarrier): Future[HttpResponse] =
-    httpClient
-      .post(url"$baseUrl")
-      .setHeader("Content-Type" -> "application/xml")
-      .withBody(envelope.toString)            
-      .execute[HttpResponse]                  
+      httpClient
+        .post(url"$chrisCisReturnUrl")
+        .setHeader("Content-Type" -> "application/xml")
+        .withBody(envelope.toString)
+        .execute[HttpResponse]
 }
