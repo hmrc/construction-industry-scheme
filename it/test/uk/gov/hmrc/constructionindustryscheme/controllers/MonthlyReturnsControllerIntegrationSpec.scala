@@ -181,7 +181,7 @@ class MonthlyReturnsControllerIntegrationSpec
   "POST /cis/monthly-returns/nil/create" should {
 
     "return 200 with MonthlyReturn when FormP succeeds" in {
-      AuthStub.authorisedWithCisEnrolment(ton = "111", tor = "test111")
+      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-return/nil"))
@@ -220,7 +220,7 @@ class MonthlyReturnsControllerIntegrationSpec
     }
 
     "bubble up error when FormP fails" in {
-      AuthStub.authorisedWithCisEnrolment(ton = "111", tor = "test111")
+      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-return/nil"))
