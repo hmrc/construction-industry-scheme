@@ -196,12 +196,24 @@ class MonthlyReturnsControllerIntegrationSpec
             true, true
           ))
           .willReturn(aResponse().withStatus(200).withBody(
-            """{ "monthlyReturnId": 12345, "taxYear": 2024, "taxMonth": 10 }"""
+            """{
+              |  "monthlyReturnId": 12345,
+              |  "taxYear": 2024,
+              |  "taxMonth": 10,
+              |  "nilReturnIndicator": "Y",
+              |  "decEmpStatusConsidered": "N",
+              |  "decAllSubsVerified": "Y",
+              |  "decInformationCorrect": "Y",
+              |  "decNoMoreSubPayments": "N",
+              |  "decNilReturnNoPayments": "Y",
+              |  "status": "STARTED",
+              |  "amendment": "N"
+              |}""".stripMargin
           ))
       )
 
       val resp = wsClient.url(createNilUrl)
-        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token")
+        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token", "Content-Type" -> "application/json")
         .post(
           """{
             |  "instanceId": "abc-123",
@@ -228,7 +240,7 @@ class MonthlyReturnsControllerIntegrationSpec
       )
 
       val resp = wsClient.url(createNilUrl)
-        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token")
+        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token", "Content-Type" -> "application/json")
         .post("""{ "instanceId": "abc-123", "taxYear": 2024, "taxMonth": 10 }""")
         .futureValue
 
