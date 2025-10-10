@@ -33,6 +33,7 @@ class MonthlyReturnsControllerIntegrationSpec
 
   private val instanceIdUrl     = s"http://localhost:$port/cis/taxpayer"
   private val monthlyReturnsUrl = s"http://localhost:$port/cis/monthly-returns"
+  private val createNilUrl       = s"http://localhost:$port/cis/monthly-returns/nil/create"
 
   "GET /cis/taxpayer" should {
 
@@ -173,6 +174,65 @@ class MonthlyReturnsControllerIntegrationSpec
 
       resp.status mustBe INTERNAL_SERVER_ERROR
       (resp.json \ "message").as[String].toLowerCase must include ("formp error")
+    }
+  }
+  
+  "POST /cis/monthly-returns/nil/create" should {
+
+    "return 200 with MonthlyReturn when FormP succeeds" in {
+      AuthStub.authorisedWithCisEnrolment(ton = "111", tor = "test111")
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/monthly-return/nil"))
+          .withRequestBody(equalToJson(
+            """{
+              |  "instanceId": "abc-123",
+              |  "taxYear": 2024,
+              |  "taxMonth": 10,
+              |  "decEmpStatusConsidered": null,
+              |  "decInformationCorrect": "Set(confirmed)"
+              |}""".stripMargin,
+            true, true
+          ))
+          .willReturn(aResponse().withStatus(200).withBody(
+            """{ "monthlyReturnId": 12345, "taxYear": 2024, "taxMonth": 10 }"""
+          ))
+      )
+
+      val resp = wsClient.url(createNilUrl)
+        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token")
+        .post(
+          """{
+            |  "instanceId": "abc-123",
+            |  "taxYear": 2024,
+            |  "taxMonth": 10,
+            |  "decEmpStatusConsidered": null,
+            |  "decInformationCorrect": "Set(confirmed)"
+            |}""".stripMargin
+        )
+        .futureValue
+
+      resp.status mustBe OK
+      (resp.json \ "monthlyReturnId").as[Long] mustBe 12345L
+
+      verify(postRequestedFor(urlPathEqualTo("/formp-proxy/monthly-return/nil")))
+    }
+
+    "bubble up error when FormP fails" in {
+      AuthStub.authorisedWithCisEnrolment(ton = "111", tor = "test111")
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/monthly-return/nil"))
+          .willReturn(aResponse().withStatus(502).withBody("bad gateway"))
+      )
+
+      val resp = wsClient.url(createNilUrl)
+        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token")
+        .post("""{ "instanceId": "abc-123", "taxYear": 2024, "taxMonth": 10 }""")
+        .futureValue
+
+      resp.status mustBe BAD_GATEWAY
+      (resp.json \ "message").as[String].toLowerCase must include ("bad gateway")
     }
   }
 }
