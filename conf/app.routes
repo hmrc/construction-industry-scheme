@@ -1,6 +1,6 @@
 # microservice specific routes
 
-GET        /taxpayer                          uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getCisTaxpayer
-GET        /monthly-returns                   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getAllMonthlyReturns(cisId: Option[String])
-
-POST       /chris                             uk.gov.hmrc.constructionindustryscheme.controllers.ChrisSubmissionController.submitNilMonthlyReturn
+GET        /taxpayer                             uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getCisTaxpayer
+POST       /chris                                uk.gov.hmrc.constructionindustryscheme.controllers.ChrisSubmissionController.submitNilMonthlyReturn
+GET        /monthly-returns                      uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getAllMonthlyReturns(cisId: Option[String])
+POST       /monthly-returns/nil/create           uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createNil()

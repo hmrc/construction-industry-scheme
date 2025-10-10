@@ -26,7 +26,7 @@ import play.api.mvc.Result
 import play.api.test.Helpers.{contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController
-import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
@@ -139,6 +139,51 @@ class MonthlyReturnsControllerSpec extends SpecBase {
       }
     }
   }
+
+    "POST /cis/monthly-returns/nil (createNil)" - {
+
+      "return 200 with monthly return when service succeeds" in new SetupAuthOnly {
+        val expectedMonthlyReturn = MonthlyReturn(
+          monthlyReturnId = 12345L,
+          taxYear = 2024,
+          taxMonth = 3,
+          nilReturnIndicator = Some("Y"),
+          decEmpStatusConsidered = Some("Y"),
+          decAllSubsVerified = Some("Y"),
+          decInformationCorrect = Some("Y"),
+          decNoMoreSubPayments = Some("Y"),
+          decNilReturnNoPayments = Some("Y"),
+          status = Some("STARTED"),
+          lastUpdate = Some(java.time.LocalDateTime.now()),
+          amendment = Some("N"),
+          supersededBy = None
+        )
+        when(mockMonthlyReturnService.createNilMonthlyReturn(any[NilMonthlyReturnRequest])(any[HeaderCarrier]))
+          .thenReturn(Future.successful(expectedMonthlyReturn))
+
+        val payload = NilMonthlyReturnRequest("CIS-123", 2024, 3, Some("option1"), Some("confirmed"))
+        val result: Future[Result] = controller.createNil()(fakeRequest.withBody(Json.toJson(payload)))
+
+        status(result) mustBe OK
+        contentAsJson(result) mustBe Json.toJson(expectedMonthlyReturn)
+        verify(mockMonthlyReturnService).createNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      }
+
+      "return 400 on invalid json" in new SetupAuthOnly {
+        val result: Future[Result] = controller.createNil()(fakeRequest.withBody(Json.obj("bad" -> "json")))
+        status(result) mustBe BAD_REQUEST
+      }
+
+      "propagate UpstreamErrorResponse status" in new SetupAuthOnly {
+        when(mockMonthlyReturnService.createNilMonthlyReturn(any[NilMonthlyReturnRequest])(any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("boom", BAD_GATEWAY)))
+
+        val payload = NilMonthlyReturnRequest("CIS-123", 2024, 3, None, None)
+        val result: Future[Result] = controller.createNil()(fakeRequest.withBody(Json.toJson(payload)))
+
+        status(result) mustBe BAD_GATEWAY
+      }
+    }
 
   private lazy val sampleWrapper: UserMonthlyReturns = UserMonthlyReturns(
     Seq(
