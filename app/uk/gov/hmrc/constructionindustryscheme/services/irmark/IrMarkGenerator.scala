@@ -31,14 +31,9 @@ import play.api.Logging
 
 import scala.util.Using
 
-
-//import scala.concurrent.duration._
-
 trait IrMarkGenerator extends Logging {
 
   private val DefaultSecHashAlgorithm = "SHA"
-
-  // private val SlowTransformWarnThreshold: Duration = 5000.millis
 
   private lazy val dbf: DocumentBuilderFactory = {
     val f = DocumentBuilderFactory.newInstance()
@@ -76,11 +71,6 @@ trait IrMarkGenerator extends Logging {
     val transforms: Transforms = new Transforms(transformsDoc.getDocumentElement, null)
     val input: XMLSignatureInput = new XMLSignatureInput(node)
 
-/*    val result: XMLSignatureInput = runWithPerformanceCheck(
-      thresholdMs = SlowTransformWarnThreshold,
-      f = () => transforms.performTransforms(input)
-    )*/
-
     val result = transforms.performTransforms(input)
 
     val outputBytes = result.getBytes
@@ -106,17 +96,6 @@ trait IrMarkGenerator extends Logging {
       </dsig:Transform>
       <dsig:Transform Algorithm='http://www.w3.org/TR/2001/REC-xml-c14n-20010315'/>
     </dsig:Transforms>""".trim()
-
-/*  private def runWithPerformanceCheck[A](thresholdMs: Duration, f: () => A): A = {
-    val start = System.nanoTime()
-    val result = f()
-    val durationMs = (System.nanoTime() - start) / 1000000
-    val mtm = sys.props("org.apache.xml.dtm.DTMManager")
-    if (durationMs > thresholdMs.toMillis) {
-      logger.warn(s"XML signature slow! It took $durationMs ms (exceeded warning threshold of $thresholdMs dtm=$mtm)")
-    }
-    result
-  }*/
 
 }
 
