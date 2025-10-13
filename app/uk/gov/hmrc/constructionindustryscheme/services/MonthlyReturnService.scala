@@ -18,7 +18,8 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, NilMonthlyReturnRequest, MonthlyReturn, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.response.CreateNilMonthlyReturnResponse
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 
 import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}
@@ -36,17 +37,22 @@ class MonthlyReturnService @Inject()(
   def getAllMonthlyReturnsByCisId(cisId: String)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
     formp.getMonthlyReturns(cisId)
 
-  def createNilMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[MonthlyReturn] =
-    for {
-      existing <- formp.getMonthlyReturns(req.instanceId)
-      duplicateExists = existing.monthlyReturnList.exists(r => r.taxYear == req.taxYear && r.taxMonth == req.taxMonth)
-      result <- if (duplicateExists) {
-        // Return existing monthly return if duplicate
-        Future.successful(existing.monthlyReturnList.find(r => r.taxYear == req.taxYear && r.taxMonth == req.taxMonth).get)
-      } else {
-        // Create new nil monthly return using single endpoint
-        formp.createNilMonthlyReturn(req)
+  def createNilMonthlyReturn(req: NilMonthlyReturnRequest)
+                            (implicit hc: HeaderCarrier): Future[CreateNilMonthlyReturnResponse] =
+    formp.getMonthlyReturns(req.instanceId).flatMap { existing =>
+      existing.monthlyReturnList.find(r => r.taxYear == req.taxYear && r.taxMonth == req.taxMonth) match {
+        case Some(mr) =>
+          mr.status match {
+            case Some(s) => Future.successful(CreateNilMonthlyReturnResponse(status = s))
+            case None =>
+              Future.failed(new IllegalStateException(
+                s"Existing monthly return has no status (instanceId=${req.instanceId}, taxYear=${req.taxYear}, taxMonth=${req.taxMonth})"
+              ))
+          }
+        case None =>
+          formp.createNilMonthlyReturn(req)
       }
-    } yield result
+    }
+
 }
 

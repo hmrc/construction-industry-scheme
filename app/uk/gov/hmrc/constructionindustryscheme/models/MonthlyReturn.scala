@@ -39,26 +39,10 @@ object MonthlyReturn {
   implicit val format: OFormat[MonthlyReturn] = Json.format[MonthlyReturn]
 }
 
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-
-case class UserMonthlyReturns(
-  monthlyReturnList: Seq[MonthlyReturn],
-  schemeVersion: Option[Int] = None
-)
+case class UserMonthlyReturns(monthlyReturnList: Seq[MonthlyReturn])
 
 object UserMonthlyReturns {
   import MonthlyReturn.format
-
-  implicit val reads: Reads[UserMonthlyReturns] = (
-    (__ \ "monthlyReturnList").read[Seq[MonthlyReturn]] and
-      (__ \ "schemeVersion").readNullable[Int]
-  )(UserMonthlyReturns.apply _)
-
-  implicit val writes: OWrites[UserMonthlyReturns] = (
-    (__ \ "monthlyReturnList").write[Seq[MonthlyReturn]] and
-      (__ \ "schemeVersion").writeNullable[Int]
-  ){ ur => (ur.monthlyReturnList, ur.schemeVersion) }
-
-  val empty: UserMonthlyReturns = UserMonthlyReturns(Seq.empty, None)
+  implicit val format: OFormat[UserMonthlyReturns] = Json.format[UserMonthlyReturns]
+  val empty: UserMonthlyReturns = UserMonthlyReturns(Seq.empty)
 }

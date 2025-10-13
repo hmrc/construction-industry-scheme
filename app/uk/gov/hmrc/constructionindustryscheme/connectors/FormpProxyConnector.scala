@@ -20,7 +20,8 @@ import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
-import uk.gov.hmrc.constructionindustryscheme.models.{NilMonthlyReturnRequest, UserMonthlyReturns, MonthlyReturn}
+import uk.gov.hmrc.constructionindustryscheme.models.response.CreateNilMonthlyReturnResponse
+import uk.gov.hmrc.constructionindustryscheme.models.{NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
@@ -38,16 +39,16 @@ class FormpProxyConnector @Inject()(
       .withBody(Json.obj("instanceId" -> instanceId))
       .execute[UserMonthlyReturns]                  
 
-  def createNilMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[MonthlyReturn] =
+  def createNilMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[CreateNilMonthlyReturnResponse] =
     http.post(url"$base/monthly-return/nil")
       .withBody(
         Json.obj(
           "instanceId" -> req.instanceId,
           "taxYear" -> req.taxYear,
           "taxMonth" -> req.taxMonth,
-          "decEmpStatusConsidered" -> req.decEmpStatusConsidered,
-          "decInformationCorrect" -> req.decInformationCorrect
+          "decInformationCorrect" -> req.decInformationCorrect,
+          "decNilReturnNoPayments" -> req.decNilReturnNoPayments
         )
       )
-      .execute[MonthlyReturn]
+      .execute[CreateNilMonthlyReturnResponse]
 }

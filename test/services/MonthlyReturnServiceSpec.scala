@@ -21,6 +21,7 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
+import uk.gov.hmrc.constructionindustryscheme.models.response.CreateNilMonthlyReturnResponse
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
@@ -104,43 +105,29 @@ class MonthlyReturnServiceSpec
 
   "createNilMonthlyReturn" - {
 
-    "calls single endpoint and returns monthly return" in {
+    "calls single endpoint and returns status response" in {
       val s = setup; import s._
 
-      val payload = NilMonthlyReturnRequest("abc-123", 2024, 3, Some("option1"), Some("confirmed"))
-      val expectedMonthlyReturn = MonthlyReturn(
-        monthlyReturnId = 12345L,
-        taxYear = 2024,
-        taxMonth = 3,
-        nilReturnIndicator = Some("Y"),
-        decEmpStatusConsidered = Some("Y"),
-        decAllSubsVerified = Some("Y"),
-        decInformationCorrect = Some("Y"),
-        decNoMoreSubPayments = Some("Y"),
-        decNilReturnNoPayments = Some("Y"),
-        status = Some("STARTED"),
-        lastUpdate = Some(java.time.LocalDateTime.now()),
-        amendment = Some("N"),
-        supersededBy = None
-      )
+      val payload = NilMonthlyReturnRequest("abc-123", 2024, 3, "Y", "Y")
+      val expectedResponse = CreateNilMonthlyReturnResponse("STARTED")
 
       when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
         .thenReturn(Future.successful(returnsFixture))
       when(formpProxy.createNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(expectedMonthlyReturn))
+        .thenReturn(Future.successful(expectedResponse))
 
       val result = service.createNilMonthlyReturn(payload).futureValue
 
-      result mustBe expectedMonthlyReturn
+      result mustBe expectedResponse
       verify(formpProxy).getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
       verify(formpProxy).createNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
 
-    "returns existing monthly return when duplicate exists" in {
+    "returns status response from existing monthly return when duplicate exist" in {
       val s = setup; import s._
 
-      val payload = NilMonthlyReturnRequest("abc-123", 2025, 1, Some("option1"), Some("confirmed"))
+      val payload = NilMonthlyReturnRequest("abc-123", 2025, 1, "Y", "Y")
       val existingReturn = MonthlyReturn(
         monthlyReturnId = 66666L,
         taxYear = 2025,
@@ -158,11 +145,11 @@ class MonthlyReturnServiceSpec
       )
 
       when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(UserMonthlyReturns(Seq(existingReturn), Some(2))))
+        .thenReturn(Future.successful(UserMonthlyReturns(Seq(existingReturn))))
 
       val result = service.createNilMonthlyReturn(payload).futureValue
 
-      result mustBe existingReturn
+      result mustBe CreateNilMonthlyReturnResponse("STARTED")
       verify(formpProxy).getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
       verify(formpProxy, never).createNilMonthlyReturn(any[NilMonthlyReturnRequest])(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
@@ -171,7 +158,7 @@ class MonthlyReturnServiceSpec
     "propagates failure from formp proxy" in {
       val s = setup; import s._
 
-      val payload = NilMonthlyReturnRequest("abc-123", 2024, 3, Some("option1"), Some("confirmed"))
+      val payload = NilMonthlyReturnRequest("abc-123", 2024, 3, "Y", "Y")
       val boom = UpstreamErrorResponse("formp proxy failure", 500)
 
       when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))

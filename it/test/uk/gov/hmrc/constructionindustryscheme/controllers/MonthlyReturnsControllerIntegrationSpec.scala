@@ -21,7 +21,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
 import org.scalatest.wordspec.AnyWordSpec
-import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, INTERNAL_SERVER_ERROR, NOT_FOUND, OK, UNAUTHORIZED}
+import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, INTERNAL_SERVER_ERROR, NOT_FOUND, OK, UNAUTHORIZED}
 import play.api.libs.json.JsValue
 import play.api.libs.ws.DefaultBodyWritables.writeableOf_String
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, AuthStub}
@@ -196,26 +196,12 @@ class MonthlyReturnsControllerIntegrationSpec
               |  "instanceId": "abc-123",
               |  "taxYear": 2024,
               |  "taxMonth": 10,
-              |  "decEmpStatusConsidered": null,
-              |  "decInformationCorrect": "Set(confirmed)"
+              |  "decNilReturnNoPayments": "Y",
+              |  "decInformationCorrect": "Y"
               |}""".stripMargin,
             true, true
           ))
-          .willReturn(aResponse().withStatus(200).withBody(
-            """{
-              |  "monthlyReturnId": 12345,
-              |  "taxYear": 2024,
-              |  "taxMonth": 10,
-              |  "nilReturnIndicator": "Y",
-              |  "decEmpStatusConsidered": "N",
-              |  "decAllSubsVerified": "Y",
-              |  "decInformationCorrect": "Y",
-              |  "decNoMoreSubPayments": "N",
-              |  "decNilReturnNoPayments": "Y",
-              |  "status": "STARTED",
-              |  "amendment": "N"
-              |}""".stripMargin
-          ))
+          .willReturn(aResponse().withStatus(200).withBody("""{ "status": "STARTED" }"""))
       )
 
       val resp = wsClient.url(createNilUrl)
@@ -225,14 +211,14 @@ class MonthlyReturnsControllerIntegrationSpec
             |  "instanceId": "abc-123",
             |  "taxYear": 2024,
             |  "taxMonth": 10,
-            |  "decEmpStatusConsidered": null,
-            |  "decInformationCorrect": "Set(confirmed)"
+            |  "decNilReturnNoPayments": "Y",
+            |  "decInformationCorrect": "Y"
             |}""".stripMargin
         )
         .futureValue
 
-      resp.status mustBe OK
-      (resp.json \ "monthlyReturnId").as[Long] mustBe 12345L
+      resp.status mustBe CREATED
+      (resp.json \ "status").as[String] mustBe "STARTED"
 
       verify(postRequestedFor(urlPathEqualTo("/formp-proxy/monthly-return/nil")))
     }
@@ -253,7 +239,15 @@ class MonthlyReturnsControllerIntegrationSpec
 
       val resp = wsClient.url(createNilUrl)
         .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token", "Content-Type" -> "application/json")
-        .post("""{ "instanceId": "abc-123", "taxYear": 2024, "taxMonth": 10 }""")
+        .post(
+          """{
+            |  "instanceId": "abc-123",
+            |  "taxYear": 2024,
+            |  "taxMonth": 10,
+            |  "decNilReturnNoPayments": "Y",
+            |  "decInformationCorrect": "confirmed"
+            |}""".stripMargin
+        )
         .futureValue
 
       resp.status mustBe BAD_GATEWAY

@@ -14,18 +14,14 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models
+package uk.gov.hmrc.constructionindustryscheme.models.response
 
 import play.api.libs.json.{Json, OFormat}
 
-final case class NilMonthlyReturnRequest(
-  instanceId: String,
-  taxYear: Int,
-  taxMonth: Int,
-  decInformationCorrect: String,
-  decNilReturnNoPayments: String
+final case class CreateNilMonthlyReturnResponse(
+  status: String
 )
 
-object NilMonthlyReturnRequest {
-  implicit val format: OFormat[NilMonthlyReturnRequest] = Json.format[NilMonthlyReturnRequest]
+object CreateNilMonthlyReturnResponse {
+  implicit val format: OFormat[CreateNilMonthlyReturnResponse] = Json.format[CreateNilMonthlyReturnResponse]
 }
