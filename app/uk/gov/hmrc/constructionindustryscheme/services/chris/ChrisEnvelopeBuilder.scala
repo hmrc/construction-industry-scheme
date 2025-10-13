@@ -16,17 +16,18 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services.chris
 
-import play.api.Logging
 import uk.gov.hmrc.auth.core.Enrolments
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.services.irmark.IrMarkGenerator
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, YearMonth, ZoneOffset}
 import java.util.Locale
 import scala.util.Try
 import scala.xml.{Elem, NodeSeq, PrettyPrinter, XML}
+import utils.XxeHelper.secureSAXParser
 
-object ChrisEnvelopeBuilder extends Logging {
+object ChrisEnvelopeBuilder extends IrMarkGenerator {
   private val gatewayTimestampFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
   private val isoDateFmt = DateTimeFormatter.ISO_LOCAL_DATE // yyyy-MM-dd
   private val prettyPrinter = new PrettyPrinter(120, 4)
@@ -81,7 +82,7 @@ object ChrisEnvelopeBuilder extends Logging {
         </GovTalkDetails>
 
         <Body>
-          <IRenvelope xmlns={""}>
+          <IRenvelope xmlns={ChrisEnvelopeConstants.Namespace}>
             <IRheader>
               <Keys>
                 <Key Type="TaxOfficeNumber">{taxOfficeNumber}</Key>
@@ -117,9 +118,19 @@ object ChrisEnvelopeBuilder extends Logging {
         </Body>
       </GovTalkMessage>
 
-    val prettyXmlString = prettyPrinter.format(envelopeXml)
+
+    val irMarkBase64 = generateIrMark(envelopeXml, ChrisEnvelopeConstants.Namespace)
+
+    val prettyXmlString = prettyPrinter.format(replaceIrMark(envelopeXml, irMarkBase64))
+
     logger.info(s"Chris Envelope XML:\n$prettyXmlString")
     XML.loadString(prettyXmlString)
+  }
+
+  private def replaceIrMark(root: Elem, irMark: String) = {
+    val out = root.toString()
+    val subbed = out.replaceFirst( """<IRmark Type="generic">TBC</IRmark>""", s"""<IRmark Type="generic">$irMark</IRmark>""")
+    XML.withSAXParser(secureSAXParser).loadString(subbed)
   }
 
   private def extractTaxOfficeFromCisEnrolment(enrolments: Enrolments): Option[(String, String)] =
