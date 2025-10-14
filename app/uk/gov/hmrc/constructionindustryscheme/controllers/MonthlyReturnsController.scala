@@ -17,10 +17,10 @@
 package uk.gov.hmrc.constructionindustryscheme.controllers
 
 import play.api.Logging
-import play.api.libs.json.Json
+import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
+import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, NilMonthlyReturnRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -77,6 +77,16 @@ class MonthlyReturnsController @Inject()(
       case _ =>
         Future.successful(BadRequest(Json.obj("message" -> "Missing 'cisId'")))
     }
+  }
+
+  def createNil(): Action[JsValue] = authorise.async(parse.json) { implicit request =>
+    request.body.validate[NilMonthlyReturnRequest].fold(
+      _ => Future.successful(BadRequest(Json.obj("message" -> "Invalid payload"))),
+      payload =>
+        service.createNilMonthlyReturn(payload)
+          .map(monthlyReturn => Created(Json.toJson(monthlyReturn)))
+          .recover { case u: UpstreamErrorResponse => Status(u.statusCode)(Json.obj("message" -> u.message)) }
+    )
   }
 }
 

@@ -18,21 +18,41 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.response.CreateNilMonthlyReturnResponse
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 
 import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}
+import scala.concurrent.ExecutionContext
 
 @Singleton
 class MonthlyReturnService @Inject()(
                                       datacache: DatacacheProxyConnector,
                                       formp: FormpProxyConnector
-                                    ) {
+                                    )(implicit ec: ExecutionContext) {
 
   def getCisTaxpayer(employerReference: EmployerReference)(implicit hc: HeaderCarrier): Future[CisTaxpayer] =
     datacache.getCisTaxpayer(employerReference)
 
   def getAllMonthlyReturnsByCisId(cisId: String)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
     formp.getMonthlyReturns(cisId)
+
+  def createNilMonthlyReturn(req: NilMonthlyReturnRequest)
+                            (implicit hc: HeaderCarrier): Future[CreateNilMonthlyReturnResponse] =
+    formp.getMonthlyReturns(req.instanceId).flatMap { existing =>
+      existing.monthlyReturnList.find(r => r.taxYear == req.taxYear && r.taxMonth == req.taxMonth) match {
+        case Some(mr) =>
+          mr.status match {
+            case Some(s) => Future.successful(CreateNilMonthlyReturnResponse(status = s))
+            case None =>
+              Future.failed(new IllegalStateException(
+                s"Existing monthly return has no status (instanceId=${req.instanceId}, taxYear=${req.taxYear}, taxMonth=${req.taxMonth})"
+              ))
+          }
+        case None =>
+          formp.createNilMonthlyReturn(req)
+      }
+    }
+
 }
 

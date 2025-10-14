@@ -21,8 +21,9 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
 import org.scalatest.wordspec.AnyWordSpec
-import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, INTERNAL_SERVER_ERROR, NOT_FOUND, OK, UNAUTHORIZED}
+import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, INTERNAL_SERVER_ERROR, NOT_FOUND, OK, UNAUTHORIZED}
 import play.api.libs.json.JsValue
+import play.api.libs.ws.DefaultBodyWritables.writeableOf_String
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, AuthStub}
 
 class MonthlyReturnsControllerIntegrationSpec
@@ -33,6 +34,7 @@ class MonthlyReturnsControllerIntegrationSpec
 
   private val instanceIdUrl     = s"http://localhost:$port/cis/taxpayer"
   private val monthlyReturnsUrl = s"http://localhost:$port/cis/monthly-returns"
+  private val createNilUrl       = s"http://localhost:$port/cis/monthly-returns/nil/create"
 
   "GET /cis/taxpayer" should {
 
@@ -173,6 +175,83 @@ class MonthlyReturnsControllerIntegrationSpec
 
       resp.status mustBe INTERNAL_SERVER_ERROR
       (resp.json \ "message").as[String].toLowerCase must include ("formp error")
+    }
+  }
+  
+  "POST /cis/monthly-returns/nil/create" should {
+
+    "return 200 with MonthlyReturn when FormP succeeds" in {
+      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/monthly-returns"))
+          .withRequestBody(equalToJson("""{"instanceId": "abc-123"}"""))
+          .willReturn(aResponse().withStatus(200).withBody("""{"monthlyReturnList": [], "schemeVersion": 1}"""))
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/monthly-return/nil/create"))
+          .withRequestBody(equalToJson(
+            """{
+              |  "instanceId": "abc-123",
+              |  "taxYear": 2024,
+              |  "taxMonth": 10,
+              |  "decNilReturnNoPayments": "Y",
+              |  "decInformationCorrect": "Y"
+              |}""".stripMargin,
+            true, true
+          ))
+          .willReturn(aResponse().withStatus(200).withBody("""{ "status": "STARTED" }"""))
+      )
+
+      val resp = wsClient.url(createNilUrl)
+        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token", "Content-Type" -> "application/json")
+        .post(
+          """{
+            |  "instanceId": "abc-123",
+            |  "taxYear": 2024,
+            |  "taxMonth": 10,
+            |  "decNilReturnNoPayments": "Y",
+            |  "decInformationCorrect": "Y"
+            |}""".stripMargin
+        )
+        .futureValue
+
+      resp.status mustBe CREATED
+      (resp.json \ "status").as[String] mustBe "STARTED"
+
+      verify(postRequestedFor(urlPathEqualTo("/formp-proxy/monthly-return/nil/create")))
+    }
+
+    "bubble up error when FormP fails" in {
+      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/monthly-returns"))
+          .withRequestBody(equalToJson("""{"instanceId": "abc-123"}"""))
+          .willReturn(aResponse().withStatus(200).withBody("""{"monthlyReturnList": [], "schemeVersion": 1}"""))
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/monthly-return/nil/create"))
+          .willReturn(aResponse().withStatus(502).withBody("bad gateway"))
+      )
+
+      val resp = wsClient.url(createNilUrl)
+        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token", "Content-Type" -> "application/json")
+        .post(
+          """{
+            |  "instanceId": "abc-123",
+            |  "taxYear": 2024,
+            |  "taxMonth": 10,
+            |  "decNilReturnNoPayments": "Y",
+            |  "decInformationCorrect": "confirmed"
+            |}""".stripMargin
+        )
+        .futureValue
+
+      resp.status mustBe BAD_GATEWAY
+      (resp.json \ "message").as[String].toLowerCase must include ("bad gateway")
     }
   }
 }
