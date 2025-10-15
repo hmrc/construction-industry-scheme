@@ -46,7 +46,8 @@ class ChrisSubmissionController @Inject()(
             Ok(Json.obj(
               "success"  -> true,
               "status"   -> resp.status,
-              "body"     -> resp.body
+              "body"     -> resp.body,
+              "irMark"   -> resp.irMark
             ))
           }.recover { case ex =>
             logger.error("ChRIS submission failed", ex)
