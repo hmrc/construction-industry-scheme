@@ -4,3 +4,4 @@ GET        /taxpayer                             uk.gov.hmrc.constructionindustr
 POST       /chris                                uk.gov.hmrc.constructionindustryscheme.controllers.ChrisSubmissionController.submitNilMonthlyReturn
 GET        /monthly-returns                      uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getAllMonthlyReturns(cisId: Option[String])
 POST       /monthly-returns/nil/create           uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createNil()
+GET        /scheme/email/:instanceId              uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getSchemeEmail(instanceId: String)
