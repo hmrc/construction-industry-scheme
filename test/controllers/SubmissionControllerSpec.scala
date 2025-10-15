@@ -25,14 +25,14 @@ import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.Result
 import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, POST, contentAsJson, status}
-import uk.gov.hmrc.constructionindustryscheme.controllers.ChrisSubmissionController
+import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisSubmissionRequest
 import uk.gov.hmrc.constructionindustryscheme.services.ChrisService
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class ChrisSubmissionControllerSpec extends SpecBase {
+class SubmissionControllerSpec extends SpecBase {
 
   "ChrisSubmissionController.submitNilMonthlyReturn" - {
 
@@ -126,7 +126,7 @@ class ChrisSubmissionControllerSpec extends SpecBase {
 
   private trait SetupAuth extends BaseSetup {
     private val auth = fakeAuthAction(ton = "123", tor = "AB456")
-    val controller = new ChrisSubmissionController(auth, mockChrisService, cc)
+    val controller = new SubmissionController(auth, mockChrisService, cc)
   }
 
 }

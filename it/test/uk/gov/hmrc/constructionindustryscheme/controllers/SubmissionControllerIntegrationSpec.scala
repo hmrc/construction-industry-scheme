@@ -26,7 +26,7 @@ import play.api.http.Status.{BAD_REQUEST, INTERNAL_SERVER_ERROR, OK, UNAUTHORIZE
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, AuthStub}
 
-class ChrisSubmissionControllerIntegrationSpec
+class SubmissionControllerIntegrationSpec
   extends ApplicationWithWiremock
     with Matchers
     with ScalaFutures

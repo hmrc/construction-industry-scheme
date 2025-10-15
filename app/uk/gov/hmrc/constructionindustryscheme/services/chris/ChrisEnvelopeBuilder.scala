@@ -22,7 +22,6 @@ import uk.gov.hmrc.constructionindustryscheme.services.irmark.IrMarkGenerator
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, YearMonth, ZoneOffset}
-import java.util.Locale
 import scala.util.Try
 import scala.xml.{Elem, NodeSeq, PrettyPrinter, XML}
 import utils.XxeHelper.secureSAXParser
@@ -34,10 +33,10 @@ object ChrisEnvelopeBuilder extends IrMarkGenerator {
 
   def build(
              request: ChrisSubmissionRequest,
-             authRequest: AuthenticatedRequest[_]
+             authRequest: AuthenticatedRequest[_],
+             correlationId: String
            ): Elem = {
 
-    val correlatingId = java.util.UUID.randomUUID().toString.replace("-", "").toUpperCase(Locale.ROOT)
     val gatewayTimestamp = LocalDateTime.now(ZoneOffset.UTC).format(gatewayTimestampFormatter)
 
     val (taxOfficeNumber, taxOfficeReference) =
@@ -57,7 +56,7 @@ object ChrisEnvelopeBuilder extends IrMarkGenerator {
             <Class>{ChrisEnvelopeConstants.MessageDetailsClass}</Class>
             <Qualifier>{ChrisEnvelopeConstants.Qualifier}</Qualifier>
             <Function>{ChrisEnvelopeConstants.Function}</Function>
-            <CorrelationID>{correlatingId}</CorrelationID>
+            <CorrelationID>{correlationId}</CorrelationID>
             <Transformation>{ChrisEnvelopeConstants.Transformation}</Transformation>
             <GatewayTimestamp>{gatewayTimestamp}</GatewayTimestamp>
           </MessageDetails>

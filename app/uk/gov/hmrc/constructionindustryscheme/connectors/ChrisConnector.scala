@@ -18,9 +18,11 @@ package uk.gov.hmrc.constructionindustryscheme.connectors
 
 import javax.inject.Inject
 import play.api.libs.ws.DefaultBodyWritables.writeableOf_String
+import uk.gov.hmrc.constructionindustryscheme.models.{FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisXmlMapper
 import uk.gov.hmrc.http.client.HttpClientV2
-import uk.gov.hmrc.http.HttpReads.Implicits._
-import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, HttpResponse}
+import uk.gov.hmrc.http.HttpReads.Implicits.*
+import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -34,10 +36,44 @@ class ChrisConnector @Inject()(
   private val chrisCisReturnUrl: String =
     servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.affix-url")
 
-  def submitEnvelope(envelope: Elem)(implicit hc: HeaderCarrier): Future[HttpResponse] =
+  def submitEnvelope(envelope: Elem, correlationId:String)(implicit hc: HeaderCarrier): Future[SubmissionResult] =
       httpClient
         .post(url"$chrisCisReturnUrl")
-        .setHeader("Content-Type" -> "application/xml")
+        .setHeader("Content-Type"  -> "application/xml",
+                   "CorrelationId" -> correlationId)
         .withBody(envelope.toString)
-        .execute[HttpResponse]
+        .execute[String]
+        .map { body =>
+            ChrisXmlMapper.parse(body).fold(
+              err => SubmissionResult(
+                FATAL_ERROR,
+                body,
+                GovTalkMeta(
+                  qualifier = "error",
+                  function = "submit",
+                  className = "",
+                  correlationId = correlationId,
+                  gatewayTimestamp = "",
+                  responseEndPoint = ResponseEndPoint("", 0),
+                  error = Some(GovTalkError("parse", "fatal", err))
+                )
+              ),
+              identity
+            )
+          }
+            .recover { case e =>
+              SubmissionResult(
+                FATAL_ERROR,
+                "<connection-error/>",
+                GovTalkMeta(
+                  qualifier = "error",
+                  function = "submit",
+                  className = "",
+                  correlationId = correlationId,
+                  gatewayTimestamp = "",
+                  responseEndPoint = ResponseEndPoint("", 0),
+                  error = Some(GovTalkError("conn", "fatal", s"Connection error: ${e.getClass.getSimpleName}"))
+                )
+              )
+            }        
 }
