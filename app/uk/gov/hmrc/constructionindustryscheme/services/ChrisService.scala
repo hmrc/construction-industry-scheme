@@ -20,12 +20,15 @@ import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import play.api.Logging
+import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor.convertXmlToJson
 import uk.gov.hmrc.constructionindustryscheme.connectors.ChrisConnector
+import uk.gov.hmrc.constructionindustryscheme.models.audit.AuditResponseReceivedModel
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeBuilder
 
 class ChrisService @Inject()(
-                              connector: ChrisConnector
+                              connector: ChrisConnector,
+                              auditService: AuditService
                             )(implicit ec: ExecutionContext) extends Logging {
 
   def submitNilMonthlyReturn(
@@ -35,8 +38,14 @@ class ChrisService @Inject()(
 
     val envelopeXml = ChrisEnvelopeBuilder.build(chrisRequest, authRequest)
 
+    val submissionData = convertXmlToJson(envelopeXml.toString)
+
     connector.submitEnvelope(envelopeXml)
       .map { response =>
+        val responseData = convertXmlToJson(response.body)
+        val resReceived = AuditResponseReceivedModel(response.status, responseData)
+        
+        auditService.nilReturnSubmissionAudit(submissionData, resReceived)
         if (response.status >= 200 && response.status < 300) {
           logger.info(s"ChRIS submission accepted: status=${response.status}")
           response

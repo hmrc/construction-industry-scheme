@@ -114,7 +114,7 @@ class ChrisSubmissionControllerIntegrationSpec
       stubFor(
         post(urlPathEqualTo(chrisPath))
           .withRequestBody(matchingXPath("/*[local-name()='GovTalkMessage']"))
-          .willReturn(aResponse().withStatus(500).withBody("boom from chris"))
+          .willReturn(aResponse().withStatus(500).withBody("<message>boom from chris</message>"))
       )
 
       val resp = wsClient.url(submitUrl)
@@ -128,7 +128,7 @@ class ChrisSubmissionControllerIntegrationSpec
 
       resp.status mustBe INTERNAL_SERVER_ERROR
       (resp.json \ "success").as[Boolean] mustBe false
-      (resp.json \ "message").as[String].toLowerCase must include ("boom")
+      (resp.json \ "message").as[String].toLowerCase must include ("boom from chris")
     }
 
     "return 401 when there is no active session" in {
