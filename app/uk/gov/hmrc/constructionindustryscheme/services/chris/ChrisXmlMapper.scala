@@ -16,9 +16,8 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services.chris
 
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SubmissionResult, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus}
 
-import scala.util.Try
 import scala.xml.*
 
 object ChrisXmlMapper {
@@ -28,16 +27,14 @@ object ChrisXmlMapper {
     if (value.nonEmpty) Right(value) else Left(s"Missing mandatory field: $fieldName")
   }
 
-  private def intAttrRequired(scope: NodeSeq, tagName: String, attrName: String): Either[String, Int] = {
-    val valueOpt = (scope \\ tagName).headOption
+  private def intAttrOptional(scope: NodeSeq, tagName: String, attrName: String): Option[Int] =
+    (scope \\ tagName).headOption
       .flatMap(_.attribute(attrName).flatMap(_.headOption))
       .map(_.text.trim)
+      .flatMap(s => scala.util.Try(s.toInt).toOption)
 
-    valueOpt match {
-      case Some(s) if s.nonEmpty => Try(s.toInt).toOption.toRight(s"Invalid integer for $tagName@$attrName: '$s'")
-      case _ => Left(s"Missing mandatory attribute: $tagName@$attrName")
-    }
-  }
+  private def textOptional(scope: NodeSeq, tagName: String): Option[String] =
+    Option((scope \\ tagName).text.trim).filter(_.nonEmpty)
 
   private def parseError(qualifier: String, doc: Elem): Either[String, Option[GovTalkError]] =
     if (qualifier.equalsIgnoreCase("error")) {
@@ -51,34 +48,37 @@ object ChrisXmlMapper {
 
   def parse(xml: String): Either[String, SubmissionResult] = {
     val doc = XML.loadString(xml)
-    val messageDetails = doc \\ "Header" \\ "MessageDetails"
+    val md = doc \\ "Header" \\ "MessageDetails"
 
     for {
-      qualifier <- textRequired(messageDetails, "Qualifier", "Qualifier")
-      function <- textRequired(messageDetails, "Function", "Function")
-      className <- textRequired(messageDetails, "Class", "Class")
-      correlationId <- textRequired(messageDetails, "CorrelationID", "CorrelationID")
-      gatewayTimestamp <- textRequired(messageDetails, "GatewayTimestamp", "GatewayTimestamp")
-      pollInt <- intAttrRequired(messageDetails, "ResponseEndPoint", "PollInterval")
-      endpointUrl <- textRequired(messageDetails, "ResponseEndPoint", "ResponseEndPoint")
-      errorOpt <- parseError(qualifier, doc)
+      qualifier <- textRequired(md, "Qualifier", "Qualifier")
+      function <- textRequired(md, "Function", "Function")
+      className <- textRequired(md, "Class", "Class")
+      correlationId <- textRequired(md, "CorrelationID", "CorrelationID")
+      gatewayTimestamp <- textRequired(md, "GatewayTimestamp", "GatewayTimestamp")
+      pollIntervalOpt: Option[Int] = intAttrOptional(md, "ResponseEndPoint", "PollInterval")
+      endpointUrlOpt: Option[String] = textOptional(md, "ResponseEndPoint")
+      errOpt <- parseError(qualifier, doc)
     } yield {
+      val status: SubmissionStatus = qualifier.toLowerCase match {
+        case "acknowledgement" => ACCEPTED
+        case "response" => SUBMITTED
+        case "error" => FATAL_ERROR
+        case _ => FATAL_ERROR
+      }
+
+      val pollInt = pollIntervalOpt.getOrElse(0)
+      val epUrl = endpointUrlOpt.getOrElse("")
+
       val meta = GovTalkMeta(
         qualifier = qualifier,
         function = function,
         className = className,
         correlationId = correlationId,
         gatewayTimestamp = gatewayTimestamp,
-        responseEndPoint = ResponseEndPoint(endpointUrl, pollInt),
-        error = errorOpt
+        responseEndPoint = ResponseEndPoint(epUrl, pollInt),
+        error = errOpt
       )
-
-      val status: SubmissionStatus =
-        qualifier.toLowerCase match {
-          case "acknowledgement" => ACCEPTED
-          case "error" => FATAL_ERROR
-          case _ => FATAL_ERROR
-        }
 
       SubmissionResult(status, xml, meta)
     }

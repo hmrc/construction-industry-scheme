@@ -2,8 +2,8 @@
 
 GET        /taxpayer                                            uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getCisTaxpayer
 GET        /monthly-returns                                     uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getAllMonthlyReturns(cisId: Option[String])
+POST       /monthly-returns/nil/create                          uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createNil()
 
-POST       /monthly-returns/nil/create           uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createNil()
-POST       /submissions/create-and-track                         uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.createAndTrackSubmission
+POST       /submissions/create-and-track                        uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.createAndTrackSubmission
 POST       /submissions/:submissionId/submit-to-chris           uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.submitToChris(submissionId: String)
 POST       /submissions/:submissionId/update                    uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.updateSubmission(submissionId: String)

@@ -22,8 +22,8 @@ import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.models.UserMonthlyReturns
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.CreateNilMonthlyReturnResponse
-import uk.gov.hmrc.constructionindustryscheme.models.{NilMonthlyReturnRequest, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
+import uk.gov.hmrc.constructionindustryscheme.models.NilMonthlyReturnRequest
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
@@ -44,20 +44,20 @@ class FormpProxyConnector @Inject()(
 
   def createAndTrackSubmission(request: CreateAndTrackSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
     http
-      .post(url"$base/monthly-returns/submissions/create-and-track")
+      .post(url"$base/submissions/create-and-track")
       .withBody(Json.toJson(request))
-      .execute[String]
+      .execute[CreateAndTrackSubmissionResponse]
+      .map(_.submissionId)
 
   def updateSubmission(req: UpdateSubmissionRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
-      .post(url"$base/monthly-return/submissions/update")
+      .post(url"$base/submissions/update")
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
       .flatMap { resp =>
         if (resp.status / 100 == 2) Future.unit
         else Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
       }
-      .execute[UserMonthlyReturns]
 
   def createNilMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[CreateNilMonthlyReturnResponse] =
     http.post(url"$base/monthly-return/nil/create")

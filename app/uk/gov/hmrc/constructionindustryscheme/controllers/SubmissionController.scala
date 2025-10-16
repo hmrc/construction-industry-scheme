@@ -28,6 +28,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
+import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeBuilder
 
 class SubmissionController @Inject()(
                                            authorise: AuthAction,
@@ -59,12 +60,16 @@ class SubmissionController @Inject()(
         errs => Future.successful(BadRequest(Json.obj("message" -> JsError.toJson(errs)))),
         csr => {
           logger.info(s"Submitting Nil Monthly Return to ChRIS for UTR=${csr.utr}")
-          submissionService.submitToChris(csr, request).map { res =>
+          val correlationId = java.util.UUID.randomUUID().toString.replace("-", "").toUpperCase
+          val payload = ChrisEnvelopeBuilder.buildPayload(csr, request, correlationId)
+
+          submissionService.submitToChris(payload).map { res =>
             res.status match {
               case AcceptedStatus =>
                 Accepted(Json.obj(
                   "submissionId" -> submissionId,
                   "status" -> "ACCEPTED",
+                  "hmrcMarkGenerated" -> payload.irMark,
                   "correlationId" -> res.meta.correlationId,
                   "nextPollInSeconds" -> res.meta.responseEndPoint.pollIntervalSeconds,
                   "gatewayTimestamp" -> res.meta.gatewayTimestamp
@@ -73,6 +78,7 @@ class SubmissionController @Inject()(
                 Results.Accepted(Json.obj(
                   "submissionId" -> submissionId,
                   "status" -> "PENDING",
+                  "hmrcMarkGenerated" -> payload.irMark,
                   "correlationId" -> res.meta.correlationId,
                   "nextPollInSeconds" -> res.meta.responseEndPoint.pollIntervalSeconds,
                   "gatewayTimestamp" -> res.meta.gatewayTimestamp
@@ -81,6 +87,7 @@ class SubmissionController @Inject()(
                 Results.Ok(Json.obj(
                   "submissionId" -> submissionId,
                   "status" -> "SUBMITTED",
+                  "hmrcMarkGenerated" -> payload.irMark,
                   "correlationId" -> res.meta.correlationId,
                   "gatewayTimestamp" -> res.meta.gatewayTimestamp
                 ))
@@ -88,21 +95,24 @@ class SubmissionController @Inject()(
                 Results.Ok(Json.obj(
                   "submissionId" -> submissionId,
                   "status" -> "SUBMITTED_NO_RECEIPT",
+                  "hmrcMarkGenerated" -> payload.irMark,
                   "correlationId" -> res.meta.correlationId,
                   "gatewayTimestamp" -> res.meta.gatewayTimestamp
                 ))
               case DepartmentalErrorStatus =>
-                Results.BadGateway(Json.obj(
+                Results.Ok(Json.obj(
                   "submissionId" -> submissionId,
                   "status" -> "DEPARTMENTAL_ERROR",
+                  "hmrcMarkGenerated" -> payload.irMark,
                   "error" -> res.meta.error.map(e =>
                     Json.obj("number" -> e.errorNumber, "type" -> e.errorType, "text" -> e.errorText)
                   ).getOrElse(Json.obj("text" -> "departmental error"))
                 ))
               case FatalErrorStatus =>
-                Results.BadRequest(Json.obj(
+                Results.Ok(Json.obj(
                   "submissionId" -> submissionId,
                   "status" -> "FATAL_ERROR",
+                  "hmrcMarkGenerated" -> payload.irMark,
                   "error" -> res.meta.error.map(e =>
                     Json.obj("number" -> e.errorNumber, "type" -> e.errorType, "text" -> e.errorText)
                   ).getOrElse(Json.obj("text" -> "fatal"))
@@ -113,6 +123,7 @@ class SubmissionController @Inject()(
             Results.BadGateway(Json.obj(
               "submissionId" -> submissionId,
               "status" -> "FATAL_ERROR",
+              "hmrcMarkGenerated" -> payload.irMark,
               "error" -> "upstream-failure"
             ))
           }

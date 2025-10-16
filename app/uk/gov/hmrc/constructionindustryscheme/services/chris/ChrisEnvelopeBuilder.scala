@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.services.chris
 
 import uk.gov.hmrc.auth.core.Enrolments
+import uk.gov.hmrc.constructionindustryscheme.models.BuiltSubmissionPayload
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.irmark.IrMarkGenerator
 
@@ -151,5 +152,20 @@ object ChrisEnvelopeBuilder extends IrMarkGenerator {
       throw new IllegalArgumentException(s"Invalid monthYear: $monthYear (expected YYYY-MM)")
     }
     ym.atDay(5).format(isoDateFmt)
+  }
+
+  def buildPayload(
+                    request: ChrisSubmissionRequest,
+                    authRequest: AuthenticatedRequest[_],
+                    correlationId: String
+                  ): BuiltSubmissionPayload = {
+    val finalEnvelope: scala.xml.Elem = build(request, authRequest, correlationId)
+    val irMarkBase64: String = (finalEnvelope \\ "IRmark").text.trim
+
+    BuiltSubmissionPayload(
+      envelope = finalEnvelope,
+      correlationId = correlationId,
+      irMark = irMarkBase64
+    )
   }
 }

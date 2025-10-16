@@ -18,9 +18,8 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.SubmissionResult
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest, CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeBuilder
+import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
@@ -37,12 +36,7 @@ class SubmissionService @Inject()(
   def updateSubmission(req: UpdateSubmissionRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.updateSubmission(req)
 
-  def submitToChris(
-                              chrisRequest: ChrisSubmissionRequest,
-                              authRequest: AuthenticatedRequest[_]
-                            )(implicit hc: HeaderCarrier): Future[SubmissionResult] = {
-    val correlationId = java.util.UUID.randomUUID().toString.replace("-", "").toUpperCase
-    val envelopeXml = ChrisEnvelopeBuilder.build(chrisRequest, authRequest, correlationId)
-    chrisConnector.submitEnvelope(envelopeXml, correlationId)
+  def submitToChris(payload: BuiltSubmissionPayload)(implicit hc: HeaderCarrier): Future[SubmissionResult] = {
+    chrisConnector.submitEnvelope(payload.envelope, payload.correlationId)
   }
 }

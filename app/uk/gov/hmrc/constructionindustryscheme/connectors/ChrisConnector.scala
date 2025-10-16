@@ -22,10 +22,11 @@ import uk.gov.hmrc.constructionindustryscheme.models.{FATAL_ERROR, GovTalkError,
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisXmlMapper
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.HttpReads.Implicits.*
-import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 import scala.xml.Elem
 
 class ChrisConnector @Inject()(
@@ -40,40 +41,68 @@ class ChrisConnector @Inject()(
       httpClient
         .post(url"$chrisCisReturnUrl")
         .setHeader("Content-Type"  -> "application/xml",
+                   "Accept"        -> "application/xml",
                    "CorrelationId" -> correlationId)
         .withBody(envelope.toString)
-        .execute[String]
-        .map { body =>
-            ChrisXmlMapper.parse(body).fold(
-              err => SubmissionResult(
-                FATAL_ERROR,
-                body,
-                GovTalkMeta(
-                  qualifier = "error",
-                  function = "submit",
-                  className = "",
-                  correlationId = correlationId,
-                  gatewayTimestamp = "",
-                  responseEndPoint = ResponseEndPoint("", 0),
-                  error = Some(GovTalkError("parse", "fatal", err))
-                )
-              ),
-              identity
-            )
-          }
-            .recover { case e =>
+        .execute[HttpResponse]
+        .map { response =>
+            val body = response.body
+            if (response.status / 100 == 2) {
+              ChrisXmlMapper.parse(body).fold(
+                err =>
+                  SubmissionResult(
+                    status = FATAL_ERROR,
+                    rawXml = body,
+                    meta = GovTalkMeta(
+                      qualifier = "error",
+                      function = "submit",
+                      className = "",
+                      correlationId = correlationId,
+                      gatewayTimestamp = "",
+                      responseEndPoint = ResponseEndPoint("", 0),
+                      error = Some(GovTalkError("parse", "fatal", err))
+                    )
+                  ),
+                identity
+              )
+            } else {
               SubmissionResult(
-                FATAL_ERROR,
-                "<connection-error/>",
-                GovTalkMeta(
+                status = FATAL_ERROR,
+                rawXml = body,
+                meta = GovTalkMeta(
                   qualifier = "error",
                   function = "submit",
                   className = "",
                   correlationId = correlationId,
                   gatewayTimestamp = "",
                   responseEndPoint = ResponseEndPoint("", 0),
-                  error = Some(GovTalkError("conn", "fatal", s"Connection error: ${e.getClass.getSimpleName}"))
+                  error = Some(GovTalkError(
+                    errorNumber = s"http-${response.status}",
+                    errorType = "fatal",
+                    errorText = truncate(body, 2000)
+                  ))
                 )
               )
-            }        
+            }
+          }
+
+  .recover {
+      case NonFatal(e) =>
+        SubmissionResult(
+          status = FATAL_ERROR,
+          rawXml = "<connection-error/>",
+          meta = GovTalkMeta(
+            qualifier = "error",
+            function = "submit",
+            className = "",
+            correlationId = correlationId,
+            gatewayTimestamp = "",
+            responseEndPoint = ResponseEndPoint("", 0),
+            error = Some(GovTalkError("conn", "fatal", s"Connection error: ${e.getClass.getSimpleName}"))
+          )
+        )
+    }
+
+  private def truncate(s: String, n: Int): String =
+    if (s.length <= n) s else s.take(n) + "…"
 }
