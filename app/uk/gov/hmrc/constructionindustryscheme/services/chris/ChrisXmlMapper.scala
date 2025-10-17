@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services.chris
 
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, DEPARTMENTAL_ERROR, FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus}
 
 import scala.xml.*
 
@@ -63,7 +63,12 @@ object ChrisXmlMapper {
       val status: SubmissionStatus = qualifier.toLowerCase match {
         case "acknowledgement" => ACCEPTED
         case "response" => SUBMITTED
-        case "error" => FATAL_ERROR
+        case "error" =>
+          errOpt.map(_.errorType.toLowerCase) match {
+            case Some("business") => DEPARTMENTAL_ERROR   
+            case Some("fatal")    => FATAL_ERROR          
+            case _                => FATAL_ERROR          
+          }
         case _ => FATAL_ERROR
       }
 

@@ -24,11 +24,13 @@ import play.api.libs.json.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, PENDING as PendingStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{SubmissionResult, ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, PENDING as PendingStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeBuilder
+
+import java.util.UUID
 
 class SubmissionController @Inject()(
                                            authorise: AuthAction,
@@ -55,82 +57,31 @@ class SubmissionController @Inject()(
     }
 
   def submitToChris(submissionId: String): Action[JsValue] =
-    authorise(parse.json).async { implicit request =>
-      request.body.validate[ChrisSubmissionRequest].fold(
+    authorise(parse.json).async { implicit req =>
+      req.body.validate[ChrisSubmissionRequest].fold(
         errs => Future.successful(BadRequest(Json.obj("message" -> JsError.toJson(errs)))),
         csr => {
           logger.info(s"Submitting Nil Monthly Return to ChRIS for UTR=${csr.utr}")
-          val correlationId = java.util.UUID.randomUUID().toString.replace("-", "").toUpperCase
-          val payload = ChrisEnvelopeBuilder.buildPayload(csr, request, correlationId)
 
-          submissionService.submitToChris(payload).map { res =>
-            res.status match {
-              case AcceptedStatus =>
-                Accepted(Json.obj(
-                  "submissionId" -> submissionId,
-                  "status" -> "ACCEPTED",
-                  "hmrcMarkGenerated" -> payload.irMark,
-                  "correlationId" -> res.meta.correlationId,
-                  "nextPollInSeconds" -> res.meta.responseEndPoint.pollIntervalSeconds,
-                  "gatewayTimestamp" -> res.meta.gatewayTimestamp
-                ))
-              case PendingStatus =>
-                Results.Accepted(Json.obj(
-                  "submissionId" -> submissionId,
-                  "status" -> "PENDING",
-                  "hmrcMarkGenerated" -> payload.irMark,
-                  "correlationId" -> res.meta.correlationId,
-                  "nextPollInSeconds" -> res.meta.responseEndPoint.pollIntervalSeconds,
-                  "gatewayTimestamp" -> res.meta.gatewayTimestamp
-                ))
-              case SubmittedStatus =>
-                Results.Ok(Json.obj(
-                  "submissionId" -> submissionId,
-                  "status" -> "SUBMITTED",
-                  "hmrcMarkGenerated" -> payload.irMark,
-                  "correlationId" -> res.meta.correlationId,
-                  "gatewayTimestamp" -> res.meta.gatewayTimestamp
-                ))
-              case SubmittedNoReceiptStatus =>
-                Results.Ok(Json.obj(
-                  "submissionId" -> submissionId,
-                  "status" -> "SUBMITTED_NO_RECEIPT",
-                  "hmrcMarkGenerated" -> payload.irMark,
-                  "correlationId" -> res.meta.correlationId,
-                  "gatewayTimestamp" -> res.meta.gatewayTimestamp
-                ))
-              case DepartmentalErrorStatus =>
-                Results.Ok(Json.obj(
-                  "submissionId" -> submissionId,
-                  "status" -> "DEPARTMENTAL_ERROR",
-                  "hmrcMarkGenerated" -> payload.irMark,
-                  "error" -> res.meta.error.map(e =>
-                    Json.obj("number" -> e.errorNumber, "type" -> e.errorType, "text" -> e.errorText)
-                  ).getOrElse(Json.obj("text" -> "departmental error"))
-                ))
-              case FatalErrorStatus =>
-                Results.Ok(Json.obj(
-                  "submissionId" -> submissionId,
-                  "status" -> "FATAL_ERROR",
-                  "hmrcMarkGenerated" -> payload.irMark,
-                  "error" -> res.meta.error.map(e =>
-                    Json.obj("number" -> e.errorNumber, "type" -> e.errorType, "text" -> e.errorText)
-                  ).getOrElse(Json.obj("text" -> "fatal"))
-                ))
+          val correlationId = UUID.randomUUID().toString.replace("-", "").toUpperCase
+          val payload = ChrisEnvelopeBuilder.buildPayload(csr, req, correlationId)
+
+          submissionService
+            .submitToChris(payload)
+            .map(renderSubmissionResponse(submissionId, payload.irMark))
+            .recover { case ex =>
+              logger.error("[submitToChris] upstream failure", ex)
+              BadGateway(Json.obj(
+                "submissionId" -> submissionId,
+                "status" -> "FATAL_ERROR",
+                "hmrcMarkGenerated" -> payload.irMark,
+                "error" -> "upstream-failure"
+              ))
             }
-          }.recover { case ex =>
-            logger.error("[submitToChris] upstream failure", ex)
-            Results.BadGateway(Json.obj(
-              "submissionId" -> submissionId,
-              "status" -> "FATAL_ERROR",
-              "hmrcMarkGenerated" -> payload.irMark,
-              "error" -> "upstream-failure"
-            ))
-          }
         }
       )
     }
-
+  
   def updateSubmission(submissionId: String): Action[JsValue] =
     authorise(parse.json).async { implicit req =>
       req.body.validate[UpdateSubmissionRequest].fold(
@@ -145,5 +96,34 @@ class SubmissionController @Inject()(
         }
       )
     }
+
+  private def renderSubmissionResponse(submissionId: String, irMark: String)(res: SubmissionResult): Result = {
+    val base = Json.obj(
+      "submissionId" -> submissionId,
+      "hmrcMarkGenerated" -> irMark,
+      "correlationId" -> res.meta.correlationId,
+      "gatewayTimestamp" -> res.meta.gatewayTimestamp
+    )
+
+    def withStatus(s: String): JsObject = base ++ Json.obj("status" -> s)
+
+    def withPoll(o: JsObject): JsObject = o ++ Json.obj("nextPollInSeconds" -> res.meta.responseEndPoint.pollIntervalSeconds)
+
+    def errorObj(defaultText: String): JsObject =
+      Json.obj("error" ->
+        res.meta.error
+          .map(e => Json.obj("number" -> e.errorNumber, "type" -> e.errorType, "text" -> e.errorText))
+          .getOrElse(Json.obj("text" -> defaultText))
+      )
+
+    res.status match {
+      case PendingStatus => Results.Accepted(withPoll(withStatus("PENDING")))
+      case AcceptedStatus => Results.Accepted(withPoll(withStatus("ACCEPTED")))
+      case SubmittedStatus => Results.Ok(withStatus("SUBMITTED"))
+      case SubmittedNoReceiptStatus => Results.Ok(withStatus("SUBMITTED_NO_RECEIPT"))
+      case DepartmentalErrorStatus => Results.Ok(withStatus("DEPARTMENTAL_ERROR") ++ errorObj("departmental error"))
+      case FatalErrorStatus => Results.Ok(withStatus("FATAL_ERROR") ++ errorObj("fatal"))
+    }
+  }
 
 }

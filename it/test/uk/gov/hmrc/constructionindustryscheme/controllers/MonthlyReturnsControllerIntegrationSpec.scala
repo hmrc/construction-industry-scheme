@@ -22,8 +22,7 @@ import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, INTERNAL_SERVER_ERROR, NOT_FOUND, OK, UNAUTHORIZED}
-import play.api.libs.json.JsValue
-import play.api.libs.ws.DefaultBodyWritables.writeableOf_String
+import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, AuthStub}
 
 class MonthlyReturnsControllerIntegrationSpec
@@ -32,9 +31,9 @@ class MonthlyReturnsControllerIntegrationSpec
     with ScalaFutures
     with IntegrationPatience {
 
-  private val instanceIdUrl     = s"http://localhost:$port/cis/taxpayer"
-  private val monthlyReturnsUrl = s"http://localhost:$port/cis/monthly-returns"
-  private val createNilUrl       = s"http://localhost:$port/cis/monthly-returns/nil/create"
+  private val taxpayerUrl = s"$base/taxpayer"
+  private val monthlyReturnsUrl = s"$base/monthly-returns"
+  private val createNilUrl = s"$base/monthly-returns/nil/create"
 
   "GET /cis/taxpayer" should {
 
@@ -49,7 +48,7 @@ class MonthlyReturnsControllerIntegrationSpec
           ))
           .willReturn(aResponse().withStatus(200).withBody(
             """{
-              |  "uniqueId": "abc-123",
+              |  "uniqueId": "123",
               |  "taxOfficeNumber": "111",
               |  "taxOfficeRef": "test111",
               |  "employerName1": "TEST LTD"
@@ -57,13 +56,14 @@ class MonthlyReturnsControllerIntegrationSpec
           ))
       )
 
-      val resp = wsClient.url(instanceIdUrl)
-        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token")
-        .get()
-        .futureValue
+      val resp = getJson(
+        taxpayerUrl,
+        "X-Session-Id" -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
 
       resp.status mustBe OK
-      (resp.json \ "uniqueId").as[String] mustBe "abc-123"
+      (resp.json \ "uniqueId").as[String] mustBe "123"
       (resp.json \ "taxOfficeNumber").as[String] mustBe "111"
       (resp.json \ "taxOfficeRef").as[String] mustBe "test111"
       (resp.json \ "employerName1").asOpt[String] mustBe Some("TEST LTD")
@@ -79,10 +79,11 @@ class MonthlyReturnsControllerIntegrationSpec
           .willReturn(aResponse().withStatus(404))
       )
 
-      val resp = wsClient.url(instanceIdUrl)
-        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token")
-        .get()
-        .futureValue
+      val resp = getJson(
+        taxpayerUrl,
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
 
       resp.status mustBe NOT_FOUND
     }
@@ -90,9 +91,7 @@ class MonthlyReturnsControllerIntegrationSpec
     "return 401 when there is no active session" in {
       AuthStub.noActiveSession()
 
-      val resp = wsClient.url(instanceIdUrl)
-        .get()
-        .futureValue
+      val resp = getJson(taxpayerUrl)
 
       resp.status mustBe UNAUTHORIZED
     }
@@ -105,10 +104,11 @@ class MonthlyReturnsControllerIntegrationSpec
           .willReturn(aResponse().withStatus(502).withBody("bad gateway"))
       )
 
-      val resp = wsClient.url(instanceIdUrl)
-        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token")
-        .get()
-        .futureValue
+      val resp = getJson(
+        taxpayerUrl,
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
 
       resp.status mustBe BAD_GATEWAY
       (resp.json \ "message").as[String].toLowerCase must include ("bad gateway")
@@ -122,7 +122,7 @@ class MonthlyReturnsControllerIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-returns"))
-          .withRequestBody(equalToJson("""{"instanceId":"abc-123"}""", true, true))
+          .withRequestBody(equalToJson("""{"instanceId":"123"}""", true, true))
           .willReturn(aResponse().withStatus(200).withBody(
             """{
               | "monthlyReturnList": [
@@ -132,27 +132,30 @@ class MonthlyReturnsControllerIntegrationSpec
               |}""".stripMargin))
       )
 
-      val resp = wsClient.url(s"$monthlyReturnsUrl?cisId=abc-123")
-        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token")
-        .get()
-        .futureValue
+      val resp = getJsonWithQuery(
+        monthlyReturnsUrl,
+        "cisId", "123",
+        "X-Session-Id" -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
 
       resp.status mustBe OK
       (resp.json \ "monthlyReturnList").as[Seq[JsValue]].size mustBe 2
 
       verify(
         postRequestedFor(urlPathEqualTo("/formp-proxy/monthly-returns"))
-          .withRequestBody(equalToJson("""{"instanceId":"abc-123"}""", true, true))
+          .withRequestBody(equalToJson("""{"instanceId":"123"}""", true, true))
       )
     }
 
     "return 400 when cisId query param is missing" in {
       AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
 
-      val resp = wsClient.url(monthlyReturnsUrl)
-        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token")
-        .get()
-        .futureValue
+      val resp = getJson(
+        monthlyReturnsUrl,
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
 
       resp.status mustBe BAD_REQUEST
       (resp.json \ "message").as[String].toLowerCase must include ("missing 'cisid'")
@@ -164,20 +167,22 @@ class MonthlyReturnsControllerIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-returns"))
-          .withRequestBody(equalToJson("""{"instanceId":"abc-123"}""", true, true))
+          .withRequestBody(equalToJson("""{"instanceId":"123"}""", true, true))
           .willReturn(aResponse().withStatus(500).withBody("FormP error"))
       )
 
-      val resp = wsClient.url(s"$monthlyReturnsUrl?cisId=abc-123")
-        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token")
-        .get()
-        .futureValue
+      val resp = getJsonWithQuery(
+        monthlyReturnsUrl,
+        "cisId", "123",
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
 
       resp.status mustBe INTERNAL_SERVER_ERROR
       (resp.json \ "message").as[String].toLowerCase must include ("formp error")
     }
   }
-  
+
   "POST /cis/monthly-returns/nil/create" should {
 
     "return 200 with MonthlyReturn when FormP succeeds" in {
@@ -185,7 +190,7 @@ class MonthlyReturnsControllerIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-returns"))
-          .withRequestBody(equalToJson("""{"instanceId": "abc-123"}"""))
+          .withRequestBody(equalToJson("""{"instanceId": "123"}"""))
           .willReturn(aResponse().withStatus(200).withBody("""{"monthlyReturnList": [], "schemeVersion": 1}"""))
       )
 
@@ -193,7 +198,7 @@ class MonthlyReturnsControllerIntegrationSpec
         post(urlPathEqualTo("/formp-proxy/monthly-return/nil/create"))
           .withRequestBody(equalToJson(
             """{
-              |  "instanceId": "abc-123",
+              |  "instanceId": "123",
               |  "taxYear": 2024,
               |  "taxMonth": 10,
               |  "decNilReturnNoPayments": "Y",
@@ -204,18 +209,20 @@ class MonthlyReturnsControllerIntegrationSpec
           .willReturn(aResponse().withStatus(200).withBody("""{ "status": "STARTED" }"""))
       )
 
-      val resp = wsClient.url(createNilUrl)
-        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token", "Content-Type" -> "application/json")
-        .post(
+      val resp = postJson(
+        createNilUrl,
+        Json.parse(
           """{
-            |  "instanceId": "abc-123",
+            |  "instanceId": "123",
             |  "taxYear": 2024,
             |  "taxMonth": 10,
             |  "decNilReturnNoPayments": "Y",
             |  "decInformationCorrect": "Y"
             |}""".stripMargin
-        )
-        .futureValue
+        ),
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
 
       resp.status mustBe CREATED
       (resp.json \ "status").as[String] mustBe "STARTED"
@@ -228,7 +235,7 @@ class MonthlyReturnsControllerIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-returns"))
-          .withRequestBody(equalToJson("""{"instanceId": "abc-123"}"""))
+          .withRequestBody(equalToJson("""{"instanceId": "123"}"""))
           .willReturn(aResponse().withStatus(200).withBody("""{"monthlyReturnList": [], "schemeVersion": 1}"""))
       )
 
@@ -237,21 +244,23 @@ class MonthlyReturnsControllerIntegrationSpec
           .willReturn(aResponse().withStatus(502).withBody("bad gateway"))
       )
 
-      val resp = wsClient.url(createNilUrl)
-        .addHttpHeaders("X-Session-Id" -> "it-session-123", "Authorization" -> "Bearer it-token", "Content-Type" -> "application/json")
-        .post(
+      val resp = postJson(
+        createNilUrl,
+        Json.parse(
           """{
-            |  "instanceId": "abc-123",
+            |  "instanceId": "123",
             |  "taxYear": 2024,
             |  "taxMonth": 10,
             |  "decNilReturnNoPayments": "Y",
             |  "decInformationCorrect": "confirmed"
             |}""".stripMargin
-        )
-        .futureValue
+        ),
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
 
       resp.status mustBe BAD_GATEWAY
       (resp.json \ "message").as[String].toLowerCase must include ("bad gateway")
     }
+      }
   }
-}

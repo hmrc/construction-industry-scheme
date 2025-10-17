@@ -27,7 +27,7 @@ case class UpdateSubmissionRequest(
                                     submittableStatus: String,
                                     amendment: Option[String] = None,
                                     hmrcMarkGgis: Option[String] = None,
-                                    submissionRequestDate: Option[Instant],
+                                    submissionRequestDate: Option[Instant] = None,
                                     acceptedTime: Option[String] = None,
                                     emailRecipient: Option[String] = None,
                                     agentId: Option[String] = None,

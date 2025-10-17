@@ -19,114 +19,317 @@ package controllers
 import base.SpecBase
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
-import org.mockito.{ArgumentCaptor, ArgumentMatchers}
-import play.api.http.Status.{BAD_REQUEST, INTERNAL_SERVER_ERROR, OK}
-import play.api.libs.json.{JsValue, Json}
-import play.api.mvc.Result
+import org.mockito.ArgumentMatchers
+import org.scalatest.EitherValues
+import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, NO_CONTENT, OK, UNAUTHORIZED}
+import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.test.FakeRequest
-import play.api.test.Helpers.{CONTENT_TYPE, POST, contentAsJson, status}
+import play.api.test.Helpers.{CONTENT_TYPE, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisSubmissionRequest
-import uk.gov.hmrc.constructionindustryscheme.services.ChrisService
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
+import uk.gov.hmrc.http.HeaderCarrier
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
-class SubmissionControllerSpec extends SpecBase {
 
-  "ChrisSubmissionController.submitNilMonthlyReturn" - {
+final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
-    "return 200 with success JSON when service returns HttpResponse (happy path)" in new SetupAuth {
-      val validJson: JsValue = Json.obj(
-        "utr" -> "1234567890",
-        "aoReference" -> "123/AB456",
-        "informationCorrect" -> "yes",
-        "inactivity" -> "yes",
-        "monthYear" -> "2025-09"
-      )
+  private val submissionId = "sub-123"
 
-      val expectedDto = ChrisSubmissionRequest(
-        utr = "1234567890",
-        aoReference = "123/AB456",
-        informationCorrect = "yes",
-        inactivity = "yes",
-        monthYear = "2025-09"
-      )
+  private val validJson: JsValue = Json.obj(
+    "utr" -> "1234567890",
+    "aoReference" -> "123/AB456",
+    "informationCorrect" -> "yes",
+    "inactivity" -> "yes",
+    "monthYear" -> "2025-09"
+  )
 
-      when(mockChrisService.submitNilMonthlyReturn(any[ChrisSubmissionRequest], any())(any[HeaderCarrier]))
-        .thenReturn(Future.successful(HttpResponse(200, "<Ack/>")))
+  "submitToChris" - {
+
+    "returns 200 with SUBMITTED when service returns SubmittedStatus" in {
+      val service    = mock[SubmissionService]
+      val controller = new SubmissionController(fakeAuthAction(), service, cc)
+
+      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED)))
 
       val request: FakeRequest[JsValue] =
-        FakeRequest(POST, "/cis/chris").withBody(validJson).withHeaders(CONTENT_TYPE -> "application/json")
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
 
-      val result: Future[Result] = controller.submitNilMonthlyReturn(request)
+      val result= controller.submitToChris(submissionId)(request)
 
       status(result) mustBe OK
-      val json = contentAsJson(result)
-      (json \ "success").as[Boolean] mustBe true
-      (json \ "status").as[Int] mustBe 200
-      (json \ "body").as[String] mustBe "<Ack/>"
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
 
-      val dtoCaptor: ArgumentCaptor[ChrisSubmissionRequest] =
-        ArgumentCaptor.forClass(classOf[ChrisSubmissionRequest])
-      verify(mockChrisService).submitNilMonthlyReturn(dtoCaptor.capture(), any())(any[HeaderCarrier])
-      dtoCaptor.getValue mustBe expectedDto
+      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
     }
 
-    "return 400 with validation errors when JSON is invalid" in new SetupAuth {
-      val invalidJson: JsValue = Json.obj(
-        "utr" -> 123, // wrong format
-        "monthYear" -> "2025-09"
-      )
+    "returns 202 with ACCEPTED when service returns AcceptedStatus (includes nextPollInSeconds)" in {
+      val service    = mock[SubmissionService]
+      val controller = new SubmissionController(fakeAuthAction(), service, cc)
 
-      val request: FakeRequest[JsValue] =
-        FakeRequest(POST, "/cis/chris").withBody(invalidJson).withHeaders(CONTENT_TYPE -> "application/json")
+      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(mkSubmissionResult(ACCEPTED)))
 
-      val result: Future[Result] = controller.submitNilMonthlyReturn(request)
+      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(req)
+
+      status(result) mustBe 202
+      val js = contentAsJson(result)
+      (js \ "status").as[String] mustBe "ACCEPTED"
+      (js \ "nextPollInSeconds").as[Int] mustBe 15
+    }
+
+    "returns 200 with DEPARTMENTAL_ERROR and error object when service returns DepartmentalErrorStatus" in {
+      val service    = mock[SubmissionService]
+      val controller = new SubmissionController(fakeAuthAction(), service, cc)
+
+      val err = GovTalkError("1234", "fatal", "boom")
+      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(mkSubmissionResult(DEPARTMENTAL_ERROR, Some(err))))
+
+      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(req)
+
+      status(result) mustBe OK
+      val js = contentAsJson(result)
+      (js \ "status").as[String] mustBe "DEPARTMENTAL_ERROR"
+      val e = (js \ "error").as[JsObject]
+      (e \ "number").as[String] mustBe "1234"
+      (e \ "type").as[String] mustBe "fatal"
+      (e \ "text").as[String].toLowerCase must include ("boom")
+    }
+
+    "returns 400 when request JSON is invalid" in {
+      val service    = mock[SubmissionService]
+      val controller = new SubmissionController(fakeAuthAction(), service, cc)
+
+      val badJson = Json.obj("utr" -> 123)
+
+      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+        .withBody(badJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(req)
 
       status(result) mustBe BAD_REQUEST
-      val json = contentAsJson(result)
-      (json \ "message").isDefined mustBe true
-      // Optional: assert error keys exist
-      json.toString must include("utr")
-      json.toString must include("aoReference")
+      (contentAsJson(result) \ "message").isDefined mustBe true
 
-      verifyNoInteractions(mockChrisService)
+      verifyNoInteractions(service)
     }
 
-    "return 500 with message when service fails (e.g. RuntimeException)" in new SetupAuth {
-      val validJson: JsValue = Json.obj(
-        "utr" -> "1234567890",
-        "aoReference" -> "123/AB456",
-        "informationCorrect" -> "yes",
-        "inactivity" -> "yes",
-        "monthYear" -> "2025-09"
-      )
+    "returns 502 BadGateway when service fails" in {
+      val service    = mock[SubmissionService]
+      val controller = new SubmissionController(fakeAuthAction(), service, cc)
 
-      when(mockChrisService.submitNilMonthlyReturn(any[ChrisSubmissionRequest], any())(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
-      val request: FakeRequest[JsValue] =
-        FakeRequest(POST, "/cis/chris").withBody(validJson).withHeaders(CONTENT_TYPE -> "application/json")
+      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
 
-      val result: Future[Result] = controller.submitNilMonthlyReturn(request)
+      val result = controller.submitToChris(submissionId)(req)
 
-      status(result) mustBe INTERNAL_SERVER_ERROR
-      val json = contentAsJson(result)
-      (json \ "success").as[Boolean] mustBe false
-      (json \ "message").as[String] must include("boom")
+      status(result) mustBe BAD_GATEWAY
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "FATAL_ERROR"
+      (js \ "error").as[String] mustBe "upstream-failure"
+
+      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
     }
   }
 
-  private trait BaseSetup {
-    val mockChrisService: ChrisService = mock[ChrisService]
-    implicit val ec: ExecutionContext = cc.executionContext
-    implicit val hc: HeaderCarrier = HeaderCarrier()
+  "createAndTrackSubmission" - {
+
+    val validCreateJson = Json.obj(
+      "instanceId" -> "123",
+      "taxYear" -> 2024,
+      "taxMonth" -> 4
+      // emailRecipient optional
+    )
+
+    "returns 201 with submissionId when service returns id" in {
+      val service = mock[SubmissionService]
+      val controller = new SubmissionController(fakeAuthAction(), service, cc)
+
+      when(service.createAndTrackSubmission(any[CreateAndTrackSubmissionRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.successful("sub-999"))
+
+      val req = FakeRequest(POST, "/cis/submissions/create-and-track")
+        .withBody(validCreateJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.createAndTrackSubmission(req)
+
+      status(result) mustBe CREATED
+      (contentAsJson(result) \ "submissionId").as[String] mustBe "sub-999"
+
+      verify(service).createAndTrackSubmission(any[CreateAndTrackSubmissionRequest])(any[HeaderCarrier])
+    }
+
+    "returns 400 when JSON is invalid" in {
+      val service = mock[SubmissionService]
+      val controller = new SubmissionController(fakeAuthAction(), service, cc)
+
+      val bad = Json.obj("taxYear" -> 2024) // missing required fields
+
+      val req = FakeRequest(POST, "/cis/submissions/create-and-track")
+        .withBody(bad)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.createAndTrackSubmission(req)
+
+      status(result) mustBe BAD_REQUEST
+      contentAsJson(result).toString must include("obj.instanceId")
+      verifyNoInteractions(service)
+    }
+
+    "returns 502 when service fails" in {
+      val service = mock[SubmissionService]
+      val controller = new SubmissionController(fakeAuthAction(), service, cc)
+
+      when(service.createAndTrackSubmission(any[CreateAndTrackSubmissionRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("formp down")))
+
+      val req = FakeRequest(POST, "/cis/submissions/create-and-track")
+        .withBody(validCreateJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.createAndTrackSubmission(req)
+
+      status(result) mustBe BAD_GATEWAY
+      (contentAsJson(result) \ "message").as[String] mustBe "create-submission-failed"
+    }
+
+    "returns 401 when unauthorised" in {
+      val service = mock[SubmissionService]
+      val controller = new SubmissionController(rejectingAuthAction, service, cc)
+
+      val req = FakeRequest(POST, "/cis/submissions/create-and-track")
+        .withBody(validCreateJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.createAndTrackSubmission(req)
+
+      status(result) mustBe UNAUTHORIZED
+      verifyNoInteractions(service)
+    }
   }
 
-  private trait SetupAuth extends BaseSetup {
-    private val auth = fakeAuthAction(ton = "123", tor = "AB456")
-    val controller = new SubmissionController(auth, mockChrisService, cc)
+  "updateSubmission" - {
+
+    val minimalUpdateJson = Json.obj(
+      "instanceId" -> "123",
+      "taxYear" -> 2024,
+      "taxMonth" -> 4,
+      "submittableStatus" -> "REJECTED"
+    )
+
+    "returns 204 NoContent when service updates ok" in {
+      val service = mock[SubmissionService]
+      val controller = new SubmissionController(fakeAuthAction(), service, cc)
+
+      when(service.updateSubmission(any[UpdateSubmissionRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.unit)
+
+      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/update")
+        .withBody(minimalUpdateJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.updateSubmission(submissionId)(req)
+
+      status(result) mustBe NO_CONTENT
+      verify(service).updateSubmission(any[UpdateSubmissionRequest])(any[HeaderCarrier])
+    }
+
+    "returns 400 when JSON is invalid" in {
+      val service = mock[SubmissionService]
+      val controller = new SubmissionController(fakeAuthAction(), service, cc)
+
+      val bad = Json.obj("instanceId" -> "123")
+
+      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/update")
+        .withBody(bad)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.updateSubmission(submissionId)(req)
+
+      status(result) mustBe BAD_REQUEST
+      verifyNoInteractions(service)
+    }
+
+    "returns 502 BadGateway when service fails" in {
+      val service = mock[SubmissionService]
+      val controller = new SubmissionController(fakeAuthAction(), service, cc)
+
+      when(service.updateSubmission(any[UpdateSubmissionRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("formp update failed")))
+
+      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/update")
+        .withBody(minimalUpdateJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.updateSubmission(submissionId)(req)
+
+      status(result) mustBe BAD_GATEWAY
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "message").as[String] mustBe "update-submission-failed"
+    }
+
+    "returns 401 when unauthorised" in {
+      val service = mock[SubmissionService]
+      val controller = new SubmissionController(rejectingAuthAction, service, cc)
+
+      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/update")
+        .withBody(minimalUpdateJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.updateSubmission(submissionId)(req)
+
+      status(result) mustBe UNAUTHORIZED
+      verifyNoInteractions(service)
+    }
   }
+
+
+  private def mkMeta(
+                      corrId: String = "CID123",
+                      pollSecs: Int = 15,
+                      ts: String = "2025-01-01T00:00:00Z",
+                      err: Option[GovTalkError] = None
+                    ): GovTalkMeta =
+    GovTalkMeta(
+      qualifier = "response",
+      function = "submit",
+      className = "CIS300MR",
+      correlationId = corrId,
+      gatewayTimestamp = ts,
+      responseEndPoint = ResponseEndPoint("/poll", pollSecs),
+      error = err
+    )
+
+  private def mkSubmissionResult(
+                                  status: SubmissionStatus,
+                                  err: Option[GovTalkError] = None
+                                ): SubmissionResult =
+    SubmissionResult(
+      status = status,
+      rawXml = "<ack/>",
+      meta = mkMeta(err = err)
+    )
 
 }

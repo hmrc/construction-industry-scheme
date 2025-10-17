@@ -25,7 +25,7 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.{BaseOneAppPerSuite, FakeApplicationFactory}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.mvc.{AnyContentAsEmpty, ControllerComponents, PlayBodyParsers}
+import play.api.mvc.{AnyContent, AnyContentAsEmpty, BodyParser, ControllerComponents, PlayBodyParsers, Request, Result, Results}
 import play.api.test.{DefaultAwaitTimeout, FakeRequest}
 import play.api.test.Helpers.stubControllerComponents
 import uk.gov.hmrc.auth.core.{Enrolment, EnrolmentIdentifier, Enrolments}
@@ -34,7 +34,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.CisTaxpayer
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
 import uk.gov.hmrc.http.{HeaderCarrier, SessionId}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 trait SpecBase
   extends AnyFreeSpec
@@ -68,6 +68,17 @@ trait SpecBase
 
   def noEnrolmentReferenceAuthAction: AuthAction =
     FakeAuthAction.empty(bodyParsers)
+
+  def rejectingAuthAction: AuthAction = new AuthAction {
+    override def parser: BodyParser[AnyContent] = bodyParsers.default
+    override protected def executionContext: ExecutionContext = ec
+
+    override def invokeBlock[A](
+     request: Request[A],
+     block: AuthenticatedRequest[A] => Future[Result]
+    ): Future[Result] =
+      Future.successful(Results.Unauthorized)
+  }
 
   def mkTaxpayer(
     id: String = "CIS-123",
