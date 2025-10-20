@@ -133,6 +133,10 @@ object ChrisEnvelopeBuilder extends IrMarkGenerator {
     XML.withSAXParser(secureSAXParser).loadString(subbed)
   }
 
+  def extractIrMark(envelopeXml: Elem): String = {
+    (envelopeXml \\ "IRmark").text
+  }
+
   private def extractTaxOfficeFromCisEnrolment(enrolments: Enrolments): Option[(String, String)] =
     enrolments
       .getEnrolment("HMRC-CIS-ORG")

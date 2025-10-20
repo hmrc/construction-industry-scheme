@@ -139,6 +139,51 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         (contentAsJson(result) \ "message").as[String] must equal ("Unexpected error")
       }
     }
+
+    "GET /cis/scheme/email/:instanceId (getSchemeEmail)" - {
+
+      "return 200 with email when service returns Some" in new SetupAuthOnly {
+        when(mockMonthlyReturnService.getSchemeEmail(eqTo("CIS-123"))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(Some("x@y.com")))
+
+        val result: Future[Result] = controller.getSchemeEmail("CIS-123")(fakeRequest)
+
+        status(result) mustBe OK
+        (contentAsJson(result) \ "email").asOpt[String] mustBe Some("x@y.com")
+        verify(mockMonthlyReturnService).getSchemeEmail(eqTo("CIS-123"))(any[HeaderCarrier])
+      }
+
+      "return 200 with null when service returns None" in new SetupAuthOnly {
+        when(mockMonthlyReturnService.getSchemeEmail(eqTo("CIS-123"))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(None))
+
+        val result: Future[Result] = controller.getSchemeEmail("CIS-123")(fakeRequest)
+
+        status(result) mustBe OK
+        (contentAsJson(result) \ "email").toOption.flatMap(_.asOpt[String]) mustBe None
+      }
+
+      
+      "map UpstreamErrorResponse to same status with message" in new SetupAuthOnly {
+        when(mockMonthlyReturnService.getSchemeEmail(eqTo("CIS-123"))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("boom from upstream", BAD_GATEWAY)))
+
+        val result: Future[Result] = controller.getSchemeEmail("CIS-123")(fakeRequest)
+
+        status(result) mustBe BAD_GATEWAY
+        (contentAsJson(result) \ "message").as[String] must include ("boom from upstream")
+      }
+
+      "return 500 Unexpected error on unknown exception" in new SetupAuthOnly {
+        when(mockMonthlyReturnService.getSchemeEmail(eqTo("CIS-123"))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("unexpected-exception")))
+
+        val result: Future[Result] = controller.getSchemeEmail("CIS-123")(fakeRequest)
+
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        (contentAsJson(result) \ "message").as[String] must equal ("Unexpected error")
+      }
+    }
   }
 
     "POST /cis/monthly-returns/nil (createNil)" - {
