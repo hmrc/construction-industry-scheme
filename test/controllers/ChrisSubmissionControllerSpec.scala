@@ -28,7 +28,8 @@ import play.api.test.Helpers.{CONTENT_TYPE, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.controllers.ChrisSubmissionController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisSubmissionRequest
 import uk.gov.hmrc.constructionindustryscheme.services.ChrisService
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
+import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisSubmissionResponse
+import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -36,7 +37,7 @@ class ChrisSubmissionControllerSpec extends SpecBase {
 
   "ChrisSubmissionController.submitNilMonthlyReturn" - {
 
-    "return 200 with success JSON when service returns HttpResponse (happy path)" in new SetupAuth {
+    "return 200 with success JSON when service returns ChrisSubmissionResponse (happy path)" in new SetupAuth {
       val validJson: JsValue = Json.obj(
         "utr" -> "1234567890",
         "aoReference" -> "123/AB456",
@@ -54,7 +55,7 @@ class ChrisSubmissionControllerSpec extends SpecBase {
       )
 
       when(mockChrisService.submitNilMonthlyReturn(any[ChrisSubmissionRequest], any())(any[HeaderCarrier]))
-        .thenReturn(Future.successful(HttpResponse(200, "<Ack/>")))
+        .thenReturn(Future.successful(ChrisSubmissionResponse(200, "<Ack/>", "Pyy1LRJh053AE+nuyp0GJR7oESw=")))
 
       val request: FakeRequest[JsValue] =
         FakeRequest(POST, "/cis/chris").withBody(validJson).withHeaders(CONTENT_TYPE -> "application/json")
@@ -66,6 +67,7 @@ class ChrisSubmissionControllerSpec extends SpecBase {
       (json \ "success").as[Boolean] mustBe true
       (json \ "status").as[Int] mustBe 200
       (json \ "body").as[String] mustBe "<Ack/>"
+      (json \ "irMark").as[String] mustBe "Pyy1LRJh053AE+nuyp0GJR7oESw="
 
       val dtoCaptor: ArgumentCaptor[ChrisSubmissionRequest] =
         ArgumentCaptor.forClass(classOf[ChrisSubmissionRequest])

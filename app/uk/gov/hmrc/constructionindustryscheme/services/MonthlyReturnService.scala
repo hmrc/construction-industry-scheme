@@ -54,5 +54,8 @@ class MonthlyReturnService @Inject()(
       }
     }
 
+  def getSchemeEmail(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[String]] =
+    formp.getSchemeEmail(instanceId)
+
 }
 

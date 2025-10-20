@@ -51,4 +51,9 @@ class FormpProxyConnector @Inject()(
         )
       )
       .execute[CreateNilMonthlyReturnResponse]
+
+  def getSchemeEmail(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[String]] =
+    http.post(url"$base/scheme/email")
+      .withBody(Json.obj("instanceId" -> instanceId))
+      .execute[Option[String]]
 }

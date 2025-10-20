@@ -88,6 +88,18 @@ class MonthlyReturnsController @Inject()(
           .recover { case u: UpstreamErrorResponse => Status(u.statusCode)(Json.obj("message" -> u.message)) }
     )
   }
+
+  def getSchemeEmail(instanceId: String): Action[AnyContent] = authorise.async { implicit request =>
+    service.getSchemeEmail(instanceId)
+      .map(email => Ok(Json.obj("email" -> email)))
+      .recover {
+        case u: UpstreamErrorResponse =>
+          Status(u.statusCode)(Json.obj("message" -> u.message))
+        case t: Throwable =>
+          logger.error("[getSchemeEmail] failed", t)
+          InternalServerError(Json.obj("message" -> "Unexpected error"))
+      }
+  }
 }
 
 
