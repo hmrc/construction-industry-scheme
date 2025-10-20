@@ -85,7 +85,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       status(result) mustBe 202
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "ACCEPTED"
-      (js \ "nextPollInSeconds").as[Int] mustBe 15
+      (js \ "responseEndPoint" \ "pollIntervalSeconds").as[Int] mustBe 15
+      (js \ "responseEndPoint" \ "url").as[String] must include("/poll")
     }
 
     "returns 200 with DEPARTMENTAL_ERROR and error object when service returns DepartmentalErrorStatus" in {

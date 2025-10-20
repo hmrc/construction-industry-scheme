@@ -107,7 +107,17 @@ class SubmissionController @Inject()(
 
     def withStatus(s: String): JsObject = base ++ Json.obj("status" -> s)
 
-    def withPoll(o: JsObject): JsObject = o ++ Json.obj("nextPollInSeconds" -> res.meta.responseEndPoint.pollIntervalSeconds)
+//    def withPoll(o: JsObject): JsObject = o ++ Json.obj("nextPollInSeconds" -> res.meta.responseEndPoint.pollIntervalSeconds)
+
+    def withPoll(o: JsObject): JsObject = {
+      val endpoint = res.meta.responseEndPoint
+      o ++ Json.obj(
+        "responseEndPoint" -> Json.obj(
+          "url" -> endpoint.url,
+          "pollIntervalSeconds" -> endpoint.pollIntervalSeconds
+        )
+      )
+    }
 
     def errorObj(defaultText: String): JsObject =
       Json.obj("error" ->
