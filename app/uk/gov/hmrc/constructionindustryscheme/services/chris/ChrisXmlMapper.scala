@@ -48,16 +48,16 @@ object ChrisXmlMapper {
 
   def parse(xml: String): Either[String, SubmissionResult] = {
     val doc = XML.loadString(xml)
-    val md = doc \\ "Header" \\ "MessageDetails"
+    val messageDetails = doc \\ "Header" \\ "MessageDetails"
 
     for {
-      qualifier <- textRequired(md, "Qualifier", "Qualifier")
-      function <- textRequired(md, "Function", "Function")
-      className <- textRequired(md, "Class", "Class")
-      correlationId <- textRequired(md, "CorrelationID", "CorrelationID")
-      gatewayTimestamp <- textRequired(md, "GatewayTimestamp", "GatewayTimestamp")
-      pollIntervalOpt: Option[Int] = intAttrOptional(md, "ResponseEndPoint", "PollInterval")
-      endpointUrlOpt: Option[String] = textOptional(md, "ResponseEndPoint")
+      qualifier <- textRequired(messageDetails, "Qualifier", "Qualifier")
+      function <- textRequired(messageDetails, "Function", "Function")
+      className <- textRequired(messageDetails, "Class", "Class")
+      correlationId <- textRequired(messageDetails, "CorrelationID", "CorrelationID")
+      gatewayTimestamp <- textRequired(messageDetails, "GatewayTimestamp", "GatewayTimestamp")
+      pollIntervalOpt: Option[Int] = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
+      endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
       errOpt <- parseError(qualifier, doc)
     } yield {
       val status: SubmissionStatus = qualifier.toLowerCase match {
