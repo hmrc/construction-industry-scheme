@@ -92,7 +92,7 @@ final class ChrisConnectorIntegrationSpec
 
     "on 500 -> returns FATAL_ERROR(http-500) with truncated body (255 chars)" in {
       val correlationId = "cid-500"
-      val longBody = ("boom" * 100)
+      val longBody = "boom" * 100
       stubFor(
         post(urlPathEqualTo(path))
           .withRequestBody(equalToXml(xmlString))
