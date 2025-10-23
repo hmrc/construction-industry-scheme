@@ -29,7 +29,7 @@ import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, GovTalkError, GovTalkMeta, PENDING, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -105,26 +105,6 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "SUBMITTED_NO_RECEIPT"
       (js \ "submissionId").as[String] mustBe submissionId
-    }
-
-    "returns 202 with PENDING when service returns PendingStatus (includes responseEndPoint)" in {
-      val service = mock[SubmissionService]
-      val controller = mkController(service)
-
-      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
-        .thenReturn(Future.successful(mkSubmissionResult(PENDING)))
-
-      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
-        .withBody(validJson)
-        .withHeaders(CONTENT_TYPE -> JSON)
-
-      val result = controller.submitToChris(submissionId)(req)
-
-      status(result) mustBe 202
-      val js = contentAsJson(result)
-      (js \ "status").as[String] mustBe "PENDING"
-      (js \ "responseEndPoint" \ "pollIntervalSeconds").as[Int] mustBe 15
-      (js \ "responseEndPoint" \ "url").as[String] must include("/poll")
     }
 
     "returns 202 with ACCEPTED when service returns AcceptedStatus (includes nextPollInSeconds)" in {
