@@ -17,74 +17,114 @@
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
 import com.github.tomakehurst.wiremock.client.WireMock.*
+import com.github.tomakehurst.wiremock.http.Fault
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.OptionValues
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, ItResources}
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
+import uk.gov.hmrc.constructionindustryscheme.models.FATAL_ERROR
 
 import scala.xml.{Elem, XML}
 
-class ChrisConnectorIntegrationSpec
-  extends ApplicationWithWiremock
-    with Matchers
+final class ChrisConnectorIntegrationSpec
+  extends Matchers
     with ScalaFutures
-    with IntegrationPatience {
-
-  implicit val hc: HeaderCarrier = HeaderCarrier()
-
+    with IntegrationPatience
+    with OptionValues
+    with ApplicationWithWiremock {
+  
   private lazy val connector = app.injector.instanceOf[ChrisConnector]
-  private val path      = "/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+  private val path = "/submission/ChRIS/CISR/Filing/sync/CIS300MR"
 
   private lazy val xmlString: String = ItResources.read("chris/envelopes/nil_monthly_return.xml")
   private lazy val envelope: Elem = XML.loadString(xmlString)
 
   "ChrisConnector.submitEnvelope" should {
 
-    "POST XML to /submission/... and return HttpResponse on 200" in {
+    "on 2xx but unparsable XML -> returns FATAL_ERROR(parse) and preserves correlationId" in {
+      val correlationId = "cid-123"
+
       stubFor(
         post(urlPathEqualTo(path))
           .withHeader("Content-Type", equalTo("application/xml"))
+          .withHeader("Accept", equalTo("application/xml"))
+          .withHeader("CorrelationId", equalTo(correlationId))
           .withRequestBody(equalToXml(xmlString))
-          .willReturn(
-            aResponse()
-              .withStatus(200)
-              .withHeader("Content-Type", "application/xml")
-              .withBody("<Ack>OK</Ack>")
+          .willReturn(aResponse()
+            .withStatus(200)
+            .withHeader("Content-Type", "application/xml")
+            .withBody("<Ack>OK</Ack>")
           )
       )
 
-      val result: HttpResponse = connector.submitEnvelope(envelope).futureValue
-      result.status mustBe 200
-      result.body   mustBe "<Ack>OK</Ack>"
+      val result = connector.submitEnvelope(envelope, correlationId).futureValue
 
-      verify(
-        postRequestedFor(urlPathEqualTo(path))
-          .withHeader("Content-Type", equalTo("application/xml"))
+      result.status mustBe FATAL_ERROR
+      result.rawXml mustBe "<Ack>OK</Ack>"
+      result.meta.correlationId mustBe correlationId
+      result.meta.error.value.errorNumber mustBe "parse"
+
+      verify(postRequestedFor(urlPathEqualTo(path))
+        .withHeader("CorrelationId", equalTo(correlationId))
+        .withHeader("Content-Type", equalTo("application/xml"))
+        .withHeader("Accept", equalTo("application/xml"))
       )
     }
 
-    "fail the future with UpstreamErrorResponse on 500" in {
+    "on 500 -> returns FATAL_ERROR(http-500) with truncated body (255 chars)" in {
+      val correlationId = "cid-500"
+      val longBody = ("boom" * 100)
       stubFor(
         post(urlPathEqualTo(path))
           .withRequestBody(equalToXml(xmlString))
-          .willReturn(aResponse().withStatus(500).withBody("boom"))
+          .willReturn(aResponse()
+            .withStatus(500)
+            .withHeader("Content-Type", "application/xml")
+            .withBody(longBody)
+          )
       )
 
-      val response = connector.submitEnvelope(envelope).futureValue
-      response.status mustBe 500
-      response.body must include("boom")
+      val result = connector.submitEnvelope(envelope, correlationId).futureValue
+
+      result.status mustBe FATAL_ERROR
+      result.meta.error.value.errorNumber mustBe "http-500"
+
+      val errText = result.meta.error.value.errorText
+      errText.length must be <= 256
+      errText must endWith("…")
     }
 
-    "fail the future with UpstreamErrorResponse on 404" in {
+    "on 404 -> returns FATAL_ERROR(http-404)" in {
+      val correlationId = "cid-404"
+
       stubFor(
         post(urlPathEqualTo(path))
           .withRequestBody(equalToXml(xmlString))
           .willReturn(aResponse().withStatus(404))
       )
 
-      val response = connector.submitEnvelope(envelope).futureValue
-      response.status mustBe 404
+      val result = connector.submitEnvelope(envelope, correlationId).futureValue
+
+      result.status mustBe FATAL_ERROR
+      result.meta.error.value.errorNumber mustBe "http-404"
+    }
+
+    "on connection fault -> returns FATAL_ERROR(conn)" in {
+      val correlationId = "cid-conn"
+
+      stubFor(
+        post(urlPathEqualTo(path))
+          .withRequestBody(equalToXml(xmlString))
+          .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER))
+      )
+
+      val result = connector.submitEnvelope(envelope, correlationId).futureValue
+
+      result.status mustBe FATAL_ERROR
+      result.meta.error.value.errorNumber mustBe "conn"
+      result.rawXml mustBe "<connection-error/>"
     }
   }
 }

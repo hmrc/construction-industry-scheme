@@ -23,16 +23,13 @@ import org.scalatest.matchers.must.Matchers.mustBe
 import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
 import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
-import uk.gov.hmrc.http.HeaderCarrier
 
 class DatacacheProxyConnectorIntegrationSpec
   extends ApplicationWithWiremock
     with Matchers
     with ScalaFutures
     with IntegrationPatience {
-
-  implicit val hc: HeaderCarrier = HeaderCarrier()
-
+  
   private val connector = app.injector.instanceOf[DatacacheProxyConnector]
 
   private val er = EmployerReference("111", "test111")
@@ -77,7 +74,7 @@ class DatacacheProxyConnectorIntegrationSpec
     
     "propagate 404 not found when taxpayer does not exist" in {
       stubFor(
-        post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer")) // CHANGED
+        post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer"))
           .withRequestBody(equalToJson(erJson.toString(), true, true))
           .willReturn(aResponse().withStatus(404))
       )

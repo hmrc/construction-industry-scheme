@@ -20,22 +20,21 @@ import com.github.tomakehurst.wiremock.client.WireMock.*
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
-import uk.gov.hmrc.constructionindustryscheme.models.UserMonthlyReturns
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.{NilMonthlyReturnRequest, UserMonthlyReturns}
+import uk.gov.hmrc.http.UpstreamErrorResponse
 
 class FormpProxyConnectorIntegrationSpec
   extends ApplicationWithWiremock
     with Matchers
     with ScalaFutures
     with IntegrationPatience {
-
-  implicit val hc: HeaderCarrier = HeaderCarrier()
-
+  
   private val connector = app.injector.instanceOf[FormpProxyConnector]
 
-  private val instanceId = "abc-123"
+  private val instanceId = "123"
   private val instanceReqJson = Json.obj("instanceId" -> instanceId)
 
   "FormpProxyConnector getMonthlyReturns" should {
@@ -88,4 +87,119 @@ class FormpProxyConnectorIntegrationSpec
       ex.getMessage must include ("500")
     }
   }
+
+  "FormpProxyConnector createNilMonthlyReturn" should {
+
+    "POSTs request and returns response model (200)" in {
+      val req = NilMonthlyReturnRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 2,
+        decInformationCorrect = "Y",
+        decNilReturnNoPayments = "Y"
+      )
+
+      val respJson = Json.obj("status" -> "STARTED")
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/monthly-return/nil/create"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
+          .willReturn(aResponse().withStatus(200).withBody(respJson.toString()))
+      )
+
+      val out = connector.createNilMonthlyReturn(req).futureValue
+      Json.toJson(out) mustBe respJson
+    }
+
+    "propagates upstream error for non-2xx" in {
+      val req = NilMonthlyReturnRequest(instanceId, 2025, 2, "Y", "Y")
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/monthly-return/nil/create"))
+          .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{ "message": "oops" }"""))
+      )
+
+      val ex = intercept[Throwable](connector.createNilMonthlyReturn(req).futureValue)
+      ex.getMessage.toLowerCase must include("500")
+    }
+  }
+
+  "FormpProxyConnector createAndTrackSubmission" should {
+
+    "POSTs request and maps JSON to submissionId" in {
+      val req = CreateAndTrackSubmissionRequest(
+        instanceId = instanceId,
+        taxYear = 2024,
+        taxMonth = 4,
+        emailRecipient = Some("ops@example.com")
+      )
+
+      val responseJson = Json.obj("submissionId" -> "sub-123")
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/submissions/create-and-track"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(201).withBody(responseJson.toString()))
+      )
+
+      val id = connector.createAndTrackSubmission(req).futureValue
+      id mustBe "sub-123"
+    }
+
+    "propagates upstream error (e.g. 500) as failed Future" in {
+      val req = CreateAndTrackSubmissionRequest(instanceId, 2024, 4)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/submissions/create-and-track"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = intercept[Throwable](connector.createAndTrackSubmission(req).futureValue)
+      ex.getMessage.toLowerCase must include("500")
+    }
+  }
+
+  "FormpProxyConnector updateSubmission" should {
+
+    "returns Unit when upstream responds 204/200" in {
+      val req = UpdateSubmissionRequest(
+        instanceId = instanceId,
+        taxYear = 2024,
+        taxMonth = 4,
+        hmrcMarkGenerated = Some("Dj5TVJDyRYCn9zta5EdySeY4fyA="),
+        submittableStatus = "ACCEPTED"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/submissions/update"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(204))
+      )
+
+      connector.updateSubmission(req).futureValue mustBe ((): Unit)
+    }
+
+    "fails with UpstreamErrorResponse when non-2xx" in {
+      val req = UpdateSubmissionRequest(
+        instanceId = instanceId, taxYear = 2024, taxMonth = 4,
+        hmrcMarkGenerated = Some("Dj5TVJDyRYCn9zta5EdySeY4fyA="), submittableStatus = "REJECTED"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/submissions/update"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(502).withBody("bad gateway"))
+      )
+
+      val ex = connector.updateSubmission(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 502
+    }
+  }
+
 }

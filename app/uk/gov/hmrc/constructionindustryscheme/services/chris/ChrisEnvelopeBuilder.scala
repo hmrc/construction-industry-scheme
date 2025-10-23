@@ -17,27 +17,27 @@
 package uk.gov.hmrc.constructionindustryscheme.services.chris
 
 import uk.gov.hmrc.auth.core.Enrolments
+import uk.gov.hmrc.constructionindustryscheme.models.BuiltSubmissionPayload
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.irmark.IrMarkGenerator
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, YearMonth, ZoneOffset}
-import java.util.Locale
 import scala.util.Try
 import scala.xml.{Elem, NodeSeq, PrettyPrinter, XML}
 import utils.XxeHelper.secureSAXParser
 
 object ChrisEnvelopeBuilder extends IrMarkGenerator {
   private val gatewayTimestampFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
-  private val isoDateFmt = DateTimeFormatter.ISO_LOCAL_DATE // yyyy-MM-dd
+  private val isoDateFmt = DateTimeFormatter.ISO_LOCAL_DATE
   private val prettyPrinter = new PrettyPrinter(120, 4)
 
   def build(
              request: ChrisSubmissionRequest,
-             authRequest: AuthenticatedRequest[_]
+             authRequest: AuthenticatedRequest[_],
+             correlationId: String
            ): Elem = {
 
-    val correlatingId = java.util.UUID.randomUUID().toString.replace("-", "").toUpperCase(Locale.ROOT)
     val gatewayTimestamp = LocalDateTime.now(ZoneOffset.UTC).format(gatewayTimestampFormatter)
 
     val (taxOfficeNumber, taxOfficeReference) =
@@ -57,7 +57,7 @@ object ChrisEnvelopeBuilder extends IrMarkGenerator {
             <Class>{ChrisEnvelopeConstants.MessageDetailsClass}</Class>
             <Qualifier>{ChrisEnvelopeConstants.Qualifier}</Qualifier>
             <Function>{ChrisEnvelopeConstants.Function}</Function>
-            <CorrelationID>{correlatingId}</CorrelationID>
+            <CorrelationID>{correlationId}</CorrelationID>
             <Transformation>{ChrisEnvelopeConstants.Transformation}</Transformation>
             <GatewayTimestamp>{gatewayTimestamp}</GatewayTimestamp>
           </MessageDetails>
@@ -133,10 +133,6 @@ object ChrisEnvelopeBuilder extends IrMarkGenerator {
     XML.withSAXParser(secureSAXParser).loadString(subbed)
   }
 
-  def extractIrMark(envelopeXml: Elem): String = {
-    (envelopeXml \\ "IRmark").text
-  }
-
   private def extractTaxOfficeFromCisEnrolment(enrolments: Enrolments): Option[(String, String)] =
     enrolments
       .getEnrolment("HMRC-CIS-ORG")
@@ -156,5 +152,20 @@ object ChrisEnvelopeBuilder extends IrMarkGenerator {
       throw new IllegalArgumentException(s"Invalid monthYear: $monthYear (expected YYYY-MM)")
     }
     ym.atDay(5).format(isoDateFmt)
+  }
+
+  def buildPayload(
+                    request: ChrisSubmissionRequest,
+                    authRequest: AuthenticatedRequest[_],
+                    correlationId: String
+                  ): BuiltSubmissionPayload = {
+    val finalEnvelope: scala.xml.Elem = build(request, authRequest, correlationId)
+    val irMarkBase64: String = (finalEnvelope \\ "IRmark").text.trim
+
+    BuiltSubmissionPayload(
+      envelope = finalEnvelope,
+      correlationId = correlationId,
+      irMark = irMarkBase64
+    )
   }
 }

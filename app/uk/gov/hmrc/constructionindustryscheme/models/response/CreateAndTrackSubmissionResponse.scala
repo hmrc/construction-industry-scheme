@@ -16,4 +16,12 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models.response
 
-case class ChrisSubmissionResponse(status: Int, body: String, irMark: String)
+import play.api.libs.json.{Json, OFormat}
+
+final case class CreateAndTrackSubmissionResponse(
+  submissionId: String
+)
+
+object CreateAndTrackSubmissionResponse {
+  implicit val format: OFormat[CreateAndTrackSubmissionResponse] = Json.format[CreateAndTrackSubmissionResponse]
+}
