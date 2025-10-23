@@ -17,7 +17,6 @@
 package uk.gov.hmrc.constructionindustryscheme.models
 
 sealed trait SubmissionStatus
-case object PENDING extends SubmissionStatus
 case object ACCEPTED extends SubmissionStatus
 case object FATAL_ERROR extends SubmissionStatus
 case object SUBMITTED extends SubmissionStatus

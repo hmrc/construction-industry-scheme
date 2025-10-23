@@ -24,7 +24,7 @@ import play.api.libs.json.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.{SubmissionResult, ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, PENDING as PendingStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{SubmissionResult, ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
@@ -106,9 +106,7 @@ class SubmissionController @Inject()(
     )
 
     def withStatus(s: String): JsObject = base ++ Json.obj("status" -> s)
-
-//    def withPoll(o: JsObject): JsObject = o ++ Json.obj("nextPollInSeconds" -> res.meta.responseEndPoint.pollIntervalSeconds)
-
+    
     def withPoll(o: JsObject): JsObject = {
       val endpoint = res.meta.responseEndPoint
       o ++ Json.obj(
@@ -127,7 +125,6 @@ class SubmissionController @Inject()(
       )
 
     res.status match {
-      case PendingStatus => Results.Accepted(withPoll(withStatus("PENDING")))
       case AcceptedStatus => Results.Accepted(withPoll(withStatus("ACCEPTED")))
       case SubmittedStatus => Results.Ok(withStatus("SUBMITTED"))
       case SubmittedNoReceiptStatus => Results.Ok(withStatus("SUBMITTED_NO_RECEIPT"))

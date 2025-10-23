@@ -29,7 +29,7 @@ import utils.XxeHelper.secureSAXParser
 
 object ChrisEnvelopeBuilder extends IrMarkGenerator {
   private val gatewayTimestampFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
-  private val isoDateFmt = DateTimeFormatter.ISO_LOCAL_DATE // yyyy-MM-dd
+  private val isoDateFmt = DateTimeFormatter.ISO_LOCAL_DATE
   private val prettyPrinter = new PrettyPrinter(120, 4)
 
   def build(
