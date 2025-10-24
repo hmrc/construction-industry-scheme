@@ -26,7 +26,7 @@ import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -172,7 +172,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
   }
 
-  "createAndTrackSubmission" - {
+  "createSubmission" - {
 
     val validCreateJson = Json.obj(
       "instanceId" -> "123",
@@ -184,19 +184,19 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val service = mock[SubmissionService]
       val controller = new SubmissionController(fakeAuthAction(), service, cc)
 
-      when(service.createAndTrackSubmission(any[CreateAndTrackSubmissionRequest])(any[HeaderCarrier]))
+      when(service.createSubmission(any[CreateSubmissionRequest])(any[HeaderCarrier]))
         .thenReturn(Future.successful("sub-999"))
 
       val req = FakeRequest(POST, "/cis/submissions/create-and-track")
         .withBody(validCreateJson)
         .withHeaders(CONTENT_TYPE -> JSON)
 
-      val result = controller.createAndTrackSubmission(req)
+      val result = controller.createSubmission(req)
 
       status(result) mustBe CREATED
       (contentAsJson(result) \ "submissionId").as[String] mustBe "sub-999"
 
-      verify(service).createAndTrackSubmission(any[CreateAndTrackSubmissionRequest])(any[HeaderCarrier])
+      verify(service).createSubmission(any[CreateSubmissionRequest])(any[HeaderCarrier])
     }
 
     "returns 400 when JSON is invalid" in {
@@ -209,7 +209,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .withBody(bad)
         .withHeaders(CONTENT_TYPE -> JSON)
 
-      val result = controller.createAndTrackSubmission(req)
+      val result = controller.createSubmission(req)
 
       status(result) mustBe BAD_REQUEST
       contentAsJson(result).toString must include("obj.instanceId")
@@ -220,14 +220,14 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val service = mock[SubmissionService]
       val controller = new SubmissionController(fakeAuthAction(), service, cc)
 
-      when(service.createAndTrackSubmission(any[CreateAndTrackSubmissionRequest])(any[HeaderCarrier]))
+      when(service.createSubmission(any[CreateSubmissionRequest])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("formp down")))
 
       val req = FakeRequest(POST, "/cis/submissions/create-and-track")
         .withBody(validCreateJson)
         .withHeaders(CONTENT_TYPE -> JSON)
 
-      val result = controller.createAndTrackSubmission(req)
+      val result = controller.createSubmission(req)
 
       status(result) mustBe BAD_GATEWAY
       (contentAsJson(result) \ "message").as[String] mustBe "create-submission-failed"
@@ -241,7 +241,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .withBody(validCreateJson)
         .withHeaders(CONTENT_TYPE -> JSON)
 
-      val result = controller.createAndTrackSubmission(req)
+      val result = controller.createSubmission(req)
 
       status(result) mustBe UNAUTHORIZED
       verifyNoInteractions(service)

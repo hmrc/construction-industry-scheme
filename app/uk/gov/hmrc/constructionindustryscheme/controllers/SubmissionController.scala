@@ -26,7 +26,7 @@ import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.{SubmissionResult, ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeBuilder
 
@@ -41,13 +41,13 @@ class SubmissionController @Inject()(
 
   implicit val reads: Reads[ChrisSubmissionRequest] = Json.reads[ChrisSubmissionRequest]
 
-  def createAndTrackSubmission: Action[JsValue] =
+  def createSubmission: Action[JsValue] =
     authorise(parse.json).async { implicit request =>
-      request.body.validate[CreateAndTrackSubmissionRequest].fold(
+      request.body.validate[CreateSubmissionRequest].fold(
         errs => Future.successful(BadRequest(JsError.toJson(errs))),
         csr =>
           submissionService
-            .createAndTrackSubmission(csr)
+            .createSubmission(csr)
             .map(id => Created(Json.obj("submissionId" -> id)))
             .recover { case ex =>
               logger.error("[create] formp-proxy create failed", ex)

@@ -22,7 +22,7 @@ import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
 import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
@@ -129,7 +129,7 @@ class FormpProxyConnectorIntegrationSpec
   "FormpProxyConnector createAndTrackSubmission" should {
 
     "POSTs request and maps JSON to submissionId" in {
-      val req = CreateAndTrackSubmissionRequest(
+      val req = CreateSubmissionRequest(
         instanceId = instanceId,
         taxYear = 2024,
         taxMonth = 4,
@@ -139,26 +139,26 @@ class FormpProxyConnectorIntegrationSpec
       val responseJson = Json.obj("submissionId" -> "sub-123")
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/submissions/create-and-track"))
+        post(urlPathEqualTo("/formp-proxy/submissions/create"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(201).withBody(responseJson.toString()))
       )
 
-      val id = connector.createAndTrackSubmission(req).futureValue
+      val id = connector.createSubmission(req).futureValue
       id mustBe "sub-123"
     }
 
     "propagates upstream error (e.g. 500) as failed Future" in {
-      val req = CreateAndTrackSubmissionRequest(instanceId, 2024, 4)
+      val req = CreateSubmissionRequest(instanceId, 2024, 4)
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/submissions/create-and-track"))
+        post(urlPathEqualTo("/formp-proxy/submissions/create"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
       )
 
-      val ex = intercept[Throwable](connector.createAndTrackSubmission(req).futureValue)
+      val ex = intercept[Throwable](connector.createSubmission(req).futureValue)
       ex.getMessage.toLowerCase must include("500")
     }
   }

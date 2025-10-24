@@ -23,7 +23,7 @@ import org.mockito.ArgumentMatchers.eq as eqTo
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -34,30 +34,30 @@ final class SubmissionServiceSpec extends SpecBase {
 
   private def setup: Setup = new Setup {}
 
-  "createAndTrackSubmission" - {
+  "createSubmission" - {
 
     "delegates to FormpProxyConnector and returns submissionId" in {
       val s = setup; import s._
 
-      val req = CreateAndTrackSubmissionRequest("123", 2024, 4)
+      val req = CreateSubmissionRequest("123", 2024, 4)
 
-      when(formpProxyConnector.createAndTrackSubmission(eqTo(req))(any[HeaderCarrier]))
+      when(formpProxyConnector.createSubmission(eqTo(req))(any[HeaderCarrier]))
         .thenReturn(Future.successful("sub-123"))
 
-      service.createAndTrackSubmission(req).futureValue mustBe "sub-123"
-      verify(formpProxyConnector).createAndTrackSubmission(eqTo(req))(any[HeaderCarrier])
+      service.createSubmission(req).futureValue mustBe "sub-123"
+      verify(formpProxyConnector).createSubmission(eqTo(req))(any[HeaderCarrier])
       verifyNoInteractions(chrisConnector)
     }
 
     "propagates failures from FormpProxyConnector" in {
       val s = setup; import s._
 
-      val req = CreateAndTrackSubmissionRequest("123", 2024, 4)
+      val req = CreateSubmissionRequest("123", 2024, 4)
 
-      when(formpProxyConnector.createAndTrackSubmission(eqTo(req))(any[HeaderCarrier]))
+      when(formpProxyConnector.createSubmission(eqTo(req))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
-      service.createAndTrackSubmission(req).failed.futureValue.getMessage must include ("boom")
+      service.createSubmission(req).failed.futureValue.getMessage must include ("boom")
     }
   }
 

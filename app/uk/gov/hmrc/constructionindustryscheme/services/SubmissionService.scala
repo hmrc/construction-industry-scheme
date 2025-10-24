@@ -19,7 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, SubmissionResult}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
@@ -30,8 +30,8 @@ class SubmissionService @Inject()(
   chrisConnector: ChrisConnector,
   formpProxyConnector: FormpProxyConnector
 ) extends Logging {
-  def createAndTrackSubmission(request: CreateAndTrackSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
-    formpProxyConnector.createAndTrackSubmission(request)
+  def createSubmission(request: CreateSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
+    formpProxyConnector.createSubmission(request)
 
   def updateSubmission(req: UpdateSubmissionRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.updateSubmission(req)
