@@ -24,17 +24,22 @@ import play.api.libs.json.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.{SubmissionResult, ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.audit.AuditResponseReceivedModel
+import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, SubmissionResult, ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
+import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeBuilder
+import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor.convertXmlToJson
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.constructionindustryscheme.models.audit.XmlConversionResult
 
 import java.util.UUID
 
 class SubmissionController @Inject()(
                                            authorise: AuthAction,
                                            submissionService: SubmissionService,
+                                           auditService: AuditService,
                                            cc: ControllerComponents
                                          )(implicit ec: ExecutionContext)
   extends BackendController(cc) with Logging {
@@ -68,7 +73,7 @@ class SubmissionController @Inject()(
 
           submissionService
             .submitToChris(payload)
-            .map(renderSubmissionResponse(submissionId, payload.irMark))
+            .map(renderSubmissionResponse(submissionId, payload))
             .recover { case ex =>
               logger.error("[submitToChris] upstream failure", ex)
               BadGateway(Json.obj(
@@ -97,10 +102,13 @@ class SubmissionController @Inject()(
       )
     }
 
-  private def renderSubmissionResponse(submissionId: String, irMark: String)(res: SubmissionResult): Result = {
+  private def renderSubmissionResponse(submissionId: String, payload: BuiltSubmissionPayload)(res: SubmissionResult): Result = {
+
+    implicit val hc: HeaderCarrier = HeaderCarrier()
+
     val base = Json.obj(
       "submissionId" -> submissionId,
-      "hmrcMarkGenerated" -> irMark,
+      "hmrcMarkGenerated" -> payload.irMark,
       "correlationId" -> res.meta.correlationId,
       "gatewayTimestamp" -> res.meta.gatewayTimestamp
     )
@@ -123,6 +131,21 @@ class SubmissionController @Inject()(
           .map(e => Json.obj("number" -> e.errorNumber, "type" -> e.errorType, "text" -> e.errorText))
           .getOrElse(Json.obj("text" -> defaultText))
       )
+
+    val auditSubmissionJson = convertXmlToJson(payload.envelope.toString).match {
+      case XmlConversionResult(true, Some(json), _) => json
+      case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
+      case _ => Json.obj("error" -> "unexpected conversion failure")
+    }
+
+    val auditSubmissionResponseJson = convertXmlToJson(res.rawXml).match {
+      case XmlConversionResult(true, Some(json), _) => json
+      case XmlConversionResult(false, _, Some(error)) => Json.toJson(res.rawXml)
+      case _ => Json.toJson(res.rawXml)
+    }
+
+    val auditSubmissionResponse = AuditResponseReceivedModel(res.status.toString, auditSubmissionResponseJson)
+    auditService.nilReturnSubmissionAudit(auditSubmissionJson, auditSubmissionResponse)
 
     res.status match {
       case AcceptedStatus => Results.Accepted(withPoll(withStatus("ACCEPTED")))

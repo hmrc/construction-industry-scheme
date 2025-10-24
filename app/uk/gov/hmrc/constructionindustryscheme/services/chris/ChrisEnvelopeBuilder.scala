@@ -25,7 +25,7 @@ import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, YearMonth, ZoneOffset}
 import scala.util.Try
 import scala.xml.{Elem, NodeSeq, PrettyPrinter, XML}
-import utils.XxeHelper.secureSAXParser
+import uk.gov.hmrc.constructionindustryscheme.utils.XxeHelper.secureSAXParser
 
 object ChrisEnvelopeBuilder extends IrMarkGenerator {
   private val gatewayTimestampFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
