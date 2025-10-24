@@ -142,9 +142,11 @@ object ChrisEnvelopeBuilder extends IrMarkGenerator {
 
     val irMarkBase64 = generateIrMark(envelopeXml, ChrisEnvelopeConstants.Namespace)
 
+    logger.warn(s"Correct IRMark : $irMarkBase64")
+
     val irMarkToUse = if (enableIrmarkBad) {
       val bad = corruptIrMark(irMarkBase64)
-      logger.warn(s"IRMark corruption enabled: substituted computed IRMark with a mismatched value.")
+      logger.warn(s"IRMark corruption enabled: substituted computed IRMark with a mismatched value: $bad")
       bad
     } else irMarkBase64
 

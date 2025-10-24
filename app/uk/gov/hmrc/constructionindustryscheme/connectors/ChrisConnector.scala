@@ -61,6 +61,10 @@ class ChrisConnector @Inject()(
           logger.info(
             s"[ChrisConnector] corrId=$correlationId status=${resp.status} full-response-body:\n${resp.body}"
           )
+        } else {
+          logger.error(
+            s"[ChrisConnector] NON-2xx corrId=$correlationId url=$targetUrl status=${resp.status} response-body:\n${resp.body}"
+          )
         }
         handleResponse(resp, correlationId)
       }
