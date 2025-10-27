@@ -25,6 +25,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.{SubmissionResult, ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
+import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
@@ -35,7 +36,8 @@ import java.util.UUID
 class SubmissionController @Inject()(
                                            authorise: AuthAction,
                                            submissionService: SubmissionService,
-                                           cc: ControllerComponents
+                                           cc: ControllerComponents,
+                                           appConfig: AppConfig
                                          )(implicit ec: ExecutionContext)
   extends BackendController(cc) with Logging {
 
@@ -64,7 +66,7 @@ class SubmissionController @Inject()(
           logger.info(s"Submitting Nil Monthly Return to ChRIS for UTR=${csr.utr}")
 
           val correlationId = UUID.randomUUID().toString.replace("-", "").toUpperCase
-          val payload = ChrisEnvelopeBuilder.buildPayload(csr, req, correlationId)
+          val payload = ChrisEnvelopeBuilder.buildPayload(csr, req, correlationId, appConfig.chrisEnableMissingMandatory, appConfig.chrisEnableIrmarkBad)
 
           submissionService
             .submitToChris(payload)
@@ -106,7 +108,7 @@ class SubmissionController @Inject()(
     )
 
     def withStatus(s: String): JsObject = base ++ Json.obj("status" -> s)
-    
+
     def withPoll(o: JsObject): JsObject = {
       val endpoint = res.meta.responseEndPoint
       o ++ Json.obj(
