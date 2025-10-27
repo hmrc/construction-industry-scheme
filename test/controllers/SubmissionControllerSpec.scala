@@ -347,7 +347,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
   private def mkMeta(
                       corrId: String = "CID123",
                       pollSecs: Int = 15,
-                      ts: String = "2025-01-01T00:00:00Z",
+                      ts: Option[String] = None,
                       err: Option[GovTalkError] = None
                     ): GovTalkMeta =
     GovTalkMeta(

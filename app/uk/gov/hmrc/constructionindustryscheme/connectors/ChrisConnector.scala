@@ -133,7 +133,7 @@ class ChrisConnector @Inject()(
         function         = "submit",
         className        = "",
         correlationId    = correlationId,
-        gatewayTimestamp = "",
+        gatewayTimestamp = None,
         responseEndPoint = ResponseEndPoint("", 0),
         error            = Some(GovTalkError(errorNumber, errorType, errorText))
       )
