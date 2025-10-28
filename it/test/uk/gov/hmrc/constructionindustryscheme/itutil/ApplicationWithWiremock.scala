@@ -68,7 +68,7 @@ trait ApplicationWithWiremock
   def getJson(url: String, headers: (String, String)*)(implicit hc: HeaderCarrier, ec: ExecutionContext): HttpResponse =
     httpClient
       .get(url"$url")
-      .setHeader((("Accept" -> "application/json") +: headers.toList): _*)
+      .setHeader(("Accept" -> "application/json") +: headers.toList: _*)
       .execute[HttpResponse]
       .futureValue
 
