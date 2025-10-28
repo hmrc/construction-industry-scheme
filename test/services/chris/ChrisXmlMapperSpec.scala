@@ -30,7 +30,6 @@ final class ChrisXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValu
    function: String = "submit",
    clazz: String = "CIS300MR",
    correlationId: String = "ABCDEF123456",
-   gatewayTs: String = "2025-01-01T00:00:00Z",
    pollInterval: Option[Int] = Some(15),
    endpointUrl: Option[String] = Some("/poll")
   ): String = {
@@ -43,7 +42,7 @@ final class ChrisXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValu
        |    <Function>$function</Function>
        |    <Class>$clazz</Class>
        |    <CorrelationID>$correlationId</CorrelationID>
-       |    <GatewayTimestamp>$gatewayTs</GatewayTimestamp>
+       |    <GatewayTimestamp/>
        |    <ResponseEndPoint$epAttr>$epText</ResponseEndPoint>
        |  </MessageDetails>
        |</Header>
@@ -74,7 +73,7 @@ final class ChrisXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValu
       res.meta.function  mustBe "submit"
       res.meta.className mustBe "CIS300MR"
       res.meta.correlationId mustBe "ABCDEF123456"
-      res.meta.gatewayTimestamp mustBe "2025-01-01T00:00:00Z"
+      res.meta.gatewayTimestamp mustBe None
       res.meta.responseEndPoint mustBe ResponseEndPoint("/poll", 15)
       res.meta.error mustBe None
       res.rawXml.trim must include ("<GovTalkMessage>")
