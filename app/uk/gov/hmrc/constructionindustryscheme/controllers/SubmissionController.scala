@@ -24,7 +24,7 @@ import play.api.libs.json.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.{SubmissionResult, ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{SubmissionResult, SuccessEmailParams, ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
@@ -67,9 +67,10 @@ class SubmissionController @Inject()(
 
           val correlationId = UUID.randomUUID().toString.replace("-", "").toUpperCase
           val payload = ChrisEnvelopeBuilder.buildPayload(csr, req, correlationId, appConfig.chrisEnableMissingMandatory, appConfig.chrisEnableIrmarkBad)
+          val emailParams = SuccessEmailParams(csr.email, csr.monthYear)
 
           submissionService
-            .submitToChris(payload)
+            .submitToChris(payload, Some(emailParams))
             .map(renderSubmissionResponse(submissionId, payload.irMark))
             .recover { case ex =>
               logger.error("[submitToChris] upstream failure", ex)

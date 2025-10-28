@@ -29,7 +29,7 @@ import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus, SuccessEmailParams}
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -45,7 +45,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "aoReference" -> "123/AB456",
     "informationCorrect" -> "yes",
     "inactivity" -> "yes",
-    "monthYear" -> "2025-09"
+    "monthYear" -> "2025-09",
+    "email" -> "test@test.com"
   )
 
   private def mkAppConfig(
@@ -71,7 +72,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val service    = mock[SubmissionService]
       val controller = mkController(service)
 
-      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED)))
 
       val request: FakeRequest[JsValue] =
@@ -85,14 +86,14 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val js = contentAsJson(result)
       (js \ "submissionId").as[String] mustBe submissionId
 
-      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
+      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier])
     }
     
     "returns 200 with SUBMITTED_NO_RECEIPT when service returns SubmittedNoReceiptStatus" in {
       val service    = mock[SubmissionService]
       val controller = mkController(service)
 
-      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -111,7 +112,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val service    = mock[SubmissionService]
       val controller = mkController(service)
 
-      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(ACCEPTED)))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -132,7 +133,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val controller = mkController(service)
 
       val err = GovTalkError("1234", "fatal", "boom")
-      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(DEPARTMENTAL_ERROR, Some(err))))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -172,7 +173,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val service    = mock[SubmissionService]
       val controller = mkController(service)
 
-      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -187,7 +188,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "status").as[String] mustBe "FATAL_ERROR"
       (js \ "error").as[String] mustBe "upstream-failure"
 
-      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
+      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier])
     }
   }
 

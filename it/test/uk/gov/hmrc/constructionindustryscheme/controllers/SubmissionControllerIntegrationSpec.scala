@@ -41,7 +41,8 @@ class SubmissionControllerIntegrationSpec
     "aoReference" -> "123/AB456",
     "informationCorrect" -> "yes",
     "inactivity" -> "yes",
-    "monthYear" -> "2025-09"
+    "monthYear" -> "2025-09",
+    "email" -> "test@test.com"
   )
 
   private val createUrl = s"$base/submissions/create-and-track"

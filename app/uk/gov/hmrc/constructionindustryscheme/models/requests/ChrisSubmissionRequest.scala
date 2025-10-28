@@ -23,7 +23,8 @@ case class ChrisSubmissionRequest(
                                    aoReference: String,
                                    informationCorrect: String,
                                    inactivity: String,
-                                   monthYear: String
+                                   monthYear: String,
+                                   email: String
                                  )
 
 object ChrisSubmissionRequest {

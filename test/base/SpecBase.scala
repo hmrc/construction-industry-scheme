@@ -133,13 +133,15 @@ trait SpecBase
                   aoRef: String = "123/AB456",
                   infoCorrect: String = "yes",
                   inactivity: String = "yes",
-                  monthYear: String = "2025-09"
+                  monthYear: String = "2025-09",
+                  email: String = "test@test.com"
                 ): ChrisSubmissionRequest =
     ChrisSubmissionRequest(
       utr = utr,
       aoReference = aoRef,
       informationCorrect = infoCorrect,
       inactivity = inactivity,
-      monthYear = monthYear
+      monthYear = monthYear,
+      email = email
     )
 }

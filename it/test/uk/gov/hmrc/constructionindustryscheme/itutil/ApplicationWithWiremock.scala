@@ -49,7 +49,9 @@ trait ApplicationWithWiremock
       "microservice.services.rds-datacache-proxy.host" -> WireMockConstants.stubHost,
       "microservice.services.rds-datacache-proxy.port" -> WireMockConstants.stubPort,
       "microservice.services.formp-proxy.host"      -> WireMockConstants.stubHost,
-      "microservice.services.formp-proxy.port"      -> WireMockConstants.stubPort
+      "microservice.services.formp-proxy.port"      -> WireMockConstants.stubPort,
+      "microservice.services.email.host" -> WireMockConstants.stubHost,
+      "microservice.services.email.port" -> WireMockConstants.stubPort
     )
   }
 
