@@ -19,8 +19,7 @@ package models.audit
 import base.SpecBase
 import org.scalatest.matchers.should.Matchers.{should, shouldBe}
 import play.api.libs.json.{JsNull, JsValue, Json}
-import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditEventModel, AuditResponseReceivedModel, NilReturnSubmissionAuditEvent, XmlConversionResult}
-import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor.convertXmlToJson
+import uk.gov.hmrc.constructionindustryscheme.models.audit.XmlConversionResult
 
 class XmlConversionResultSpec extends SpecBase {
   

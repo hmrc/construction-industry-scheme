@@ -28,11 +28,20 @@ trait AuditEventModel {
     ExtendedDataEvent(auditSource = auditSource, auditType = auditType, detail = detailJson)
 }
 
-case class NilReturnSubmissionAuditEvent(payload: JsValue, response: AuditResponseReceivedModel) extends AuditEventModel {
-  override val auditType:  String  = "nil-return-filing"
+case class MonthlyNilReturnRequestEvent(payload: JsValue) extends AuditEventModel {
+  override val auditType: String = "monthlyNilReturnRequest"
   override val detailJson: JsValue = Json.toJson(this)
 }
 
-object NilReturnSubmissionAuditEvent {
-  implicit val formats: Format[NilReturnSubmissionAuditEvent] = Json.format[NilReturnSubmissionAuditEvent]
+case class MonthlyNilReturnResponseEvent(response: AuditResponseReceivedModel) extends AuditEventModel {
+  override val auditType: String = "monthlyNilReturnResponse"
+  override val detailJson: JsValue = Json.toJson(this)
+}
+
+object MonthlyNilReturnRequestEvent {
+  implicit val formats: Format[MonthlyNilReturnRequestEvent] = Json.format[MonthlyNilReturnRequestEvent]
+}
+
+object MonthlyNilReturnResponseEvent {
+  implicit val formats: Format[MonthlyNilReturnResponseEvent] = Json.format[MonthlyNilReturnResponseEvent]
 }

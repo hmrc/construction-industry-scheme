@@ -25,6 +25,8 @@ import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, NO_CONTENT, OK, 
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, JSON, POST, contentAsJson, status}
+import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
+import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
@@ -56,14 +58,31 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     super.beforeEach()
   }
 
+  private def mkAppConfig(
+                           missingMandatory: Boolean = false,
+                           irmarkBad: Boolean = false
+                         ): AppConfig = {
+    val appConfig = mock[AppConfig]
+    when(appConfig.chrisEnableMissingMandatory).thenReturn(missingMandatory)
+    when(appConfig.chrisEnableIrmarkBad).thenReturn(irmarkBad)
+    appConfig
+  }
+
+  private def mkController(
+                            service: SubmissionService,
+                            auth: AuthAction = fakeAuthAction(),
+                            appConfig: AppConfig = mkAppConfig()
+                          ): SubmissionController =
+    new SubmissionController(auth, service, mockAuditService, cc, appConfig)
 
   "submitToChris" - {
 
     "returns 200 with SUBMITTED when service returns SubmittedStatus" in {
       val service    = mock[SubmissionService]
-      val controller = new SubmissionController(fakeAuthAction(), service, mockAuditService, cc)
+      val controller = mkController(service)
 
-      when(mockAuditService.nilReturnSubmissionAudit(any(), any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED)))
 
@@ -78,15 +97,17 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val js = contentAsJson(result)
       (js \ "submissionId").as[String] mustBe submissionId
 
-      verify(mockAuditService, times(1)).nilReturnSubmissionAudit(any(), any())(any())
+      verify(mockAuditService, times(1)).monthlyNilReturnRequestEvent(any())(any())
+      verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
       verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
     }
     
     "returns 200 with SUBMITTED_NO_RECEIPT when service returns SubmittedNoReceiptStatus" in {
       val service    = mock[SubmissionService]
-      val controller = new SubmissionController(fakeAuthAction(), service, mockAuditService, cc)
+      val controller = mkController(service)
 
-      when(mockAuditService.nilReturnSubmissionAudit(any(), any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
 
@@ -98,7 +119,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       status(result) mustBe OK
 
-      verify(mockAuditService, times(1)).nilReturnSubmissionAudit(any(), any())(any())
+      verify(mockAuditService, times(1)).monthlyNilReturnRequestEvent(any())(any())
+      verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "SUBMITTED_NO_RECEIPT"
       (js \ "submissionId").as[String] mustBe submissionId
@@ -106,9 +128,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 202 with ACCEPTED when service returns AcceptedStatus (includes nextPollInSeconds)" in {
       val service    = mock[SubmissionService]
-      val controller = new SubmissionController(fakeAuthAction(), service, mockAuditService, cc)
+      val controller = mkController(service)
 
-      when(mockAuditService.nilReturnSubmissionAudit(any(), any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(ACCEPTED)))
 
@@ -119,7 +142,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val result = controller.submitToChris(submissionId)(req)
 
       status(result) mustBe 202
-      verify(mockAuditService, times(1)).nilReturnSubmissionAudit(any(), any())(any())
+      verify(mockAuditService, times(1)).monthlyNilReturnRequestEvent(any())(any())
+      verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "ACCEPTED"
       (js \ "responseEndPoint" \ "pollIntervalSeconds").as[Int] mustBe 15
@@ -128,10 +152,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 200 with DEPARTMENTAL_ERROR and error object when service returns DepartmentalErrorStatus" in {
       val service    = mock[SubmissionService]
-      val controller = new SubmissionController(fakeAuthAction(), service, mockAuditService, cc)
+      val controller = mkController(service)
 
       val err = GovTalkError("1234", "fatal", "boom")
-      when(mockAuditService.nilReturnSubmissionAudit(any(), any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(DEPARTMENTAL_ERROR, Some(err))))
 
@@ -142,7 +167,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val result = controller.submitToChris(submissionId)(req)
 
       status(result) mustBe OK
-      verify(mockAuditService, times(1)).nilReturnSubmissionAudit(any(), any())(any())
+      verify(mockAuditService, times(1)).monthlyNilReturnRequestEvent(any())(any())
+      verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "DEPARTMENTAL_ERROR"
       val e = (js \ "error").as[JsObject]
@@ -153,9 +179,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 400 when request JSON is invalid" in {
       val service    = mock[SubmissionService]
-      val controller = new SubmissionController(fakeAuthAction(), service, mockAuditService, cc)
+      val controller = mkController(service)
 
-      when(mockAuditService.nilReturnSubmissionAudit(any(), any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
 
       val badJson = Json.obj("utr" -> 123)
 
@@ -174,9 +200,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 502 BadGateway when service fails" in {
       val service    = mock[SubmissionService]
-      val controller = new SubmissionController(fakeAuthAction(), service, mockAuditService, cc)
+      val controller = mkController(service)
 
-      when(mockAuditService.nilReturnSubmissionAudit(any(), any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
@@ -192,7 +219,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "status").as[String] mustBe "FATAL_ERROR"
       (js \ "error").as[String] mustBe "upstream-failure"
 
-      verifyNoInteractions(mockAuditService)
+      verify(mockAuditService, times(1)).monthlyNilReturnRequestEvent(any())(any())
+      verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
       verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
     }
   }
@@ -207,7 +235,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 201 with submissionId when service returns id" in {
       val service = mock[SubmissionService]
-      val controller = new SubmissionController(fakeAuthAction(), service, mockAuditService, cc)
+      val controller = mkController(service)
 
       when(service.createAndTrackSubmission(any[CreateAndTrackSubmissionRequest])(any[HeaderCarrier]))
         .thenReturn(Future.successful("sub-999"))
@@ -226,7 +254,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 400 when JSON is invalid" in {
       val service = mock[SubmissionService]
-      val controller = new SubmissionController(fakeAuthAction(), service, mockAuditService, cc)
+      val controller = mkController(service)
 
       val bad = Json.obj("taxYear" -> 2024)
 
@@ -243,7 +271,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 502 when service fails" in {
       val service = mock[SubmissionService]
-      val controller = new SubmissionController(fakeAuthAction(), service, mockAuditService, cc)
+      val controller = mkController(service)
 
       when(service.createAndTrackSubmission(any[CreateAndTrackSubmissionRequest])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("formp down")))
@@ -260,7 +288,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 401 when unauthorised" in {
       val service = mock[SubmissionService]
-      val controller = new SubmissionController(rejectingAuthAction, service, mockAuditService, cc)
+      val controller = mkController(service, auth = rejectingAuthAction)
 
       val req = FakeRequest(POST, "/cis/submissions/create-and-track")
         .withBody(validCreateJson)
@@ -284,7 +312,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 204 NoContent when service updates ok" in {
       val service = mock[SubmissionService]
-      val controller = new SubmissionController(fakeAuthAction(), service, mockAuditService, cc)
+      val controller = mkController(service)
 
       when(service.updateSubmission(any[UpdateSubmissionRequest])(any[HeaderCarrier]))
         .thenReturn(Future.unit)
@@ -301,7 +329,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 400 when JSON is invalid" in {
       val service = mock[SubmissionService]
-      val controller = new SubmissionController(fakeAuthAction(), service, mockAuditService, cc)
+      val controller = mkController(service)
 
       val bad = Json.obj("instanceId" -> "123")
 
@@ -317,7 +345,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 502 BadGateway when service fails" in {
       val service = mock[SubmissionService]
-      val controller = new SubmissionController(fakeAuthAction(), service, mockAuditService, cc)
+      val controller = mkController(service)
 
       when(service.updateSubmission(any[UpdateSubmissionRequest])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("formp update failed")))
@@ -336,7 +364,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 401 when unauthorised" in {
       val service = mock[SubmissionService]
-      val controller = new SubmissionController(rejectingAuthAction, service, mockAuditService, cc)
+      val controller = mkController(service, auth = rejectingAuthAction)
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/update")
         .withBody(minimalUpdateJson)

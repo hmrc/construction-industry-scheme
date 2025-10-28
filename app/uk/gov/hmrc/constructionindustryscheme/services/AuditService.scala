@@ -18,7 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import com.google.inject.{Inject, Singleton}
 import play.api.libs.json.JsValue
-import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, NilReturnSubmissionAuditEvent}
+import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, MonthlyNilReturnRequestEvent, MonthlyNilReturnResponseEvent}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.audit.http.connector.*
 
@@ -29,8 +29,12 @@ class AuditService @Inject(
   auditConnector: AuditConnector
 )(implicit ec: ExecutionContext) {
   
-  def nilReturnSubmissionAudit(jsonData: JsValue, response: AuditResponseReceivedModel)(implicit hc: HeaderCarrier): Future[AuditResult] = {
-    auditConnector.sendExtendedEvent(NilReturnSubmissionAuditEvent(jsonData, response).extendedDataEvent)
+  def monthlyNilReturnRequestEvent(jsonData: JsValue)(implicit hc: HeaderCarrier): Future[AuditResult] = {
+    auditConnector.sendExtendedEvent(MonthlyNilReturnRequestEvent(jsonData).extendedDataEvent)
+  }
+
+  def monthlyNilReturnResponseEvent(response: AuditResponseReceivedModel)(implicit hc: HeaderCarrier): Future[AuditResult] = {
+    auditConnector.sendExtendedEvent(MonthlyNilReturnResponseEvent(response).extendedDataEvent)
   }
 
 }
