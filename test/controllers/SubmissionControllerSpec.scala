@@ -450,7 +450,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       function = "submit",
       className = "CIS300MR",
       correlationId = "correlationId",
-      gatewayTimestamp = "gatewayTimestamp",
+      gatewayTimestamp = Some("gatewayTimestamp"),
       responseEndPoint = ResponseEndPoint("/poll", 100),
       error = None
     )
