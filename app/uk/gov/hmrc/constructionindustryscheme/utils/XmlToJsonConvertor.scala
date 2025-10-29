@@ -46,7 +46,6 @@ object XmlToJsonConvertor {
         case _ => JsObject(combined.filterNot(_._1 == "#text").toSeq)
       }
   }
-  /** Converts XML string to pretty JSON string (namespace removed) */
   def convertXmlToJson(xmlString: String): XmlConversionResult = {
     val conversionAttempt = for {
       cleanedXmlString <- Try(xmlString.replaceAll("xmlns(:\\w+)?=\"[^\"]*\"", ""))
