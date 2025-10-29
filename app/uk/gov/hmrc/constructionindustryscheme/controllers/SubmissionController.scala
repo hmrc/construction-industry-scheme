@@ -35,6 +35,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor
 
+import java.time.{Clock, Instant}
 import java.util.UUID
 
 class SubmissionController @Inject()(
@@ -42,7 +43,8 @@ class SubmissionController @Inject()(
                                            submissionService: SubmissionService,
                                            auditService: AuditService,
                                            cc: ControllerComponents,
-                                           appConfig: AppConfig
+                                           appConfig: AppConfig,
+                                           clock: Clock
                                          )(implicit ec: ExecutionContext)
   extends BackendController(cc) with Logging {
 
@@ -114,11 +116,16 @@ class SubmissionController @Inject()(
 
     implicit val hc: HeaderCarrier = HeaderCarrier()
 
+    val gatewayTimestamp: String = res.meta.gatewayTimestamp match {
+      case Some(s) if s.trim.nonEmpty => s.trim
+      case _ => Instant.now(clock).toString
+    }
+    
     val base = Json.obj(
       "submissionId" -> submissionId,
       "hmrcMarkGenerated" -> payload.irMark,
       "correlationId" -> res.meta.correlationId,
-      "gatewayTimestamp" -> res.meta.gatewayTimestamp
+      "gatewayTimestamp" -> gatewayTimestamp
     )
 
     def withStatus(s: String): JsObject = base ++ Json.obj("status" -> s)

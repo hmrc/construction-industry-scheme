@@ -35,6 +35,7 @@ import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, Submission
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
 
+import java.time.Clock
 import scala.concurrent.Future
 
 
@@ -72,9 +73,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
   private def mkController(
                             service: SubmissionService,
                             auth: AuthAction = fakeAuthAction(),
-                            appConfig: AppConfig = mkAppConfig()
+                            appConfig: AppConfig = mkAppConfig(),
+                            clock: Clock = Clock.systemUTC()
                           ): SubmissionController =
-    new SubmissionController(auth, service, mockAuditService, cc, appConfig)
+    new SubmissionController(auth, service, mockAuditService, cc, appConfig, clock)
 
   "submitToChris" - {
 
