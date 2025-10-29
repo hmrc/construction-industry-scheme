@@ -31,9 +31,9 @@ import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeBuilder
-import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor.convertXmlToJson
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
+import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor
 
 import java.util.UUID
 
@@ -73,11 +73,7 @@ class SubmissionController @Inject()(
           val correlationId = UUID.randomUUID().toString.replace("-", "").toUpperCase
           val payload = ChrisEnvelopeBuilder.buildPayload(csr, req, correlationId, appConfig.chrisEnableMissingMandatory, appConfig.chrisEnableIrmarkBad)
 
-          val monthlyNilReturnRequestJson = convertXmlToJson(payload.envelope.toString).match {
-            case XmlConversionResult(true, Some(json), _) => json
-            case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
-            case _ => Json.obj("error" -> "unexpected conversion failure")
-          }
+          val monthlyNilReturnRequestJson: JsValue = createMonthlyNilReturnRequestJson(payload)
           auditService.monthlyNilReturnRequestEvent(monthlyNilReturnRequestJson)
 
           submissionService
@@ -144,10 +140,7 @@ class SubmissionController @Inject()(
           .getOrElse(Json.obj("text" -> defaultText))
       )
 
-    val monthlyNilReturnResponseJson = convertXmlToJson(res.rawXml).match {
-      case XmlConversionResult(true, Some(json), _) => json
-      case _ => Json.toJson(res.rawXml)
-    }
+    val monthlyNilReturnResponseJson: JsValue = createMonthlyNilReturnResponseJson(res)
 
     val monthlyNilReturnResponse = AuditResponseReceivedModel(res.status.toString, monthlyNilReturnResponseJson)
     auditService.monthlyNilReturnResponseEvent(monthlyNilReturnResponse)
@@ -158,6 +151,21 @@ class SubmissionController @Inject()(
       case SubmittedNoReceiptStatus => Results.Ok(withStatus("SUBMITTED_NO_RECEIPT"))
       case DepartmentalErrorStatus => Results.Ok(withStatus("DEPARTMENTAL_ERROR") ++ errorObj("departmental error"))
       case FatalErrorStatus => Results.Ok(withStatus("FATAL_ERROR") ++ errorObj("fatal"))
+    }
+  }
+
+  def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue = {
+    XmlToJsonConvertor.convertXmlToJson(payload.envelope.toString) match {
+      case XmlConversionResult(true, Some(json), _) => json
+      case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
+      case _ => Json.obj("error" -> "unexpected conversion failure")
+    }
+  }
+
+  def createMonthlyNilReturnResponseJson(res: SubmissionResult): JsValue = {
+    XmlToJsonConvertor.convertXmlToJson(res.rawXml) match {
+      case XmlConversionResult(true, Some(json), _) => json
+      case _ => Json.toJson(res.rawXml)
     }
   }
 

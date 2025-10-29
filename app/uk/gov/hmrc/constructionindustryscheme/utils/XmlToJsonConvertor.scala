@@ -23,17 +23,14 @@ import scala.util.{Failure, Success, Try}
 import scala.xml.*
 
 object XmlToJsonConvertor {
-  /** Recursively convert an XML Node to JsValue, supporting arrays and attributes */
   private def xmlToJson(node: Node): JsValue = {
       val attributes: Map[String, JsValue] = node.attributes.asAttrMap.map {
         case (k, v) => k -> JsString(v)
       }
-      // Collect element and text children
       val children = node.child.collect {
         case e: Elem => e.label -> xmlToJson(e)
         case t if t.isInstanceOf[Text] && t.text.trim.nonEmpty => "#text" -> JsString(t.text.trim)
       }
-      // Group repeated children into arrays
       val groupedChildren: Map[String, JsValue] = children
         .groupBy(_._1)
         .map {
@@ -43,23 +40,17 @@ object XmlToJsonConvertor {
         }
       val combined = attributes ++ groupedChildren
       combined.toList match {
-        // Case 1: Only text
         case List(("#text", JsString(value))) => JsString(value)
-        // Case 2: Attributes + text → flatten, omit "#text"
         case _ if combined.contains("#text") && attributes.nonEmpty =>
           JsObject((attributes + (node.label -> combined("#text"))).toSeq)
-        // Case 3: Regular object
         case _ => JsObject(combined.filterNot(_._1 == "#text").toSeq)
       }
   }
   /** Converts XML string to pretty JSON string (namespace removed) */
   def convertXmlToJson(xmlString: String): XmlConversionResult = {
     val conversionAttempt = for {
-      // Step 1: Clean namespaces
       cleanedXmlString <- Try(xmlString.replaceAll("xmlns(:\\w+)?=\"[^\"]*\"", ""))
-      // Step 2: Parse XML safely
       xml <- Try(XML.loadString(cleanedXmlString))
-      // Step 3: Convert to JSON
       json <- Try(Json.obj(xml.label -> xmlToJson(xml)))
     } yield json
     conversionAttempt match {

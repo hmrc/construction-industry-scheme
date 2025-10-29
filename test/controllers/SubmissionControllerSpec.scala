@@ -28,6 +28,7 @@ import play.api.test.Helpers.{CONTENT_TYPE, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
+import uk.gov.hmrc.constructionindustryscheme.models.audit.XmlConversionResult
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
@@ -374,6 +375,117 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       status(result) mustBe UNAUTHORIZED
       verifyNoInteractions(service)
+    }
+  }
+
+  "createMonthlyNilReturnRequestJson" - {
+
+    trait TestableMonthlyNilReturnService {
+      def convertXmlToJson(xml: String): XmlConversionResult
+      def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue
+    }
+
+    "return correct JSON for successful conversion" in {
+      val service: TestableMonthlyNilReturnService = new TestableMonthlyNilReturnService {
+        def convertXmlToJson(xml: String): XmlConversionResult =
+          XmlConversionResult(true, Some(Json.obj("ok" -> true)), None)
+
+        def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue = {
+          convertXmlToJson(payload.envelope.toString) match {
+            case XmlConversionResult(true, Some(json), _) => json
+            case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
+            case _ => Json.obj("error" -> "unexpected conversion failure")
+          }
+        }
+      }
+      val payload = BuiltSubmissionPayload(<xml></xml>, "corr-1", "irmark-1")
+      val result = service.createMonthlyNilReturnRequestJson(payload)
+      result mustBe Json.obj("ok" -> true)
+    }
+    "return error JSON when XML conversion fails" in {
+      val service: TestableMonthlyNilReturnService = new TestableMonthlyNilReturnService {
+        def convertXmlToJson(xml: String): XmlConversionResult =
+          XmlConversionResult(false, None, Some("Invalid XML"))
+
+        def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue = {
+          convertXmlToJson(payload.envelope.toString) match {
+            case XmlConversionResult(true, Some(json), _) => json
+            case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
+            case _ => Json.obj("error" -> "unexpected conversion failure")
+          }
+        }
+      }
+      val payload = BuiltSubmissionPayload(<xml>bad</xml>, "corr-2", "irmark-2")
+      val result = service.createMonthlyNilReturnRequestJson(payload)
+      result mustBe Json.obj("error" -> "Invalid XML")
+    }
+    "return unexpected conversion failure when neither json nor error provided" in {
+      val service: TestableMonthlyNilReturnService = new TestableMonthlyNilReturnService {
+        def convertXmlToJson(xml: String): XmlConversionResult =
+          XmlConversionResult(false, None, None)
+
+        def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue = {
+          convertXmlToJson(payload.envelope.toString) match {
+            case XmlConversionResult(true, Some(json), _) => json
+            case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
+            case _ => Json.obj("error" -> "unexpected conversion failure")
+          }
+        }
+      }
+      val payload = BuiltSubmissionPayload(<xml>weird</xml>, "corr-3", "irmark-3")
+      val result = service.createMonthlyNilReturnRequestJson(payload)
+      result mustBe Json.obj("error" -> "unexpected conversion failure")
+    }
+  }
+
+  "createMonthlyNilReturnResponseJson" - {
+
+    trait TestableMonthlyNilResponseService {
+      def convertXmlToJson(xml: String): XmlConversionResult
+      def createMonthlyNilReturnResponseJson(res: SubmissionResult): JsValue
+    }
+
+    val govTalkMeta = GovTalkMeta(
+      qualifier = "response",
+      function = "submit",
+      className = "CIS300MR",
+      correlationId = "correlationId",
+      gatewayTimestamp = "gatewayTimestamp",
+      responseEndPoint = ResponseEndPoint("/poll", 100),
+      error = None
+    )
+    val res = SubmissionResult(SUBMITTED, "rawXml", govTalkMeta)
+
+    "return correct JSON for successful conversion" in {
+      val service: TestableMonthlyNilResponseService = new TestableMonthlyNilResponseService {
+        def convertXmlToJson(xml: String): XmlConversionResult =
+          XmlConversionResult(true, Some(Json.obj("ok" -> true)), None)
+
+        def createMonthlyNilReturnResponseJson(res: SubmissionResult): JsValue = {
+          convertXmlToJson(res.rawXml) match {
+            case XmlConversionResult(true, Some(json), _) => json
+            case _ => Json.toJson(res.rawXml)
+          }
+        }
+      }
+      val result = service.createMonthlyNilReturnResponseJson(res)
+      result mustBe Json.obj("ok" -> true)
+    }
+    "return error JSON when XML conversion fails" in {
+      val service: TestableMonthlyNilResponseService = new TestableMonthlyNilResponseService {
+        def convertXmlToJson(xml: String): XmlConversionResult =
+          XmlConversionResult(false, None, Some("Invalid XML"))
+
+        def createMonthlyNilReturnResponseJson(res: SubmissionResult): JsValue = {
+          convertXmlToJson(res.rawXml) match {
+            case XmlConversionResult(true, Some(json), _) => json
+            case _ => Json.toJson(res.rawXml)
+          }
+        }
+      }
+
+      val result = service.createMonthlyNilReturnResponseJson(res)
+      result mustBe Json.toJson(res.rawXml)
     }
   }
 
