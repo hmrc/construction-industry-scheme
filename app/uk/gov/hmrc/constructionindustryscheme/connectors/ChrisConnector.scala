@@ -106,7 +106,7 @@ class ChrisConnector @Inject()(
       rawXml        = rawXml,
       errorNumber   = s"http-$status",
       errorType     = "fatal",
-      errorText     = truncate(rawXml, 255)
+      errorText     = truncate(rawXml)
     )
 
   private def connectionError(correlationId: String, e: Throwable): SubmissionResult =
@@ -139,8 +139,8 @@ class ChrisConnector @Inject()(
       )
     )
 
-  private def truncate(s: String, n: Int): String =
-    if (s.length <= n) s else s.take(n) + "…"
+  private def truncate(s: String, maxCharacters: Int = 254): String =
+    if (s.length <= maxCharacters) s else s.take(maxCharacters) + "…"
 }
 
 object ChrisConnector {

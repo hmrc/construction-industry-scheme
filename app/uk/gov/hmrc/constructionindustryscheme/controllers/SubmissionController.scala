@@ -31,13 +31,15 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRe
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeBuilder
 
+import java.time.{Clock, Instant}
 import java.util.UUID
 
 class SubmissionController @Inject()(
                                            authorise: AuthAction,
                                            submissionService: SubmissionService,
                                            cc: ControllerComponents,
-                                           appConfig: AppConfig
+                                           appConfig: AppConfig,
+                                           clock: Clock
                                          )(implicit ec: ExecutionContext)
   extends BackendController(cc) with Logging {
 
@@ -100,11 +102,17 @@ class SubmissionController @Inject()(
     }
 
   private def renderSubmissionResponse(submissionId: String, irMark: String)(res: SubmissionResult): Result = {
+
+    val gatewayTimestamp: String = res.meta.gatewayTimestamp match {
+      case Some(s) if s.trim.nonEmpty => s.trim
+      case _ => Instant.now(clock).toString
+    }
+
     val base = Json.obj(
       "submissionId" -> submissionId,
       "hmrcMarkGenerated" -> irMark,
       "correlationId" -> res.meta.correlationId,
-      "gatewayTimestamp" -> res.meta.gatewayTimestamp
+      "gatewayTimestamp" -> gatewayTimestamp
     )
 
     def withStatus(s: String): JsObject = base ++ Json.obj("status" -> s)
