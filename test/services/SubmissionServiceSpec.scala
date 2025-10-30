@@ -140,7 +140,7 @@ final class SubmissionServiceSpec extends SpecBase {
                   status: SubmissionStatus,
                   corrId: String = "CID-123",
                   pollSecs: Int = 15,
-                  ts: String = "2025-01-01T00:00:00Z",
+                  ts: Option[String] = None,
                   err: Option[GovTalkError] = None
                 ): SubmissionResult =
       SubmissionResult(

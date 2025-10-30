@@ -55,7 +55,7 @@ object ChrisXmlMapper {
       function <- textRequired(messageDetails, "Function", "Function")
       className <- textRequired(messageDetails, "Class", "Class")
       correlationId <- textRequired(messageDetails, "CorrelationID", "CorrelationID")
-      gatewayTimestamp <- textRequired(messageDetails, "GatewayTimestamp", "GatewayTimestamp")
+      gatewayTimestampOpt = textOptional(messageDetails, "GatewayTimestamp")
       pollIntervalOpt: Option[Int] = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
       endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
       errOpt <- parseError(qualifier, doc)
@@ -80,7 +80,7 @@ object ChrisXmlMapper {
         function = function,
         className = className,
         correlationId = correlationId,
-        gatewayTimestamp = gatewayTimestamp,
+        gatewayTimestamp = gatewayTimestampOpt,
         responseEndPoint = ResponseEndPoint(epUrl, pollInt),
         error = errOpt
       )

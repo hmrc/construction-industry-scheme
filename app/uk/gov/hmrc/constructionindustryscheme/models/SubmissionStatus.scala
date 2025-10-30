@@ -36,7 +36,7 @@ final case class GovTalkMeta(
   function: String,
   className: String,
   correlationId: String,
-  gatewayTimestamp: String,
+  gatewayTimestamp: Option[String],
   responseEndPoint: ResponseEndPoint,
   error: Option[GovTalkError]
 )
