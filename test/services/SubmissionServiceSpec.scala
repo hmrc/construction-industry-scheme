@@ -22,8 +22,9 @@ import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers.eq as eqTo
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -121,6 +122,85 @@ final class SubmissionServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("downstream boom")))
 
       service.submitToChris(payload).failed.futureValue.getMessage must include ("downstream boom")
+    }
+  }
+
+  "pollSubmission" - {
+
+    "delegates to ChrisConnector and returns ChrisPollResponse with SUBMITTED status" in {
+      val s = setup; import s._
+
+      val correlationId = "CORR-123"
+      val pollUrl = "http://example.com/poll"
+      val expected = ChrisPollResponse(SUBMITTED, None)
+
+      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(expected))
+
+      service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
+
+      verify(chrisConnector).pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
+      verifyNoInteractions(formpProxyConnector)
+    }
+
+    "delegates to ChrisConnector and returns ChrisPollResponse with ACCEPTED status and pollUrl" in {
+      val s = setup; import s._
+
+      val correlationId = "CORR-456"
+      val pollUrl = "http://example.com/poll"
+      val expected = ChrisPollResponse(ACCEPTED, Some(pollUrl))
+
+      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(expected))
+
+      service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
+
+      verify(chrisConnector).pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
+      verifyNoInteractions(formpProxyConnector)
+    }
+
+    "delegates to ChrisConnector and returns ChrisPollResponse with FATAL_ERROR status" in {
+      val s = setup; import s._
+
+      val correlationId = "CORR-789"
+      val pollUrl = "http://example.com/poll"
+      val expected = ChrisPollResponse(FATAL_ERROR, None)
+
+      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(expected))
+
+      service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
+
+      verify(chrisConnector).pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
+      verifyNoInteractions(formpProxyConnector)
+    }
+
+    "delegates to ChrisConnector and returns ChrisPollResponse with DEPARTMENTAL_ERROR status" in {
+      val s = setup; import s._
+
+      val correlationId = "CORR-ABC"
+      val pollUrl = "http://example.com/poll"
+      val expected = ChrisPollResponse(DEPARTMENTAL_ERROR, None)
+
+      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(expected))
+
+      service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
+
+      verify(chrisConnector).pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
+      verifyNoInteractions(formpProxyConnector)
+    }
+
+    "propagates failures from ChrisConnector" in {
+      val s = setup; import s._
+
+      val correlationId = "CORR-FAIL"
+      val pollUrl = "http://example.com/poll"
+
+      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("polling failed")))
+
+      service.pollSubmission(correlationId, pollUrl).failed.futureValue.getMessage must include ("polling failed")
     }
   }
 
