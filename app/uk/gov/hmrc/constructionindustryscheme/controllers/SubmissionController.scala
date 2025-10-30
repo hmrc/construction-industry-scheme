@@ -135,6 +135,10 @@ class SubmissionController @Inject()(
         Future.successful(Ok(Json.obj(
           "status" -> "DEPARTMENTAL_ERROR"
         )))
+      } else if (taxOfficeNumber.contains("757") && Instant.now.isAfter(timestamp.plusSeconds(15))) {
+        Future.successful(Ok(Json.obj(
+          "status" -> "SUBMITTED_NO_RECEIPT"
+        )))
       } else {
         Future.successful(Ok(Json.obj(
           "status" -> "PENDING",

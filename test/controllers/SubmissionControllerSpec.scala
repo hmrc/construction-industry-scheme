@@ -441,6 +441,26 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       verifyNoInteractions(service)
     }
 
+    "returns 200 with SUBMITTED_NO_RECEIPT status when timestamp is more than 25 seconds in the past and office number is 757" in {
+      val service = mock[SubmissionService]
+      val authAction = fakeAuthAction(ton = "757", tor = "EZ00100")
+      val controller = mkController(service, auth = authAction)
+
+      val oldTimestamp = Instant.now().minusSeconds(30)
+      val encodedPollUrl = java.net.URLEncoder.encode(s"http://example.com/poll?timestamp=$oldTimestamp", "UTF-8")
+      val correlationId = "CORR123"
+
+      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$encodedPollUrl&correlationId=$correlationId")
+
+      val result = controller.pollSubmission(encodedPollUrl, correlationId)(req)
+
+      status(result) mustBe OK
+      val js = contentAsJson(result)
+      (js \ "status").as[String] mustBe "SUBMITTED_NO_RECEIPT"
+      (js \ "pollUrl").asOpt[String] mustBe None
+      verifyNoInteractions(service)
+    }
+
     "returns 200 with PENDING status and pollUrl when timestamp is less than 25 seconds in the past" in {
       val service = mock[SubmissionService]
       val authAction = fakeAuthAction(ton = "754", tor = "EZ00100")
