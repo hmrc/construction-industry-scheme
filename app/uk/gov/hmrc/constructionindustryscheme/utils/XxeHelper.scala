@@ -14,14 +14,17 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.response
+package uk.gov.hmrc.constructionindustryscheme.utils
 
-import play.api.libs.json.{Json, OFormat}
+import javax.xml.parsers.{SAXParser, SAXParserFactory}
 
-final case class CreateAndTrackSubmissionResponse(
-  submissionId: String
-)
+object XxeHelper {
+  def secureSAXParser: SAXParser = {
+    val saxParserFactory = SAXParserFactory.newInstance()
+    saxParserFactory.setFeature("http://xml.org/sax/features/external-general-entities", false)
+    saxParserFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+    saxParserFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+    saxParserFactory.newSAXParser()
+  }
 
-object CreateAndTrackSubmissionResponse {
-  implicit val format: OFormat[CreateAndTrackSubmissionResponse] = Json.format[CreateAndTrackSubmissionResponse]
 }

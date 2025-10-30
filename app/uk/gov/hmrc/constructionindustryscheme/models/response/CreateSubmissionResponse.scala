@@ -14,20 +14,14 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme
+package uk.gov.hmrc.constructionindustryscheme.models.response
 
-import com.google.inject.AbstractModule
-import uk.gov.hmrc.constructionindustryscheme.actions.{AuthAction, DefaultAuthAction}
-import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
+import play.api.libs.json.{Json, OFormat}
 
-import java.time.{Clock, ZoneOffset}
+final case class CreateSubmissionResponse(
+  submissionId: String
+)
 
-
-class Module extends AbstractModule {
-
-  override def configure(): Unit = {
-    bind(classOf[AuthAction]).to(classOf[DefaultAuthAction]).asEagerSingleton()
-    bind(classOf[AppConfig]).asEagerSingleton()
-    bind(classOf[Clock]).toInstance(Clock.systemDefaultZone.withZone(ZoneOffset.UTC))
-  }
+object CreateSubmissionResponse {
+  implicit val format: OFormat[CreateSubmissionResponse] = Json.format[CreateSubmissionResponse]
 }

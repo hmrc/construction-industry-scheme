@@ -45,12 +45,12 @@ class SubmissionControllerIntegrationSpec
     "email" -> "test@test.com"
   )
 
-  private val createUrl = s"$base/submissions/create-and-track"
+  private val createUrl = s"$base/submissions/create"
   private def submitToChrisUrl(id: String) = s"$base/submissions/$id/submit-to-chris"
   private def updateUrl(id: String) = s"$base/submissions/$id/update"
 
 
-  "POST /cis/submissions/create-and-track" should {
+  "POST /cis/submissions/create" should {
 
     "returns 201 with submissionId when authorised and JSON is valid" in {
       AuthStub.authorisedWithoutCisEnrolment()
@@ -63,7 +63,7 @@ class SubmissionControllerIntegrationSpec
       )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/submissions/create-and-track"))
+        post(urlPathEqualTo("/formp-proxy/submissions/create"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(matchingJsonPath("$.instanceId"))
           .withRequestBody(matchingJsonPath("$.taxYear"))

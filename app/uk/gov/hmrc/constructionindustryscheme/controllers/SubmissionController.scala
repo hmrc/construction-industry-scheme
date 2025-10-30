@@ -23,33 +23,40 @@ import play.api.libs.json.*
 
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Logging
+import play.api.http.Status.BAD_GATEWAY
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.{SubmissionResult, SuccessEmailParams, ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, SubmissionResult, SuccessEmailParams, ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeBuilder
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
+import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor
 
+import java.time.{Clock, Instant}
 import java.util.UUID
 
 class SubmissionController @Inject()(
                                            authorise: AuthAction,
                                            submissionService: SubmissionService,
+                                           auditService: AuditService,
                                            cc: ControllerComponents,
-                                           appConfig: AppConfig
+                                           appConfig: AppConfig,
+                                           clock: Clock
                                          )(implicit ec: ExecutionContext)
   extends BackendController(cc) with Logging {
 
   implicit val reads: Reads[ChrisSubmissionRequest] = Json.reads[ChrisSubmissionRequest]
 
-  def createAndTrackSubmission: Action[JsValue] =
+  def createSubmission: Action[JsValue] =
     authorise(parse.json).async { implicit request =>
-      request.body.validate[CreateAndTrackSubmissionRequest].fold(
+      request.body.validate[CreateSubmissionRequest].fold(
         errs => Future.successful(BadRequest(JsError.toJson(errs))),
         csr =>
           submissionService
-            .createAndTrackSubmission(csr)
+            .createSubmission(csr)
             .map(id => Created(Json.obj("submissionId" -> id)))
             .recover { case ex =>
               logger.error("[create] formp-proxy create failed", ex)
@@ -69,22 +76,28 @@ class SubmissionController @Inject()(
           val payload = ChrisEnvelopeBuilder.buildPayload(csr, req, correlationId, appConfig.chrisEnableMissingMandatory, appConfig.chrisEnableIrmarkBad)
           val emailParams = SuccessEmailParams(csr.email, csr.monthYear)
 
+          val monthlyNilReturnRequestJson: JsValue = createMonthlyNilReturnRequestJson(payload)
+          auditService.monthlyNilReturnRequestEvent(monthlyNilReturnRequestJson)
+
           submissionService
             .submitToChris(payload, Some(emailParams))
-            .map(renderSubmissionResponse(submissionId, payload.irMark))
+            .map(renderSubmissionResponse(submissionId, payload))
             .recover { case ex =>
               logger.error("[submitToChris] upstream failure", ex)
-              BadGateway(Json.obj(
+              val fatalErrorJson = Json.obj(
                 "submissionId" -> submissionId,
                 "status" -> "FATAL_ERROR",
                 "hmrcMarkGenerated" -> payload.irMark,
                 "error" -> "upstream-failure"
-              ))
+              )
+              val monthlyNilReturnResponse = AuditResponseReceivedModel(BAD_GATEWAY.toString, fatalErrorJson)
+              auditService.monthlyNilReturnResponseEvent(monthlyNilReturnResponse)
+              BadGateway(fatalErrorJson)
             }
         }
       )
     }
-  
+
   def updateSubmission(submissionId: String): Action[JsValue] =
     authorise(parse.json).async { implicit req =>
       req.body.validate[UpdateSubmissionRequest].fold(
@@ -100,12 +113,20 @@ class SubmissionController @Inject()(
       )
     }
 
-  private def renderSubmissionResponse(submissionId: String, irMark: String)(res: SubmissionResult): Result = {
+  private def renderSubmissionResponse(submissionId: String, payload: BuiltSubmissionPayload)(res: SubmissionResult): Result = {
+
+    implicit val hc: HeaderCarrier = HeaderCarrier()
+
+    val gatewayTimestamp: String = res.meta.gatewayTimestamp match {
+      case Some(s) if s.trim.nonEmpty => s.trim
+      case _ => Instant.now(clock).toString
+    }
+
     val base = Json.obj(
       "submissionId" -> submissionId,
-      "hmrcMarkGenerated" -> irMark,
+      "hmrcMarkGenerated" -> payload.irMark,
       "correlationId" -> res.meta.correlationId,
-      "gatewayTimestamp" -> res.meta.gatewayTimestamp
+      "gatewayTimestamp" -> gatewayTimestamp
     )
 
     def withStatus(s: String): JsObject = base ++ Json.obj("status" -> s)
@@ -127,12 +148,32 @@ class SubmissionController @Inject()(
           .getOrElse(Json.obj("text" -> defaultText))
       )
 
+    val monthlyNilReturnResponseJson: JsValue = createMonthlyNilReturnResponseJson(res)
+
+    val monthlyNilReturnResponse = AuditResponseReceivedModel(res.status.toString, monthlyNilReturnResponseJson)
+    auditService.monthlyNilReturnResponseEvent(monthlyNilReturnResponse)
+
     res.status match {
       case AcceptedStatus => Results.Accepted(withPoll(withStatus("ACCEPTED")))
       case SubmittedStatus => Results.Ok(withStatus("SUBMITTED"))
       case SubmittedNoReceiptStatus => Results.Ok(withStatus("SUBMITTED_NO_RECEIPT"))
       case DepartmentalErrorStatus => Results.Ok(withStatus("DEPARTMENTAL_ERROR") ++ errorObj("departmental error"))
       case FatalErrorStatus => Results.Ok(withStatus("FATAL_ERROR") ++ errorObj("fatal"))
+    }
+  }
+
+  def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue = {
+    XmlToJsonConvertor.convertXmlToJson(payload.envelope.toString) match {
+      case XmlConversionResult(true, Some(json), _) => json
+      case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
+      case _ => Json.obj("error" -> "unexpected conversion failure")
+    }
+  }
+
+  def createMonthlyNilReturnResponseJson(res: SubmissionResult): JsValue = {
+    XmlToJsonConvertor.convertXmlToJson(res.rawXml) match {
+      case XmlConversionResult(true, Some(json), _) => json
+      case _ => Json.toJson(res.rawXml)
     }
   }
 

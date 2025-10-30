@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2023 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,12 @@
  * limitations under the License.
  */
 
-package utils
+package uk.gov.hmrc.constructionindustryscheme.models.audit
 
-import javax.xml.parsers.{SAXParser, SAXParserFactory}
+import play.api.libs.json.{Format, JsObject, JsValue, Json, OWrites}
 
-object XxeHelper {
-  def secureSAXParser: SAXParser = {
-    val saxParserFactory = SAXParserFactory.newInstance()
-    saxParserFactory.setFeature("http://xml.org/sax/features/external-general-entities", false)
-    saxParserFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-    saxParserFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
-    saxParserFactory.newSAXParser()
-  }
+final case class AuditResponseReceivedModel(status: String, responseData: JsValue)
 
+object AuditResponseReceivedModel {
+  implicit val formats: Format[AuditResponseReceivedModel] = Json.format[AuditResponseReceivedModel]
 }

@@ -18,13 +18,13 @@ package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
 
-case class CreateAndTrackSubmissionRequest(
+case class CreateSubmissionRequest(
                                             instanceId: String,
                                             taxYear: Int,
                                             taxMonth: Int,
                                             emailRecipient: Option[String] = None
                                           )
 
-object CreateAndTrackSubmissionRequest {
-  implicit val format: OFormat[CreateAndTrackSubmissionRequest] = Json.format[CreateAndTrackSubmissionRequest]
+object CreateSubmissionRequest {
+  implicit val format: OFormat[CreateSubmissionRequest] = Json.format[CreateSubmissionRequest]
 }

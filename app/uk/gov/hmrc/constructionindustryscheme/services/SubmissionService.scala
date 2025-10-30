@@ -19,7 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, SUBMITTED, SubmissionResult, SuccessEmailParams}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndTrackSubmissionRequest, NilMonthlyReturnOrgSuccessEmail, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, NilMonthlyReturnOrgSuccessEmail, UpdateSubmissionRequest}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import java.time.YearMonth
@@ -35,13 +35,13 @@ class SubmissionService @Inject()(
   formpProxyConnector: FormpProxyConnector,
   emailConnector: EmailConnector
 )(implicit ec: ExecutionContext) extends Logging {
-  def createAndTrackSubmission(request: CreateAndTrackSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
-    formpProxyConnector.createAndTrackSubmission(request)
+  def createSubmission(request: CreateSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
+    formpProxyConnector.createSubmission(request)
 
   def updateSubmission(req: UpdateSubmissionRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.updateSubmission(req)
 
-  def submitToChris(payload: BuiltSubmissionPayload, 
+  def submitToChris(payload: BuiltSubmissionPayload,
                     successEmail: Option[SuccessEmailParams]=None)
                    (implicit hc: HeaderCarrier): Future[SubmissionResult] = {
     chrisConnector.submitEnvelope(payload.envelope, payload.correlationId).flatMap{ res =>
