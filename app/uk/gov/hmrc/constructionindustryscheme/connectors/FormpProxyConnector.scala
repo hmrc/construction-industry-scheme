@@ -21,7 +21,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.models.UserMonthlyReturns
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndTrackSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.NilMonthlyReturnRequest
 import uk.gov.hmrc.http.*
@@ -42,11 +42,11 @@ class FormpProxyConnector @Inject()(
       .withBody(Json.obj("instanceId" -> instanceId))
       .execute[UserMonthlyReturns]
 
-  def createAndTrackSubmission(request: CreateAndTrackSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
+  def createSubmission(request: CreateSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
     http
-      .post(url"$base/submissions/create-and-track")
+      .post(url"$base/submissions/create")
       .withBody(Json.toJson(request))
-      .execute[CreateAndTrackSubmissionResponse]
+      .execute[CreateSubmissionResponse]
       .map(_.submissionId)
 
   def updateSubmission(req: UpdateSubmissionRequest)(implicit hc: HeaderCarrier): Future[Unit] =
