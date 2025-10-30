@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services.chris
 
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, DEPARTMENTAL_ERROR, FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.GovTalkError
 
 import scala.xml.*
 

@@ -172,6 +172,7 @@ final class ChrisConnectorIntegrationSpec
 
       result.status mustBe ACCEPTED
       result.pollUrl mustBe Some("/poll/next-endpoint")
+      result.pollInterval mustBe Some(10)
 
       verify(postRequestedFor(urlPathEqualTo("/poll/endpoint"))
         .withHeader("CorrelationId", equalTo(correlationId))
@@ -199,6 +200,7 @@ final class ChrisConnectorIntegrationSpec
 
       result.status mustBe SUBMITTED
       result.pollUrl mustBe Some("/final/response")
+      result.pollInterval mustBe None
     }
 
     "successfully parse fatal error response and return FATAL_ERROR" in {
@@ -220,6 +222,7 @@ final class ChrisConnectorIntegrationSpec
 
       result.status mustBe FATAL_ERROR
       result.pollUrl mustBe Some("/error/endpoint")
+      result.pollInterval mustBe None
     }
 
     "successfully parse business error response and return DEPARTMENTAL_ERROR" in {
@@ -241,6 +244,7 @@ final class ChrisConnectorIntegrationSpec
 
       result.status mustBe DEPARTMENTAL_ERROR
       result.pollUrl mustBe Some("/business/error")
+      result.pollInterval mustBe None
     }
 
     "fail when response is unparsable XML" in {
@@ -340,6 +344,7 @@ final class ChrisConnectorIntegrationSpec
 
       result.status mustBe SUBMITTED
       result.pollUrl mustBe None
+      result.pollInterval mustBe None
     }
   }
 

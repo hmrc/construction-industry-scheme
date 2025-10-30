@@ -26,14 +26,16 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
 
   private def headerXml(
     qualifier: String,
-    endpointUrl: Option[String] = None
+    endpointUrl: Option[String] = None,
+    pollInterval: Option[Int] = None
   ): String = {
     val epText = endpointUrl.getOrElse("")
+    val pollIntervalAttr = pollInterval.map(pi => s""" PollInterval="$pi"""").getOrElse("")
     s"""
        |<Header>
        |  <MessageDetails>
        |    <Qualifier>$qualifier</Qualifier>
-       |    <ResponseEndPoint>$epText</ResponseEndPoint>
+       |    <ResponseEndPoint$pollIntervalAttr>$epText</ResponseEndPoint>
        |  </MessageDetails>
        |</Header>
        |""".stripMargin
@@ -49,7 +51,22 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
   "ChrisXmlPollMapper parse" - {
 
     "maps an acknowledgement to ACCEPTED" - {
-      "with endpoint URL" in {
+      "with endpoint URL and poll interval" in {
+        val xml = envelope(
+          headerXml(
+            qualifier = "acknowledgement",
+            endpointUrl = Some("/poll/next"),
+            pollInterval = Some(10)
+          )
+        )
+
+        val res = ChrisXmlPollMapper.parse(xml).value
+        res.status mustBe ACCEPTED
+        res.pollUrl mustBe Some("/poll/next")
+        res.pollInterval mustBe Some(10)
+      }
+
+      "with endpoint URL but no poll interval" in {
         val xml = envelope(
           headerXml(
             qualifier = "acknowledgement",
@@ -60,6 +77,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
         val res = ChrisXmlPollMapper.parse(xml).value
         res.status mustBe ACCEPTED
         res.pollUrl mustBe Some("/poll/next")
+        res.pollInterval mustBe None
       }
 
       "without endpoint URL" in {

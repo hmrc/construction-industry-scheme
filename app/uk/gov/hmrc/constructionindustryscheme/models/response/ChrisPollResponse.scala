@@ -20,5 +20,6 @@ import uk.gov.hmrc.constructionindustryscheme.models.SubmissionStatus
 
 case class ChrisPollResponse(
   status: SubmissionStatus,
-  pollUrl: Option[String]
+  pollUrl: Option[String],
+  pollInterval: Option[Int]
 )

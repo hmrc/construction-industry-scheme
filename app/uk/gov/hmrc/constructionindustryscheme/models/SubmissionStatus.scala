@@ -16,8 +16,6 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
-import uk.gov.hmrc.constructionindustryscheme.models.WithName
-
 sealed trait SubmissionStatus
 case object ACCEPTED extends SubmissionStatus with WithName("ACCEPTED")
 case object FATAL_ERROR extends SubmissionStatus with WithName("FATAL_ERROR")

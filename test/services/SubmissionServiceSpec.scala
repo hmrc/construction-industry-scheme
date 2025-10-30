@@ -132,7 +132,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
       val correlationId = "CORR-123"
       val pollUrl = "http://example.com/poll"
-      val expected = ChrisPollResponse(SUBMITTED, None)
+      val expected = ChrisPollResponse(SUBMITTED, None, None)
 
       when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(expected))
@@ -148,7 +148,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
       val correlationId = "CORR-456"
       val pollUrl = "http://example.com/poll"
-      val expected = ChrisPollResponse(ACCEPTED, Some(pollUrl))
+      val expected = ChrisPollResponse(ACCEPTED, Some(pollUrl), Some(10))
 
       when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(expected))
@@ -164,7 +164,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
       val correlationId = "CORR-789"
       val pollUrl = "http://example.com/poll"
-      val expected = ChrisPollResponse(FATAL_ERROR, None)
+      val expected = ChrisPollResponse(FATAL_ERROR, None, None)
 
       when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(expected))
@@ -180,7 +180,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
       val correlationId = "CORR-ABC"
       val pollUrl = "http://example.com/poll"
-      val expected = ChrisPollResponse(DEPARTMENTAL_ERROR, None)
+      val expected = ChrisPollResponse(DEPARTMENTAL_ERROR, None, None)
 
       when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(expected))

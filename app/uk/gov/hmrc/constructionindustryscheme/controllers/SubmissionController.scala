@@ -36,7 +36,6 @@ import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceive
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 
-import java.nio.charset.Charset
 import java.time.{Clock, Instant}
 import java.util.UUID
 
@@ -117,9 +116,10 @@ class SubmissionController @Inject()(
   def pollSubmission(pollUrl: String, correlationId: String): Action[AnyContent] =
     authorise.async { implicit req =>
      submissionService.pollSubmission(correlationId, pollUrl)
-       .map{ case ChrisPollResponse(status, pollUrl) => Ok(Json.obj(
+       .map{ case ChrisPollResponse(status, pollUrl, interval) => Ok(Json.obj(
          "status" -> status.toString,
-         "pollUrl" -> pollUrl
+         "pollUrl" -> pollUrl,
+         "intervalSeconds" -> interval
        ))}
     }
 

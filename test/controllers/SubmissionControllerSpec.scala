@@ -390,7 +390,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val correlationId = "CORR123"
 
       when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(ChrisPollResponse(SUBMITTED, None)))
+        .thenReturn(Future.successful(ChrisPollResponse(SUBMITTED, None, None)))
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
@@ -400,6 +400,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "SUBMITTED"
       (js \ "pollUrl").asOpt[String] mustBe None
+      (js \ "intervalSeconds").asOpt[Int] mustBe None
 
       verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
     }
@@ -412,7 +413,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val correlationId = "CORR456"
 
       when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(ChrisPollResponse(uk.gov.hmrc.constructionindustryscheme.models.FATAL_ERROR, None)))
+        .thenReturn(Future.successful(ChrisPollResponse(uk.gov.hmrc.constructionindustryscheme.models.FATAL_ERROR, None, None)))
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
@@ -422,6 +423,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "FATAL_ERROR"
       (js \ "pollUrl").asOpt[String] mustBe None
+      (js \ "intervalSeconds").asOpt[Int] mustBe None
 
       verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
     }
@@ -434,7 +436,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val correlationId = "CORR789"
 
       when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(ChrisPollResponse(DEPARTMENTAL_ERROR, None)))
+        .thenReturn(Future.successful(ChrisPollResponse(DEPARTMENTAL_ERROR, None, None)))
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
@@ -444,6 +446,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "DEPARTMENTAL_ERROR"
       (js \ "pollUrl").asOpt[String] mustBe None
+      (js \ "intervalSeconds").asOpt[Int] mustBe None
 
       verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
     }
@@ -456,7 +459,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val correlationId = "CORR999"
 
       when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, Some(pollUrl))))
+        .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, Some(pollUrl), Some(10))))
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
@@ -466,6 +469,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "ACCEPTED"
       (js \ "pollUrl").as[String] mustBe pollUrl
+      (js \ "intervalSeconds").as[Int] mustBe 10
 
       verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
     }

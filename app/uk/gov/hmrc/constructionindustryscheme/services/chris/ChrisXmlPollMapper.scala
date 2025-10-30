@@ -18,6 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.services.chris
 
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
+import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionXmlMapper.intAttrOptional
 
 import scala.xml.*
 
@@ -30,6 +31,7 @@ object ChrisXmlPollMapper extends ChrisXmlMapper {
     for {
       qualifier <- textRequired(messageDetails, "Qualifier", "Qualifier")
       endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
+      pollIntervalOpt: Option[Int] = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
       errOpt <- parseError(qualifier, doc)
     } yield {
       val status: SubmissionStatus = qualifier.toLowerCase match {
@@ -44,7 +46,7 @@ object ChrisXmlPollMapper extends ChrisXmlMapper {
         case _ => FATAL_ERROR
       }
 
-      ChrisPollResponse(status, endpointUrlOpt)
+      ChrisPollResponse(status, endpointUrlOpt, pollIntervalOpt)
     }
   }
   
