@@ -16,12 +16,14 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
+import uk.gov.hmrc.constructionindustryscheme.models.WithName
+
 sealed trait SubmissionStatus
-case object ACCEPTED extends SubmissionStatus
-case object FATAL_ERROR extends SubmissionStatus
-case object SUBMITTED extends SubmissionStatus
-case object SUBMITTED_NO_RECEIPT extends SubmissionStatus
-case object DEPARTMENTAL_ERROR extends SubmissionStatus
+case object ACCEPTED extends SubmissionStatus with WithName("ACCEPTED")
+case object FATAL_ERROR extends SubmissionStatus with WithName("FATAL_ERROR")
+case object SUBMITTED extends SubmissionStatus with WithName("SUBMITTED")
+case object SUBMITTED_NO_RECEIPT extends SubmissionStatus with WithName("SUBMITTED_NO_RECEIPT")
+case object DEPARTMENTAL_ERROR extends SubmissionStatus with WithName("DEPARTMENTAL_ERROR")
 
 final case class ResponseEndPoint(url: String, pollIntervalSeconds: Int)
 

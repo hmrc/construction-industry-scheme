@@ -30,10 +30,11 @@ import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeBuilder
+import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionEnvelopeBuilder
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor
+import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 
 import java.nio.charset.Charset
 import java.time.{Clock, Instant}
@@ -74,7 +75,7 @@ class SubmissionController @Inject()(
           logger.info(s"Submitting Nil Monthly Return to ChRIS for UTR=${csr.utr}")
 
           val correlationId = UUID.randomUUID().toString.replace("-", "").toUpperCase
-          val payload = ChrisEnvelopeBuilder.buildPayload(csr, req, correlationId, appConfig.chrisEnableMissingMandatory, appConfig.chrisEnableIrmarkBad)
+          val payload = ChrisSubmissionEnvelopeBuilder.buildPayload(csr, req, correlationId, appConfig.chrisEnableMissingMandatory, appConfig.chrisEnableIrmarkBad)
 
           val monthlyNilReturnRequestJson: JsValue = createMonthlyNilReturnRequestJson(payload)
           auditService.monthlyNilReturnRequestEvent(monthlyNilReturnRequestJson)
@@ -115,32 +116,11 @@ class SubmissionController @Inject()(
 
   def pollSubmission(pollUrl: String, correlationId: String): Action[AnyContent] =
     authorise.async { implicit req =>
-      val timestamp = Instant.parse(java.net.URLDecoder.decode(pollUrl, Charset.forName("UTF-8")).split('=').apply(1))
-
-      val taxOfficeNumber = req.enrolments
-        .getEnrolment("HMRC-CIS-ORG")
-        .flatMap(_.getIdentifier("TaxOfficeNumber"))
-        .map(_.value)
-
-      if (taxOfficeNumber.contains("754") && Instant.now.isAfter(timestamp.plusSeconds(15))) {
-        Future.successful(Ok(Json.obj(
-          "status" -> "SUBMITTED"
-        )))
-      } else if (taxOfficeNumber.contains("755") && Instant.now.isAfter(timestamp.plusSeconds(15))) {
-        Future.successful(Ok(Json.obj(
-          "status" -> "FATAL_ERROR"
-        )))
-      }
-      else if (taxOfficeNumber.contains("756") && Instant.now.isAfter(timestamp.plusSeconds(15))) {
-        Future.successful(Ok(Json.obj(
-          "status" -> "DEPARTMENTAL_ERROR"
-        )))
-      } else {
-        Future.successful(Ok(Json.obj(
-          "status" -> "PENDING",
-          "pollUrl" -> pollUrl
-        )))
-      }
+     submissionService.pollSubmission(correlationId, pollUrl)
+       .map{ case ChrisPollResponse(status, pollUrl) => Ok(Json.obj(
+         "status" -> status.toString,
+         "pollUrl" -> pollUrl
+       ))}
     }
 
   private def renderSubmissionResponse(submissionId: String, payload: BuiltSubmissionPayload)(res: SubmissionResult): Result = {
@@ -165,7 +145,7 @@ class SubmissionController @Inject()(
       val endpoint = res.meta.responseEndPoint
       o ++ Json.obj(
         "responseEndPoint" -> Json.obj(
-          "url" -> s"http://someurl.com/test?timestamp=${Instant.now}",  // endpoint.url,
+          "url" -> endpoint.url,
           "pollIntervalSeconds" -> endpoint.pollIntervalSeconds
         )
       )
