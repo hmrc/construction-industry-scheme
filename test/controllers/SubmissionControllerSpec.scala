@@ -31,6 +31,7 @@ import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
 import uk.gov.hmrc.constructionindustryscheme.models.audit.XmlConversionResult
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
@@ -381,136 +382,104 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
   "pollSubmission" - {
 
-    "returns 200 with SUBMITTED status when timestamp is more than 25 seconds in the past and office number is 754" in {
+    "returns 200 with SUBMITTED status when service returns SUBMITTED" in {
       val service = mock[SubmissionService]
-      val authAction = fakeAuthAction(ton = "754", tor = "EZ00100")
-      val controller = mkController(service, auth = authAction)
+      val controller = mkController(service)
 
-      val oldTimestamp = Instant.now().minusSeconds(30)
-      val encodedPollUrl = java.net.URLEncoder.encode(s"http://example.com/poll?timestamp=$oldTimestamp", "UTF-8")
+      val pollUrl = "http://example.com/poll"
       val correlationId = "CORR123"
 
-      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$encodedPollUrl&correlationId=$correlationId")
+      when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(ChrisPollResponse(SUBMITTED, None)))
 
-      val result = controller.pollSubmission(encodedPollUrl, correlationId)(req)
+      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
+
+      val result = controller.pollSubmission(pollUrl, correlationId)(req)
 
       status(result) mustBe OK
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "SUBMITTED"
       (js \ "pollUrl").asOpt[String] mustBe None
-      verifyNoInteractions(service)
+
+      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
     }
 
-    "returns 200 with FATAL_ERROR status when timestamp is more than 25 seconds in the past and office number is 755" in {
+    "returns 200 with FATAL_ERROR status when service returns FATAL_ERROR" in {
       val service = mock[SubmissionService]
-      val authAction = fakeAuthAction(ton = "755", tor = "EZ00100")
-      val controller = mkController(service, auth = authAction)
+      val controller = mkController(service)
 
-      val oldTimestamp = Instant.now().minusSeconds(30)
-      val encodedPollUrl = java.net.URLEncoder.encode(s"http://example.com/poll?timestamp=$oldTimestamp", "UTF-8")
-      val correlationId = "CORR123"
+      val pollUrl = "http://example.com/poll"
+      val correlationId = "CORR456"
 
-      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$encodedPollUrl&correlationId=$correlationId")
+      when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(ChrisPollResponse(uk.gov.hmrc.constructionindustryscheme.models.FATAL_ERROR, None)))
 
-      val result = controller.pollSubmission(encodedPollUrl, correlationId)(req)
+      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
+
+      val result = controller.pollSubmission(pollUrl, correlationId)(req)
 
       status(result) mustBe OK
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "FATAL_ERROR"
       (js \ "pollUrl").asOpt[String] mustBe None
-      verifyNoInteractions(service)
+
+      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
     }
 
-    "returns 200 with DEPARTMENTAL_ERROR status when timestamp is more than 25 seconds in the past and office number is 756" in {
+    "returns 200 with DEPARTMENTAL_ERROR status when service returns DEPARTMENTAL_ERROR" in {
       val service = mock[SubmissionService]
-      val authAction = fakeAuthAction(ton = "756", tor = "EZ00100")
-      val controller = mkController(service, auth = authAction)
+      val controller = mkController(service)
 
-      val oldTimestamp = Instant.now().minusSeconds(30)
-      val encodedPollUrl = java.net.URLEncoder.encode(s"http://example.com/poll?timestamp=$oldTimestamp", "UTF-8")
-      val correlationId = "CORR123"
+      val pollUrl = "http://example.com/poll"
+      val correlationId = "CORR789"
 
-      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$encodedPollUrl&correlationId=$correlationId")
+      when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(ChrisPollResponse(DEPARTMENTAL_ERROR, None)))
 
-      val result = controller.pollSubmission(encodedPollUrl, correlationId)(req)
+      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
+
+      val result = controller.pollSubmission(pollUrl, correlationId)(req)
 
       status(result) mustBe OK
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "DEPARTMENTAL_ERROR"
       (js \ "pollUrl").asOpt[String] mustBe None
-      verifyNoInteractions(service)
+
+      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
     }
 
-    "returns 200 with PENDING status and pollUrl when timestamp is less than 25 seconds in the past" in {
+    "returns 200 with ACCEPTED status and pollUrl when service returns ACCEPTED with pollUrl" in {
       val service = mock[SubmissionService]
-      val authAction = fakeAuthAction(ton = "754", tor = "EZ00100")
-      val controller = mkController(service, auth = authAction)
+      val controller = mkController(service)
 
-      val recentTimestamp = Instant.now().minusSeconds(10)
-      val encodedPollUrl = java.net.URLEncoder.encode(s"http://example.com/poll?timestamp=$recentTimestamp", "UTF-8")
-      val correlationId = "CORR789"
-
-      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$encodedPollUrl&correlationId=$correlationId")
-
-      val result = controller.pollSubmission(encodedPollUrl, correlationId)(req)
-
-      status(result) mustBe OK
-      val js = contentAsJson(result)
-      (js \ "status").as[String] mustBe "PENDING"
-      (js \ "pollUrl").as[String] mustBe encodedPollUrl
-      verifyNoInteractions(service)
-    }
-
-    "returns 200 with PENDING status when timestamp is in the future" in {
-      val service = mock[SubmissionService]
-      val authAction = fakeAuthAction(ton = "754", tor = "EZ00100")
-      val controller = mkController(service, auth = authAction)
-
-      val futureTimestamp = Instant.now().plusSeconds(60)
-      val encodedPollUrl = java.net.URLEncoder.encode(s"http://example.com/poll?timestamp=$futureTimestamp", "UTF-8")
+      val pollUrl = "http://example.com/poll"
       val correlationId = "CORR999"
 
-      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$encodedPollUrl&correlationId=$correlationId")
+      when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, Some(pollUrl))))
 
-      val result = controller.pollSubmission(encodedPollUrl, correlationId)(req)
+      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
-      status(result) mustBe OK
-      val js = contentAsJson(result)
-      (js \ "status").as[String] mustBe "PENDING"
-      (js \ "pollUrl").as[String] mustBe encodedPollUrl
-      verifyNoInteractions(service)
-    }
-
-    "returns 200 with PENDING when timestamp is more than 25 seconds in the past and TaxOfficeNumber does not match expected value" in {
-      val service = mock[SubmissionService]
-      val authAction = fakeAuthAction()
-      val controller = mkController(service, auth = authAction)
-
-      val oldTimestamp = Instant.now().minusSeconds(30)
-      val encodedPollUrl = java.net.URLEncoder.encode(s"http://example.com/poll?timestamp=$oldTimestamp", "UTF-8")
-      val correlationId = "CORR-BAD-TOR"
-
-      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$encodedPollUrl&correlationId=$correlationId")
-
-      val result = controller.pollSubmission(encodedPollUrl, correlationId)(req)
+      val result = controller.pollSubmission(pollUrl, correlationId)(req)
 
       status(result) mustBe OK
       val js = contentAsJson(result)
-      (js \ "status").as[String] mustBe "PENDING"
-      verifyNoInteractions(service)
+      (js \ "status").as[String] mustBe "ACCEPTED"
+      (js \ "pollUrl").as[String] mustBe pollUrl
+
+      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
     }
 
     "returns 401 when unauthorised" in {
       val service = mock[SubmissionService]
       val controller = mkController(service, auth = rejectingAuthAction)
 
-      val timestamp = Instant.now().minusSeconds(30)
-      val encodedPollUrl = java.net.URLEncoder.encode(s"http://example.com/poll?timestamp=$timestamp", "UTF-8")
+      val pollUrl = "http://example.com/poll"
       val correlationId = "CORR-UNAUTH"
 
-      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$encodedPollUrl&correlationId=$correlationId")
+      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
-      val result = controller.pollSubmission(encodedPollUrl, correlationId)(req)
+      val result = controller.pollSubmission(pollUrl, correlationId)(req)
 
       status(result) mustBe UNAUTHORIZED
       verifyNoInteractions(service)

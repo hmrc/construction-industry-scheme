@@ -19,7 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.services.chris
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import scala.xml.*
 
-object ChrisXmlSubmissionMapper extends ChrisXmlMapper {
+object ChrisSubmissionXmlMapper extends ChrisXmlMapper {
 
   def parse(xml: String): Either[String, SubmissionResult] = {
     val doc = XML.loadString(xml)

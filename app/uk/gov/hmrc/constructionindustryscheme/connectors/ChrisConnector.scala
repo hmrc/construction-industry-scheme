@@ -24,7 +24,7 @@ import uk.gov.hmrc.constructionindustryscheme.connectors.ChrisConnector.pickUrl
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.models.{FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SubmissionResult}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisXmlPollMapper, ChrisXmlSubmissionMapper}
+import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisXmlPollMapper, ChrisSubmissionXmlMapper}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
@@ -98,7 +98,7 @@ class ChrisConnector @Inject()(
   private def handleResponse(resp: HttpResponse, correlationId: String): SubmissionResult = {
     val body = resp.body
     if (is2xx(resp.status)) {
-      ChrisXmlSubmissionMapper.parse(body).fold(
+      ChrisSubmissionXmlMapper.parse(body).fold(
         err => parseError(correlationId, body, err),
         ok  => ok
       )
