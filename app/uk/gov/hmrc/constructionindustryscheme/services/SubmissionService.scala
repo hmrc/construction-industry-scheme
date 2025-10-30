@@ -20,6 +20,7 @@ import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, SubmissionResult}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
@@ -38,5 +39,9 @@ class SubmissionService @Inject()(
 
   def submitToChris(payload: BuiltSubmissionPayload)(implicit hc: HeaderCarrier): Future[SubmissionResult] = {
     chrisConnector.submitEnvelope(payload.envelope, payload.correlationId)
+  }
+
+  def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] = {
+    chrisConnector.pollSubmission(correlationId, pollUrl)
   }
 }

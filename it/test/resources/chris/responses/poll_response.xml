@@ -1,0 +1,8 @@
+<GovTalkMessage>
+  <Header>
+    <MessageDetails>
+      <Qualifier>response</Qualifier>
+      <ResponseEndPoint>/final/response</ResponseEndPoint>
+    </MessageDetails>
+  </Header>
+</GovTalkMessage>
