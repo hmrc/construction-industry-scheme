@@ -30,7 +30,7 @@ import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
 import uk.gov.hmrc.constructionindustryscheme.models.audit.XmlConversionResult
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus, SuccessEmailParams}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
@@ -48,7 +48,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "aoReference" -> "123/AB456",
     "informationCorrect" -> "yes",
     "inactivity" -> "yes",
-    "monthYear" -> "2025-09"
+    "monthYear" -> "2025-09",
+    "email" -> "test@test.com"
   )
 
   val mockAuditService: AuditService = mock[AuditService]
@@ -86,7 +87,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
-      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED)))
 
       val request: FakeRequest[JsValue] =
@@ -102,7 +103,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       verify(mockAuditService, times(1)).monthlyNilReturnRequestEvent(any())(any())
       verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
-      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
+      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier])
     }
     
     "returns 200 with SUBMITTED_NO_RECEIPT when service returns SubmittedNoReceiptStatus" in {
@@ -111,7 +112,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
-      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -135,7 +136,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
-      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(ACCEPTED)))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -159,7 +160,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val err = GovTalkError("1234", "fatal", "boom")
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
-      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(DEPARTMENTAL_ERROR, Some(err))))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -206,7 +207,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
-      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -223,7 +224,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       verify(mockAuditService, times(1)).monthlyNilReturnRequestEvent(any())(any())
       verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
-      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
+      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier])
     }
   }
 

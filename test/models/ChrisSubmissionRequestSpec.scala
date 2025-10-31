@@ -28,7 +28,8 @@ class ChrisSubmissionRequestSpec extends AnyWordSpec with Matchers {
     aoReference        = "123/AB456",
     informationCorrect = "yes",
     inactivity         = "no",
-    monthYear          = "2025-05"
+    monthYear          = "2025-05",
+    email              = "test@test.com"
   )
 
   private val json: JsValue = Json.obj(
@@ -36,7 +37,8 @@ class ChrisSubmissionRequestSpec extends AnyWordSpec with Matchers {
     "aoReference"        -> "123/AB456",
     "informationCorrect" -> "yes",
     "inactivity"         -> "no",
-    "monthYear"          -> "2025-05"
+    "monthYear"          -> "2025-05",
+    "email"              -> "test@test.com"
   )
 
   "ChrisSubmissionRequest JSON format" should {
