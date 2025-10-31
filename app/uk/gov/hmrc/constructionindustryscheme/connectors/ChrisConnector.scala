@@ -21,8 +21,10 @@ import play.api.libs.ws.DefaultBodyWritables.writeableOf_String
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.ChrisConnector.pickUrl
+import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
+import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.models.{FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SubmissionResult}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisXmlMapper
+import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisXmlPollMapper, ChrisSubmissionXmlMapper}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
@@ -40,15 +42,32 @@ class ChrisConnector @Inject()(
                               )(implicit ec: ExecutionContext) extends Logging {
 
   private val chrisCisReturnUrl: String =
-    servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.affix-url")
+    servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.submit-url")
 
-  private def targetUrl: String =
+  private def targetSubmissionUrl: String =
     pickUrl(chrisCisReturnUrl, appConfig.chrisEnableNon2xx, appConfig.chrisNon2xxOverrideUrl)
+
+  def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] = {
+    httpClient
+      .post(url"$pollUrl")
+      .setHeader(
+        "Content-Type"  -> "application/xml",
+        "Accept"        -> "application/xml",
+        "CorrelationId" -> correlationId
+      )
+      .withBody(ChrisPollRequest(correlationId).paylaod.toString)
+      .execute[HttpResponse]
+      .flatMap { resp =>
+        Future.fromTry(ChrisXmlPollMapper.parse(resp.body)
+          .left.map(Exception(_))
+          .toTry)
+      }
+    }
 
   def submitEnvelope(envelope: Elem, correlationId: String)
                     (implicit hc: HeaderCarrier): Future[SubmissionResult] =
     httpClient
-      .post(url"$targetUrl")
+      .post(url"$targetSubmissionUrl")
       .setHeader(
         "Content-Type"  -> "application/xml",
         "Accept"        -> "application/xml",
@@ -63,14 +82,14 @@ class ChrisConnector @Inject()(
           )
         } else {
           logger.error(
-            s"[ChrisConnector] NON-2xx corrId=$correlationId url=$targetUrl status=${resp.status} response-body:\n${resp.body}"
+            s"[ChrisConnector] NON-2xx corrId=$correlationId url=$targetSubmissionUrl status=${resp.status} response-body:\n${resp.body}"
           )
         }
         handleResponse(resp, correlationId)
       }
       .recover { case NonFatal(e) =>
         logger.error(
-          s"[ChrisConnector] Transport exception calling $targetUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("")}"
+          s"[ChrisConnector] Transport exception calling $targetSubmissionUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("")}"
         )
         connectionError(correlationId, e)
       }
@@ -79,7 +98,7 @@ class ChrisConnector @Inject()(
   private def handleResponse(resp: HttpResponse, correlationId: String): SubmissionResult = {
     val body = resp.body
     if (is2xx(resp.status)) {
-      ChrisXmlMapper.parse(body).fold(
+      ChrisSubmissionXmlMapper.parse(body).fold(
         err => parseError(correlationId, body, err),
         ok  => ok
       )

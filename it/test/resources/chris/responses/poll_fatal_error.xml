@@ -1,0 +1,17 @@
+<GovTalkMessage>
+  <Header>
+    <MessageDetails>
+      <Qualifier>error</Qualifier>
+      <ResponseEndPoint>/error/endpoint</ResponseEndPoint>
+    </MessageDetails>
+  </Header>
+  <GovTalkDetails>
+    <GovTalkErrors>
+      <Error>
+        <Number>9001</Number>
+        <Type>fatal</Type>
+        <Text>Catastrophic polling failure</Text>
+      </Error>
+    </GovTalkErrors>
+  </GovTalkDetails>
+</GovTalkMessage>

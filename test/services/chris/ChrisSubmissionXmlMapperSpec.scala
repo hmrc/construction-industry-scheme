@@ -20,10 +20,10 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.EitherValues
 import org.scalatest.OptionValues.convertOptionToValuable
-import uk.gov.hmrc.constructionindustryscheme.models._
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisXmlMapper
+import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionXmlMapper
 
-final class ChrisXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValues {
+final class ChrisSubmissionXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValues {
 
   private def headerXml(
    qualifier: String,
@@ -56,7 +56,7 @@ final class ChrisXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValu
        |</GovTalkMessage>
        |""".stripMargin
 
-  "ChrisXmlMapper parse" - {
+  "ChrisXmlSubmissionMapper parse" - {
 
     "maps an acknowledgement to ACCEPTED, with poll interval and endpoint" in {
       val xml = envelope(
@@ -67,7 +67,7 @@ final class ChrisXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValu
         )
       )
 
-      val res = ChrisXmlMapper.parse(xml).value
+      val res = ChrisSubmissionXmlMapper.parse(xml).value
       res.status mustBe ACCEPTED
       res.meta.qualifier mustBe "acknowledgement"
       res.meta.function  mustBe "submit"
@@ -88,7 +88,7 @@ final class ChrisXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValu
         )
       )
 
-      val res = ChrisXmlMapper.parse(xml).value
+      val res = ChrisSubmissionXmlMapper.parse(xml).value
       res.status mustBe SUBMITTED
       res.meta.qualifier mustBe "response"
       res.meta.responseEndPoint mustBe ResponseEndPoint("", 0)
@@ -120,7 +120,7 @@ final class ChrisXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValu
           |</GovTalkMessage>
           |""".stripMargin
 
-      val res = ChrisXmlMapper.parse(xml).value
+      val res = ChrisSubmissionXmlMapper.parse(xml).value
       res.status mustBe FATAL_ERROR
 
       val e = res.meta.error.value
@@ -154,7 +154,7 @@ final class ChrisXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValu
           |</GovTalkMessage>
           |""".stripMargin
 
-      val res = ChrisXmlMapper.parse(xml).value
+      val res = ChrisSubmissionXmlMapper.parse(xml).value
       res.status mustBe DEPARTMENTAL_ERROR
 
       val e = res.meta.error.value

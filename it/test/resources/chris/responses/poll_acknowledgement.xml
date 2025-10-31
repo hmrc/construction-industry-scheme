@@ -1,0 +1,8 @@
+<GovTalkMessage>
+  <Header>
+    <MessageDetails>
+      <Qualifier>acknowledgement</Qualifier>
+      <ResponseEndPoint PollInterval="10">/poll/next-endpoint</ResponseEndPoint>
+    </MessageDetails>
+  </Header>
+</GovTalkMessage>
