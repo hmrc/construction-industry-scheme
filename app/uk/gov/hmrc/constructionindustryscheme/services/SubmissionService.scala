@@ -56,9 +56,7 @@ class SubmissionService @Inject()(
               emailConnector
                 .send(NilMonthlyReturnOrgSuccessEmail(emailParams.to, month, year))
                 .map(_ => res)
-                .recover {case e =>
-                    logger.warn(s"[email] failed to send success email to=${emailParams.to}", e); res
-                }
+
             case None =>
               logger.warn("[email] SUBMITTED but no email params supplied; skipping send")
               Future.successful(res)
