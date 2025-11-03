@@ -35,6 +35,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
+import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl
 
 import java.time.Clock
 import scala.concurrent.Future
@@ -49,7 +50,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "aoReference" -> "123/AB456",
     "informationCorrect" -> "yes",
     "inactivity" -> "yes",
-    "monthYear" -> "2025-09"
+    "monthYear" -> "2025-09",
   )
 
   val mockAuditService: AuditService = mock[AuditService]
@@ -384,9 +385,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 200 with SUBMITTED status when service returns SUBMITTED" in {
       val service = mock[SubmissionService]
-      val controller = mkController(service)
+      val config = mock[AppConfig]
+      when(config.chrisHost).thenReturn("chris.com")
+      val controller = mkController(service, appConfig = config)
 
-      val pollUrl = "http://example.com/poll"
+      val pollUrl = "http://chris.com/poll"
       val correlationId = "CORR123"
 
       when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
@@ -394,7 +397,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
-      val result = controller.pollSubmission(pollUrl, correlationId)(req)
+      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
 
       status(result) mustBe OK
       val js = contentAsJson(result)
@@ -407,9 +410,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 200 with FATAL_ERROR status when service returns FATAL_ERROR" in {
       val service = mock[SubmissionService]
-      val controller = mkController(service)
+      val config = mock[AppConfig]
+      when(config.chrisHost).thenReturn("chris.com")
+      val controller = mkController(service, appConfig = config)
 
-      val pollUrl = "http://example.com/poll"
+      val pollUrl = "http://chris.com/poll"
       val correlationId = "CORR456"
 
       when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
@@ -417,7 +422,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
-      val result = controller.pollSubmission(pollUrl, correlationId)(req)
+      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
 
       status(result) mustBe OK
       val js = contentAsJson(result)
@@ -430,9 +435,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 200 with DEPARTMENTAL_ERROR status when service returns DEPARTMENTAL_ERROR" in {
       val service = mock[SubmissionService]
-      val controller = mkController(service)
+      val config = mock[AppConfig]
+      when(config.chrisHost).thenReturn("chris.com")
+      val controller = mkController(service, appConfig = config)
 
-      val pollUrl = "http://example.com/poll"
+      val pollUrl = "http://chris.com/poll"
       val correlationId = "CORR789"
 
       when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
@@ -440,7 +447,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
-      val result = controller.pollSubmission(pollUrl, correlationId)(req)
+      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
 
       status(result) mustBe OK
       val js = contentAsJson(result)
@@ -453,9 +460,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 200 with ACCEPTED status and pollUrl when service returns ACCEPTED with pollUrl" in {
       val service = mock[SubmissionService]
-      val controller = mkController(service)
+      val config = mock[AppConfig]
+      when(config.chrisHost).thenReturn("chris.com")
+      val controller = mkController(service, appConfig = config)
 
-      val pollUrl = "http://example.com/poll"
+      val pollUrl = "http://chris.com/poll"
       val correlationId = "CORR999"
 
       when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
@@ -463,7 +472,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
-      val result = controller.pollSubmission(pollUrl, correlationId)(req)
+      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
 
       status(result) mustBe OK
       val js = contentAsJson(result)
@@ -478,12 +487,12 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val service = mock[SubmissionService]
       val controller = mkController(service, auth = rejectingAuthAction)
 
-      val pollUrl = "http://example.com/poll"
+      val pollUrl = "http://chris.com/poll"
       val correlationId = "CORR-UNAUTH"
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
-      val result = controller.pollSubmission(pollUrl, correlationId)(req)
+      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
 
       status(result) mustBe UNAUTHORIZED
       verifyNoInteractions(service)
