@@ -20,7 +20,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.EitherValues
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisXmlPollMapper
+import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisPollXmlMapper
 
 final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with EitherValues {
 
@@ -60,7 +60,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
           )
         )
 
-        val res = ChrisXmlPollMapper.parse(xml).value
+        val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe ACCEPTED
         res.pollUrl mustBe Some("/poll/next")
         res.pollInterval mustBe Some(10)
@@ -74,7 +74,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
           )
         )
 
-        val res = ChrisXmlPollMapper.parse(xml).value
+        val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe ACCEPTED
         res.pollUrl mustBe Some("/poll/next")
         res.pollInterval mustBe None
@@ -85,7 +85,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
           headerXml(qualifier = "acknowledgement")
         )
 
-        val res = ChrisXmlPollMapper.parse(xml).value
+        val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe ACCEPTED
         res.pollUrl mustBe None
       }
@@ -98,7 +98,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
           )
         )
 
-        val res = ChrisXmlPollMapper.parse(xml).value
+        val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe ACCEPTED
         res.pollUrl mustBe Some("/poll")
       }
@@ -113,7 +113,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
           )
         )
 
-        val res = ChrisXmlPollMapper.parse(xml).value
+        val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe SUBMITTED
         res.pollUrl mustBe Some("/response/endpoint")
       }
@@ -123,7 +123,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
           headerXml(qualifier = "response")
         )
 
-        val res = ChrisXmlPollMapper.parse(xml).value
+        val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe SUBMITTED
         res.pollUrl mustBe None
       }
@@ -133,7 +133,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
           headerXml(qualifier = "RESPONSE")
         )
 
-        val res = ChrisXmlPollMapper.parse(xml).value
+        val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe SUBMITTED
       }
     }
@@ -160,7 +160,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
             |</GovTalkMessage>
             |""".stripMargin
 
-        val res = ChrisXmlPollMapper.parse(xml).value
+        val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe FATAL_ERROR
         res.pollUrl mustBe Some("/error/endpoint")
       }
@@ -186,7 +186,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
             |</GovTalkMessage>
             |""".stripMargin
 
-        val res = ChrisXmlPollMapper.parse(xml).value
+        val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe DEPARTMENTAL_ERROR
         res.pollUrl mustBe Some("/business/error")
       }
@@ -211,7 +211,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
             |</GovTalkMessage>
             |""".stripMargin
 
-        val res = ChrisXmlPollMapper.parse(xml).value
+        val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe DEPARTMENTAL_ERROR
       }
 
@@ -235,7 +235,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
             |</GovTalkMessage>
             |""".stripMargin
 
-        val res = ChrisXmlPollMapper.parse(xml).value
+        val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe FATAL_ERROR
       }
     }
@@ -248,7 +248,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
         )
       )
 
-      val res = ChrisXmlPollMapper.parse(xml).value
+      val res = ChrisPollXmlMapper.parse(xml).value
       res.status mustBe FATAL_ERROR
       res.pollUrl mustBe Some("/unknown")
     }
@@ -265,7 +265,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
             |</GovTalkMessage>
             |""".stripMargin
 
-        val res = ChrisXmlPollMapper.parse(xml)
+        val res = ChrisPollXmlMapper.parse(xml)
         res.isLeft mustBe true
         res.left.value must include("Missing mandatory field: Qualifier")
       }
@@ -287,7 +287,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
             |</GovTalkMessage>
             |""".stripMargin
 
-        val res = ChrisXmlPollMapper.parse(xml)
+        val res = ChrisPollXmlMapper.parse(xml)
         res.isLeft mustBe true
         res.left.value must include("Missing mandatory field")
       }
@@ -311,7 +311,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
             |</GovTalkMessage>
             |""".stripMargin
 
-        val res = ChrisXmlPollMapper.parse(xml)
+        val res = ChrisPollXmlMapper.parse(xml)
         res.isLeft mustBe true
         res.left.value must include("GovTalkErrors/Error/Number")
       }
@@ -335,7 +335,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
             |</GovTalkMessage>
             |""".stripMargin
 
-        val res = ChrisXmlPollMapper.parse(xml)
+        val res = ChrisPollXmlMapper.parse(xml)
         res.isLeft mustBe true
         res.left.value must include("GovTalkErrors/Error/Type")
       }
@@ -359,7 +359,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
             |</GovTalkMessage>
             |""".stripMargin
 
-        val res = ChrisXmlPollMapper.parse(xml)
+        val res = ChrisPollXmlMapper.parse(xml)
         res.isLeft mustBe true
         res.left.value must include("GovTalkErrors/Error/Text")
       }
@@ -377,7 +377,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
           |</GovTalkMessage>
           |""".stripMargin
 
-      val res = ChrisXmlPollMapper.parse(xml).value
+      val res = ChrisPollXmlMapper.parse(xml).value
       res.status mustBe ACCEPTED
       res.pollUrl mustBe Some("/poll/endpoint")
     }
@@ -394,7 +394,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
           |</GovTalkMessage>
           |""".stripMargin
 
-      val res = ChrisXmlPollMapper.parse(xml).value
+      val res = ChrisPollXmlMapper.parse(xml).value
       res.status mustBe SUBMITTED
       res.pollUrl mustBe None
     }

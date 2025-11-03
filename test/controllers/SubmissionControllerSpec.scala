@@ -36,7 +36,7 @@ import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, Submission
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
 
-import java.time.{Instant, Clock}
+import java.time.Clock
 import scala.concurrent.Future
 
 

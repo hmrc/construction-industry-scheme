@@ -22,7 +22,7 @@ import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionXmlM
 
 import scala.xml.*
 
-object ChrisXmlPollMapper extends ChrisXmlMapper {
+object ChrisPollXmlMapper extends ChrisXmlMapper {
 
   def parse(xml: String): Either[String, ChrisPollResponse] = {
     val doc = XML.loadString(xml)

@@ -24,7 +24,7 @@ import uk.gov.hmrc.constructionindustryscheme.connectors.ChrisConnector.pickUrl
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.models.{FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SubmissionResult}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisXmlPollMapper, ChrisSubmissionXmlMapper}
+import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisPollXmlMapper, ChrisSubmissionXmlMapper}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
@@ -58,9 +58,15 @@ class ChrisConnector @Inject()(
       .withBody(ChrisPollRequest(correlationId).paylaod.toString)
       .execute[HttpResponse]
       .flatMap { resp =>
-        Future.fromTry(ChrisXmlPollMapper.parse(resp.body)
+        Future.fromTry(ChrisPollXmlMapper.parse(resp.body)
           .left.map(Exception(_))
           .toTry)
+      }
+      .recover { case NonFatal(e) =>
+        logger.error(
+          s"[ChrisConnector] Transport exception calling $pollUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${e.getMessage}"
+        )
+        throw e
       }
     }
 
