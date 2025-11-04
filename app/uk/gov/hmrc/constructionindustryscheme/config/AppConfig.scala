@@ -33,6 +33,8 @@ class AppConfig @Inject()(config: Configuration) {
     config.getOptional[Boolean]("chrisTest.enable-irmark-bad").getOrElse(false)
 
   val chrisNon2xxOverrideUrl: Option[String] =
-    config.getOptional[String]("chrisTest.non2xx.override-url")  
+    config.getOptional[String]("chrisTest.non2xx.override-url")
+
+  val chrisHost: String = config.get[String]("microservice.services.chris.host")
 }
 

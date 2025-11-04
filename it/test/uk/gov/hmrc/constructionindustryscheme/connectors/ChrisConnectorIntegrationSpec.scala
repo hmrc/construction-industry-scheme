@@ -27,7 +27,8 @@ import play.api.{Application, Mode, inject}
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.routing.Router
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, ItResources, WireMockConstants}
-import uk.gov.hmrc.constructionindustryscheme.models.FATAL_ERROR
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, DEPARTMENTAL_ERROR, FATAL_ERROR, SUBMITTED}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
 
 import scala.xml.{Elem, XML}
 
@@ -142,6 +143,208 @@ final class ChrisConnectorIntegrationSpec
       result.status mustBe FATAL_ERROR
       result.meta.error.value.errorNumber mustBe "conn"
       result.rawXml mustBe "<connection-error/>"
+    }
+  }
+
+  "ChrisConnector.pollSubmission" should {
+
+    "successfully parse acknowledgement response and return ACCEPTED" in {
+      val correlationId = "poll-cid-ack"
+      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/endpoint"
+      val ackXml = ItResources.read("chris/responses/poll_acknowledgement.xml")
+
+      val expectedRequestXml = ChrisPollRequest(correlationId).paylaod.toString
+
+      stubFor(
+        post(urlPathEqualTo("/poll/endpoint"))
+          .withHeader("Content-Type", equalTo("application/xml"))
+          .withHeader("Accept", equalTo("application/xml"))
+          .withHeader("CorrelationId", equalTo(correlationId))
+          .withRequestBody(equalToXml(expectedRequestXml))
+          .willReturn(aResponse()
+            .withStatus(200)
+            .withHeader("Content-Type", "application/xml")
+            .withBody(ackXml)
+          )
+      )
+
+      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
+
+      result.status mustBe ACCEPTED
+      result.pollUrl mustBe Some("/poll/next-endpoint")
+      result.pollInterval mustBe Some(10)
+
+      verify(postRequestedFor(urlPathEqualTo("/poll/endpoint"))
+        .withHeader("CorrelationId", equalTo(correlationId))
+        .withHeader("Content-Type", equalTo("application/xml"))
+        .withHeader("Accept", equalTo("application/xml"))
+      )
+    }
+
+    "successfully parse response and return SUBMITTED" in {
+      val correlationId = "poll-cid-resp"
+      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/response"
+      val responseXml = ItResources.read("chris/responses/poll_response.xml")
+
+      stubFor(
+        post(urlPathEqualTo("/poll/response"))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .willReturn(aResponse()
+            .withStatus(200)
+            .withHeader("Content-Type", "application/xml")
+            .withBody(responseXml)
+          )
+      )
+
+      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
+
+      result.status mustBe SUBMITTED
+      result.pollUrl mustBe Some("/final/response")
+      result.pollInterval mustBe None
+    }
+
+    "successfully parse fatal error response and return FATAL_ERROR" in {
+      val correlationId = "poll-cid-fatal"
+      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/fatal"
+      val errorXml = ItResources.read("chris/responses/poll_fatal_error.xml")
+
+      stubFor(
+        post(urlPathEqualTo("/poll/fatal"))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .willReturn(aResponse()
+            .withStatus(200)
+            .withHeader("Content-Type", "application/xml")
+            .withBody(errorXml)
+          )
+      )
+
+      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
+
+      result.status mustBe FATAL_ERROR
+      result.pollUrl mustBe Some("/error/endpoint")
+      result.pollInterval mustBe None
+    }
+
+    "successfully parse business error response and return DEPARTMENTAL_ERROR" in {
+      val correlationId = "poll-cid-biz"
+      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/business"
+      val errorXml = ItResources.read("chris/responses/poll_business_error.xml")
+
+      stubFor(
+        post(urlPathEqualTo("/poll/business"))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .willReturn(aResponse()
+            .withStatus(200)
+            .withHeader("Content-Type", "application/xml")
+            .withBody(errorXml)
+          )
+      )
+
+      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
+
+      result.status mustBe DEPARTMENTAL_ERROR
+      result.pollUrl mustBe Some("/business/error")
+      result.pollInterval mustBe None
+    }
+
+    "fail when response is unparsable XML" in {
+      val correlationId = "poll-cid-parse-err"
+      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/bad"
+
+      stubFor(
+        post(urlPathEqualTo("/poll/bad"))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .willReturn(aResponse()
+            .withStatus(200)
+            .withHeader("Content-Type", "application/xml")
+            .withBody("<Invalid>Unparsable</Invalid>")
+          )
+      )
+
+      val exception = connector.pollSubmission(correlationId, pollUrl).failed.futureValue
+
+      exception mustBe a[Exception]
+      exception.getMessage must include("Missing mandatory field")
+    }
+
+    "fail when 500 error is returned" in {
+      val correlationId = "poll-cid-500"
+      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/500"
+
+      stubFor(
+        post(urlPathEqualTo("/poll/500"))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .willReturn(aResponse()
+            .withStatus(500)
+            .withBody("Internal Server Error")
+          )
+      )
+
+      val exception = connector.pollSubmission(correlationId, pollUrl).failed.futureValue
+
+      exception mustBe a[Exception]
+    }
+
+    "fail when 404 error is returned" in {
+      val correlationId = "poll-cid-404"
+      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/404"
+
+      stubFor(
+        post(urlPathEqualTo("/poll/404"))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .willReturn(aResponse()
+            .withStatus(404)
+            .withBody("Not Found")
+          )
+      )
+
+      val exception = connector.pollSubmission(correlationId, pollUrl).failed.futureValue
+
+      exception mustBe a[Exception]
+    }
+
+    "fail on connection fault" in {
+      val correlationId = "poll-cid-conn"
+      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/conn"
+
+      stubFor(
+        post(urlPathEqualTo("/poll/conn"))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER))
+      )
+
+      val exception = connector.pollSubmission(correlationId, pollUrl).failed.futureValue
+
+      exception mustBe a[Exception]
+    }
+
+    "handle response without pollUrl endpoint" in {
+      val correlationId = "poll-cid-no-url"
+      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/no-url"
+      val responseXml = """<GovTalkMessage>
+        |  <Header>
+        |    <MessageDetails>
+        |      <Qualifier>response</Qualifier>
+        |      <ResponseEndPoint></ResponseEndPoint>
+        |    </MessageDetails>
+        |  </Header>
+        |</GovTalkMessage>""".stripMargin
+
+      stubFor(
+        post(urlPathEqualTo("/poll/no-url"))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .willReturn(aResponse()
+            .withStatus(200)
+            .withHeader("Content-Type", "application/xml")
+            .withBody(responseXml)
+          )
+      )
+
+      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
+
+      result.status mustBe SUBMITTED
+      result.pollUrl mustBe None
+      result.pollInterval mustBe None
     }
   }
 
