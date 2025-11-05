@@ -113,14 +113,23 @@ class SubmissionController @Inject()(
       )
     }
 
-  def pollSubmission(pollUrl: String, correlationId: String): Action[AnyContent] =
+  private val redirectUrlPolicy = AbsoluteWithHostnameFromAllowlist(appConfig.chrisHost.toSet)
+
+  def pollSubmission(pollUrl: RedirectUrl, correlationId: String): Action[AnyContent] =
     authorise.async { implicit req =>
-     submissionService.pollSubmission(correlationId, pollUrl)
-       .map{ case ChrisPollResponse(status, pollUrl, interval) => Ok(Json.obj(
-         "status" -> status.toString,
-         "pollUrl" -> pollUrl,
-         "intervalSeconds" -> interval
-       ))}
+      pollUrl.getEither(redirectUrlPolicy) match {
+        case Right(safeUrl) => submissionService.pollSubmission(correlationId,  safeUrl.url)
+          .map{ case ChrisPollResponse(status, pollUrl, interval) => Ok(Json.obj(
+            "status" -> status.toString,
+            "pollUrl" -> pollUrl,
+            "intervalSeconds" -> interval
+          ))}
+        case Left(value) => {
+          logger.warn(s"could not poll the pollUrl provided as the host is not recognised: $value ")
+          Future.successful(BadRequest(Json.obj("error" -> "pollUrl does not have the right host")))
+        }
+      }
+
     }
 
   private def renderSubmissionResponse(submissionId: String, payload: BuiltSubmissionPayload)(res: SubmissionResult): Result = {
