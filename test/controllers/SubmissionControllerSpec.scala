@@ -386,7 +386,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "returns 200 with SUBMITTED status when service returns SUBMITTED" in {
       val service = mock[SubmissionService]
       val config = mock[AppConfig]
-      when(config.chrisHost).thenReturn("chris.com")
+      when(config.chrisHost).thenReturn(Seq("chris.com"))
       val controller = mkController(service, appConfig = config)
 
       val pollUrl = "http://chris.com/poll"
@@ -411,7 +411,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "returns 200 with FATAL_ERROR status when service returns FATAL_ERROR" in {
       val service = mock[SubmissionService]
       val config = mock[AppConfig]
-      when(config.chrisHost).thenReturn("chris.com")
+      when(config.chrisHost).thenReturn(Seq("chris.com"))
       val controller = mkController(service, appConfig = config)
 
       val pollUrl = "http://chris.com/poll"
@@ -436,7 +436,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "returns 200 with DEPARTMENTAL_ERROR status when service returns DEPARTMENTAL_ERROR" in {
       val service = mock[SubmissionService]
       val config = mock[AppConfig]
-      when(config.chrisHost).thenReturn("chris.com")
+      when(config.chrisHost).thenReturn(Seq("chris.com"))
       val controller = mkController(service, appConfig = config)
 
       val pollUrl = "http://chris.com/poll"
@@ -461,7 +461,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "returns 200 with ACCEPTED status and pollUrl when service returns ACCEPTED with pollUrl" in {
       val service = mock[SubmissionService]
       val config = mock[AppConfig]
-      when(config.chrisHost).thenReturn("chris.com")
+      when(config.chrisHost).thenReturn(Seq("chris.com"))
       val controller = mkController(service, appConfig = config)
 
       val pollUrl = "http://chris.com/poll"

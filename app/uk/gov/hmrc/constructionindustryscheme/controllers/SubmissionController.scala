@@ -35,9 +35,8 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
 import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
-
+import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
 import java.time.{Clock, Instant}
 import java.util.UUID
 
@@ -115,7 +114,7 @@ class SubmissionController @Inject()(
       )
     }
 
-  private val redirectUrlPolicy = AbsoluteWithHostnameFromAllowlist(appConfig.chrisHost)
+  private lazy val redirectUrlPolicy = AbsoluteWithHostnameFromAllowlist(appConfig.chrisHost.toSet)
 
   def pollSubmission(pollUrl: RedirectUrl, correlationId: String): Action[AnyContent] =
     authorise.async { implicit req =>
@@ -126,7 +125,10 @@ class SubmissionController @Inject()(
             "pollUrl" -> pollUrl,
             "intervalSeconds" -> interval
           ))}
-        case Left(value) => Future.successful(BadRequest(Json.obj("error" -> "pollUrl does not have the right host")))
+        case Left(value) => {
+          logger.warn(s"could not poll the pollUrl provided as the host is not recognised: $value ")
+          Future.successful(BadRequest(Json.obj("error" -> "pollUrl does not have the right host")))
+        }
       }
 
     }

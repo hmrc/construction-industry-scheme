@@ -35,6 +35,6 @@ class AppConfig @Inject()(config: Configuration) {
   val chrisNon2xxOverrideUrl: Option[String] =
     config.getOptional[String]("chrisTest.non2xx.override-url")
 
-  val chrisHost: String = config.get[String]("microservice.services.chris.host")
+  val chrisHost: Seq[String] = config.get[Seq[String]]("submissionPollUrlKnownHosts")
 }
 
