@@ -65,13 +65,13 @@ class SubmissionService @Inject()(
         case _ =>
           Future.successful(res)
       }
+    }
+  }
 
   def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] = {
     chrisConnector.pollSubmission(correlationId, pollUrl)
   }
-    }
-  }
-
+  
   private def parseYearMonthFlexible(s: String): YearMonth =
     Try(YearMonth.parse(s))
       .orElse(Try(YearMonth.parse(s.replace('/', '-'))))
