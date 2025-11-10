@@ -25,7 +25,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.Logging
 import play.api.http.Status.BAD_GATEWAY
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, SubmissionResult, ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, SubmissionResult, SuccessEmailParams, ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateSubmissionRequest, UpdateSubmissionRequest}
@@ -75,13 +75,14 @@ class SubmissionController @Inject()(
           logger.info(s"Submitting Nil Monthly Return to ChRIS for UTR=${csr.utr}")
 
           val correlationId = UUID.randomUUID().toString.replace("-", "").toUpperCase
+          val emailParams = SuccessEmailParams(csr.email, csr.monthYear)
           val payload = ChrisSubmissionEnvelopeBuilder.buildPayload(csr, req, correlationId, appConfig.chrisEnableMissingMandatory, appConfig.chrisEnableIrmarkBad)
 
           val monthlyNilReturnRequestJson: JsValue = createMonthlyNilReturnRequestJson(payload)
           auditService.monthlyNilReturnRequestEvent(monthlyNilReturnRequestJson)
 
           submissionService
-            .submitToChris(payload)
+            .submitToChris(payload, Some(emailParams))
             .map(renderSubmissionResponse(submissionId, payload))
             .recover { case ex =>
               logger.error("[submitToChris] upstream failure", ex)

@@ -17,13 +17,14 @@
 package services
 
 import base.SpecBase
+import org.apache.pekko.Done
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers.eq as eqTo
 import org.scalatest.freespec.AnyFreeSpec
-import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus, SuccessEmailParams}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, NilMonthlyReturnOrgSuccessEmail, SendEmailRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -123,6 +124,32 @@ final class SubmissionServiceSpec extends SpecBase {
 
       service.submitToChris(payload).failed.futureValue.getMessage must include ("downstream boom")
     }
+
+
+    "on SUBMITTED and successEmail present, sends success email and returns result" in {
+      val s = setup; import s._
+
+      val payload = mkPayload()
+      val chrisRes = mkResult(SUBMITTED, corrId = payload.correlationId)
+
+      when(chrisConnector.submitEnvelope(eqTo(payload.envelope), eqTo(payload.correlationId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(chrisRes))
+
+      val params = SuccessEmailParams(to = "test@test.com", monthYear = "2025-09")
+
+      val expectedEmail: SendEmailRequest =
+        NilMonthlyReturnOrgSuccessEmail("test@test.com", "September", "2025")
+
+      when(emailConnector.send(eqTo(expectedEmail))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Done))
+
+      val out = service.submitToChris(payload, Some(params)).futureValue
+      out mustBe chrisRes
+
+      verify(chrisConnector).submitEnvelope(eqTo(payload.envelope), eqTo(payload.correlationId))(any[HeaderCarrier])
+      verify(emailConnector).send(eqTo(expectedEmail))(any[HeaderCarrier])
+      verifyNoInteractions(formpProxyConnector)
+    }
   }
 
   "pollSubmission" - {
@@ -207,8 +234,9 @@ final class SubmissionServiceSpec extends SpecBase {
   trait Setup {
     val chrisConnector: ChrisConnector = mock[ChrisConnector]
     val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
+    val emailConnector: EmailConnector = mock[EmailConnector]
 
-    val service = new SubmissionService(chrisConnector, formpProxyConnector)
+    val service = new SubmissionService(chrisConnector, formpProxyConnector, emailConnector)
 
     def mkPayload(
                    corrId: String = "CID-123",

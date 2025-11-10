@@ -49,7 +49,9 @@ trait ApplicationWithWiremock
       "microservice.services.rds-datacache-proxy.host" -> WireMockConstants.stubHost,
       "microservice.services.rds-datacache-proxy.port" -> WireMockConstants.stubPort,
       "microservice.services.formp-proxy.host"      -> WireMockConstants.stubHost,
-      "microservice.services.formp-proxy.port"      -> WireMockConstants.stubPort
+      "microservice.services.formp-proxy.port"      -> WireMockConstants.stubPort,
+      "microservice.services.email.host" -> WireMockConstants.stubHost,
+      "microservice.services.email.port" -> WireMockConstants.stubPort
     )
   }
 
@@ -66,7 +68,7 @@ trait ApplicationWithWiremock
   def getJson(url: String, headers: (String, String)*)(implicit hc: HeaderCarrier, ec: ExecutionContext): HttpResponse =
     httpClient
       .get(url"$url")
-      .setHeader((("Accept" -> "application/json") +: headers.toList): _*)
+      .setHeader(("Accept" -> "application/json") +: headers.toList: _*)
       .execute[HttpResponse]
       .futureValue
 
