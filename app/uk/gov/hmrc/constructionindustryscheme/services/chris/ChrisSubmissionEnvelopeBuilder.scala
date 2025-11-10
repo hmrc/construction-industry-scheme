@@ -30,7 +30,7 @@ import uk.gov.hmrc.constructionindustryscheme.utils.XxeHelper.secureSAXParser
 import scala.xml.*
 import scala.xml.transform.{RewriteRule, RuleTransformer}
 
-object ChrisEnvelopeBuilder extends IrMarkGenerator {
+object ChrisSubmissionEnvelopeBuilder extends IrMarkGenerator {
   private val gatewayTimestampFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
   private val isoDateFmt = DateTimeFormatter.ISO_LOCAL_DATE
   private val prettyPrinter = new PrettyPrinter(120, 4)

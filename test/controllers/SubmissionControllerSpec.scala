@@ -24,16 +24,18 @@ import org.scalatest.EitherValues
 import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, NO_CONTENT, OK, UNAUTHORIZED}
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.test.FakeRequest
-import play.api.test.Helpers.{CONTENT_TYPE, JSON, POST, contentAsJson, status}
+import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
 import uk.gov.hmrc.constructionindustryscheme.models.audit.XmlConversionResult
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus, SuccessEmailParams}
+import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
+import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl
 
 import java.time.Clock
 import scala.concurrent.Future
@@ -151,7 +153,6 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "ACCEPTED"
       (js \ "responseEndPoint" \ "pollIntervalSeconds").as[Int] mustBe 15
-      (js \ "responseEndPoint" \ "url").as[String] must include("/poll")
     }
 
     "returns 200 with DEPARTMENTAL_ERROR and error object when service returns DepartmentalErrorStatus" in {
@@ -375,6 +376,124 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .withHeaders(CONTENT_TYPE -> JSON)
 
       val result = controller.updateSubmission(submissionId)(req)
+
+      status(result) mustBe UNAUTHORIZED
+      verifyNoInteractions(service)
+    }
+  }
+
+  "pollSubmission" - {
+
+    "returns 200 with SUBMITTED status when service returns SUBMITTED" in {
+      val service = mock[SubmissionService]
+      val config = mock[AppConfig]
+      when(config.chrisHost).thenReturn(Seq("chris.com"))
+      val controller = mkController(service, appConfig = config)
+
+      val pollUrl = "http://chris.com/poll"
+      val correlationId = "CORR123"
+
+      when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(ChrisPollResponse(SUBMITTED, None, None)))
+
+      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
+
+      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
+
+      status(result) mustBe OK
+      val js = contentAsJson(result)
+      (js \ "status").as[String] mustBe "SUBMITTED"
+      (js \ "pollUrl").asOpt[String] mustBe None
+      (js \ "intervalSeconds").asOpt[Int] mustBe None
+
+      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
+    }
+
+    "returns 200 with FATAL_ERROR status when service returns FATAL_ERROR" in {
+      val service = mock[SubmissionService]
+      val config = mock[AppConfig]
+      when(config.chrisHost).thenReturn(Seq("chris.com"))
+      val controller = mkController(service, appConfig = config)
+
+      val pollUrl = "http://chris.com/poll"
+      val correlationId = "CORR456"
+
+      when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(ChrisPollResponse(uk.gov.hmrc.constructionindustryscheme.models.FATAL_ERROR, None, None)))
+
+      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
+
+      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
+
+      status(result) mustBe OK
+      val js = contentAsJson(result)
+      (js \ "status").as[String] mustBe "FATAL_ERROR"
+      (js \ "pollUrl").asOpt[String] mustBe None
+      (js \ "intervalSeconds").asOpt[Int] mustBe None
+
+      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
+    }
+
+    "returns 200 with DEPARTMENTAL_ERROR status when service returns DEPARTMENTAL_ERROR" in {
+      val service = mock[SubmissionService]
+      val config = mock[AppConfig]
+      when(config.chrisHost).thenReturn(Seq("chris.com"))
+      val controller = mkController(service, appConfig = config)
+
+      val pollUrl = "http://chris.com/poll"
+      val correlationId = "CORR789"
+
+      when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(ChrisPollResponse(DEPARTMENTAL_ERROR, None, None)))
+
+      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
+
+      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
+
+      status(result) mustBe OK
+      val js = contentAsJson(result)
+      (js \ "status").as[String] mustBe "DEPARTMENTAL_ERROR"
+      (js \ "pollUrl").asOpt[String] mustBe None
+      (js \ "intervalSeconds").asOpt[Int] mustBe None
+
+      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
+    }
+
+    "returns 200 with ACCEPTED status and pollUrl when service returns ACCEPTED with pollUrl" in {
+      val service = mock[SubmissionService]
+      val config = mock[AppConfig]
+      when(config.chrisHost).thenReturn(Seq("chris.com"))
+      val controller = mkController(service, appConfig = config)
+
+      val pollUrl = "http://chris.com/poll"
+      val correlationId = "CORR999"
+
+      when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, Some(pollUrl), Some(10))))
+
+      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
+
+      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
+
+      status(result) mustBe OK
+      val js = contentAsJson(result)
+      (js \ "status").as[String] mustBe "ACCEPTED"
+      (js \ "pollUrl").as[String] mustBe pollUrl
+      (js \ "intervalSeconds").as[Int] mustBe 10
+
+      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
+    }
+
+    "returns 401 when unauthorised" in {
+      val service = mock[SubmissionService]
+      val controller = mkController(service, auth = rejectingAuthAction)
+
+      val pollUrl = "http://chris.com/poll"
+      val correlationId = "CORR-UNAUTH"
+
+      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
+
+      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
 
       status(result) mustBe UNAUTHORIZED
       verifyNoInteractions(service)

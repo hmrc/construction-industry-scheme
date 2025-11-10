@@ -30,11 +30,13 @@ import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeBuilder
+import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionEnvelopeBuilder
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor
-
+import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
+import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
+import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
 import java.time.{Clock, Instant}
 import java.util.UUID
 
@@ -73,8 +75,8 @@ class SubmissionController @Inject()(
           logger.info(s"Submitting Nil Monthly Return to ChRIS for UTR=${csr.utr}")
 
           val correlationId = UUID.randomUUID().toString.replace("-", "").toUpperCase
-          val payload = ChrisEnvelopeBuilder.buildPayload(csr, req, correlationId, appConfig.chrisEnableMissingMandatory, appConfig.chrisEnableIrmarkBad)
           val emailParams = SuccessEmailParams(csr.email, csr.monthYear)
+          val payload = ChrisSubmissionEnvelopeBuilder.buildPayload(csr, req, correlationId, appConfig.chrisEnableMissingMandatory, appConfig.chrisEnableIrmarkBad)
 
           val monthlyNilReturnRequestJson: JsValue = createMonthlyNilReturnRequestJson(payload)
           auditService.monthlyNilReturnRequestEvent(monthlyNilReturnRequestJson)
@@ -111,6 +113,25 @@ class SubmissionController @Inject()(
           }
         }
       )
+    }
+
+  private lazy val redirectUrlPolicy = AbsoluteWithHostnameFromAllowlist(appConfig.chrisHost.toSet)
+
+  def pollSubmission(pollUrl: RedirectUrl, correlationId: String): Action[AnyContent] =
+    authorise.async { implicit req =>
+      pollUrl.getEither(redirectUrlPolicy) match {
+        case Right(safeUrl) => submissionService.pollSubmission(correlationId,  safeUrl.url)
+          .map{ case ChrisPollResponse(status, pollUrl, interval) => Ok(Json.obj(
+            "status" -> status.toString,
+            "pollUrl" -> pollUrl,
+            "intervalSeconds" -> interval
+          ))}
+        case Left(value) => {
+          logger.warn(s"could not poll the pollUrl provided as the host is not recognised: $value ")
+          Future.successful(BadRequest(Json.obj("error" -> "pollUrl does not have the right host")))
+        }
+      }
+
     }
 
   private def renderSubmissionResponse(submissionId: String, payload: BuiltSubmissionPayload)(res: SubmissionResult): Result = {

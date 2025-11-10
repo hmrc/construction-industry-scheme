@@ -20,6 +20,7 @@ import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, SUBMITTED, SubmissionResult, SuccessEmailParams}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, NilMonthlyReturnOrgSuccessEmail, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.http.HeaderCarrier
 
 import java.time.YearMonth
@@ -64,6 +65,10 @@ class SubmissionService @Inject()(
         case _ =>
           Future.successful(res)
       }
+
+  def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] = {
+    chrisConnector.pollSubmission(correlationId, pollUrl)
+  }
     }
   }
 

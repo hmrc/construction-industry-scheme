@@ -17,7 +17,7 @@
 package services.chris
 
 import base.SpecBase
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeBuilder
+import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionEnvelopeBuilder
 
 import scala.xml.Elem
 
@@ -29,7 +29,7 @@ class ChrisEnvelopeBuilderSpec extends SpecBase {
     val corr = "CID-MISS-MAND"
 
     val xml: Elem =
-      ChrisEnvelopeBuilder.build(
+      ChrisSubmissionEnvelopeBuilder.build(
         request                = req,
         authRequest            = auth,
         correlationId          = corr,
@@ -47,7 +47,7 @@ class ChrisEnvelopeBuilderSpec extends SpecBase {
     val corr = "CID-KEEP-MAND"
 
     val xml: Elem =
-      ChrisEnvelopeBuilder.build(
+      ChrisSubmissionEnvelopeBuilder.build(
         request                = req,
         authRequest            = auth,
         correlationId          = corr,
@@ -63,7 +63,7 @@ class ChrisEnvelopeBuilderSpec extends SpecBase {
     val auth = createAuthReq()
 
     val good: Elem =
-      ChrisEnvelopeBuilder.build(
+      ChrisSubmissionEnvelopeBuilder.build(
         request                = req,
         authRequest            = auth,
         correlationId          = "CID-GOOD",
@@ -74,7 +74,7 @@ class ChrisEnvelopeBuilderSpec extends SpecBase {
     goodIR.length must be > 0
 
     val bad: Elem =
-      ChrisEnvelopeBuilder.build(
+      ChrisSubmissionEnvelopeBuilder.build(
         request                = req,
         authRequest            = auth,
         correlationId          = "CID-BAD",
@@ -94,7 +94,7 @@ class ChrisEnvelopeBuilderSpec extends SpecBase {
     val corr = "CID-PAYLOAD"
 
     val payload =
-      ChrisEnvelopeBuilder.buildPayload(
+      ChrisSubmissionEnvelopeBuilder.buildPayload(
         request                = req,
         authRequest            = auth,
         correlationId          = corr,

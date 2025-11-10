@@ -1,0 +1,17 @@
+<GovTalkMessage>
+  <Header>
+    <MessageDetails>
+      <Qualifier>error</Qualifier>
+      <ResponseEndPoint>/business/error</ResponseEndPoint>
+    </MessageDetails>
+  </Header>
+  <GovTalkDetails>
+    <GovTalkErrors>
+      <Error>
+        <Number>4001</Number>
+        <Type>business</Type>
+        <Text>Invalid poll request data</Text>
+      </Error>
+    </GovTalkErrors>
+  </GovTalkDetails>
+</GovTalkMessage>
