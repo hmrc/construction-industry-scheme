@@ -30,9 +30,7 @@ class ClientController @Inject()(
   val cc: ControllerComponents
 )(implicit ec: ExecutionContext) extends BackendController(cc) with Logging {
 
-  def getClientListDownloadStatus():Action[AnyContent] = authorise.async { implicit request =>
-
-
+  def getClientListDownloadStatus:Action[AnyContent] = authorise.async { implicit request =>
 
     val ref = request.enrolments
       .getEnrolment("IR-PAYE-AGENT")
@@ -40,8 +38,10 @@ class ClientController @Inject()(
       .map(_.value)
 
     ref match {
-      case Some("Falied") => Future.successful(Ok(Json.obj("status" -> "Failed")))
-      case _ => Future.successful(Ok(Json.obj("status" -> "Success")))
+      case Some("Failed")           => Future.successful(Ok(Json.obj("status" -> "Failed")))
+      case Some("InitiateDownload") => Future.successful(Ok(Json.obj("status" -> "InitiateDownload")))
+      case Some("InProgress")       => Future.successful(Ok(Json.obj("status" -> "InProgress")))
+      case _                        => Future.successful(Ok(Json.obj("status" -> "Success")))
     }
   }
 

@@ -66,6 +66,9 @@ trait SpecBase
   def fakeAuthAction(ton: String = "123", tor: String = "AB456"): AuthAction =
     FakeAuthAction.withCisIdentifiers(ton, tor, bodyParsers)
 
+  def fakeAuthActionAgent(irAgentReference: String = "Success"): AuthAction =
+    FakeAuthAction.withCisAgentIdentifiers(irAgentReference, bodyParsers)
+
   def noEnrolmentReferenceAuthAction: AuthAction =
     FakeAuthAction.empty(bodyParsers)
 
