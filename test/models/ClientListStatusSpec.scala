@@ -17,7 +17,7 @@
 package models
 
 import base.SpecBase
-import uk.gov.hmrc.constructionindustryscheme.models.{ClientListStatus, AsynchronousProcessWaitTime}
+import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.*
 
 class ClientListStatusSpec extends SpecBase {
@@ -48,29 +48,6 @@ class ClientListStatusSpec extends SpecBase {
       describe(InProgress)       mustBe "in-progress"
       describe(Succeeded)        mustBe "succeeded"
       describe(Failed)           mustBe "failed"
-    }
-  }
-
-  "AsynchronousProcessWaitTime" - {
-
-    "store the given browser and business intervals" in {
-      val waitTime = AsynchronousProcessWaitTime(
-        browserIntervalMs   = 1000L,
-        businessIntervalsMs = List(100L, 200L, 300L)
-      )
-
-      waitTime.browserIntervalMs   mustBe 1000L
-      waitTime.businessIntervalsMs mustBe List(100L, 200L, 300L)
-    }
-
-    "allow empty businessIntervalsMs" in {
-      val waitTime = AsynchronousProcessWaitTime(
-        browserIntervalMs   = 500L,
-        businessIntervalsMs = Nil
-      )
-
-      waitTime.browserIntervalMs   mustBe 500L
-      waitTime.businessIntervalsMs mustBe Nil
     }
   }
 }
