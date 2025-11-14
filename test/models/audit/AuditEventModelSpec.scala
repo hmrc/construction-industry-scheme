@@ -309,7 +309,6 @@ class AuditEventModelSpec extends SpecBase {
         credentialId = "cred-123",
         phase = "business#1",
         reason = Some("initiate-on-final-business-interval"),
-        code = "3046"
       )
 
       val json = Json.toJson(event)
@@ -347,7 +346,6 @@ class AuditEventModelSpec extends SpecBase {
       val event = ClientListRetrievalInProgressEvent(
         credentialId = "cred-456",
         phase = "business",
-        code = "3008"
       )
 
       val json = Json.toJson(event)
