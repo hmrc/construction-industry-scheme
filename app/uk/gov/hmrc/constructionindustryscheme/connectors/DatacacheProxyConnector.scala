@@ -16,11 +16,14 @@
 
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
+import play.api.Logging
+
 import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference}
+import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.*
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, ClientListStatus, EmployerReference}
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
@@ -29,7 +32,7 @@ import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 class DatacacheProxyConnector @Inject()(
                                          http: HttpClientV2,
                                          config: ServicesConfig
-                                       )(implicit ec: ExecutionContext) extends HttpReadsInstances {
+                                       )(implicit ec: ExecutionContext) extends HttpReadsInstances with Logging {
 
   private val base = config.baseUrl("rds-datacache-proxy") + "/rds-datacache-proxy"
 
@@ -38,4 +41,34 @@ class DatacacheProxyConnector @Inject()(
       .post(url"$base/cis-taxpayer")
       .withBody(Json.toJson(employerReference))
       .execute[CisTaxpayer]
+
+
+  def getClientListDownloadStatus(
+   credentialId: String,
+   serviceName: String,
+   gracePeriodSeconds: Int
+  )(implicit hc: HeaderCarrier): Future[ClientListStatus] = {
+    val endpoint = url"$base/client-list-status?credentialId=$credentialId&serviceName=$serviceName&gracePeriod=$gracePeriodSeconds"
+
+    http.get(endpoint)
+      .execute[JsValue]
+      .map { json =>
+        (json \ "status").asOpt[String] match {
+          case Some(s) => mapProxyStatus(s)
+          case None =>
+            logger.error(s"[DatacacheProxyConnector] invalid payload (missing 'status'): ${json.toString}")
+            throw UpstreamErrorResponse("rds-datacache-proxy invalid payload", 502, 502)
+        }
+      }
+  }
+
+  private def mapProxyStatus(s: String): ClientListStatus = s match {
+    case "InitiateDownload" => InitiateDownload
+    case "InProgress" => InProgress
+    case "Succeeded" => Succeeded
+    case "Failed" => Failed
+    case other =>
+      logger.error(s"[DatacacheProxyConnector] unknown status '$other' from rds-datacache-proxy")
+      throw new RuntimeException(s"Unknown status '$other' from rds-datacache-proxy")
+  }
 }

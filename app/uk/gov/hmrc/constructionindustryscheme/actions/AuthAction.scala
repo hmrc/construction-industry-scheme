@@ -20,7 +20,7 @@ import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.*
 import uk.gov.hmrc.auth.core.retrieve.~
-import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals.{allEnrolments, internalId}
+import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals.{allEnrolments, internalId, credentials}
 import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisationException, AuthorisedFunctions, NoActiveSession}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.AuthenticatedRequest
 import uk.gov.hmrc.http.{HeaderCarrier, UnauthorizedException}
@@ -41,9 +41,10 @@ class DefaultAuthAction @Inject()(
     val sessionId = hc.sessionId.getOrElse(throw new UnauthorizedException("Unable to retrieve session ID from headers"))
 
     authorised()
-      .retrieve(allEnrolments and internalId) {
-        case enrols ~ Some(intId) =>
-          block(AuthenticatedRequest(request, intId, sessionId, enrols))
+      .retrieve(allEnrolments and internalId and credentials) {
+        case enrols ~ Some(intId) ~ credsOpt =>
+          val credId = credsOpt.map(_.providerId)
+          block(AuthenticatedRequest(request, intId, sessionId, enrols, credId))
         case _ =>
           Future.failed(new UnauthorizedException("Unable to retrieve internal ID from auth"))
       }

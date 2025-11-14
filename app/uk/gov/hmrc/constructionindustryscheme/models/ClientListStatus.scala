@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.models
 
-import play.api.mvc.{Request, WrappedRequest}
-import uk.gov.hmrc.auth.core.Enrolments
-import uk.gov.hmrc.http.SessionId
+sealed trait ClientListStatus
+object ClientListStatus {
+  case object InitiateDownload extends ClientListStatus
+  case object InProgress       extends ClientListStatus
+  case object Succeeded        extends ClientListStatus
+  case object Failed           extends ClientListStatus
+}
 
-case class AuthenticatedRequest[A](
-  private val request: Request[A],
-  internalId: String,
-  sessionId: SessionId,
-  enrolments: Enrolments,
-  credentialId: Option[String] = None
-) extends WrappedRequest[A](request)
+final case class AsynchronousProcessWaitTime(
+  browserIntervalMs: Long,
+  businessIntervalsMs: List[Long]
+)

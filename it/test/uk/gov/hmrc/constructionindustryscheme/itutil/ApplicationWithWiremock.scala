@@ -51,7 +51,9 @@ trait ApplicationWithWiremock
       "microservice.services.formp-proxy.host"      -> WireMockConstants.stubHost,
       "microservice.services.formp-proxy.port"      -> WireMockConstants.stubPort,
       "microservice.services.email.host" -> WireMockConstants.stubHost,
-      "microservice.services.email.port" -> WireMockConstants.stubPort
+      "microservice.services.email.port" -> WireMockConstants.stubPort,
+      "microservice.services.client-exchange-proxy.host" -> WireMockConstants.stubHost,
+      "microservice.services.client-exchange-proxy.port" -> WireMockConstants.stubPort
     )
   }
 
