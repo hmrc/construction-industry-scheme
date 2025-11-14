@@ -38,10 +38,11 @@ class ClientController @Inject()(
       .map(_.value)
 
     ref match {
-      case Some("Failed")           => Future.successful(Ok(Json.obj("status" -> "Failed")))
-      case Some("InitiateDownload") => Future.successful(Ok(Json.obj("status" -> "InitiateDownload")))
-      case Some("InProgress")       => Future.successful(Ok(Json.obj("status" -> "InProgress")))
-      case _                        => Future.successful(Ok(Json.obj("status" -> "Success")))
+      case Some("Failed")           => Future.successful(Ok(Json.obj("result" -> "failed")))
+      case Some("InitiateDownload") => Future.successful(Ok(Json.obj("result" -> "in-progress")))
+      case Some("InProgress")       => Future.successful(Ok(Json.obj("result" -> "in-progress")))
+      case Some("SystemError")      => Future.successful(Ok(Json.obj("result" -> "system-error")))
+      case _                        => Future.successful(Ok(Json.obj("result" -> "succeeded")))
     }
   }
 

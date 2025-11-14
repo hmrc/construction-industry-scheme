@@ -19,9 +19,10 @@ package controllers
 import base.SpecBase
 import play.api.test.Helpers.contentAsJson
 import play.api.test.Helpers.{contentAsJson, status}
+
 import scala.concurrent.Future
 import play.api.mvc.Result
-import play.api.http.Status.OK
+import play.api.http.Status.{INTERNAL_SERVER_ERROR, OK}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.ClientController
 
@@ -32,40 +33,49 @@ class ClientControllerSpec extends SpecBase {
 
     "GET /cis/get-client-list-status" - {
 
-      "return 200 with status Success" in {
+      "return 200 with result Success" in {
         val auth: AuthAction = fakeAuthActionAgent()
         val controller = new ClientController(auth, cc)
         val result: Future[Result] = controller.getClientListDownloadStatus(fakeRequest)
 
         status(result) mustBe OK
-        (contentAsJson(result) \ "status").as[String] must equal("Success")
+        (contentAsJson(result) \ "result").as[String] must equal("succeeded")
       }
 
-      "return 200 with status Failed" in {
+      "return 200 with result Failed" in {
         val auth: AuthAction = fakeAuthActionAgent("Failed")
         val controller = new ClientController(auth, cc)
         val result: Future[Result] = controller.getClientListDownloadStatus(fakeRequest)
 
         status(result) mustBe OK
-        (contentAsJson(result) \ "status").as[String] must equal("Failed")
+        (contentAsJson(result) \ "result").as[String] must equal("failed")
       }
 
-      "return 200 with status InitiateDownload" in {
+      "return 200 with result InitiateDownload" in {
         val auth: AuthAction = fakeAuthActionAgent("InitiateDownload")
         val controller = new ClientController(auth, cc)
         val result: Future[Result] = controller.getClientListDownloadStatus(fakeRequest)
 
         status(result) mustBe OK
-        (contentAsJson(result) \ "status").as[String] must equal("InitiateDownload")
+        (contentAsJson(result) \ "result").as[String] must equal("in-progress")
       }
 
-      "return 200 with status InProgress" in {
+      "return 200 with result InProgress" in {
         val auth: AuthAction = fakeAuthActionAgent("InProgress")
         val controller = new ClientController(auth, cc)
         val result: Future[Result] = controller.getClientListDownloadStatus(fakeRequest)
 
         status(result) mustBe OK
-        (contentAsJson(result) \ "status").as[String] must equal("InProgress")
+        (contentAsJson(result) \ "result").as[String] must equal("in-progress")
+      }
+
+      "return 200 with result system-error" in {
+        val auth: AuthAction = fakeAuthActionAgent("SystemError")
+        val controller = new ClientController(auth, cc)
+        val result: Future[Result] = controller.getClientListDownloadStatus(fakeRequest)
+
+        status(result) mustBe OK
+        (contentAsJson(result) \ "result").as[String] must equal("system-error")
       }
     }
   }
