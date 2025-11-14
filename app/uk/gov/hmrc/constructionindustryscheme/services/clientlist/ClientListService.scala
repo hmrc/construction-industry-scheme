@@ -35,6 +35,8 @@ final case class ClientListDownloadInProgressException(msg: String) extends Runt
 
 final case class SystemException(msg: String) extends RuntimeException(msg)
 
+final case class NoBusinessIntervalsException(msg: String) extends RuntimeException(msg)
+
 @Singleton
 class ClientListService @Inject()(
   datacacheProxyConnector: DatacacheProxyConnector,
@@ -103,7 +105,7 @@ class ClientListService @Inject()(
     if business.isEmpty then
       audit.clientListRetrievalFailed(credentialId, phase = "business", reason = Some("no-business-intervals"))
       clearWaitTime(credentialId)
-      Future.failed(SystemException("No business intervals"))
+      Future.failed(NoBusinessIntervalsException("No business intervals"))
     else
       def loop(index: Int): Future[Boolean] =
         if index >= business.length then
@@ -176,32 +178,41 @@ class ClientListService @Inject()(
   // Entry point
   // ------------------------------------------------------------
 
-  def process(credentialId: String)(implicit hc: HeaderCarrier): Future[Unit] =
-    getStatus(credentialId).flatMap {
-      case Succeeded =>
-        logStatus("initial", None, Succeeded)
-        clearWaitTime(credentialId)
-        Future.unit
+  def process(credentialId: String)(implicit hc: HeaderCarrier): Future[ClientListStatus] =
+    val underlying: Future[Unit] =
+      getStatus(credentialId).flatMap {
+        case Succeeded =>
+          logStatus("initial", None, Succeeded)
+          clearWaitTime(credentialId)
+          Future.unit
 
-      case Failed =>
-        logStatus("initial", None, Failed)
-        audit.clientListRetrievalFailed(credentialId, phase = "initial")
-        clearWaitTime(credentialId)
-        Future.failed(ClientListDownloadFailedException("Failed"))
+        case Failed =>
+          logStatus("initial", None, Failed)
+          audit.clientListRetrievalFailed(credentialId, phase = "initial")
+          clearWaitTime(credentialId)
+          Future.failed(ClientListDownloadFailedException("Failed"))
 
-      case InProgress =>
-        logStatus("initial", None, InProgress)
-        audit.clientListRetrievalInProgress(credentialId, phase = "initial")
-        val waitPlan = getCachedWaitTime(credentialId).getOrElse(defaultWaitPlan)
-        processWithWaitPlan(credentialId, waitPlan)
+        case InProgress =>
+          logStatus("initial", None, InProgress)
+          audit.clientListRetrievalInProgress(credentialId, phase = "initial")
+          val waitPlan = getCachedWaitTime(credentialId).getOrElse(defaultWaitPlan)
+          processWithWaitPlan(credentialId, waitPlan)
 
-      case InitiateDownload =>
-        logStatus("initial", None, InitiateDownload)
+        case InitiateDownload =>
+          logStatus("initial", None, InitiateDownload)
 
-        for
-          waitPlan <- clientExchangeProxyConnector.initiate(serviceName, credentialId)
-          _         = cacheWaitTime(credentialId, waitPlan)
-          outcome  <- processWithWaitPlan(credentialId, waitPlan)
-        yield outcome
-    }
+          for
+            waitPlan <- clientExchangeProxyConnector.initiate(serviceName, credentialId)
+            _         = cacheWaitTime(credentialId, waitPlan)
+            outcome  <- processWithWaitPlan(credentialId, waitPlan)
+          yield outcome
+      }
+
+    underlying
+    .map(_ => Succeeded)
+      .recover {
+        case _: ClientListDownloadInProgressException => InProgress
+        case _: ClientListDownloadFailedException     => Failed
+        case _: SystemException                       => InitiateDownload
+      }
 }

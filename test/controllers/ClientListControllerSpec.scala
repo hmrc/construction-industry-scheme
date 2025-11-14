@@ -22,6 +22,7 @@ import org.mockito.ArgumentMatchers.any
 import play.api.libs.json.Json
 import play.api.test.Helpers.*
 import uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController
+import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.{Failed, InProgress, InitiateDownload, Succeeded}
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.*
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -35,7 +36,7 @@ class ClientListControllerSpec extends SpecBase {
       val mockService = mock[ClientListService]
 
       when(mockService.process(any[String])(any[HeaderCarrier]))
-        .thenReturn(Future.unit)
+        .thenReturn(Future.successful(Succeeded))
 
       val controller =
         new ClientListController(fakeAuthAction(), mockService, cc)
@@ -52,7 +53,7 @@ class ClientListControllerSpec extends SpecBase {
       val mockService = mock[ClientListService]
 
       when(mockService.process(any[String])(any[HeaderCarrier]))
-        .thenReturn(Future.failed(ClientListDownloadInProgressException("still in progress")))
+        .thenReturn(Future.successful(InProgress))
 
       val controller =
         new ClientListController(fakeAuthAction(), mockService, cc)
@@ -67,7 +68,7 @@ class ClientListControllerSpec extends SpecBase {
       val mockService = mock[ClientListService]
 
       when(mockService.process(any[String])(any[HeaderCarrier]))
-        .thenReturn(Future.failed(ClientListDownloadFailedException("failed")))
+        .thenReturn(Future.successful(Failed))
 
       val controller =
         new ClientListController(fakeAuthAction(), mockService, cc)
@@ -78,11 +79,26 @@ class ClientListControllerSpec extends SpecBase {
       contentAsJson(result) mustBe Json.obj("result" -> "failed")
     }
 
-    "return 500 InternalServerError with {\"result\":\"system-error\"} when service.process throws SystemException" in {
+    "return 200 Ok with {\"result\":\"system-error\"} when service.process throws SystemException" in {
       val mockService = mock[ClientListService]
 
       when(mockService.process(any[String])(any[HeaderCarrier]))
-        .thenReturn(Future.failed(SystemException("boom")))
+        .thenReturn(Future.successful(InitiateDownload))
+
+      val controller =
+        new ClientListController(fakeAuthAction(), mockService, cc)
+
+      val result = controller.start()(fakeRequest)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.obj("result" -> "initiate-download")
+    }
+
+    "return 500 InternalServerError with {\"result\":\"system-error\"} when service.process fails with NoBusinessIntervalsException" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.process(any[String])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(NoBusinessIntervalsException("no business intervals")))
 
       val controller =
         new ClientListController(fakeAuthAction(), mockService, cc)
@@ -91,6 +107,8 @@ class ClientListControllerSpec extends SpecBase {
 
       status(result) mustBe INTERNAL_SERVER_ERROR
       contentAsJson(result) mustBe Json.obj("result" -> "system-error")
+
+      verify(mockService, times(1)).process(any[String])(any[HeaderCarrier])
     }
 
     "return 400 BadRequest with \"Missing credentialId\" when no credentialId is available" in {

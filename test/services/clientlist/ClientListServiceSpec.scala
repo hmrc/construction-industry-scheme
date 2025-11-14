@@ -24,8 +24,9 @@ import org.scalatest.matchers.should.Matchers.shouldBe
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ClientExchangeProxyConnector, DatacacheProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.{InProgress, InitiateDownload}
 import uk.gov.hmrc.constructionindustryscheme.services.AuditService
-import uk.gov.hmrc.constructionindustryscheme.services.clientlist.{ClientListDownloadFailedException, ClientListDownloadInProgressException, ClientListService, SystemException}
+import uk.gov.hmrc.constructionindustryscheme.services.clientlist.{ClientListService, NoBusinessIntervalsException}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
 
@@ -98,9 +99,9 @@ class ClientListServiceSpec extends SpecBase {
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
       .thenReturn(Future.successful(ClientListStatus.Failed))
 
-    val ex = service.process("cred-1").failed.futureValue
+    val status = service.process("cred-1").futureValue
 
-    ex shouldBe a[ClientListDownloadFailedException]
+    status shouldBe ClientListStatus.Failed
     verify(audit).clientListRetrievalFailed(eqTo("cred-1"), eqTo("initial"), any[Option[String]])(any)
   }
 
@@ -142,7 +143,7 @@ class ClientListServiceSpec extends SpecBase {
 
     val ex = service.process("cred-1").failed.futureValue
 
-    ex shouldBe a[SystemException]
+    ex shouldBe a[NoBusinessIntervalsException]
 
     verify(audit).clientListRetrievalFailed(
       eqTo("cred-1"),
@@ -216,8 +217,8 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.Failed)
       )
 
-    val ex = service.process("cred-1").failed.futureValue
-    ex shouldBe a[ClientListDownloadFailedException]
+    val status = service.process("cred-1").futureValue
+    status shouldBe ClientListStatus.Failed
   }
 
   "AC7 - InitiateDownload after final business interval should throw SystemException and audit 3046" in {
@@ -238,8 +239,8 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.InitiateDownload)
       )
 
-    val ex = service.process("cred-1").failed.futureValue
-    ex shouldBe a[SystemException]
+    val status = service.process("cred-1").futureValue
+    status shouldBe ClientListStatus.InitiateDownload
 
     verify(audit).clientListRetrievalFailed(
       eqTo("cred-1"),
@@ -267,8 +268,8 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.InProgress)
       )
 
-    val ex = service.process("cred-1").failed.futureValue
-    ex shouldBe a[ClientListDownloadInProgressException]
+    val status = service.process("cred-1").futureValue
+    status shouldBe ClientListStatus.InProgress
 
     verify(audit).clientListRetrievalInProgress(
       eqTo("cred-1"),
@@ -295,8 +296,8 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.InitiateDownload)
       )
 
-    val ex = service.process("cred-1").failed.futureValue
-    ex shouldBe a[SystemException]
+    val status = service.process("cred-1").futureValue
+    status shouldBe InitiateDownload
 
     verify(audit).clientListRetrievalFailed(
       eqTo("cred-1"),
@@ -376,10 +377,9 @@ class ClientListServiceSpec extends SpecBase {
     when(audit.clientListRetrievalInProgress(any,any)(any))
       .thenReturn(Future.successful(AuditResult.Success))
 
-    val ex = service.process("cred-1").failed.futureValue
+    val status = service.process("cred-1").futureValue
 
-    ex shouldBe a[ClientListDownloadInProgressException]
-
+    status shouldBe InProgress
     verify(clientExchangeProxy, never()).initiate(any, any)(any)
 
     verify(audit).clientListRetrievalInProgress(

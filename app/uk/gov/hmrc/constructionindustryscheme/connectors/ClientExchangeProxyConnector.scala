@@ -45,18 +45,27 @@ class ClientExchangeProxyConnector @Inject()(
     httpClient
       .get(endpoint)
       .execute[HttpResponse]
-      .map { response =>
+      .flatMap { response =>
         if (is2xx(response.status)) {
           WaitTimeXmlMapper.parse(response.body).fold(
             err => {
               logger.error(s"[ClientExchangeProxyConnector] parse error: $err; body: ${response.body}")
-              throw UpstreamErrorResponse(s"client-exchange-proxy parse error: $err", 502, 502)
+              Future.failed(
+                UpstreamErrorResponse(s"client-exchange-proxy parse error: $err", 502, 502)
+              )
             },
-            ok  => ok
+            ok  =>
+              Future.successful(ok)
           )
         } else {
           logger.error(s"[ClientExchangeProxyConnector] non-2xx ${response.status}; body: ${response.body}")
-          throw UpstreamErrorResponse(s"client-exchange-proxy HTTP ${response.status}", response.status, response.status)
+          Future.failed(
+            UpstreamErrorResponse(
+              s"client-exchange-proxy HTTP ${response.status}",
+              response.status,
+              response.status
+            )
+          )
         }
       }
   }

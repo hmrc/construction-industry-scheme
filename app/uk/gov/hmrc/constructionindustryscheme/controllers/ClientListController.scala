@@ -25,6 +25,7 @@ import uk.gov.hmrc.constructionindustryscheme.services.clientlist.*
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.http.HeaderCarrierConverter
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
+import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.*
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -44,14 +45,17 @@ class ClientListController @Inject()(
 
     request.credentialId match
       case Some(credId) =>
-        service.process(credId).map { _ =>
-          Ok(Json.obj("result" -> "succeeded"))
-        }.recover {
-          case _: ClientListDownloadInProgressException =>
+        service.process(credId).map {
+          case Succeeded  =>
+            Ok(Json.obj("result" -> "succeeded"))
+          case InProgress =>
             Ok(Json.obj("result" -> "in-progress"))
-          case _: ClientListDownloadFailedException =>
+          case Failed     =>
             Ok(Json.obj("result" -> "failed"))
-          case _: SystemException =>
+          case InitiateDownload =>
+            Ok(Json.obj("result" -> "initiate-download"))
+        }.recover {
+          case _: NoBusinessIntervalsException =>
             InternalServerError(Json.obj("result" -> "system-error"))
         }
 

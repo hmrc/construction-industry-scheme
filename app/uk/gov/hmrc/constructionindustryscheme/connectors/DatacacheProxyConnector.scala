@@ -52,13 +52,15 @@ class DatacacheProxyConnector @Inject()(
 
     http.get(endpoint)
       .execute[JsValue]
-      .map { json =>
+      .flatMap { json =>
         (json \ "status").asOpt[String] match {
-          case Some(s) => mapProxyStatus(s)
+          case Some(s) =>
+            Future.successful(mapProxyStatus(s))
           case None =>
             logger.error(s"[DatacacheProxyConnector] invalid payload (missing 'status'): ${json.toString}")
-            throw UpstreamErrorResponse("rds-datacache-proxy invalid payload", 502, 502)
-        }
+            Future.failed(
+              UpstreamErrorResponse("rds-datacache-proxy invalid payload", 502, 502)
+            )        }
       }
   }
 
