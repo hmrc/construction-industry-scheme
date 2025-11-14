@@ -36,5 +36,13 @@ class AppConfig @Inject()(config: Configuration) {
     config.getOptional[String]("chrisTest.non2xx.override-url")
 
   val chrisHost: Seq[String] = config.get[Seq[String]]("submissionPollUrlKnownHosts")
+
+  val cisServiceName: String = config.get[String]("cis.serviceName")
+
+  val cisGracePeriodSeconds: Int = config.get[Int]("cis.gracePeriodSeconds")
+
+  val cisDefaultBrowserIntervalMs: Long = config.get[Long]("cis.defaultBrowserIntervalMs")
+
+  val cisDefaultBusinessIntervalsMs: List[Long] = config.get[Seq[Long]]("cis.defaultBusinessIntervalsMs").toList
 }
 

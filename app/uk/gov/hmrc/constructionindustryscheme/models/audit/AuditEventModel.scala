@@ -45,3 +45,38 @@ object MonthlyNilReturnRequestEvent {
 object MonthlyNilReturnResponseEvent {
   implicit val formats: Format[MonthlyNilReturnResponseEvent] = Json.format[MonthlyNilReturnResponseEvent]
 }
+
+final case class ClientListRetrievalFailedEvent(
+                                                 credentialId: String,
+                                                 phase: String,
+                                                 reason: Option[String] = None,
+                                                 code: String = "3046"
+                                               ) extends AuditEventModel:
+  override val auditType: String = "clientListRetrievalFailure"
+  override val detailJson: JsValue =
+    Json.obj(
+      "credentialId" -> credentialId,
+      "phase"        -> phase,
+      "outcome"      -> "failed",
+      "code"         -> code
+    ) ++ reason.fold(Json.obj())(r => Json.obj("reason" -> r))
+
+final case class ClientListRetrievalInProgressEvent(
+                                                     credentialId: String,
+                                                     phase: String,
+                                                     code: String = "3008"
+                                                   ) extends AuditEventModel:
+  override val auditType: String = "clientListRetrievalInProgress"
+  override val detailJson: JsValue =
+    Json.obj(
+      "credentialId" -> credentialId,
+      "phase"        -> phase,
+      "outcome"      -> "in-progress",
+      "code"         -> code
+    )
+
+object ClientListRetrievalFailedEvent:
+  given Format[ClientListRetrievalFailedEvent] = Json.format[ClientListRetrievalFailedEvent]
+
+object ClientListRetrievalInProgressEvent:
+  given Format[ClientListRetrievalInProgressEvent] = Json.format[ClientListRetrievalInProgressEvent]

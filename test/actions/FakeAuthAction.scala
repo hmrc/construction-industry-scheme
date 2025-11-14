@@ -24,7 +24,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.AuthenticatedReque
 
 import scala.concurrent.{ExecutionContext, Future}
 
-final class FakeAuthAction(enrols: Enrolments, parsers: PlayBodyParsers)
+final class FakeAuthAction(enrols: Enrolments, parsers: PlayBodyParsers, credId: Option[String]=None)
                           (implicit ec: ExecutionContext) extends AuthAction {
 
   override def parser: BodyParser[AnyContent] = parsers.defaultBodyParser
@@ -32,7 +32,7 @@ final class FakeAuthAction(enrols: Enrolments, parsers: PlayBodyParsers)
 
   override def invokeBlock[A](request: Request[A],
                               block: AuthenticatedRequest[A] => Future[Result]): Future[Result] =
-    block(AuthenticatedRequest(request, "internalId", SessionId("sessionId"), enrols))
+    block(AuthenticatedRequest(request, "internalId", SessionId("sessionId"), enrols, credId))
 }
 
 object FakeAuthAction {
@@ -46,7 +46,7 @@ object FakeAuthAction {
       ),
       state = "Activated"
     )
-    new FakeAuthAction(Enrolments(Set(cis)), parsers)
+    new FakeAuthAction(Enrolments(Set(cis)), parsers, Some("cred-123"))
   }
 
   def empty(parsers: PlayBodyParsers)(implicit ec: ExecutionContext): FakeAuthAction =

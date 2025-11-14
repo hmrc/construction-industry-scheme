@@ -22,7 +22,8 @@ import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
 import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
-import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
+import uk.gov.hmrc.constructionindustryscheme.models.{ClientListStatus, EmployerReference}
+import uk.gov.hmrc.http.UpstreamErrorResponse
 
 class DatacacheProxyConnectorIntegrationSpec
   extends ApplicationWithWiremock
@@ -81,6 +82,140 @@ class DatacacheProxyConnectorIntegrationSpec
 
       val ex = connector.getCisTaxpayer(er).failed.futureValue
       ex.getMessage must include ("404")
+    }
+  }
+
+  "DatacacheProxyConnector getClientListDownloadStatus" should {
+
+    val basePath = "/rds-datacache-proxy/client-list-status"
+    val credId = "cred-123"
+    val service = "CIS"
+    val grace = 14400
+
+    def statusUrl = urlPathEqualTo(basePath)
+
+    "map 'InitiateDownload' status from JSON to ClientListStatus.InitiateDownload" in {
+      stubFor(
+        get(statusUrl)
+          .withQueryParam("credentialId", equalTo(credId))
+          .withQueryParam("serviceName", equalTo(service))
+          .withQueryParam("gracePeriod", equalTo(grace.toString))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody("""{ "status": "InitiateDownload" }""")
+          )
+      )
+
+      val result = connector.getClientListDownloadStatus(credId, service, grace).futureValue
+      result mustBe ClientListStatus.InitiateDownload
+    }
+
+    "map 'InProgress' status from JSON to ClientListStatus.InProgress" in {
+      stubFor(
+        get(statusUrl)
+          .withQueryParam("credentialId", equalTo(credId))
+          .withQueryParam("serviceName", equalTo(service))
+          .withQueryParam("gracePeriod", equalTo(grace.toString))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody("""{ "status": "InProgress" }""")
+          )
+      )
+
+      val result = connector.getClientListDownloadStatus(credId, service, grace).futureValue
+      result mustBe ClientListStatus.InProgress
+    }
+
+    "map 'Succeeded' status from JSON to ClientListStatus.Succeeded" in {
+      stubFor(
+        get(statusUrl)
+          .withQueryParam("credentialId", equalTo(credId))
+          .withQueryParam("serviceName", equalTo(service))
+          .withQueryParam("gracePeriod", equalTo(grace.toString))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody("""{ "status": "Succeeded" }""")
+          )
+      )
+
+      val result = connector.getClientListDownloadStatus(credId, service, grace).futureValue
+      result mustBe ClientListStatus.Succeeded
+    }
+
+    "map 'Failed' status from JSON to ClientListStatus.Failed" in {
+      stubFor(
+        get(statusUrl)
+          .withQueryParam("credentialId", equalTo(credId))
+          .withQueryParam("serviceName", equalTo(service))
+          .withQueryParam("gracePeriod", equalTo(grace.toString))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody("""{ "status": "Failed" }""")
+          )
+      )
+
+      val result = connector.getClientListDownloadStatus(credId, service, grace).futureValue
+      result mustBe ClientListStatus.Failed
+    }
+
+    "fail with 502 UpstreamErrorResponse when 'status' field is missing in JSON" in {
+      stubFor(
+        get(statusUrl)
+          .withQueryParam("credentialId", equalTo(credId))
+          .withQueryParam("serviceName", equalTo(service))
+          .withQueryParam("gracePeriod", equalTo(grace.toString))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody("""{ "foo": "bar" }""")
+          )
+      )
+
+      val ex = connector.getClientListDownloadStatus(credId, service, grace).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      val upstream = ex.asInstanceOf[UpstreamErrorResponse]
+      upstream.statusCode mustBe 502
+      upstream.message must include("invalid payload")
+    }
+
+    "fail with RuntimeException when 'status' value is unknown" in {
+      stubFor(
+        get(statusUrl)
+          .withQueryParam("credentialId", equalTo(credId))
+          .withQueryParam("serviceName", equalTo(service))
+          .withQueryParam("gracePeriod", equalTo(grace.toString))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody("""{ "status": "test" }""")
+          )
+      )
+
+      val ex = connector.getClientListDownloadStatus(credId, service, grace).failed.futureValue
+      ex mustBe a[RuntimeException]
+      ex.getMessage must include("Unknown status 'test' from rds-datacache-proxy")
+    }
+
+    "propagate non-2xx responses (e.g. 500) as failed futures" in {
+      stubFor(
+        get(statusUrl)
+          .withQueryParam("credentialId", equalTo(credId))
+          .withQueryParam("serviceName", equalTo(service))
+          .withQueryParam("gracePeriod", equalTo(grace.toString))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("rds datacache error")
+          )
+      )
+
+      val ex = connector.getClientListDownloadStatus(credId, service, grace).failed.futureValue
+      ex mustBe a[Throwable]
+      ex.getMessage must include("rds datacache error")
     }
   }
 }
