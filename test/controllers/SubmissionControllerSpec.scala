@@ -387,10 +387,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "returns 200 with SUBMITTED status when service returns SUBMITTED" in {
       val service = mock[SubmissionService]
       val config = mock[AppConfig]
-      when(config.chrisHost).thenReturn(Seq("chris.com"))
+      when(config.chrisHost).thenReturn(Seq("chris.test"))
       val controller = mkController(service, appConfig = config)
 
-      val pollUrl = "http://chris.com/poll"
+      val pollUrl = "http://chris.test/poll"
       val correlationId = "CORR123"
 
       when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
@@ -412,10 +412,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "returns 200 with FATAL_ERROR status when service returns FATAL_ERROR" in {
       val service = mock[SubmissionService]
       val config = mock[AppConfig]
-      when(config.chrisHost).thenReturn(Seq("chris.com"))
+      when(config.chrisHost).thenReturn(Seq("chris.test"))
       val controller = mkController(service, appConfig = config)
 
-      val pollUrl = "http://chris.com/poll"
+      val pollUrl = "http://chris.test/poll"
       val correlationId = "CORR456"
 
       when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
@@ -437,10 +437,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "returns 200 with DEPARTMENTAL_ERROR status when service returns DEPARTMENTAL_ERROR" in {
       val service = mock[SubmissionService]
       val config = mock[AppConfig]
-      when(config.chrisHost).thenReturn(Seq("chris.com"))
+      when(config.chrisHost).thenReturn(Seq("chris.test"))
       val controller = mkController(service, appConfig = config)
 
-      val pollUrl = "http://chris.com/poll"
+      val pollUrl = "http://chris.test/poll"
       val correlationId = "CORR789"
 
       when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
@@ -462,10 +462,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "returns 200 with ACCEPTED status and pollUrl when service returns ACCEPTED with pollUrl" in {
       val service = mock[SubmissionService]
       val config = mock[AppConfig]
-      when(config.chrisHost).thenReturn(Seq("chris.com"))
+      when(config.chrisHost).thenReturn(Seq("chris.test"))
       val controller = mkController(service, appConfig = config)
 
-      val pollUrl = "http://chris.com/poll"
+      val pollUrl = "http://chris.test/poll"
       val correlationId = "CORR999"
 
       when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
@@ -488,7 +488,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val service = mock[SubmissionService]
       val controller = mkController(service, auth = rejectingAuthAction)
 
-      val pollUrl = "http://chris.com/poll"
+      val pollUrl = "http://chris.test/poll"
       val correlationId = "CORR-UNAUTH"
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
