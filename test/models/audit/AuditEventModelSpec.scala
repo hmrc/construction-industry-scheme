@@ -20,7 +20,7 @@ import base.SpecBase
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.should.Matchers.{should, shouldBe}
 import play.api.libs.json.{JsSuccess, JsValue, Json}
-import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, MonthlyNilReturnRequestEvent, MonthlyNilReturnResponseEvent}
+import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, ClientListRetrievalFailedEvent, ClientListRetrievalInProgressEvent, MonthlyNilReturnRequestEvent, MonthlyNilReturnResponseEvent}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor.convertXmlToJson
 
 class AuditEventModelSpec extends SpecBase {
@@ -258,6 +258,100 @@ class AuditEventModelSpec extends SpecBase {
     "must serialise correctly" in {
       json mustBe expected
     }
+  }
+  
 
+  "ClientListRetrievalFailedEvent" - {
+
+    "have the correct auditType, auditSource and detail with reason" in {
+      val event = ClientListRetrievalFailedEvent(
+        credentialId = "cred-123",
+        phase = "business#1",
+        reason = Some("no-business-intervals")
+      )
+
+      val extended = event.extendedDataEvent
+
+      extended.auditSource shouldBe "construction-industry-scheme"
+      extended.auditType shouldBe "clientListRetrievalFailure"
+
+      val expectedDetail = Json.obj(
+        "credentialId" -> "cred-123",
+        "phase" -> "business#1",
+        "outcome" -> "failed",
+        "code" -> "3046",
+        "reason" -> "no-business-intervals"
+      )
+
+      extended.detail shouldBe expectedDetail
+      extended.detail shouldBe event.detailJson
+    }
+
+    "have the correct detail JSON when no reason is provided" in {
+      val event = ClientListRetrievalFailedEvent(
+        credentialId = "cred-999",
+        phase = "browser",
+        reason = None
+      )
+
+      val expectedDetail = Json.obj(
+        "credentialId" -> "cred-999",
+        "phase" -> "browser",
+        "outcome" -> "failed",
+        "code" -> "3046"
+      )
+
+      event.detailJson shouldBe expectedDetail
+    }
+
+    "serialize and deserialize correctly to/from JSON" in {
+      val event = ClientListRetrievalFailedEvent(
+        credentialId = "cred-123",
+        phase = "business#1",
+        reason = Some("initiate-on-final-business-interval"),
+      )
+
+      val json = Json.toJson(event)
+      val parsed = json.as[ClientListRetrievalFailedEvent]
+
+      parsed shouldBe event
+    }
+  }
+
+  "ClientListRetrievalInProgressEvent" - {
+
+    "have the correct auditType, auditSource and detail" in {
+      val event = ClientListRetrievalInProgressEvent(
+        credentialId = "cred-456",
+        phase = "browser"
+      )
+
+      val extended = event.extendedDataEvent
+
+      extended.auditSource shouldBe "construction-industry-scheme"
+      extended.auditType shouldBe "clientListRetrievalInProgress"
+
+      val expectedDetail = Json.obj(
+        "credentialId" -> "cred-456",
+        "phase" -> "browser",
+        "outcome" -> "in-progress",
+        "code" -> "3008"
+      )
+
+      extended.detail shouldBe expectedDetail
+      extended.detail shouldBe event.detailJson
+    }
+
+    "serialize and deserialize correctly to/from JSON" in {
+      val event = ClientListRetrievalInProgressEvent(
+        credentialId = "cred-456",
+        phase = "business",
+      )
+
+      val json = Json.toJson(event)
+      val parsed = json.as[ClientListRetrievalInProgressEvent]
+
+      parsed shouldBe event
+    }
   }
 }
