@@ -48,7 +48,7 @@ class DatacacheProxyConnector @Inject()(
    serviceName: String,
    gracePeriodSeconds: Int
   )(implicit hc: HeaderCarrier): Future[ClientListStatus] = {
-    val endpoint = url"$base/client-list-status?credentialId=$credentialId&serviceName=$serviceName&gracePeriod=$gracePeriodSeconds"
+    val endpoint = url"$base/cis/client-list-status?credentialId=$credentialId&serviceName=$serviceName&gracePeriod=$gracePeriodSeconds"
 
     http.get(endpoint)
       .execute[JsValue]

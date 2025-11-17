@@ -87,7 +87,7 @@ class DatacacheProxyConnectorIntegrationSpec
 
   "DatacacheProxyConnector getClientListDownloadStatus" should {
 
-    val basePath = "/rds-datacache-proxy/client-list-status"
+    val basePath = "/rds-datacache-proxy/cis/client-list-status"
     val credId = "cred-123"
     val service = "CIS"
     val grace = 14400
