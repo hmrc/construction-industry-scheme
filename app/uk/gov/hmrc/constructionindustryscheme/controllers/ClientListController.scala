@@ -27,6 +27,7 @@ import uk.gov.hmrc.play.http.HeaderCarrierConverter
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.*
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -63,5 +64,15 @@ class ClientListController @Inject()(
         Future.successful(
           BadRequest(Json.obj("message" -> "Missing credentialId"))
         )
+  }
+
+  def getAllClients(irAgentId: String, credentialId: String): Action[AnyContent] = authorise.async { implicit request =>
+    given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
+
+    if (irAgentId.trim().isEmpty || credentialId.trim().isEmpty) {
+      Future.successful(BadRequest(Json.obj("error" -> "credentialId and irAgentId must be provided")))
+    } else {
+      service.getClientList(irAgentId, credentialId).map((result: ClientSearchResult) => Ok(Json.toJson(result)))
+    }
   }
 }

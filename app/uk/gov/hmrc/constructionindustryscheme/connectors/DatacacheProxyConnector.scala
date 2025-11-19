@@ -27,6 +27,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, ClientListSta
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
+import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
 @Singleton
 class DatacacheProxyConnector @Inject()(
@@ -73,4 +74,13 @@ class DatacacheProxyConnector @Inject()(
       logger.error(s"[DatacacheProxyConnector] unknown status '$other' from rds-datacache-proxy")
       throw new RuntimeException(s"Unknown status '$other' from rds-datacache-proxy")
   }
+
+  def getClientList(irAgentId: String, credentialId: String)(using HeaderCarrier): Future[ClientSearchResult] = {
+    val endpoint = url"$base/cis/client-list?&irAgentId=$irAgentId&credentialId=$credentialId"
+
+    http
+      .get(endpoint)
+      .execute[ClientSearchResult]
+  }
+
 }
