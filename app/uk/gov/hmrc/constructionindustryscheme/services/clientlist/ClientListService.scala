@@ -80,7 +80,7 @@ class ClientListService @Inject()(
     actorSystem.scheduler.scheduleOnce(ms.millis)(p.success(()))
     p.future
 
-  private def getStatus(credId: String)(implicit hc: HeaderCarrier): Future[ClientListStatus] =
+  def getStatus(credId: String)(implicit hc: HeaderCarrier): Future[ClientListStatus] =
     datacacheProxyConnector.getClientListDownloadStatus(credId, serviceName, grace)
 
   protected def logWaitPlan(business: Seq[Long], browserMs: Long): Unit =
