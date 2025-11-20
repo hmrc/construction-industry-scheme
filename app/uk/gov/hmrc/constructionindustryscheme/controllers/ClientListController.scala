@@ -66,13 +66,18 @@ class ClientListController @Inject()(
         )
   }
 
-  def getAllClients(irAgentId: String, credentialId: String): Action[AnyContent] = authorise.async { implicit request =>
+  def getAllClients: Action[AnyContent] = authorise.async { implicit request =>
     given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
 
-    if (irAgentId.trim().isEmpty || credentialId.trim().isEmpty) {
-      Future.successful(BadRequest(Json.obj("error" -> "credentialId and irAgentId must be provided")))
-    } else {
-      service.getClientList(irAgentId, credentialId).map((result: ClientSearchResult) => Ok(Json.toJson(result)))
+    val irAgentId = request.enrolments.getEnrolment("IR-PAYE-AGENT").flatMap(_.getIdentifier("IRAgentReference"))
+    val credentialId = request.credentialId
+
+    (irAgentId, credentialId) match {
+      case (Some(agentId), Some(credId)) =>
+        service.getClientList(agentId.value, credId).map((result: ClientSearchResult) => Ok(Json.toJson(result)))
+      case (maybeAgentId, maybeCredId) =>
+        logger.info(s"[ClientListController.getAllClients] authenticated request with missing agent enrollments - agentId: $maybeAgentId, credId: $credentialId")
+        Future.successful(BadRequest(Json.obj("error" -> "credentialId and/or irAgentId are missing from session")))
     }
   }
 }
