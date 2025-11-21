@@ -16,6 +16,7 @@
 
 package controllers
 
+import actions.FakeAuthAction
 import base.SpecBase
 import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers.any
@@ -23,8 +24,10 @@ import play.api.libs.json.Json
 import play.api.test.Helpers.*
 import uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.{Failed, InProgress, InitiateDownload, Succeeded}
+import uk.gov.hmrc.constructionindustryscheme.models.CisTaxpayerSearchResult
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.*
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
+import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
 import scala.concurrent.Future
 
@@ -111,7 +114,7 @@ class ClientListControllerSpec extends SpecBase {
       verify(mockService, times(1)).process(any[String])(any[HeaderCarrier])
     }
 
-    "return 400 BadRequest with \"Missing credentialId\" when no credentialId is available" in {
+    "return 403 Forbidden with \"Missing credentialId\" when no credentialId is available" in {
       val mockService = mock[ClientListService]
 
       val controller =
@@ -119,10 +122,150 @@ class ClientListControllerSpec extends SpecBase {
 
       val result = controller.start()(fakeRequest)
 
-      status(result) mustBe BAD_REQUEST
+      status(result) mustBe FORBIDDEN
       contentAsJson(result) mustBe Json.obj("message" -> "Missing credentialId")
 
       verify(mockService, never()).process(any[String])(any[HeaderCarrier])
+    }
+  }
+
+  "ClientListController.getAllClients" - {
+
+    val irAgentId = "SA123456"
+    val credId = "cred-123"
+
+    "return 200 OK with ClientSearchResult when both irAgentId and credentialId are available" in {
+      val mockService = mock[ClientListService]
+
+      val clientSearchResult = ClientSearchResult(
+        clients = List(
+          CisTaxpayerSearchResult(
+            uniqueId = "client-1",
+            taxOfficeNumber = "111",
+            taxOfficeRef = "test111",
+            aoDistrict = Some("district1"),
+            aoPayType = Some("type1"),
+            aoCheckCode = Some("check1"),
+            aoReference = Some("ref1"),
+            validBusinessAddr = Some("Y"),
+            correlation = Some("corr1"),
+            ggAgentId = Some("agent1"),
+            employerName1 = Some("Test Company Ltd"),
+            employerName2 = Some("Test Company"),
+            agentOwnRef = Some("own-ref-1"),
+            schemeName = Some("Test Scheme")
+          )
+        ),
+        totalCount = 1,
+        clientNameStartingCharacters = List("T")
+      )
+
+      when(mockService.getClientList(any[String], any[String])(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(clientSearchResult))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.getAllClients()(fakeRequest)
+
+      status(result) mustBe OK
+      val json = contentAsJson(result)
+      (json \ "totalCount").as[Int] mustBe 1
+      (json \ "clients").as[List[CisTaxpayerSearchResult]] must have size 1
+      (json \ "clientNameStartingCharacters").as[List[String]] mustBe List("T")
+
+      verify(mockService, times(1)).getClientList(any[String], any[String])(using any[HeaderCarrier])
+    }
+
+    "return 200 OK with empty client list when no clients found" in {
+      val mockService = mock[ClientListService]
+
+      val emptyResult = ClientSearchResult(
+        clients = List.empty,
+        totalCount = 0,
+        clientNameStartingCharacters = List.empty
+      )
+
+      when(mockService.getClientList(any[String], any[String])(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(emptyResult))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.getAllClients()(fakeRequest)
+
+      status(result) mustBe OK
+      val json = contentAsJson(result)
+      (json \ "totalCount").as[Int] mustBe 0
+      (json \ "clients").as[List[CisTaxpayerSearchResult]] mustBe empty
+      (json \ "clientNameStartingCharacters").as[List[String]] mustBe empty
+    }
+
+    "return 403 Forbidden when IR-PAYE-AGENT enrolment is missing" in {
+      val mockService = mock[ClientListService]
+
+      val authAction = FakeAuthAction.withEnrolments(Set.empty, bodyParsers, Some(credId))
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.getAllClients()(fakeRequest)
+
+      status(result) mustBe FORBIDDEN
+      contentAsJson(result) mustBe Json.obj("error" -> "credentialId and/or irAgentId are missing from session")
+
+      verify(mockService, never()).getClientList(any[String], any[String])(using any[HeaderCarrier])
+    }
+
+    "return 403 Forbidden when credentialId is missing" in {
+      val mockService = mock[ClientListService]
+
+      val authAction = FakeAuthAction.withEnrolments(
+        Set(uk.gov.hmrc.auth.core.Enrolment(
+          key = "IR-PAYE-AGENT",
+          identifiers = Seq(uk.gov.hmrc.auth.core.EnrolmentIdentifier("IRAgentReference", irAgentId)),
+          state = "Activated"
+        )),
+        bodyParsers,
+        credId = None
+      )
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.getAllClients()(fakeRequest)
+
+      status(result) mustBe FORBIDDEN
+      contentAsJson(result) mustBe Json.obj("error" -> "credentialId and/or irAgentId are missing from session")
+
+      verify(mockService, never()).getClientList(any[String], any[String])(using any[HeaderCarrier])
+    }
+
+    "return 403 Forbidden when both irAgentId and credentialId are missing" in {
+      val mockService = mock[ClientListService]
+
+      val controller = new ClientListController(noEnrolmentReferenceAuthAction, mockService, cc)
+
+      val result = controller.getAllClients()(fakeRequest)
+
+      status(result) mustBe FORBIDDEN
+      contentAsJson(result) mustBe Json.obj("error" -> "credentialId and/or irAgentId are missing from session")
+
+      verify(mockService, never()).getClientList(any[String], any[String])(using any[HeaderCarrier])
+    }
+
+    "propagate upstream errors from service" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.getClientList(any[String], any[String])(using any[HeaderCarrier]))
+        .thenReturn(Future.failed(UpstreamErrorResponse("Service unavailable", 503, 503)))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.getAllClients()(fakeRequest)
+
+      val thrown = intercept[UpstreamErrorResponse] {
+        status(result)
+      }
+      thrown.statusCode mustBe 503
+      thrown.message must include("Service unavailable")
     }
   }
 }

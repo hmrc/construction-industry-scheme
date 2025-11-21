@@ -218,4 +218,127 @@ class DatacacheProxyConnectorIntegrationSpec
       ex.getMessage must include("rds datacache error")
     }
   }
+
+  "DatacacheProxyConnector getClientList" should {
+
+    val basePath = "/rds-datacache-proxy/cis/client-list"
+    val irAgentId = "SA123456"
+    val credId = "cred-123"
+
+    def clientListUrl = urlPathEqualTo(basePath)
+
+    "return CisClientSearchResult when both irAgentId and credentialId are provided (200)" in {
+      stubFor(
+        get(clientListUrl)
+          .withQueryParam("irAgentId", equalTo(irAgentId))
+          .withQueryParam("credentialId", equalTo(credId))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody("""{
+                |  "clients": [
+                |    {
+                |      "uniqueId": "client-1",
+                |      "taxOfficeNumber": "111",
+                |      "taxOfficeRef": "test111",
+                |      "aoDistrict": "district1",
+                |      "aoPayType": "type1",
+                |      "aoCheckCode": "check1",
+                |      "aoReference": "ref1",
+                |      "validBusinessAddr": "Y",
+                |      "correlation": "corr1",
+                |      "ggAgentId": "agent1",
+                |      "employerName1": "Test Company Ltd",
+                |      "employerName2": "Test Company",
+                |      "agentOwnRef": "own-ref-1",
+                |      "schemeName": "Test Scheme"
+                |    }
+                |  ],
+                |  "totalCount": 1,
+                |  "clientNameStartingCharacters": ["T"]
+                |}""".stripMargin
+              )
+          )
+      )
+
+      val result = connector.getClientList(irAgentId, credId).futureValue
+      result.totalCount mustBe 1
+      result.clients must have size 1
+      result.clients.head.uniqueId mustBe "client-1"
+      result.clients.head.employerName1 mustBe Some("Test Company Ltd")
+      result.clientNameStartingCharacters mustBe List("T")
+    }
+
+    "return bad request (400) when irAgentId is missing" in {
+      stubFor(
+        get(clientListUrl)
+          .withQueryParam("credentialId", equalTo(credId))
+          .willReturn(
+            aResponse()
+              .withStatus(400)
+              .withBody("irAgentId is required")
+          )
+      )
+
+      val ex = connector.getClientList("", credId).failed.futureValue
+      ex mustBe a[Throwable]
+      ex.getMessage must include("400")
+    }
+
+    "return bad request (400) when credentialId is missing" in {
+      stubFor(
+        get(clientListUrl)
+          .withQueryParam("irAgentId", equalTo(irAgentId))
+          .willReturn(
+            aResponse()
+              .withStatus(400)
+              .withBody("credentialId is required")
+          )
+      )
+
+      val ex = connector.getClientList(irAgentId, "").failed.futureValue
+      ex mustBe a[Throwable]
+      ex.getMessage must include("400")
+    }
+
+    "propagate non-2xx responses (e.g. 500) as failed futures" in {
+      stubFor(
+        get(clientListUrl)
+          .withQueryParam("irAgentId", equalTo(irAgentId))
+          .withQueryParam("credentialId", equalTo(credId))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("Internal server error")
+          )
+      )
+
+      val ex = connector.getClientList(irAgentId, credId).failed.futureValue
+      ex mustBe a[Throwable]
+      ex.getMessage must include("500")
+    }
+
+    "return empty client list when no clients found (200)" in {
+      stubFor(
+        get(clientListUrl)
+          .withQueryParam("irAgentId", equalTo(irAgentId))
+          .withQueryParam("credentialId", equalTo(credId))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody("""{
+                |  "clients": [],
+                |  "totalCount": 0,
+                |  "clientNameStartingCharacters": []
+                |}""".stripMargin
+              )
+          )
+      )
+
+      val result = connector.getClientList(irAgentId, credId).futureValue
+      result.totalCount mustBe 0
+      result.clients mustBe empty
+      result.clientNameStartingCharacters mustBe empty
+    }
+  }
 }

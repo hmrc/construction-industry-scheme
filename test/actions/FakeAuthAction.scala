@@ -49,6 +49,22 @@ object FakeAuthAction {
     new FakeAuthAction(Enrolments(Set(cis)), parsers, Some("cred-123"))
   }
 
+  def withIrPayeAgent(irAgentReference: String, parsers: PlayBodyParsers, credId: String = "cred-123")
+                     (implicit ec: ExecutionContext): FakeAuthAction = {
+    val irPayeAgent = Enrolment(
+      key = "IR-PAYE-AGENT",
+      identifiers = Seq(
+        EnrolmentIdentifier("IRAgentReference", irAgentReference)
+      ),
+      state = "Activated"
+    )
+    new FakeAuthAction(Enrolments(Set(irPayeAgent)), parsers, Some(credId))
+  }
+
+  def withEnrolments(enrolments: Set[Enrolment], parsers: PlayBodyParsers, credId: Option[String] = Some("cred-123"))
+                    (implicit ec: ExecutionContext): FakeAuthAction =
+    new FakeAuthAction(Enrolments(enrolments), parsers, credId)
+
   def empty(parsers: PlayBodyParsers)(implicit ec: ExecutionContext): FakeAuthAction =
     new FakeAuthAction(Enrolments(Set.empty), parsers)
 }
