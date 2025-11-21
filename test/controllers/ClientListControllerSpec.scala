@@ -122,7 +122,7 @@ class ClientListControllerSpec extends SpecBase {
 
       val result = controller.start()(fakeRequest)
 
-      status(result) mustBe FORBIDDEN
+      status(result) mustBe BAD_REQUEST
       contentAsJson(result) mustBe Json.obj("message" -> "Missing credentialId")
 
       verify(mockService, never()).process(any[String])(any[HeaderCarrier])

@@ -81,7 +81,7 @@ class ClientListController @Inject()(
 
       case None =>
         Future.successful(
-          Forbidden(Json.obj("message" -> "Missing credentialId"))
+          BadRequest(Json.obj("message" -> "Missing credentialId"))
         )
   }
 
