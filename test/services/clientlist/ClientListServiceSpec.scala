@@ -391,4 +391,24 @@ class ClientListServiceSpec extends SpecBase {
     verify(datacache, times(4)).getClientListDownloadStatus(any, any, any)(any)
   }
 
+  "getStatus should delegate to datacacheProxyConnector with serviceName and grace" in {
+    val (service, datacache, _, _) = setupService()
+
+    implicit val hc: HeaderCarrier = HeaderCarrier()
+
+    val expectedServiceName = appConfig.cisServiceName
+    val expectedGrace = appConfig.cisGracePeriodSeconds
+
+    when(datacache.getClientListDownloadStatus(any, any, any)(any))
+      .thenReturn(Future.successful(ClientListStatus.Succeeded))
+
+    val status = service.getStatus("cred-1").futureValue
+
+    status shouldBe ClientListStatus.Succeeded
+    verify(datacache, times(1)).getClientListDownloadStatus(
+      eqTo("cred-1"),
+      eqTo(expectedServiceName),
+      eqTo(expectedGrace)
+    )(any[HeaderCarrier])
+  }
 }
