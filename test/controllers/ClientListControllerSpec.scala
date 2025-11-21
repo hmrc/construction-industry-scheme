@@ -114,7 +114,7 @@ class ClientListControllerSpec extends SpecBase {
       verify(mockService, times(1)).process(any[String])(any[HeaderCarrier])
     }
 
-    "return 400 BadRequest with \"Missing credentialId\" when no credentialId is available" in {
+    "return 403 Forbidden with \"Missing credentialId\" when no credentialId is available" in {
       val mockService = mock[ClientListService]
 
       val controller =
@@ -122,7 +122,7 @@ class ClientListControllerSpec extends SpecBase {
 
       val result = controller.start()(fakeRequest)
 
-      status(result) mustBe BAD_REQUEST
+      status(result) mustBe FORBIDDEN
       contentAsJson(result) mustBe Json.obj("message" -> "Missing credentialId")
 
       verify(mockService, never()).process(any[String])(any[HeaderCarrier])
@@ -201,25 +201,23 @@ class ClientListControllerSpec extends SpecBase {
       (json \ "clientNameStartingCharacters").as[List[String]] mustBe empty
     }
 
-    "return 400 BadRequest when IR-PAYE-AGENT enrolment is missing" in {
+    "return 403 Forbidden when IR-PAYE-AGENT enrolment is missing" in {
       val mockService = mock[ClientListService]
 
-      // Use auth action with no enrolments but with credentialId
       val authAction = FakeAuthAction.withEnrolments(Set.empty, bodyParsers, Some(credId))
       val controller = new ClientListController(authAction, mockService, cc)
 
       val result = controller.getAllClients()(fakeRequest)
 
-      status(result) mustBe BAD_REQUEST
+      status(result) mustBe FORBIDDEN
       contentAsJson(result) mustBe Json.obj("error" -> "credentialId and/or irAgentId are missing from session")
 
       verify(mockService, never()).getClientList(any[String], any[String])(using any[HeaderCarrier])
     }
 
-    "return 400 BadRequest when credentialId is missing" in {
+    "return 403 Forbidden when credentialId is missing" in {
       val mockService = mock[ClientListService]
 
-      // Use auth action with IR-PAYE-AGENT but no credentialId
       val authAction = FakeAuthAction.withEnrolments(
         Set(uk.gov.hmrc.auth.core.Enrolment(
           key = "IR-PAYE-AGENT",
@@ -233,21 +231,20 @@ class ClientListControllerSpec extends SpecBase {
 
       val result = controller.getAllClients()(fakeRequest)
 
-      status(result) mustBe BAD_REQUEST
+      status(result) mustBe FORBIDDEN
       contentAsJson(result) mustBe Json.obj("error" -> "credentialId and/or irAgentId are missing from session")
 
       verify(mockService, never()).getClientList(any[String], any[String])(using any[HeaderCarrier])
     }
 
-    "return 400 BadRequest when both irAgentId and credentialId are missing" in {
+    "return 403 Forbidden when both irAgentId and credentialId are missing" in {
       val mockService = mock[ClientListService]
 
-      // Use empty auth action with no enrolments and no credentialId
       val controller = new ClientListController(noEnrolmentReferenceAuthAction, mockService, cc)
 
       val result = controller.getAllClients()(fakeRequest)
 
-      status(result) mustBe BAD_REQUEST
+      status(result) mustBe FORBIDDEN
       contentAsJson(result) mustBe Json.obj("error" -> "credentialId and/or irAgentId are missing from session")
 
       verify(mockService, never()).getClientList(any[String], any[String])(using any[HeaderCarrier])

@@ -62,7 +62,7 @@ class ClientListController @Inject()(
 
       case None =>
         Future.successful(
-          BadRequest(Json.obj("message" -> "Missing credentialId"))
+          Forbidden(Json.obj("message" -> "Missing credentialId"))
         )
   }
 
@@ -76,8 +76,8 @@ class ClientListController @Inject()(
       case (Some(agentId), Some(credId)) =>
         service.getClientList(agentId.value, credId).map((result: ClientSearchResult) => Ok(Json.toJson(result)))
       case (maybeAgentId, maybeCredId) =>
-        logger.info(s"[ClientListController.getAllClients] authenticated request with missing agent enrollments - agentId: $maybeAgentId, credId: $credentialId")
-        Future.successful(BadRequest(Json.obj("error" -> "credentialId and/or irAgentId are missing from session")))
+        logger.info(s"[ClientListController.getAllClients] authenticated request with missing agent enrollments - agentId: $maybeAgentId, credId: $maybeCredId")
+        Future.successful(Forbidden(Json.obj("error" -> "credentialId and/or irAgentId are missing from session")))
     }
   }
 }
