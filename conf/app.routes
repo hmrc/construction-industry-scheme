@@ -12,3 +12,4 @@ GET        /submissions/poll                                    uk.gov.hmrc.cons
 
 POST       /agent/client-list/retrieval/start                   uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.start
 POST       /agent/client-list/retrieval/status                  uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.status
+GET        /agent/client-list                                   uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.getAllClients

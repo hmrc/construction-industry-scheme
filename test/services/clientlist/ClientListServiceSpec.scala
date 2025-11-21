@@ -27,8 +27,9 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.{InProgress, InitiateDownload}
 import uk.gov.hmrc.constructionindustryscheme.services.AuditService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.{ClientListService, NoBusinessIntervalsException}
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
+import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.collection.concurrent.TrieMap
@@ -411,4 +412,118 @@ class ClientListServiceSpec extends SpecBase {
       eqTo(expectedGrace)
     )(any[HeaderCarrier])
   }
+
+  "ClientListService.getClientList" - {
+
+    val irAgentId = "SA123456"
+    val credId = "cred-123"
+
+    "should return ClientSearchResult when connector succeeds" in {
+      val (service, datacache, _, _) = setupService()
+
+      val expectedResult = ClientSearchResult(
+        clients = List(
+          CisTaxpayerSearchResult(
+            uniqueId = "client-1",
+            taxOfficeNumber = "111",
+            taxOfficeRef = "test111",
+            aoDistrict = Some("district1"),
+            aoPayType = Some("type1"),
+            aoCheckCode = Some("check1"),
+            aoReference = Some("ref1"),
+            validBusinessAddr = Some("Y"),
+            correlation = Some("corr1"),
+            ggAgentId = Some("agent1"),
+            employerName1 = Some("Test Company Ltd"),
+            employerName2 = Some("Test Company"),
+            agentOwnRef = Some("own-ref-1"),
+            schemeName = Some("Test Scheme")
+          )
+        ),
+        totalCount = 1,
+        clientNameStartingCharacters = List("T")
+      )
+
+      when(datacache.getClientList(eqTo(irAgentId), eqTo(credId))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(expectedResult))
+
+      val result = service.getClientList(irAgentId, credId).futureValue
+
+      result shouldBe expectedResult
+      result.totalCount shouldBe 1
+      result.clients.size shouldBe 1
+      result.clients.head.uniqueId shouldBe "client-1"
+      result.clientNameStartingCharacters shouldBe List("T")
+
+      verify(datacache, times(1)).getClientList(eqTo(irAgentId), eqTo(credId))(using any[HeaderCarrier])
+    }
+
+    "should return empty ClientSearchResult when no clients found" in {
+      val (service, datacache, _, _) = setupService()
+
+      val emptyResult = ClientSearchResult(
+        clients = List.empty,
+        totalCount = 0,
+        clientNameStartingCharacters = List.empty
+      )
+
+      when(datacache.getClientList(eqTo(irAgentId), eqTo(credId))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(emptyResult))
+
+      val result = service.getClientList(irAgentId, credId).futureValue
+
+      result.totalCount shouldBe 0
+      result.clients shouldBe empty
+      result.clientNameStartingCharacters shouldBe empty
+
+      verify(datacache, times(1)).getClientList(eqTo(irAgentId), eqTo(credId))(using any[HeaderCarrier])
+    }
+
+    "should propagate UpstreamErrorResponse when connector fails with 400" in {
+      val (service, datacache, _, _) = setupService()
+
+      when(datacache.getClientList(eqTo(irAgentId), eqTo(credId))(using any[HeaderCarrier]))
+        .thenReturn(Future.failed(UpstreamErrorResponse("Bad request", 400, 400)))
+
+      val ex = service.getClientList(irAgentId, credId).failed.futureValue
+
+      ex shouldBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode shouldBe 400
+      ex.getMessage shouldBe "Bad request"
+    }
+
+    "should propagate UpstreamErrorResponse when connector fails with 500" in {
+      val (service, datacache, _, _) = setupService()
+
+      when(datacache.getClientList(eqTo(irAgentId), eqTo(credId))(using any[HeaderCarrier]))
+        .thenReturn(Future.failed(UpstreamErrorResponse("Internal server error", 500, 500)))
+
+      val ex = service.getClientList(irAgentId, credId).failed.futureValue
+
+      ex shouldBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode shouldBe 500
+      ex.getMessage shouldBe "Internal server error"
+    }
+
+    "should delegate to datacache connector with correct parameters" in {
+      val (service, datacache, _, _) = setupService()
+
+      val testIrAgentId = "TEST123"
+      val testCredId = "test-cred"
+
+      val result = ClientSearchResult(
+        clients = List.empty,
+        totalCount = 0,
+        clientNameStartingCharacters = List.empty
+      )
+
+      when(datacache.getClientList(any[String], any[String])(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(result))
+
+      service.getClientList(testIrAgentId, testCredId).futureValue
+
+      verify(datacache, times(1)).getClientList(eqTo(testIrAgentId), eqTo(testCredId))(using any[HeaderCarrier])
+    }
+  }
+
 }

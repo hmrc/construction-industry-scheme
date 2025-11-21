@@ -28,6 +28,7 @@ import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.*
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -75,12 +76,27 @@ class ClientListController @Inject()(
     request.credentialId match
       case Some(credId) =>
         service
-          .getStatus(credId) 
+          .getStatus(credId)
           .map(resultJson)
-        
+
       case None =>
         Future.successful(
-          BadRequest(Json.obj("message" -> "Missing credentialId"))
+          Forbidden(Json.obj("message" -> "Missing credentialId"))
         )
+  }
+
+  def getAllClients: Action[AnyContent] = authorise.async { implicit request =>
+    given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
+
+    val irAgentId = request.enrolments.getEnrolment("IR-PAYE-AGENT").flatMap(_.getIdentifier("IRAgentReference"))
+    val credentialId = request.credentialId
+
+    (irAgentId, credentialId) match {
+      case (Some(agentId), Some(credId)) =>
+        service.getClientList(agentId.value, credId).map((result: ClientSearchResult) => Ok(Json.toJson(result)))
+      case (maybeAgentId, maybeCredId) =>
+        logger.info(s"[ClientListController.getAllClients] authenticated request with missing agent enrollments - agentId: $maybeAgentId, credId: $maybeCredId")
+        Future.successful(Forbidden(Json.obj("error" -> "credentialId and/or irAgentId are missing from session")))
+    }
   }
 }

@@ -28,6 +28,7 @@ import uk.gov.hmrc.constructionindustryscheme.services.AuditService
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.{AsynchronousProcessWaitTime, ClientListStatus}
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
 final case class ClientListDownloadFailedException(msg: String) extends RuntimeException(msg)
 
@@ -48,6 +49,10 @@ class ClientListService @Inject()(
 
   private val serviceName = appConfig.cisServiceName
   private val grace = appConfig.cisGracePeriodSeconds
+
+  def getClientList(irAgentId: String, credentialId: String)(using HeaderCarrier): Future[ClientSearchResult] = {
+    datacacheProxyConnector.getClientList(irAgentId, credentialId)
+  }
 
 
   // ------------------------------------------------------------
