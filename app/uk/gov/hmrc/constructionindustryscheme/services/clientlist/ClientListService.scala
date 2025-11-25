@@ -44,6 +44,7 @@ class ClientListService @Inject()(
   clientExchangeProxyConnector: ClientExchangeProxyConnector,
   audit: AuditService,
   appConfig: AppConfig,
+  cache: CacheService,
   actorSystem: ActorSystem
 )(implicit ec: ExecutionContext) extends Logging {
 
@@ -52,6 +53,30 @@ class ClientListService @Inject()(
 
   def getClientList(irAgentId: String, credentialId: String)(using HeaderCarrier): Future[ClientSearchResult] = {
     datacacheProxyConnector.getClientList(irAgentId, credentialId)
+  }
+
+  def hasClient(
+    taxOfficeNumber: String,
+    taxOfficeReference: String,
+    agentId: String,
+    credentialId: String,
+    cacheTtl: FiniteDuration = 1.hour
+  )(using hc: HeaderCarrier): Future[Boolean] = {
+    val cacheKey = s"hasClient:$taxOfficeNumber:$taxOfficeReference:$agentId:$credentialId"
+
+    // Try to get from cache first
+    cache.get[Boolean](cacheKey) match {
+      case Some(cachedResult) =>
+        logger.debug(s"[ClientListService.hasClient] cache hit for key: $cacheKey")
+        Future.successful(cachedResult)
+      case None =>
+        logger.debug(s"[ClientListService.hasClient] cache miss for key: $cacheKey")
+        // Cache miss - fetch from connector and cache the result
+        datacacheProxyConnector.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credentialId)(using hc).map { result =>
+          cache.cache(cacheKey, result, cacheTtl)
+          result
+        }
+    }
   }
 
 

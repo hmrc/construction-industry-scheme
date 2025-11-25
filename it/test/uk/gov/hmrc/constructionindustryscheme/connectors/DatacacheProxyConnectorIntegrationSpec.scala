@@ -341,4 +341,126 @@ class DatacacheProxyConnectorIntegrationSpec
       result.clientNameStartingCharacters mustBe empty
     }
   }
+
+  "DatacacheProxyConnector hasClient" should {
+
+    val basePath = "/rds-datacache-proxy/cis/has-client"
+    val credId = "cred-123"
+    val agentId = "agent-456"
+    val taxOfficeNumber = "123"
+    val taxOfficeReference = "AB456"
+
+    def hasClientUrl = urlPathEqualTo(basePath)
+
+    "return true when client exists (200)" in {
+      stubFor(
+        get(hasClientUrl)
+          .withQueryParam("credentialId", equalTo(credId))
+          .withQueryParam("irAgentId", equalTo(agentId))
+          .withQueryParam("taxOfficeNumber", equalTo(taxOfficeNumber))
+          .withQueryParam("taxOfficeReference", equalTo(taxOfficeReference))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody("""{ "hasClient": true }""")
+          )
+      )
+
+      val result = connector.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId).futureValue
+      result mustBe true
+    }
+
+    "return false when client does not exist (200)" in {
+      stubFor(
+        get(hasClientUrl)
+          .withQueryParam("credentialId", equalTo(credId))
+          .withQueryParam("irAgentId", equalTo(agentId))
+          .withQueryParam("taxOfficeNumber", equalTo(taxOfficeNumber))
+          .withQueryParam("taxOfficeReference", equalTo(taxOfficeReference))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody("""{ "hasClient": false }""")
+          )
+      )
+
+      val result = connector.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId).futureValue
+      result mustBe false
+    }
+
+    "fail with 502 UpstreamErrorResponse when 'hasClient' field is missing in JSON" in {
+      stubFor(
+        get(hasClientUrl)
+          .withQueryParam("credentialId", equalTo(credId))
+          .withQueryParam("irAgentId", equalTo(agentId))
+          .withQueryParam("taxOfficeNumber", equalTo(taxOfficeNumber))
+          .withQueryParam("taxOfficeReference", equalTo(taxOfficeReference))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody("""{ "foo": "bar" }""")
+          )
+      )
+
+      val ex = connector.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      val upstream = ex.asInstanceOf[UpstreamErrorResponse]
+      upstream.statusCode mustBe 502
+      upstream.message must include("invalid payload")
+    }
+
+    "propagate non-2xx responses (e.g. 500) as failed futures" in {
+      stubFor(
+        get(hasClientUrl)
+          .withQueryParam("credentialId", equalTo(credId))
+          .withQueryParam("irAgentId", equalTo(agentId))
+          .withQueryParam("taxOfficeNumber", equalTo(taxOfficeNumber))
+          .withQueryParam("taxOfficeReference", equalTo(taxOfficeReference))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("""{ "error": "Internal server error" }""")
+          )
+      )
+
+      val ex = connector.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId).failed.futureValue
+      ex mustBe a[Throwable]
+    }
+
+    "propagate 404 not found errors" in {
+      stubFor(
+        get(hasClientUrl)
+          .withQueryParam("credentialId", equalTo(credId))
+          .withQueryParam("irAgentId", equalTo(agentId))
+          .withQueryParam("taxOfficeNumber", equalTo(taxOfficeNumber))
+          .withQueryParam("taxOfficeReference", equalTo(taxOfficeReference))
+          .willReturn(
+            aResponse()
+              .withStatus(404)
+              .withBody("""{ "error": "Not found" }""")
+          )
+      )
+
+      val ex = connector.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId).failed.futureValue
+      ex mustBe a[Throwable]
+    }
+
+    "fail with 502 UpstreamErrorResponse when response contains invalid JSON structure" in {
+      stubFor(
+        get(hasClientUrl)
+          .withQueryParam("credentialId", equalTo(credId))
+          .withQueryParam("irAgentId", equalTo(agentId))
+          .withQueryParam("taxOfficeNumber", equalTo(taxOfficeNumber))
+          .withQueryParam("taxOfficeReference", equalTo(taxOfficeReference))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody("""{ "hasClient": "not-a-boolean" }""")
+          )
+      )
+
+      val ex = connector.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId).failed.futureValue
+      ex mustBe a[Throwable]
+    }
+  }
 }

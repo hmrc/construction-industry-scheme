@@ -65,6 +65,29 @@ class DatacacheProxyConnector @Inject()(
       }
   }
 
+  def hasClient(
+    taxOfficeNumber: String,
+    taxOfficeReference: String,
+    agentId: String,
+    credentialId: String
+  )(implicit hc: HeaderCarrier): Future[Boolean] = {
+    val endpoint = url"$base/cis/has-client?credentialId=$credentialId&irAgentId=$agentId&taxOfficeNumber=$taxOfficeNumber&taxOfficeReference=$taxOfficeReference"
+
+    http.get(endpoint)
+      .execute[JsValue]
+      .flatMap { json =>
+        (json \ "hasClient").validate[Boolean] match {
+          case JsSuccess(hasClient, _) =>
+            Future.successful(hasClient)
+          case JsError(errors) =>
+            logger.error(s"[DatacacheProxyConnector] invalid payload (missing 'hasClient'): ${json.toString}")
+            Future.failed(
+              UpstreamErrorResponse("rds-datacache-proxy invalid payload", 502, 502)
+            )
+        }
+      }
+  }
+
   private def mapProxyStatus(s: String): ClientListStatus = s match {
     case "InitiateDownload" => InitiateDownload
     case "InProgress" => InProgress

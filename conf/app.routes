@@ -1,14 +1,16 @@
 # microservice specific routes
 
-GET        /taxpayer                                            uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getCisTaxpayer
-GET        /monthly-returns                                     uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getAllMonthlyReturns(cisId: Option[String])
-POST       /monthly-returns/nil/create                          uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createNil()
-GET        /scheme/email/:instanceId                            uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getSchemeEmail(instanceId: String)
+GET        /taxpayer                                                     uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getCisTaxpayer
+GET        /monthly-returns                                              uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getAllMonthlyReturns(cisId: Option[String])
+POST       /monthly-returns/nil/create                                   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createNil()
+GET        /scheme/email/:instanceId                                     uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getSchemeEmail(instanceId: String)
 
-POST       /submissions/create                                  uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.createSubmission
-POST       /submissions/:submissionId/submit-to-chris           uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.submitToChris(submissionId: String)
-POST       /submissions/:submissionId/update                    uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.updateSubmission(submissionId: String)
-GET        /submissions/poll                                    uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.pollSubmission(pollUrl: RedirectUrl, correlationId: String)
+POST       /submissions/create                                           uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.createSubmission
+POST       /submissions/:submissionId/submit-to-chris                    uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.submitToChris(submissionId: String)
+POST       /submissions/:submissionId/update                             uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.updateSubmission(submissionId: String)
+GET        /submissions/poll                                             uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.pollSubmission(pollUrl: RedirectUrl, correlationId: String)
 
-POST       /agent/client-list/retrieval/start                   uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.start
-GET        /agent/client-list                                   uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.getAllClients
+POST       /agent/client-list/retrieval/start                            uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.start
+GET        /agent/client-list                                            uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.getAllClients
+GET        /agent/has-client/:taxOfficeNumber/:taxOfficeReference         uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.hasClient(taxOfficeNumber: String, taxOfficeReference: String)
+GET        /agent/client-taxpayer/:taxOfficeNumber/:taxOfficeReference    uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getCisClientTaxpayer(taxOfficeNumber: String, taxOfficeReference: String)
