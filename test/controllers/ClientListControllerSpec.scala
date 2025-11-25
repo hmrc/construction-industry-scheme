@@ -268,4 +268,113 @@ class ClientListControllerSpec extends SpecBase {
       thrown.message must include("Service unavailable")
     }
   }
+
+  "ClientListController.checkClientExists" - {
+
+    val taxOfficeNumber = "123"
+    val taxOfficeReference = "AB456"
+    val irAgentId = "SA123456"
+    val credId = "cred-123"
+
+    "return 200 OK with {\"hasClient\":true} when client exists" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.hasClient(
+        any[String], any[String], any[String], any[String],
+        any[scala.concurrent.duration.FiniteDuration]
+      )(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(true))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.hasClient(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.obj("hasClient" -> true)
+
+      verify(mockService, times(1)).hasClient(
+        any[String], any[String], any[String], any[String],
+        any[scala.concurrent.duration.FiniteDuration]
+      )(using any[HeaderCarrier])
+    }
+
+    "return 200 OK with {\"hasClient\":false} when client does not exist" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.hasClient(
+        any[String], any[String], any[String], any[String],
+        any[scala.concurrent.duration.FiniteDuration]
+      )(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(false))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.hasClient(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.obj("hasClient" -> false)
+    }
+
+    "return 403 Forbidden when credentialId is missing" in {
+      val mockService = mock[ClientListService]
+
+      val authAction = FakeAuthAction.withEnrolments(
+        Set(uk.gov.hmrc.auth.core.Enrolment(
+          key = "IR-PAYE-AGENT",
+          identifiers = Seq(uk.gov.hmrc.auth.core.EnrolmentIdentifier("IRAgentReference", irAgentId)),
+          state = "Activated"
+        )),
+        bodyParsers,
+        credId = None
+      )
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.hasClient(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+      status(result) mustBe FORBIDDEN
+      contentAsJson(result) mustBe Json.obj("error" -> "credentialId is missing from session")
+
+      verify(mockService, never()).hasClient(
+        any[String], any[String], any[String], any[String],
+        any[scala.concurrent.duration.FiniteDuration]
+      )(using any[HeaderCarrier])
+    }
+
+    "return 403 Forbidden when IR-PAYE-AGENT enrolment is missing" in {
+      val mockService = mock[ClientListService]
+
+      val authAction = FakeAuthAction.withEnrolments(Set.empty, bodyParsers, Some(credId))
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.hasClient(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+      status(result) mustBe FORBIDDEN
+      contentAsJson(result) mustBe Json.obj("error" -> "IR-PAYE-AGENT enrolment with IRAgentReference is missing")
+
+      verify(mockService, never()).hasClient(
+        any[String], any[String], any[String], any[String],
+        any[scala.concurrent.duration.FiniteDuration]
+      )(using any[HeaderCarrier])
+    }
+
+    "return 500 InternalServerError when service fails" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.hasClient(
+        any[String], any[String], any[String], any[String],
+        any[scala.concurrent.duration.FiniteDuration]
+      )(using any[HeaderCarrier]))
+        .thenReturn(Future.failed(UpstreamErrorResponse("Service error", 500, 500)))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.hasClient(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+      status(result) mustBe INTERNAL_SERVER_ERROR
+      contentAsJson(result) mustBe Json.obj("error" -> "Failed to check client")
+    }
+  }
 }

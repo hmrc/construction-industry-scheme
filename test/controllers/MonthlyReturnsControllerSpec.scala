@@ -16,11 +16,12 @@
 
 package controllers
 
+import actions.FakeAuthAction
 import base.SpecBase
 import org.mockito.ArgumentMatchers
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
-import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, INTERNAL_SERVER_ERROR, NOT_FOUND, OK}
+import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, FORBIDDEN, INTERNAL_SERVER_ERROR, NOT_FOUND, OK}
 import play.api.libs.json.Json
 import play.api.mvc.Result
 import play.api.test.Helpers.{contentAsJson, status}
@@ -29,6 +30,7 @@ import uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsControll
 import uk.gov.hmrc.constructionindustryscheme.models.response.CreateNilMonthlyReturnResponse
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
+import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -36,6 +38,193 @@ import scala.concurrent.{ExecutionContext, Future}
 class MonthlyReturnsControllerSpec extends SpecBase {
 
   "MonthlyReturnsController" - {
+
+    "GET /cis/client/taxpayer/:taxOfficeNumber/:taxOfficeReference (getCisClientTaxpayer)" - {
+
+      val taxOfficeNumber = "123"
+      val taxOfficeReference = "AB456"
+      val irAgentId = "SA123456"
+      val credId = "cred-123"
+
+      "return 200 with taxpayer when client exists and service resolves it (happy path)" in {
+        val mockMonthlyReturnService = mock[MonthlyReturnService]
+        val mockClientListService = mock[ClientListService]
+        val taxpayer = mkTaxpayer()
+
+        when(mockClientListService.hasClient(
+          eqTo(taxOfficeNumber), eqTo(taxOfficeReference), eqTo(irAgentId), eqTo(credId),
+          any[scala.concurrent.duration.FiniteDuration]
+        )(using any[HeaderCarrier]))
+          .thenReturn(Future.successful(true))
+
+        when(mockMonthlyReturnService.getCisTaxpayer(eqTo(EmployerReference(taxOfficeNumber, taxOfficeReference)))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(taxpayer))
+
+        val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
+
+        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+        status(result) mustBe OK
+        contentAsJson(result) mustBe Json.toJson(taxpayer)
+        verify(mockClientListService, times(1)).hasClient(
+          eqTo(taxOfficeNumber), eqTo(taxOfficeReference), eqTo(irAgentId), eqTo(credId),
+          any[scala.concurrent.duration.FiniteDuration]
+        )(using any[HeaderCarrier])
+        verify(mockMonthlyReturnService, times(1)).getCisTaxpayer(eqTo(EmployerReference(taxOfficeNumber, taxOfficeReference)))(any[HeaderCarrier])
+      }
+
+      "return 403 Forbidden when client does not exist" in {
+        val mockMonthlyReturnService = mock[MonthlyReturnService]
+        val mockClientListService = mock[ClientListService]
+
+        when(mockClientListService.hasClient(
+          eqTo(taxOfficeNumber), eqTo(taxOfficeReference), eqTo(irAgentId), eqTo(credId),
+          any[scala.concurrent.duration.FiniteDuration]
+        )(using any[HeaderCarrier]))
+          .thenReturn(Future.successful(false))
+
+        val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
+
+        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+        status(result) mustBe FORBIDDEN
+        contentAsJson(result) mustBe Json.obj("error" -> "Client not found")
+        verify(mockClientListService, times(1)).hasClient(
+          eqTo(taxOfficeNumber), eqTo(taxOfficeReference), eqTo(irAgentId), eqTo(credId),
+          any[scala.concurrent.duration.FiniteDuration]
+        )(using any[HeaderCarrier])
+        verify(mockMonthlyReturnService, never()).getCisTaxpayer(any[EmployerReference])(any[HeaderCarrier])
+      }
+
+      "return 404 when client exists but datacache says taxpayer not found" in {
+        val mockMonthlyReturnService = mock[MonthlyReturnService]
+        val mockClientListService = mock[ClientListService]
+
+        when(mockClientListService.hasClient(
+          eqTo(taxOfficeNumber), eqTo(taxOfficeReference), eqTo(irAgentId), eqTo(credId),
+          any[scala.concurrent.duration.FiniteDuration]
+        )(using any[HeaderCarrier]))
+          .thenReturn(Future.successful(true))
+
+        when(mockMonthlyReturnService.getCisTaxpayer(eqTo(EmployerReference(taxOfficeNumber, taxOfficeReference)))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("not found", NOT_FOUND)))
+
+        val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
+
+        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+        status(result) mustBe NOT_FOUND
+        (contentAsJson(result) \ "message").as[String].toLowerCase must include("not found")
+      }
+
+      "map other UpstreamErrorResponse to same status with message when client exists" in {
+        val mockMonthlyReturnService = mock[MonthlyReturnService]
+        val mockClientListService = mock[ClientListService]
+
+        when(mockClientListService.hasClient(
+          eqTo(taxOfficeNumber), eqTo(taxOfficeReference), eqTo(irAgentId), eqTo(credId),
+          any[scala.concurrent.duration.FiniteDuration]
+        )(using any[HeaderCarrier]))
+          .thenReturn(Future.successful(true))
+
+        when(mockMonthlyReturnService.getCisTaxpayer(eqTo(EmployerReference(taxOfficeNumber, taxOfficeReference)))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("boom from upstream", BAD_GATEWAY)))
+
+        val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
+
+        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+        status(result) mustBe BAD_GATEWAY
+        (contentAsJson(result) \ "message").as[String] must include("boom from upstream")
+      }
+
+      "return 500 Unexpected error on unknown exception when client exists" in {
+        val mockMonthlyReturnService = mock[MonthlyReturnService]
+        val mockClientListService = mock[ClientListService]
+
+        when(mockClientListService.hasClient(
+          eqTo(taxOfficeNumber), eqTo(taxOfficeReference), eqTo(irAgentId), eqTo(credId),
+          any[scala.concurrent.duration.FiniteDuration]
+        )(using any[HeaderCarrier]))
+          .thenReturn(Future.successful(true))
+
+        when(mockMonthlyReturnService.getCisTaxpayer(eqTo(EmployerReference(taxOfficeNumber, taxOfficeReference)))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("unexpected-exception")))
+
+        val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
+
+        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        (contentAsJson(result) \ "message").as[String] must equal("Unexpected error")
+      }
+
+      "return 403 Forbidden when credentialId is missing" in {
+        val mockMonthlyReturnService = mock[MonthlyReturnService]
+        val mockClientListService = mock[ClientListService]
+
+        val authAction = FakeAuthAction.withEnrolments(
+          Set(uk.gov.hmrc.auth.core.Enrolment(
+            key = "IR-PAYE-AGENT",
+            identifiers = Seq(uk.gov.hmrc.auth.core.EnrolmentIdentifier("IRAgentReference", irAgentId)),
+            state = "Activated"
+          )),
+          bodyParsers,
+          credId = None
+        )
+        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
+
+        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+        status(result) mustBe FORBIDDEN
+        contentAsJson(result) mustBe Json.obj("error" -> "credentialId is missing from session")
+        verify(mockClientListService, never()).hasClient(
+          any[String], any[String], any[String], any[String],
+          any[scala.concurrent.duration.FiniteDuration]
+        )(using any[HeaderCarrier])
+      }
+
+      "return 403 Forbidden when IR-PAYE-AGENT enrolment is missing" in {
+        val mockMonthlyReturnService = mock[MonthlyReturnService]
+        val mockClientListService = mock[ClientListService]
+
+        val authAction = FakeAuthAction.withEnrolments(Set.empty, bodyParsers, Some(credId))
+        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
+
+        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+        status(result) mustBe FORBIDDEN
+        contentAsJson(result) mustBe Json.obj("error" -> "IR-PAYE-AGENT enrolment with IRAgentReference is missing")
+        verify(mockClientListService, never()).hasClient(
+          any[String], any[String], any[String], any[String],
+          any[scala.concurrent.duration.FiniteDuration]
+        )(using any[HeaderCarrier])
+      }
+
+      "return 500 InternalServerError when hasClient service fails" in {
+        val mockMonthlyReturnService = mock[MonthlyReturnService]
+        val mockClientListService = mock[ClientListService]
+
+        when(mockClientListService.hasClient(
+          eqTo(taxOfficeNumber), eqTo(taxOfficeReference), eqTo(irAgentId), eqTo(credId),
+          any[scala.concurrent.duration.FiniteDuration]
+        )(using any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("Service error", 500, 500)))
+
+        val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
+
+        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        contentAsJson(result) mustBe Json.obj("error" -> "Failed to check client")
+      }
+    }
 
     "GET /cis/taxpayer (getCisTaxpayer)" - {
 
@@ -234,17 +423,18 @@ class MonthlyReturnsControllerSpec extends SpecBase {
 
   private trait BaseSetup {
     val mockMonthlyReturnService: MonthlyReturnService = mock[MonthlyReturnService]
+    val mockClientListService: ClientListService = mock[ClientListService]
     implicit val ec: ExecutionContext = cc.executionContext
     implicit val hc: HeaderCarrier   = HeaderCarrier()
   }
 
   private trait SetupWithEnrolmentReference extends BaseSetup {
     private val auth: AuthAction = fakeAuthAction(ton = "123", tor = "AB456")
-    val controller = new MonthlyReturnsController(auth, mockMonthlyReturnService, cc)
+    val controller = new MonthlyReturnsController(auth, mockMonthlyReturnService, mockClientListService, cc)
   }
 
   private trait SetupAuthOnly extends BaseSetup {
     private val auth: AuthAction = noEnrolmentReferenceAuthAction
-    val controller = new MonthlyReturnsController(auth, mockMonthlyReturnService, cc)
+    val controller = new MonthlyReturnsController(auth, mockMonthlyReturnService, mockClientListService, cc)
   }
 }
