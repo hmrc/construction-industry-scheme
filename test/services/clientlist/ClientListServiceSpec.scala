@@ -539,7 +539,6 @@ class ClientListServiceSpec extends SpecBase {
 
         val expectedTaxpayer = mkTaxpayer(
           id = uniqueId,
-          ton = "123",
           tor = "AB45678",
           employerName1 = Some("Test Company Ltd")
         )
