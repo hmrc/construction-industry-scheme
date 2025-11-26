@@ -20,6 +20,7 @@ import base.SpecBase
 import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.apache.pekko.actor.ActorSystem
+import org.scalatest.RecoverMethods.recoverToExceptionIf
 import org.scalatest.matchers.should.Matchers.shouldBe
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ClientExchangeProxyConnector, DatacacheProxyConnector}
@@ -52,7 +53,6 @@ class ClientListServiceSpec extends SpecBase {
       actorSystem
     ) {
 
-    // capture the wait plan actually used by processWithWaitPlan
     @volatile var lastWaitPlan: Option[AsynchronousProcessWaitTime] = None
 
     override protected def sleep(ms: Long): Future[Unit] =
@@ -62,17 +62,17 @@ class ClientListServiceSpec extends SpecBase {
       super.logWaitPlan(business, browserMs)
       lastWaitPlan = Some(
         AsynchronousProcessWaitTime(
-          browserIntervalMs   = browserMs,
+          browserIntervalMs = browserMs,
           businessIntervalsMs = business.toList
         )
       )
   }
 
   private def setupService(
-   datacache: DatacacheProxyConnector = mock[DatacacheProxyConnector],
-   clientExchangeProxy: ClientExchangeProxyConnector = mock[ClientExchangeProxyConnector],
-   audit: AuditService = mock[AuditService]
-  ): (TestClientListService, DatacacheProxyConnector, ClientExchangeProxyConnector, AuditService) = {
+                            datacache: DatacacheProxyConnector = mock[DatacacheProxyConnector],
+                            clientExchangeProxy: ClientExchangeProxyConnector = mock[ClientExchangeProxyConnector],
+                            audit: AuditService = mock[AuditService]
+                          ): (TestClientListService, DatacacheProxyConnector, ClientExchangeProxyConnector, AuditService) = {
     val service = new TestClientListService(datacache, clientExchangeProxy, audit)
     (service, datacache, clientExchangeProxy, audit)
   }
@@ -111,13 +111,13 @@ class ClientListServiceSpec extends SpecBase {
 
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
       .thenReturn(
-        Future.successful(ClientListStatus.InitiateDownload), 
-        Future.successful(ClientListStatus.Succeeded) 
+        Future.successful(ClientListStatus.InitiateDownload),
+        Future.successful(ClientListStatus.Succeeded)
       )
 
     val waitPlan = AsynchronousProcessWaitTime(
       browserIntervalMs = 1000L,
-      businessIntervalsMs = List(100L) 
+      businessIntervalsMs = List(100L)
     )
 
     when(clientExchangeProxy.initiate(any, any)(any))
@@ -311,7 +311,7 @@ class ClientListServiceSpec extends SpecBase {
     val (service, datacache, clientExchangeProxy, audit) = setupService()
 
     val cachedPlan = AsynchronousProcessWaitTime(
-      browserIntervalMs   = 9999L,
+      browserIntervalMs = 9999L,
       businessIntervalsMs = List(111L, 222L)
     )
 
@@ -375,7 +375,7 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.InProgress)
       )
 
-    when(audit.clientListRetrievalInProgress(any,any)(any))
+    when(audit.clientListRetrievalInProgress(any, any)(any))
       .thenReturn(Future.successful(AuditResult.Success))
 
     val status = service.process("cred-1").futureValue
@@ -505,4 +505,102 @@ class ClientListServiceSpec extends SpecBase {
     }
   }
 
-}
+    "getClientTaxpayer" - {
+
+      "return CisTaxpayer when client with uniqueId exists for the agent" in {
+        val (service, datacache, _, _) = setupService()
+
+        val irAgentId = "IR-AGENT-1"
+        val credentialId = "cred-1"
+        val uniqueId = "client-1"
+
+        val client = CisTaxpayerSearchResult(
+          uniqueId = uniqueId,
+          taxOfficeNumber = "123",
+          taxOfficeRef = "AB45678",
+          aoDistrict = None,
+          aoPayType = None,
+          aoCheckCode = None,
+          aoReference = None,
+          validBusinessAddr = None,
+          correlation = None,
+          ggAgentId = None,
+          employerName1 = Some("Test Company Ltd"),
+          employerName2 = None,
+          agentOwnRef = Some("own-ref-1"),
+          schemeName = Some("Test Scheme")
+        )
+
+        val searchResult = ClientSearchResult(
+          clients = List(client),
+          totalCount = 1,
+          clientNameStartingCharacters = List("T")
+        )
+
+        val expectedTaxpayer = mkTaxpayer(
+          id = uniqueId,
+          ton = "123",
+          tor = "AB45678",
+          employerName1 = Some("Test Company Ltd")
+        )
+
+        when(datacache.getClientList(any(), any())(using any[HeaderCarrier]))
+          .thenReturn(Future.successful(searchResult))
+
+        when(datacache.getCisTaxpayer(any[EmployerReference])(any[HeaderCarrier]))
+          .thenReturn(Future.successful(expectedTaxpayer))
+
+        val result =
+          service.getClientTaxpayer(irAgentId, credentialId, uniqueId)(using hc).futureValue
+
+        result mustBe expectedTaxpayer
+
+        verify(datacache).getClientList(any(), any())(using any[HeaderCarrier])
+        verify(datacache).getCisTaxpayer(any[EmployerReference])(any[HeaderCarrier])
+      }
+
+      "fail with NoSuchElementException when client with uniqueId does not exist for the agent" in {
+        val (service, datacache, _, _) = setupService()
+
+        val irAgentId = "IR-AGENT-1"
+        val credentialId = "cred-1"
+        val requestedId = "missing-client"
+
+        val otherClient = CisTaxpayerSearchResult(
+          uniqueId = "some-other-client",
+          taxOfficeNumber = "999",
+          taxOfficeRef = "ZZ99999",
+          aoDistrict = None,
+          aoPayType = None,
+          aoCheckCode = None,
+          aoReference = None,
+          validBusinessAddr = None,
+          correlation = None,
+          ggAgentId = None,
+          employerName1 = Some("Other Co"),
+          employerName2 = None,
+          agentOwnRef = Some("own-ref-other"),
+          schemeName = Some("Other Scheme")
+        )
+
+        val searchResult = ClientSearchResult(
+          clients = List(otherClient),
+          totalCount = 1,
+          clientNameStartingCharacters = List("O")
+        )
+
+        when(datacache.getClientList(any(), any())(using any[HeaderCarrier]))
+          .thenReturn(Future.successful(searchResult))
+
+        val ex = recoverToExceptionIf[NoSuchElementException] {
+          service.getClientTaxpayer(irAgentId, credentialId, requestedId)(using hc)
+        }.futureValue
+
+        ex.getMessage must include(s"uniqueId=$requestedId")
+        ex.getMessage must include(irAgentId)
+
+        verify(datacache).getClientList(any(), any())(using any[HeaderCarrier])
+        verify(datacache, never()).getCisTaxpayer(any[EmployerReference])(any[HeaderCarrier])
+      }
+    }
+  }

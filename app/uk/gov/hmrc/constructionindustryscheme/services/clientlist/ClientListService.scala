@@ -26,7 +26,7 @@ import org.apache.pekko.actor.ActorSystem
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.services.AuditService
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
-import uk.gov.hmrc.constructionindustryscheme.models.{AsynchronousProcessWaitTime, ClientListStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{AsynchronousProcessWaitTime, CisTaxpayer, ClientListStatus, EmployerReference}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
@@ -54,7 +54,37 @@ class ClientListService @Inject()(
     datacacheProxyConnector.getClientList(irAgentId, credentialId)
   }
 
+  def getClientTaxpayer(
+   irAgentId: String,
+   credentialId: String,
+   uniqueId: String
+  )(implicit hc: HeaderCarrier): Future[CisTaxpayer] = {
 
+    datacacheProxyConnector
+      .getClientList(irAgentId, credentialId)
+      .flatMap { clientSearchResult =>
+        val maybeClient =
+          clientSearchResult.clients.find(_.uniqueId == uniqueId)
+
+        maybeClient match {
+          case Some(client) =>
+            val employerRef = EmployerReference( 
+              taxOfficeNumber = client.taxOfficeNumber,
+              taxOfficeReference = client.taxOfficeRef
+            )
+
+            datacacheProxyConnector.getCisTaxpayer(employerRef)
+
+          case None =>
+            Future.failed(
+              new NoSuchElementException(
+                s"Client with uniqueId=$uniqueId not found for agent $irAgentId"
+              )
+            )
+        }
+      }
+  }
+  
   // ------------------------------------------------------------
   // Cache: wait plans per credentialId
   // ------------------------------------------------------------

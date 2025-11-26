@@ -80,4 +80,37 @@ class ClientListController @Inject()(
         Future.successful(Forbidden(Json.obj("error" -> "credentialId and/or irAgentId are missing from session")))
     }
   }
+
+  def clientTaxpayer(uniqueId: String): Action[AnyContent] = authorise.async { implicit request =>
+    given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
+
+    val irAgentId =
+      request.enrolments
+        .getEnrolment("IR-PAYE-AGENT")
+        .flatMap(_.getIdentifier("IRAgentReference"))
+        .map(_.value)
+
+    val credentialId = request.credentialId
+
+    (irAgentId, credentialId) match {
+      case (Some(irAgentId), Some(credId)) =>
+        service
+          .getClientTaxpayer(irAgentId, credId, uniqueId)
+          .map { taxpayer =>
+            Ok(Json.toJson(taxpayer))
+          }
+          .recover {
+            case _: NoSuchElementException =>
+              NotFound(Json.obj("message" -> "Client not found for this agent"))
+          }
+
+      case (maybeAgentId, maybeCredId) =>
+        logger.info(
+          s"[ClientListController.clientTaxpayer] authenticated request with missing agent enrollments - agentId: $maybeAgentId, credId: $maybeCredId"
+        )
+        Future.successful(
+          Forbidden(Json.obj("error" -> "credentialId and/or irAgentId are missing from session"))
+        )
+    }
+  }
 }
