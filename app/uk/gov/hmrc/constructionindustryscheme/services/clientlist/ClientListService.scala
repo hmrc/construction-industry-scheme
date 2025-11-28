@@ -183,7 +183,7 @@ class ClientListService @Inject()(
   // Entry point
   // ------------------------------------------------------------
 
-  def process(credentialId: String)(implicit hc: HeaderCarrier): Future[ClientListStatus] =
+  def process(credentialId: String, agentId: String)(implicit hc: HeaderCarrier): Future[ClientListStatus] =
     val underlying: Future[Unit] =
       getStatus(credentialId).flatMap {
         case Succeeded =>
@@ -207,7 +207,7 @@ class ClientListService @Inject()(
           logStatus("initial", None, InitiateDownload)
 
           for
-            waitPlan <- clientExchangeProxyConnector.initiate(serviceName, credentialId)
+            waitPlan <- clientExchangeProxyConnector.initiate(serviceName, credentialId, agentId)
             _         = cacheWaitTime(credentialId, waitPlan)
             outcome  <- processWithWaitPlan(credentialId, waitPlan)
           yield outcome

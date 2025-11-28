@@ -50,23 +50,26 @@ class ClientListController @Inject()(
     }
 
   def start: Action[AnyContent] = authorise.async { implicit request =>
-    implicit val hc: HeaderCarrier =
-      HeaderCarrierConverter.fromRequest(request)
+    implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
+    val credIdOpt = request.credentialId
+    val agentIdOpt =
+      request.enrolments
+        .getEnrolment("IR-PAYE-AGENT")
+        .flatMap(_.getIdentifier("IRAgentReference"))
+        .map(_.value)
 
-    request.credentialId match
-      case Some(credId) =>
+    (credIdOpt, agentIdOpt) match {
+      case (Some(credId), Some(agentId)) =>
         service
-          .process(credId)
+          .process(credId, agentId)
           .map(resultJson)
           .recover {
             case _: NoBusinessIntervalsException =>
               InternalServerError(Json.obj("result" -> "system-error"))
           }
-
-      case None =>
-        Future.successful(
-          BadRequest(Json.obj("message" -> "Missing credentialId"))
-        )
+      case (None, _) => Future.successful(BadRequest(Json.obj("message" -> "Missing credentialId")))
+      case (_, None) => Future.successful(Forbidden(Json.obj("message" -> "Missing IR-PAYE-AGENT enrolment / agent id")))
+    }
   }
 
   def status: Action[AnyContent] = authorise.async { implicit request =>
