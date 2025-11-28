@@ -35,9 +35,10 @@ class ClientExchangeProxyConnectorIntegrationSpec
 
   private val service      = "CIS"
   private val credentialId = "cred-123"
+  private val agentId      = "agent-123"
 
   private val path =
-    s"/clientlistexchange/$service/$credentialId/agent/clientlist"
+    s"/client-exchange-proxy/$service/$credentialId/$agentId/clientlist"
 
   "ClientExchangeProxyConnector.initiate" should {
 
@@ -59,7 +60,7 @@ class ClientExchangeProxyConnectorIntegrationSpec
           )
       )
 
-      val result = connector.initiate(service, credentialId).futureValue
+      val result = connector.initiate(service, credentialId, agentId).futureValue
 
       result mustBe AsynchronousProcessWaitTime(
         browserIntervalMs   = 1000L,
@@ -83,7 +84,7 @@ class ClientExchangeProxyConnectorIntegrationSpec
           )
       )
 
-      val result = connector.initiate(service, credentialId).futureValue
+      val result = connector.initiate(service, credentialId, agentId).futureValue
 
       result.browserIntervalMs   mustBe 500L
       result.businessIntervalsMs mustBe Nil
@@ -106,7 +107,7 @@ class ClientExchangeProxyConnectorIntegrationSpec
           )
       )
 
-      val ex = connector.initiate(service, credentialId).failed.futureValue
+      val ex = connector.initiate(service, credentialId, agentId).failed.futureValue
 
       ex mustBe a[UpstreamErrorResponse]
       val upstream = ex.asInstanceOf[UpstreamErrorResponse]
@@ -127,7 +128,7 @@ class ClientExchangeProxyConnectorIntegrationSpec
           )
       )
 
-      val ex = connector.initiate(service, credentialId).failed.futureValue
+      val ex = connector.initiate(service, credentialId, agentId).failed.futureValue
 
       ex mustBe a[UpstreamErrorResponse]
       val upstream = ex.asInstanceOf[UpstreamErrorResponse]
@@ -145,7 +146,7 @@ class ClientExchangeProxyConnectorIntegrationSpec
           )
       )
 
-      val ex = connector.initiate(service, credentialId).failed.futureValue
+      val ex = connector.initiate(service, credentialId, agentId).failed.futureValue
 
       ex mustBe a[UpstreamErrorResponse]
       val upstream = ex.asInstanceOf[UpstreamErrorResponse]
