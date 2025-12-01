@@ -16,12 +16,11 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
-import play.api.libs.json.{Json, Reads, Writes}
+import play.api.libs.json.{Format, Json, Reads, Writes}
 
 case class CacheItem[T](value: T, expiresAt: Long)
 
 object CacheItem {
-  given reads[T](using Reads[T]): Reads[CacheItem[T]] = Json.reads[CacheItem[T]]
-  given writes[T](using Writes[T]): Writes[CacheItem[T]] = Json.writes[CacheItem[T]]
+  given format[T](using Format[T]): Format[CacheItem[T]] = Json.format[CacheItem[T]]
 }
 

@@ -60,7 +60,7 @@ class ClientListService @Inject()(
     taxOfficeReference: String,
     agentId: String,
     credentialId: String,
-    cacheTtl: FiniteDuration = 1.hour
+    cacheTtl: FiniteDuration = 2.minute
   )(using hc: HeaderCarrier): Future[Boolean] = {
     val cacheKey = s"hasClient:$taxOfficeNumber:$taxOfficeReference:$agentId:$credentialId"
 

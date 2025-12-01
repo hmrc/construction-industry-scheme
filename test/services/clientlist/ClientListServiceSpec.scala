@@ -33,8 +33,8 @@ import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.collection.concurrent.TrieMap
-import scala.concurrent.duration.{FiniteDuration, DurationInt}
-import play.api.libs.json.Writes
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import play.api.libs.json.{Format, Writes}
 
 class ClientListServiceSpec extends SpecBase {
 
@@ -595,7 +595,7 @@ class ClientListServiceSpec extends SpecBase {
 
   class RealCacheService extends CacheService(actorSystem) {
     // Simple test cache implementation that bypasses ActorSystem
-    override def cache[T](key: String, value: T, ttl: FiniteDuration)(using Writes[T]): Unit = {
+    override def cache[T](key: String, value: T, ttl: FiniteDuration)(using Format[T]): Unit = {
       super.cache(key, value, 10.hours) // Use longer TTL for tests to avoid expiration
     }
   }

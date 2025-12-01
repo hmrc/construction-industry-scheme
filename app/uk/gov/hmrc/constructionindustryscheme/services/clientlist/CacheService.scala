@@ -17,7 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.services.clientlist
 
 import org.apache.pekko.actor.ActorSystem
-import play.api.libs.json.{Json, OFormat, Reads, Writes}
+import play.api.libs.json.{Format, Json}
 import uk.gov.hmrc.constructionindustryscheme.models.CacheItem
 
 import javax.inject.{Inject, Singleton}
@@ -29,13 +29,13 @@ class CacheService @Inject(actorSystem: ActorSystem) {
 
   private val cache: TrieMap[String, String] = TrieMap.empty
 
-  def cache[T](key: String, value: T, ttl: FiniteDuration)(using Writes[T]): Unit = {
+  def cache[T](key: String, value: T, ttl: FiniteDuration)(using Format[T]): Unit = {
     val expiresAt = System.currentTimeMillis() + ttl.toMillis
     cache.update(key, Json.toJson(CacheItem[T](value, expiresAt)).toString)
     scheduleEviction(key, ttl)
   }
 
-  def get[T](key: String)(using Reads[T]): Option[T] = {
+  def get[T](key: String)(using Format[T]): Option[T] = {
     cache.get(key).flatMap { cachedString =>
       Json.parse(cachedString).asOpt[CacheItem[T]].flatMap { cachedJson =>
         if (System.currentTimeMillis() < cachedJson.expiresAt) {
@@ -51,7 +51,7 @@ class CacheService @Inject(actorSystem: ActorSystem) {
   def clear(key: String): Unit =
     cache.remove(key)
 
-  def refresh[T](key: String, ttl: FiniteDuration)(using Reads[T], Writes[T]): Unit = {
+  def refresh[T](key: String, ttl: FiniteDuration)(using Format[T]): Unit = {
     for {
       cachedString <- cache.get(key)
       cachedItem <- Json.parse(cachedString).asOpt[CacheItem[T]]
