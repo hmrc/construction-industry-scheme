@@ -24,6 +24,7 @@ object ChrisSubmissionXmlMapper extends ChrisXmlMapper {
   def parse(xml: String): Either[String, SubmissionResult] = {
     val doc = XML.loadString(xml)
     val messageDetails = doc \\ "Header" \\ "MessageDetails"
+    val bodyErrorResponse = doc \\ "Body" \\ "ErrorResponse" \\ "Error"
 
     for {
       qualifier <- textRequired(messageDetails, "Qualifier", "Qualifier")
@@ -34,13 +35,19 @@ object ChrisSubmissionXmlMapper extends ChrisXmlMapper {
       pollIntervalOpt: Option[Int] = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
       endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
       errOpt <- parseError(qualifier, doc)
+      bodyErrorNumber = textOptional(bodyErrorResponse, "Number")
+      bodyErrorType = textOptional(bodyErrorResponse, "Type")
     } yield {
       val status: SubmissionStatus = qualifier.toLowerCase match {
         case "acknowledgement" => ACCEPTED
         case "response" => SUBMITTED
         case "error" =>
           errOpt.map(_.errorType.toLowerCase) match {
-            case Some("business") => DEPARTMENTAL_ERROR
+            case Some("business") =>
+              (bodyErrorType, bodyErrorNumber) match {
+                case (Some("business"), Some("2021")) => SUBMITTED_NO_RECEIPT
+                case _ => DEPARTMENTAL_ERROR
+              }
             case Some("fatal") => FATAL_ERROR
             case _ => FATAL_ERROR
           }

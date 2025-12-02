@@ -215,6 +215,46 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
         res.status mustBe DEPARTMENTAL_ERROR
       }
 
+      "business error type & (body error Type=business & body error number=2021) to SUBMITTED_NO_RECEIPT" in {
+        val xml =
+          """<GovTalkMessage>
+            |  <Header>
+            |    <MessageDetails>
+            |      <Qualifier>error</Qualifier>
+            |      <ResponseEndPoint>/business/error</ResponseEndPoint>
+            |    </MessageDetails>
+            |  </Header>
+            |  <GovTalkDetails>
+            |    <GovTalkErrors>
+            |      <Error>
+            |        <Number>3001</Number>
+            |        <Type>business</Type>
+            |        <Text>Your submission failed due to business validation errors. Please see below for details.</Text>
+            |      </Error>
+            |    </GovTalkErrors>
+            |  </GovTalkDetails>
+            |   <Body>
+            |     <ErrorResponse SchemaVersion="2.0">
+            |       <Application>
+            |         <MessageCount>1</MessageCount>
+            |       </Application>
+            |       <Error>
+            |         <RaisedBy>ChRIS</RaisedBy>
+            |         <Number>2021</Number>
+            |         <Type>business</Type>
+            |         <Text>The supplied IRmark is incorrect.</Text>
+            |         <Location>IRmark</Location>
+            |       </Error>
+            |     </ErrorResponse>
+            |   </Body>
+            |</GovTalkMessage>
+            |""".stripMargin
+
+        val res = ChrisPollXmlMapper.parse(xml).value
+        res.status mustBe SUBMITTED_NO_RECEIPT
+        res.pollUrl mustBe Some("/business/error")
+      }
+      
       "unknown error type defaults to FATAL_ERROR" in {
         val xml =
           """<GovTalkMessage>
