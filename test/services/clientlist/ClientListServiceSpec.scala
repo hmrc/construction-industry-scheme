@@ -399,7 +399,7 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "getStatus should delegate to datacacheProxyConnector with serviceName and grace" in {
-    val (service, datacache, _, _) = setupService()
+    val (service, datacache, _, _, _) = setupService()
 
     implicit val hc: HeaderCarrier = HeaderCarrier()
 
