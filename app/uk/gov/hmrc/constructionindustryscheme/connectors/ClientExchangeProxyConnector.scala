@@ -39,9 +39,9 @@ class ClientExchangeProxyConnector @Inject()(
   )
   logger.info(s"[ClientExchangeProxyConnector] resolved base=$base pathPrefix=$pathPrefix")
 
-  def initiate(service: String, credentialId: String)
+  def initiate(service: String, credentialId: String, agentId: String)
               (implicit hc: HeaderCarrier): Future[AsynchronousProcessWaitTime] = {
-    val endpoint = url"$base/$pathPrefix/$service/$credentialId/agent/clientlist"
+    val endpoint = url"$base/$pathPrefix/$service/$credentialId/$agentId/clientlist"
     httpClient
       .get(endpoint)
       .execute[HttpResponse]

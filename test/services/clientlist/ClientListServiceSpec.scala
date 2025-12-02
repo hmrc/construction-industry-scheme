@@ -95,7 +95,7 @@ class ClientListServiceSpec extends SpecBase {
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
       .thenReturn(Future.successful(ClientListStatus.Succeeded))
 
-    whenReady(service.process("cred-1")) { _ =>
+    whenReady(service.process("cred-1", "agent-001")) { _ =>
       verify(audit, never()).clientListRetrievalFailed(any, any, any)(any)
     }
   }
@@ -106,7 +106,7 @@ class ClientListServiceSpec extends SpecBase {
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
       .thenReturn(Future.successful(ClientListStatus.Failed))
 
-    val status = service.process("cred-1").futureValue
+    val status = service.process("cred-1", "agent-001").futureValue
 
     status shouldBe ClientListStatus.Failed
     verify(audit).clientListRetrievalFailed(eqTo("cred-1"), eqTo("initial"), any[Option[String]])(any)
@@ -126,11 +126,11 @@ class ClientListServiceSpec extends SpecBase {
       businessIntervalsMs = List(100L) 
     )
 
-    when(clientExchangeProxy.initiate(any, any)(any))
+    when(clientExchangeProxy.initiate(any, any, any)(any))
       .thenReturn(Future.successful(waitPlan))
 
-    whenReady(service.process("cred-1")) { _ =>
-      verify(clientExchangeProxy, times(1)).initiate(any, any)(any)
+    whenReady(service.process("cred-1", "agent-001")) { _ =>
+      verify(clientExchangeProxy, times(1)).initiate(any, any, any)(any)
     }
   }
 
@@ -145,10 +145,10 @@ class ClientListServiceSpec extends SpecBase {
       businessIntervalsMs = Nil
     )
 
-    when(clientExchangeProxy.initiate(any, any)(any))
+    when(clientExchangeProxy.initiate(any, any, any)(any))
       .thenReturn(Future.successful(waitPlan))
 
-    val ex = service.process("cred-1").failed.futureValue
+    val ex = service.process("cred-1", "agent-001").failed.futureValue
 
     ex shouldBe a[NoBusinessIntervalsException]
 
@@ -176,10 +176,10 @@ class ClientListServiceSpec extends SpecBase {
       businessIntervalsMs = businessIntervals
     )
 
-    when(clientExchangeProxy.initiate(any, any)(any))
+    when(clientExchangeProxy.initiate(any, any, any)(any))
       .thenReturn(Future.successful(waitPlan))
 
-    whenReady(service.process("cred-1")) { _ =>
+    whenReady(service.process("cred-1", "agent-001")) { _ =>
       verify(datacache, times(4))
         .getClientListDownloadStatus(any, any, any)(any)
     }
@@ -193,7 +193,7 @@ class ClientListServiceSpec extends SpecBase {
       businessIntervalsMs = List(10L, 20L)
     )
 
-    when(clientExchangeProxy.initiate(any, any)(any))
+    when(clientExchangeProxy.initiate(any, any, any)(any))
       .thenReturn(Future.successful(waitPlan))
 
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
@@ -202,7 +202,7 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.Succeeded)
       )
 
-    whenReady(service.process("cred-1")) { _ =>
+    whenReady(service.process("cred-1", "agent-001")) { _ =>
       verify(audit, never()).clientListRetrievalFailed(any, any, any)(any)
     }
   }
@@ -215,7 +215,7 @@ class ClientListServiceSpec extends SpecBase {
       businessIntervalsMs = List(10L, 20L)
     )
 
-    when(clientExchangeProxy.initiate(any, any)(any))
+    when(clientExchangeProxy.initiate(any, any, any)(any))
       .thenReturn(Future.successful(waitPlan))
 
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
@@ -224,7 +224,7 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.Failed)
       )
 
-    val status = service.process("cred-1").futureValue
+    val status = service.process("cred-1", "agent-001").futureValue
     status shouldBe ClientListStatus.Failed
   }
 
@@ -236,7 +236,7 @@ class ClientListServiceSpec extends SpecBase {
       businessIntervalsMs = List(10L, 20L)
     )
 
-    when(clientExchangeProxy.initiate(any, any)(any))
+    when(clientExchangeProxy.initiate(any, any, any)(any))
       .thenReturn(Future.successful(waitPlan))
 
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
@@ -246,7 +246,7 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.InitiateDownload)
       )
 
-    val status = service.process("cred-1").futureValue
+    val status = service.process("cred-1", "agent-001").futureValue
     status shouldBe ClientListStatus.InitiateDownload
 
     verify(audit).clientListRetrievalFailed(
@@ -264,7 +264,7 @@ class ClientListServiceSpec extends SpecBase {
       businessIntervalsMs = List(10L, 20L)
     )
 
-    when(clientExchangeProxy.initiate(any, any)(any))
+    when(clientExchangeProxy.initiate(any, any, any)(any))
       .thenReturn(Future.successful(waitPlan))
 
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
@@ -275,7 +275,7 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.InProgress)
       )
 
-    val status = service.process("cred-1").futureValue
+    val status = service.process("cred-1", "agent-001").futureValue
     status shouldBe ClientListStatus.InProgress
 
     verify(audit).clientListRetrievalInProgress(
@@ -292,7 +292,7 @@ class ClientListServiceSpec extends SpecBase {
       businessIntervalsMs = List(10L, 20L)
     )
 
-    when(clientExchangeProxy.initiate(any, any)(any))
+    when(clientExchangeProxy.initiate(any, any, any)(any))
       .thenReturn(Future.successful(waitPlan))
 
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
@@ -303,7 +303,7 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.InitiateDownload)
       )
 
-    val status = service.process("cred-1").futureValue
+    val status = service.process("cred-1", "agent-001").futureValue
     status shouldBe InitiateDownload
 
     verify(audit).clientListRetrievalFailed(
@@ -331,8 +331,8 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.Succeeded)
       )
 
-    whenReady(service.process("cred-1")) { _ =>
-      verify(clientExchangeProxy, never()).initiate(any[String], any[String])(any[HeaderCarrier])
+    whenReady(service.process("cred-1", "agent-001")) { _ =>
+      verify(clientExchangeProxy, never()).initiate(any[String], any[String], any[String])(any[HeaderCarrier])
       service.lastWaitPlan shouldBe Some(cachedPlan)
     }
   }
@@ -356,8 +356,8 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.Succeeded)
       )
 
-    whenReady(service.process("cred-2")) { _ =>
-      verify(clientExchangeProxy, never()).initiate(any[String], any[String])(any[HeaderCarrier])
+    whenReady(service.process("cred-2", "agent-002")) { _ =>
+      verify(clientExchangeProxy, never()).initiate(any[String], any[String], any[String])(any[HeaderCarrier])
       service.lastWaitPlan shouldBe Some(defaultPlan)
     }
   }
@@ -384,10 +384,10 @@ class ClientListServiceSpec extends SpecBase {
     when(audit.clientListRetrievalInProgress(any,any)(any))
       .thenReturn(Future.successful(AuditResult.Success))
 
-    val status = service.process("cred-1").futureValue
+    val status = service.process("cred-1", "agent-001").futureValue
 
     status shouldBe InProgress
-    verify(clientExchangeProxy, never()).initiate(any, any)(any)
+    verify(clientExchangeProxy, never()).initiate(any, any, any)(any)
 
     verify(audit).clientListRetrievalInProgress(
       eqTo("cred-1"),
@@ -396,6 +396,27 @@ class ClientListServiceSpec extends SpecBase {
 
     service.lastWaitPlan shouldBe Some(defaultPlan)
     verify(datacache, times(4)).getClientListDownloadStatus(any, any, any)(any)
+  }
+
+  "getStatus should delegate to datacacheProxyConnector with serviceName and grace" in {
+    val (service, datacache, _, _, _) = setupService()
+
+    implicit val hc: HeaderCarrier = HeaderCarrier()
+
+    val expectedServiceName = appConfig.cisServiceName
+    val expectedGrace = appConfig.cisGracePeriodSeconds
+
+    when(datacache.getClientListDownloadStatus(any, any, any)(any))
+      .thenReturn(Future.successful(ClientListStatus.Succeeded))
+
+    val status = service.getStatus("cred-1").futureValue
+
+    status shouldBe ClientListStatus.Succeeded
+    verify(datacache, times(1)).getClientListDownloadStatus(
+      eqTo("cred-1"),
+      eqTo(expectedServiceName),
+      eqTo(expectedGrace)
+    )(any[HeaderCarrier])
   }
 
   "ClientListService.getClientList" - {
