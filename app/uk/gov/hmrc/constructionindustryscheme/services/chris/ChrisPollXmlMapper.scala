@@ -37,24 +37,57 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
       bodyErrorNumber = textOptional(bodyErrorResponse, "Number")
       bodyErrorType = textOptional(bodyErrorResponse, "Type")
     } yield {
-      val status: SubmissionStatus = qualifier.toLowerCase match {
-        case "acknowledgement" => ACCEPTED
-        case "response" => SUBMITTED
-        case "error" =>
-          errOpt.map(_.errorType.toLowerCase) match {
-            case Some("business") =>
-              (bodyErrorType, bodyErrorNumber) match {
-                case (Some("business"), Some("2021")) => SUBMITTED_NO_RECEIPT
-                case _ => DEPARTMENTAL_ERROR
-              }
-            case Some("fatal") => FATAL_ERROR
-            case _ => FATAL_ERROR
-          }
-        case _ => FATAL_ERROR
-      }
-
+      val status: SubmissionStatus = derivePollStatus(qualifier, errOpt, doc)
       ChrisPollResponse(status, endpointUrlOpt, pollIntervalOpt)
     }
   }
-  
+
+  /** Stage 2 (polling) status mapping. */
+  private def derivePollStatus(
+                                qualifier: String,
+                                errOpt: Option[GovTalkError],
+                                doc: Elem
+                              ): SubmissionStatus =
+    qualifier.toLowerCase match {
+      case "acknowledgement" => ACCEPTED
+      case "response" => SUBMITTED
+      case "error" =>
+        // Special case: IRMark mismatch ⇒ SUBMITTED_NO_RECEIPT
+        if (isIrmarkMismatch(doc)) {
+          SUBMITTED_NO_RECEIPT
+        } else {
+          errOpt match {
+            // 3001 + business => departmental error
+            case Some(err)
+              if err.errorNumber == "3001" &&
+                err.errorType.equalsIgnoreCase("business") =>
+              DEPARTMENTAL_ERROR
+
+            // 3000 + fatal => fatal error
+            case Some(err)
+              if err.errorNumber == "3000" &&
+                err.errorType.equalsIgnoreCase("fatal") =>
+              FATAL_ERROR
+
+            case _ => FATAL_ERROR
+          }
+        }
+      case _ => FATAL_ERROR
+    }
+
+  /** Detects IRMark mismatch error inside the <Body> ErrorResponse. */
+  private def isIrmarkMismatch(doc: Elem): Boolean = {
+    val bodyErrors = (doc \\ "Body") \\ "Error"
+
+    bodyErrors.exists { e =>
+      val number = (e \ "Number").text.trim
+      val errorType = (e \ "Type").text.trim
+      val text = (e \ "Text").text.trim.toLowerCase
+
+      number == "2021" &&
+        errorType.equalsIgnoreCase("business") &&
+        text.contains("IRmark") &&
+        text.contains("incorrect")
+    }
+  }
 }

@@ -52,15 +52,25 @@ class ChrisConnector @Inject()(
       .withBody(ChrisPollRequest(correlationId).paylaod.toString)
       .execute[HttpResponse]
       .flatMap { resp =>
-        Future.fromTry(ChrisPollXmlMapper.parse(resp.body)
-          .left.map(Exception(_))
-          .toTry)
+        if (!is2xx(resp.status)) {
+          logger.error(
+            s"[ChrisConnector] NON-2xx polling corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
+          )
+          Future.successful(ChrisPollResponse(FATAL_ERROR, None, None))
+        } else {
+          Future.fromTry(
+            ChrisPollXmlMapper
+              .parse(resp.body)
+              .left.map(err => new Exception(err))
+              .toTry
+          )
+        }
       }
       .recover { case NonFatal(e) =>
         logger.error(
           s"[ChrisConnector] Transport exception calling $pollUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${e.getMessage}"
         )
-        throw e
+        ChrisPollResponse(FATAL_ERROR, None, None)
       }
     }
 
