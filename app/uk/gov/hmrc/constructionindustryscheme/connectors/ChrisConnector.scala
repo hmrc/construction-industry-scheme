@@ -19,8 +19,6 @@ package uk.gov.hmrc.constructionindustryscheme.connectors
 import javax.inject.{Inject, Singleton}
 import play.api.libs.ws.DefaultBodyWritables.writeableOf_String
 import play.api.Logging
-import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
-import uk.gov.hmrc.constructionindustryscheme.connectors.ChrisConnector.pickUrl
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.models.{FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SubmissionResult}
@@ -38,14 +36,10 @@ import scala.xml.Elem
 class ChrisConnector @Inject()(
                                 httpClient: HttpClientV2,
                                 servicesConfig: ServicesConfig,
-                                appConfig: AppConfig
                               )(implicit ec: ExecutionContext) extends Logging {
 
   private val chrisCisReturnUrl: String =
     servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.submit-url")
-
-  private def targetSubmissionUrl: String =
-    pickUrl(chrisCisReturnUrl, appConfig.chrisEnableNon2xx, appConfig.chrisNon2xxOverrideUrl)
 
   def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] = {
     httpClient
@@ -73,7 +67,7 @@ class ChrisConnector @Inject()(
   def submitEnvelope(envelope: Elem, correlationId: String)
                     (implicit hc: HeaderCarrier): Future[SubmissionResult] =
     httpClient
-      .post(url"$targetSubmissionUrl")
+      .post(url"$chrisCisReturnUrl")
       .setHeader(
         "Content-Type"  -> "application/xml",
         "Accept"        -> "application/xml",
@@ -83,20 +77,12 @@ class ChrisConnector @Inject()(
       .execute[HttpResponse]
       .map{ resp =>
         if (is2xx(resp.status)) {
-          logger.info(
-            s"[ChrisConnector] corrId=$correlationId status=${resp.status} full-response-body:\n${resp.body}"
-          )
-        } else {
-          logger.error(
-            s"[ChrisConnector] NON-2xx corrId=$correlationId url=$targetSubmissionUrl status=${resp.status} response-body:\n${resp.body}"
-          )
+          logger.info(s"[ChrisConnector] corrId=$correlationId status=${resp.status} full-response-body:\n${resp.body}")
         }
         handleResponse(resp, correlationId)
       }
       .recover { case NonFatal(e) =>
-        logger.error(
-          s"[ChrisConnector] Transport exception calling $targetSubmissionUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("")}"
-        )
+        logger.error(s"[ChrisConnector] Transport exception calling $chrisCisReturnUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("")}")
         connectionError(correlationId, e)
       }
 
@@ -166,9 +152,4 @@ class ChrisConnector @Inject()(
 
   private def truncate(s: String, maxCharacters: Int = 254): String =
     if (s.length <= maxCharacters) s else s.take(maxCharacters) + "…"
-}
-
-object ChrisConnector {
-  def pickUrl(base: String, enabled: Boolean, overrideUrl: Option[String]): String =
-    if (enabled) overrideUrl.filter(_.nonEmpty).getOrElse(base) else base
 }
