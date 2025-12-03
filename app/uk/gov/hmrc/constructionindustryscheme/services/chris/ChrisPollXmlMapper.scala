@@ -86,7 +86,7 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
 
       number == "2021" &&
         errorType.equalsIgnoreCase("business") &&
-        text.contains("IRmark") &&
+        text.contains("irmark") &&
         text.contains("incorrect")
     }
   }
