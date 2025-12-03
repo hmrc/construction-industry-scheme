@@ -233,7 +233,7 @@ final class ChrisConnectorIntegrationSpec
       result.pollInterval mustBe None
     }
 
-    "fail when response is unparsable XML" in {
+    "return FATAL_ERROR when response is unparsable XML" in {
       val correlationId = "poll-cid-parse-err"
       val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/bad"
 
@@ -247,13 +247,14 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val exception = connector.pollSubmission(correlationId, pollUrl).failed.futureValue
+      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
 
-      exception mustBe a[Exception]
-      exception.getMessage must include("Missing mandatory field")
+      result.status mustBe FATAL_ERROR
+      result.pollUrl mustBe None
+      result.pollInterval mustBe None
     }
 
-    "fail when 500 error is returned" in {
+    "return FATAL_ERROR when 500 error is returned" in {
       val correlationId = "poll-cid-500"
       val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/500"
 
@@ -266,12 +267,14 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val exception = connector.pollSubmission(correlationId, pollUrl).failed.futureValue
+      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
 
-      exception mustBe a[Exception]
+      result.status mustBe FATAL_ERROR
+      result.pollUrl mustBe None
+      result.pollInterval mustBe None
     }
 
-    "fail when 404 error is returned" in {
+    "return FATAL_ERROR when 404 error is returned" in {
       val correlationId = "poll-cid-404"
       val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/404"
 
@@ -284,12 +287,14 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val exception = connector.pollSubmission(correlationId, pollUrl).failed.futureValue
+      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
 
-      exception mustBe a[Exception]
+      result.status mustBe FATAL_ERROR
+      result.pollUrl mustBe None
+      result.pollInterval mustBe None
     }
 
-    "fail on connection fault" in {
+    "return FATAL_ERROR on connection fault" in {
       val correlationId = "poll-cid-conn"
       val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/conn"
 
@@ -299,9 +304,11 @@ final class ChrisConnectorIntegrationSpec
           .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER))
       )
 
-      val exception = connector.pollSubmission(correlationId, pollUrl).failed.futureValue
+      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
 
-      exception mustBe a[Exception]
+      result.status mustBe FATAL_ERROR
+      result.pollUrl mustBe None
+      result.pollInterval mustBe None
     }
 
     "handle response without pollUrl endpoint" in {

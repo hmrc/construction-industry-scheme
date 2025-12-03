@@ -34,8 +34,6 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
       endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
       pollIntervalOpt: Option[Int] = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
       errOpt <- parseError(qualifier, doc)
-      bodyErrorNumber = textOptional(bodyErrorResponse, "Number")
-      bodyErrorType = textOptional(bodyErrorResponse, "Type")
     } yield {
       val status: SubmissionStatus = derivePollStatus(qualifier, errOpt, doc)
       ChrisPollResponse(status, endpointUrlOpt, pollIntervalOpt)
