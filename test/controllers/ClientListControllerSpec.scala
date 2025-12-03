@@ -21,6 +21,7 @@ import base.SpecBase
 import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers.any
 import play.api.libs.json.Json
+import play.api.mvc.PlayBodyParsers
 import play.api.test.Helpers.*
 import uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.{Failed, InProgress, InitiateDownload, Succeeded}
@@ -33,33 +34,36 @@ import scala.concurrent.Future
 
 class ClientListControllerSpec extends SpecBase {
 
+  private val parsers: PlayBodyParsers = cc.parsers
+  private val authWithAgent: FakeAuthAction = FakeAuthAction.withIrPayeAgent("agent-001", parsers)
+
   "ClientListController.start" - {
 
     "return 200 OK with {\"result\":\"succeeded\"} when service.process completes successfully" in {
       val mockService = mock[ClientListService]
 
-      when(mockService.process(any[String])(any[HeaderCarrier]))
+      when(mockService.process(any[String],any[String])(any[HeaderCarrier]))
         .thenReturn(Future.successful(Succeeded))
 
       val controller =
-        new ClientListController(fakeAuthAction(), mockService, cc)
+        new ClientListController(authWithAgent, mockService, cc)
 
       val result = controller.start()(fakeRequest)
 
       status(result) mustBe OK
       contentAsJson(result) mustBe Json.obj("result" -> "succeeded")
 
-      verify(mockService, times(1)).process(any[String])(any[HeaderCarrier])
+      verify(mockService, times(1)).process(any[String],any[String])(any[HeaderCarrier])
     }
 
     "return 200 OK with {\"result\":\"in-progress\"} when service.process throws ClientListDownloadInProgressException" in {
       val mockService = mock[ClientListService]
 
-      when(mockService.process(any[String])(any[HeaderCarrier]))
+      when(mockService.process(any[String],any[String])(any[HeaderCarrier]))
         .thenReturn(Future.successful(InProgress))
 
       val controller =
-        new ClientListController(fakeAuthAction(), mockService, cc)
+        new ClientListController(authWithAgent, mockService, cc)
 
       val result = controller.start()(fakeRequest)
 
@@ -70,11 +74,11 @@ class ClientListControllerSpec extends SpecBase {
     "return 200 OK with {\"result\":\"failed\"} when service.process throws ClientListDownloadFailedException" in {
       val mockService = mock[ClientListService]
 
-      when(mockService.process(any[String])(any[HeaderCarrier]))
+      when(mockService.process(any[String],any[String])(any[HeaderCarrier]))
         .thenReturn(Future.successful(Failed))
 
       val controller =
-        new ClientListController(fakeAuthAction(), mockService, cc)
+        new ClientListController(authWithAgent, mockService, cc)
 
       val result = controller.start()(fakeRequest)
 
@@ -85,11 +89,11 @@ class ClientListControllerSpec extends SpecBase {
     "return 200 Ok with {\"result\":\"system-error\"} when service.process throws SystemException" in {
       val mockService = mock[ClientListService]
 
-      when(mockService.process(any[String])(any[HeaderCarrier]))
+      when(mockService.process(any[String],any[String])(any[HeaderCarrier]))
         .thenReturn(Future.successful(InitiateDownload))
 
       val controller =
-        new ClientListController(fakeAuthAction(), mockService, cc)
+        new ClientListController(authWithAgent, mockService, cc)
 
       val result = controller.start()(fakeRequest)
 
@@ -100,18 +104,18 @@ class ClientListControllerSpec extends SpecBase {
     "return 500 InternalServerError with {\"result\":\"system-error\"} when service.process fails with NoBusinessIntervalsException" in {
       val mockService = mock[ClientListService]
 
-      when(mockService.process(any[String])(any[HeaderCarrier]))
+      when(mockService.process(any[String],any[String])(any[HeaderCarrier]))
         .thenReturn(Future.failed(NoBusinessIntervalsException("no business intervals")))
 
       val controller =
-        new ClientListController(fakeAuthAction(), mockService, cc)
+        new ClientListController(authWithAgent, mockService, cc)
 
       val result = controller.start()(fakeRequest)
 
       status(result) mustBe INTERNAL_SERVER_ERROR
       contentAsJson(result) mustBe Json.obj("result" -> "system-error")
 
-      verify(mockService, times(1)).process(any[String])(any[HeaderCarrier])
+      verify(mockService, times(1)).process(any[String],any[String])(any[HeaderCarrier])
     }
 
     "return 403 Forbidden with \"Missing credentialId\" when no credentialId is available" in {
@@ -122,10 +126,95 @@ class ClientListControllerSpec extends SpecBase {
 
       val result = controller.start()(fakeRequest)
 
-      status(result) mustBe FORBIDDEN
+      status(result) mustBe BAD_REQUEST
       contentAsJson(result) mustBe Json.obj("message" -> "Missing credentialId")
 
-      verify(mockService, never()).process(any[String])(any[HeaderCarrier])
+      verify(mockService, never()).process(any[String],any[String])(any[HeaderCarrier])
+    }
+  }
+
+  "ClientListController.status" - {
+
+    "return 200 OK with {\"result\":\"succeeded\"} when service.getStatus returns Succeeded" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.getStatus(any[String])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Succeeded))
+
+      val controller =
+        new ClientListController(fakeAuthAction(), mockService, cc)
+
+      val result = controller.status()(fakeRequest)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.obj("result" -> "succeeded")
+
+      verify(mockService, times(1)).getStatus(any[String])(any[HeaderCarrier])
+    }
+
+    "return 200 OK with {\"result\":\"in-progress\"} when service.getStatus returns InProgress" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.getStatus(any[String])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(InProgress))
+
+      val controller =
+        new ClientListController(fakeAuthAction(), mockService, cc)
+
+      val result = controller.status()(fakeRequest)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.obj("result" -> "in-progress")
+
+      verify(mockService, times(1)).getStatus(any[String])(any[HeaderCarrier])
+    }
+
+    "return 200 OK with {\"result\":\"failed\"} when service.getStatus returns Failed" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.getStatus(any[String])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Failed))
+
+      val controller =
+        new ClientListController(fakeAuthAction(), mockService, cc)
+
+      val result = controller.status()(fakeRequest)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.obj("result" -> "failed")
+
+      verify(mockService, times(1)).getStatus(any[String])(any[HeaderCarrier])
+    }
+
+    "return 200 OK with {\"result\":\"initiate-download\"} when service.getStatus returns InitiateDownload" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.getStatus(any[String])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(InitiateDownload))
+
+      val controller =
+        new ClientListController(fakeAuthAction(), mockService, cc)
+
+      val result = controller.status()(fakeRequest)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.obj("result" -> "initiate-download")
+
+      verify(mockService, times(1)).getStatus(any[String])(any[HeaderCarrier])
+    }
+
+    "return 400 BadRequest with \"Missing credentialId\" when no credentialId is available for status" in {
+      val mockService = mock[ClientListService]
+
+      val controller =
+        new ClientListController(noEnrolmentReferenceAuthAction, mockService, cc)
+
+      val result = controller.status()(fakeRequest)
+
+      status(result) mustBe BAD_REQUEST
+      contentAsJson(result) mustBe Json.obj("message" -> "Missing credentialId")
+
+      verify(mockService, never()).getStatus(any[String])(any[HeaderCarrier])
     }
   }
 
@@ -266,6 +355,115 @@ class ClientListControllerSpec extends SpecBase {
       }
       thrown.statusCode mustBe 503
       thrown.message must include("Service unavailable")
+    }
+  }
+
+  "ClientListController.checkClientExists" - {
+
+    val taxOfficeNumber = "123"
+    val taxOfficeReference = "AB456"
+    val irAgentId = "SA123456"
+    val credId = "cred-123"
+
+    "return 200 OK with {\"hasClient\":true} when client exists" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.hasClient(
+        any[String], any[String], any[String], any[String],
+        any[scala.concurrent.duration.FiniteDuration]
+      )(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(true))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.hasClient(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.obj("hasClient" -> true)
+
+      verify(mockService, times(1)).hasClient(
+        any[String], any[String], any[String], any[String],
+        any[scala.concurrent.duration.FiniteDuration]
+      )(using any[HeaderCarrier])
+    }
+
+    "return 200 OK with {\"hasClient\":false} when client does not exist" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.hasClient(
+        any[String], any[String], any[String], any[String],
+        any[scala.concurrent.duration.FiniteDuration]
+      )(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(false))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.hasClient(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.obj("hasClient" -> false)
+    }
+
+    "return 403 Forbidden when credentialId is missing" in {
+      val mockService = mock[ClientListService]
+
+      val authAction = FakeAuthAction.withEnrolments(
+        Set(uk.gov.hmrc.auth.core.Enrolment(
+          key = "IR-PAYE-AGENT",
+          identifiers = Seq(uk.gov.hmrc.auth.core.EnrolmentIdentifier("IRAgentReference", irAgentId)),
+          state = "Activated"
+        )),
+        bodyParsers,
+        credId = None
+      )
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.hasClient(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+      status(result) mustBe FORBIDDEN
+      contentAsJson(result) mustBe Json.obj("error" -> "credentialId is missing from session")
+
+      verify(mockService, never()).hasClient(
+        any[String], any[String], any[String], any[String],
+        any[scala.concurrent.duration.FiniteDuration]
+      )(using any[HeaderCarrier])
+    }
+
+    "return 403 Forbidden when IR-PAYE-AGENT enrolment is missing" in {
+      val mockService = mock[ClientListService]
+
+      val authAction = FakeAuthAction.withEnrolments(Set.empty, bodyParsers, Some(credId))
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.hasClient(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+      status(result) mustBe FORBIDDEN
+      contentAsJson(result) mustBe Json.obj("error" -> "IR-PAYE-AGENT enrolment with IRAgentReference is missing")
+
+      verify(mockService, never()).hasClient(
+        any[String], any[String], any[String], any[String],
+        any[scala.concurrent.duration.FiniteDuration]
+      )(using any[HeaderCarrier])
+    }
+
+    "return 500 InternalServerError when service fails" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.hasClient(
+        any[String], any[String], any[String], any[String],
+        any[scala.concurrent.duration.FiniteDuration]
+      )(using any[HeaderCarrier]))
+        .thenReturn(Future.failed(UpstreamErrorResponse("Service error", 500, 500)))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, mockService, cc)
+
+      val result = controller.hasClient(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+      status(result) mustBe INTERNAL_SERVER_ERROR
+      contentAsJson(result) mustBe Json.obj("error" -> "Failed to check client")
     }
   }
 }
