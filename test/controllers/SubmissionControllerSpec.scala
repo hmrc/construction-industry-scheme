@@ -63,20 +63,12 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     super.beforeEach()
   }
 
-  private def mkAppConfig(
-                           missingMandatory: Boolean = false,
-                           irmarkBad: Boolean = false
-                         ): AppConfig = {
-    val appConfig = mock[AppConfig]
-    when(appConfig.chrisEnableMissingMandatory).thenReturn(missingMandatory)
-    when(appConfig.chrisEnableIrmarkBad).thenReturn(irmarkBad)
-    appConfig
-  }
+  val appConfig: AppConfig = mock[AppConfig]
 
   private def mkController(
                             service: SubmissionService,
                             auth: AuthAction = fakeAuthAction(),
-                            appConfig: AppConfig = mkAppConfig(),
+                            appConfig: AppConfig = appConfig,
                             clock: Clock = Clock.systemUTC()
                           ): SubmissionController =
     new SubmissionController(auth, service, mockAuditService, cc, appConfig, clock)
@@ -107,7 +99,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
       verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier])
     }
-    
+
     "returns 200 with SUBMITTED_NO_RECEIPT when service returns SubmittedNoReceiptStatus" in {
       val service    = mock[SubmissionService]
       val controller = mkController(service)

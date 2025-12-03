@@ -177,7 +177,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
             |  <GovTalkDetails>
             |    <GovTalkErrors>
             |      <Error>
-            |        <Number>4001</Number>
+            |        <Number>3001</Number>
             |        <Type>business</Type>
             |        <Text>Invalid data supplied</Text>
             |      </Error>
@@ -202,7 +202,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
             |  <GovTalkDetails>
             |    <GovTalkErrors>
             |      <Error>
-            |        <Number>4001</Number>
+            |        <Number>3001</Number>
             |        <Type>BUSINESS</Type>
             |        <Text>Error text</Text>
             |      </Error>

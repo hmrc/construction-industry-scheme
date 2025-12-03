@@ -8,7 +8,7 @@
   <GovTalkDetails>
     <GovTalkErrors>
       <Error>
-        <Number>4001</Number>
+        <Number>3001</Number>
         <Type>business</Type>
         <Text>Invalid poll request data</Text>
       </Error>

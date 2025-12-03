@@ -38,21 +38,7 @@ object ChrisSubmissionXmlMapper extends ChrisXmlMapper {
       bodyErrorNumber = textOptional(bodyErrorResponse, "Number")
       bodyErrorType = textOptional(bodyErrorResponse, "Type")
     } yield {
-      val status: SubmissionStatus = qualifier.toLowerCase match {
-        case "acknowledgement" => ACCEPTED
-        case "response" => SUBMITTED
-        case "error" =>
-          errOpt.map(_.errorType.toLowerCase) match {
-            case Some("business") =>
-              (bodyErrorType, bodyErrorNumber) match {
-                case (Some("business"), Some("2021")) => SUBMITTED_NO_RECEIPT
-                case _ => DEPARTMENTAL_ERROR
-              }
-            case Some("fatal") => FATAL_ERROR
-            case _ => FATAL_ERROR
-          }
-        case _ => FATAL_ERROR
-      }
+      val status: SubmissionStatus = deriveInitialStatus(qualifier, errOpt)
 
       val pollInt = pollIntervalOpt.getOrElse(0)
       val epUrl = endpointUrlOpt.getOrElse("")
@@ -70,5 +56,28 @@ object ChrisSubmissionXmlMapper extends ChrisXmlMapper {
       SubmissionResult(status, xml, meta)
     }
   }
-  
+
+  /** Stage 1 (initial submit) status mapping – ACK or FATAL only. */
+  private def deriveInitialStatus(
+                                   qualifier: String,
+                                   errOpt: Option[GovTalkError]
+                                 ): SubmissionStatus =
+    qualifier.toLowerCase match {
+      case "acknowledgement" =>
+        ACCEPTED
+
+      case "error" =>
+        errOpt match {
+          case Some(err)
+            if err.errorNumber == "3000" &&
+              err.errorType.equalsIgnoreCase("fatal") =>
+            FATAL_ERROR
+
+          case _ =>
+            FATAL_ERROR
+        }
+
+      case _ =>
+        FATAL_ERROR
+    }
 }

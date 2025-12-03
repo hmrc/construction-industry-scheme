@@ -27,7 +27,7 @@ case class ChrisPollRequest(correlationId: String) {
         <Class>IR-CIS-CIS300MR</Class>
         <Qualifier>poll</Qualifier>
         <Function>submit</Function>
-        <CorrelationID>${correlationId}</CorrelationID>
+        <CorrelationID>{correlationId}</CorrelationID>
         <Transformation>XML</Transformation>
       </MessageDetails>
       <SenderDetails/>
