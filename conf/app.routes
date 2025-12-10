@@ -11,7 +11,10 @@ POST       /submissions/:submissionId/update                             uk.gov.
 GET        /submissions/poll                                             uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.pollSubmission(pollUrl: RedirectUrl, correlationId: String)
 
 POST       /agent/client-list/retrieval/start                            uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.start
-POST       /agent/client-list/retrieval/status                  uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.status
+POST       /agent/client-list/retrieval/status                           uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.status
 GET        /agent/client-list                                            uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.getAllClients
-GET        /agent/has-client/:taxOfficeNumber/:taxOfficeReference         uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.hasClient(taxOfficeNumber: String, taxOfficeReference: String)
-GET        /agent/client-taxpayer/:taxOfficeNumber/:taxOfficeReference    uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getCisClientTaxpayer(taxOfficeNumber: String, taxOfficeReference: String)
+GET        /agent/has-client/:taxOfficeNumber/:taxOfficeReference        uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.hasClient(taxOfficeNumber: String, taxOfficeReference: String)
+GET        /agent/client-taxpayer/:taxOfficeNumber/:taxOfficeReference   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getCisClientTaxpayer(taxOfficeNumber: String, taxOfficeReference: String)
+POST       /contractor-known-facts/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId               uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorKnownFacts(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
+
+
