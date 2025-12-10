@@ -16,14 +16,14 @@
 
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
+import play.api.http.Status.NOT_FOUND
 import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
-import uk.gov.hmrc.constructionindustryscheme.models.UserMonthlyReturns
+import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.models.NilMonthlyReturnRequest
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
@@ -76,4 +76,31 @@ class FormpProxyConnector @Inject()(
     http.post(url"$base/scheme/email")
       .withBody(Json.obj("instanceId" -> instanceId))
       .execute[Option[String]]
+
+  def getContractorScheme(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[ContractorScheme]] =
+    http
+      .get(url"$base/scheme/$instanceId")
+      .execute[ContractorScheme]
+      .map(Some(_))
+      .recoverWith {
+        case u: UpstreamErrorResponse if u.statusCode == NOT_FOUND =>
+          Future.successful(None)
+      }
+
+  def createContractorScheme(req: CreateContractorSchemeParams)(implicit hc: HeaderCarrier): Future[Int] =
+    http
+      .post(url"$base/scheme")
+      .withBody(Json.toJson(req))
+      .execute[CreateSchemeResponse]
+      .map(_.schemeId)
+
+  def updateContractorScheme(req: UpdateContractorSchemeParams)(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/scheme/update")
+      .withBody(Json.toJson(req))
+      .execute[HttpResponse]
+      .flatMap { resp =>
+        if (resp.status / 100 == 2) Future.unit
+        else Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
+      }
 }
