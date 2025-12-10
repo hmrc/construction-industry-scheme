@@ -54,9 +54,7 @@ class PrepopulationService @Inject()(
           instanceId = instanceId,
           accountsOfficeReference = accountsOfficeRef,
           taxOfficeNumber = cis.taxOfficeNumber,
-          taxOfficeReference = cis.taxOfficeRef,
-          utr = cis.utr,
-          name = cis.schemeName
+          taxOfficeReference = cis.taxOfficeRef
         )
 
         formp.createContractorScheme(createParams).map(_ => ())
