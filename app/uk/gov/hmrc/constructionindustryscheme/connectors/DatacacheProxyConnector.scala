@@ -17,13 +17,14 @@
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
 import play.api.Logging
+import play.api.http.Status.NOT_FOUND
 
 import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.*
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, ClientListStatus, EmployerReference}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, ClientListStatus, EmployerReference, PrePopContractorBody, PrePopContractorResponse, PrePopSubcontractor, PrePopSubcontractorsResponse, PrepopKnownFacts}
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
@@ -105,5 +106,29 @@ class DatacacheProxyConnector @Inject()(
       .get(endpoint)
       .execute[ClientSearchResult]
   }
+
+  def getSchemePrepopByKnownFacts(
+    knownFacts: PrepopKnownFacts
+  )(implicit hc: HeaderCarrier): Future[Option[PrePopContractorBody]] =
+    http
+      .post(url"$base/cis/prepop-contractor")
+      .withBody(Json.toJson(knownFacts))
+      .execute[PrePopContractorResponse]
+      .map(resp => Some(resp.prePopContractor))
+      .recoverWith {
+        case u: UpstreamErrorResponse if u.statusCode == NOT_FOUND => Future.successful(None)
+      }
+
+  def getSubcontractorsPrepopByKnownFacts(
+    knownFacts: PrepopKnownFacts
+  )(implicit hc: HeaderCarrier): Future[Seq[PrePopSubcontractor]] =
+    http
+      .post(url"$base/cis/prepop-subcontractor")
+      .withBody(Json.toJson(knownFacts))
+      .execute[PrePopSubcontractorsResponse]
+      .map(_.prePopSubcontractors.subcontractors)
+      .recoverWith {
+        case u: UpstreamErrorResponse if u.statusCode == NOT_FOUND => Future.successful(Seq.empty)
+      }
 
 }

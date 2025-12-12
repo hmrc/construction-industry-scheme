@@ -20,10 +20,11 @@ import com.github.tomakehurst.wiremock.client.WireMock.*
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
+import org.scalatest.OptionValues.convertOptionToValuable
 import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.{NilMonthlyReturnRequest, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.{CreateContractorSchemeParams, NilMonthlyReturnRequest, UpdateContractorSchemeParams, UserMonthlyReturns}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
 class FormpProxyConnectorIntegrationSpec
@@ -118,7 +119,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-return/nil/create"))
           .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
-          .willReturn(aResponse().withStatus(500).withBody("""{ "message": "oops" }"""))
+          .willReturn(aResponse().withStatus(500).withBody("""{ "message": "boom" }"""))
       )
 
       val ex = intercept[Throwable](connector.createNilMonthlyReturn(req).futureValue)
@@ -197,6 +198,188 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = connector.updateSubmission(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 502
+    }
+  }
+
+  "FormpProxyConnector getContractorScheme" should {
+
+    "GET /formp-proxy/scheme/:instanceId and return Some(ContractorScheme) on 200" in {
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "schemeId": 999,
+           |  "instanceId": "$instanceId",
+           |  "accountsOfficeReference": "123PA00123456",
+           |  "taxOfficeNumber": "163",
+           |  "taxOfficeReference": "AB0063",
+           |  "utr": "1234567890",
+           |  "name": "ABC Construction Ltd"
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/scheme/$instanceId"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val outOpt = connector.getContractorScheme(instanceId).futureValue
+      outOpt.isDefined mustBe true
+
+      val out = outOpt.value
+      out.schemeId mustBe 999
+      out.instanceId mustBe instanceId
+      out.accountsOfficeReference mustBe "123PA00123456"
+      out.taxOfficeNumber mustBe "163"
+      out.taxOfficeReference mustBe "AB0063"
+      out.utr mustBe Some("1234567890")
+      out.name mustBe Some("ABC Construction Ltd")
+    }
+
+    "return None when upstream responds with 404" in {
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/scheme/$instanceId"))
+          .willReturn(
+            aResponse()
+              .withStatus(404)
+              .withBody("""{"message":"not found"}""")
+          )
+      )
+
+      val outOpt = connector.getContractorScheme(instanceId).futureValue
+      outOpt mustBe None
+    }
+
+    "fail the future when upstream responds with a non-404 error (e.g. 500)" in {
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/scheme/$instanceId"))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("""{"message":"boom"}""")
+          )
+      )
+
+      val ex = connector.getContractorScheme(instanceId).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector createContractorScheme" should {
+
+    "POST /formp-proxy/scheme and return schemeId on success" in {
+      val req = CreateContractorSchemeParams(
+        instanceId = instanceId,
+        accountsOfficeReference = "123PA00123456",
+        taxOfficeNumber = "163",
+        taxOfficeReference = "AB0063",
+        utr = Some("1234567890"),
+        name = Some("ABC Construction Ltd")
+      )
+
+      val responseJson = Json.obj("schemeId" -> 9876)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(201)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val id = connector.createContractorScheme(req).futureValue
+      id mustBe 9876
+    }
+
+    "fail the future when upstream responds with non-2xx (e.g. 500)" in {
+      val req = CreateContractorSchemeParams(
+        instanceId = instanceId,
+        accountsOfficeReference = "123PA00123456",
+        taxOfficeNumber = "163",
+        taxOfficeReference = "AB0063",
+        utr = Some("1234567890"),
+        name = Some("ABC Construction Ltd")
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("""{"message":"boom"}""")
+          )
+      )
+
+      val ex = connector.createContractorScheme(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector updateContractorScheme" should {
+
+    "return Unit when upstream responds with 2xx" in {
+      val req = UpdateContractorSchemeParams(
+        schemeId = 999,
+        instanceId = instanceId,
+        accountsOfficeReference = "123PA00123456",
+        taxOfficeNumber = "163",
+        taxOfficeReference = "AB0063",
+        utr = Some("1234567890"),
+        name = Some("ABC Construction Ltd"),
+        emailAddress = Some("test@example.com"),
+        prePopCount = Some(1),
+        prePopSuccessful = Some("Y"),
+        version = Some(3)
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/update"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(200))
+      )
+
+      connector.updateContractorScheme(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream responds with non-2xx" in {
+      val req = UpdateContractorSchemeParams(
+        schemeId = 999,
+        instanceId = instanceId,
+        accountsOfficeReference = "123PA00123456",
+        taxOfficeNumber = "163",
+        taxOfficeReference = "AB0063",
+        utr = Some("1234567890"),
+        name = Some("ABC Construction Ltd"),
+        emailAddress = Some("test@example.com"),
+        prePopCount = Some(1),
+        prePopSuccessful = Some("Y"),
+        version = Some(3)
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/update"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(502)
+              .withBody("bad gateway")
+          )
+      )
+
+      val ex = connector.updateContractorScheme(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 502
     }
