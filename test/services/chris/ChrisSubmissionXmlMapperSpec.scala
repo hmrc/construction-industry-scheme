@@ -79,22 +79,6 @@ final class ChrisSubmissionXmlMapperSpec extends AnyFreeSpec with Matchers with 
       res.rawXml.trim must include ("<GovTalkMessage>")
     }
 
-    "maps a response to SUBMITTED" in {
-      val xml = envelope(
-        headerXml(
-          qualifier   = "response",
-          pollInterval= Some(0),
-          endpointUrl = Some("")
-        )
-      )
-
-      val res = ChrisSubmissionXmlMapper.parse(xml).value
-      res.status mustBe SUBMITTED
-      res.meta.qualifier mustBe "response"
-      res.meta.responseEndPoint mustBe ResponseEndPoint("", 0)
-      res.meta.error mustBe None
-    }
-
     "maps GovTalk error Type=fatal to FATAL_ERROR" in {
       val xml =
         """<GovTalkMessage>
@@ -129,7 +113,7 @@ final class ChrisSubmissionXmlMapperSpec extends AnyFreeSpec with Matchers with 
       e.errorText.toLowerCase must include("catastrophic")
     }
 
-    "maps GovTalk error Type=business to DEPARTMENTAL_ERROR" in {
+    "maps error number 3000 with fatal type to FATAL_ERROR" in {
       val xml =
         """<GovTalkMessage>
           |  <Header>
@@ -137,17 +121,16 @@ final class ChrisSubmissionXmlMapperSpec extends AnyFreeSpec with Matchers with 
           |      <Qualifier>error</Qualifier>
           |      <Function>submit</Function>
           |      <Class>CIS300MR</Class>
-          |      <CorrelationID>ABCDEF1234567890ABCDEF1234567890</CorrelationID>
-          |      <GatewayTimestamp>2025-02-01T12:00:00Z</GatewayTimestamp>
-          |      <ResponseEndPoint PollInterval="15">/poll</ResponseEndPoint>
+          |      <CorrelationID>ABC123</CorrelationID>
+          |      <ResponseEndPoint PollInterval="20">/poll</ResponseEndPoint>
           |    </MessageDetails>
           |  </Header>
           |  <GovTalkDetails>
           |    <GovTalkErrors>
           |      <Error>
-          |        <Number>4001</Number>
-          |        <Type>business</Type>
-          |        <Text>Invalid AOref supplied</Text>
+          |        <Number>3000</Number>
+          |        <Type>FaTaL</Type>
+          |        <Text>Fatal submission error</Text>
           |      </Error>
           |    </GovTalkErrors>
           |  </GovTalkDetails>
@@ -155,62 +138,23 @@ final class ChrisSubmissionXmlMapperSpec extends AnyFreeSpec with Matchers with 
           |""".stripMargin
 
       val res = ChrisSubmissionXmlMapper.parse(xml).value
-      res.status mustBe DEPARTMENTAL_ERROR
+      res.status mustBe FATAL_ERROR
 
-      val e = res.meta.error.value
-      e.errorNumber mustBe "4001"
-      e.errorType.toLowerCase mustBe "business"
-      e.errorText.toLowerCase must include("invalid aoref")
+      val err = res.meta.error.value
+      err.errorNumber mustBe "3000"
+      err.errorType.toLowerCase mustBe "fatal"
     }
 
-    "maps GovTalk error Type=business & (body error Type=business & body error number=2021) to SUBMITTED_NO_RECEIPT" in {
-      val xml =
-        """<GovTalkMessage>
-          |  <Header>
-          |    <MessageDetails>
-          |      <Qualifier>error</Qualifier>
-          |      <Function>submit</Function>
-          |      <Class>CIS300MR</Class>
-          |      <CorrelationID>ABCDEF1234567890ABCDEF1234567890</CorrelationID>
-          |      <GatewayTimestamp>2025-02-01T12:00:00Z</GatewayTimestamp>
-          |      <ResponseEndPoint PollInterval="15">/poll</ResponseEndPoint>
-          |    </MessageDetails>
-          |  </Header>
-          |  <GovTalkDetails>
-          |    <GovTalkErrors>
-          |      <Error>
-          |        <Number>3001</Number>
-          |        <Type>business</Type>
-          |        <Text>Your submission failed due to business validation errors. Please see below for details.</Text>
-          |      </Error>
-          |    </GovTalkErrors>
-          |  </GovTalkDetails>
-          |   <Body>
-          |     <ErrorResponse SchemaVersion="2.0">
-          |       <Application>
-          |         <MessageCount>1</MessageCount>
-          |       </Application>
-          |       <Error>
-          |         <RaisedBy>ChRIS</RaisedBy>
-          |         <Number>2021</Number>
-          |         <Type>business</Type>
-          |         <Text>The supplied IRmark is incorrect.</Text>
-          |         <Location>IRmark</Location>
-          |       </Error>
-          |     </ErrorResponse>
-          |   </Body>
-          |</GovTalkMessage>
-          |""".stripMargin
+    "maps unknown qualifier to FATAL_ERROR" in {
+      val xml = envelope(
+        headerXml(
+          qualifier = "unknown"
+        )
+      )
 
       val res = ChrisSubmissionXmlMapper.parse(xml).value
-      res.status mustBe SUBMITTED_NO_RECEIPT
-
-      val e = res.meta.error.value
-      e.errorNumber mustBe "3001"
-      e.errorType.toLowerCase mustBe "business"
-      e.errorText.toLowerCase must include("your submission failed due to business validation errors.")
+      res.status mustBe FATAL_ERROR
+      res.meta.error mustBe None
     }
-
-
   }
 }

@@ -23,18 +23,6 @@ import play.api.Configuration
 class AppConfig @Inject()(config: Configuration) {
   val appName: String = config.get[String]("appName")
 
-  val chrisEnableMissingMandatory: Boolean =
-    config.getOptional[Boolean]("chrisTest.enable-missing-mandatory").getOrElse(false)
-
-  val chrisEnableNon2xx: Boolean =
-    config.getOptional[Boolean]("chrisTest.enable-non-2xx").getOrElse(false)
-
-  val chrisEnableIrmarkBad: Boolean =
-    config.getOptional[Boolean]("chrisTest.enable-irmark-bad").getOrElse(false)
-
-  val chrisNon2xxOverrideUrl: Option[String] =
-    config.getOptional[String]("chrisTest.non2xx.override-url")
-
   val chrisHost: Seq[String] = config.get[Seq[String]]("submissionPollUrlKnownHosts")
 
   val cisServiceName: String = config.get[String]("cis.serviceName")
