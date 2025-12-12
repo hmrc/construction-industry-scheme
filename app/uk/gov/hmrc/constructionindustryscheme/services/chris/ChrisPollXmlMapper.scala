@@ -27,7 +27,6 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
   def parse(xml: String): Either[String, ChrisPollResponse] = {
     val doc = XML.loadString(xml)
     val messageDetails = doc \\ "Header" \\ "MessageDetails"
-    val bodyErrorResponse = doc \\ "Body" \\ "ErrorResponse" \\ "Error"
 
     for {
       qualifier <- textRequired(messageDetails, "Qualifier", "Qualifier")

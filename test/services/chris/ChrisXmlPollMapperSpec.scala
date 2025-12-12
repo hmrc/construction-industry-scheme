@@ -278,6 +278,32 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
         val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe FATAL_ERROR
       }
+
+      "error number 3000 with fatal type maps to FATAL_ERROR" in {
+        val xml =
+          """<GovTalkMessage>
+            |  <Header>
+            |    <MessageDetails>
+            |      <Qualifier>error</Qualifier>
+            |      <ResponseEndPoint>/fatal/3000</ResponseEndPoint>
+            |    </MessageDetails>
+            |  </Header>
+            |  <GovTalkDetails>
+            |    <GovTalkErrors>
+            |      <Error>
+            |        <Number>3000</Number>
+            |        <Type>fatal</Type>
+            |        <Text>Fatal processing error</Text>
+            |      </Error>
+            |    </GovTalkErrors>
+            |  </GovTalkDetails>
+            |</GovTalkMessage>
+            |""".stripMargin
+
+        val res = ChrisPollXmlMapper.parse(xml).value
+        res.status mustBe FATAL_ERROR
+        res.pollUrl mustBe Some("/fatal/3000")
+      }
     }
 
     "maps unknown qualifier to FATAL_ERROR" in {

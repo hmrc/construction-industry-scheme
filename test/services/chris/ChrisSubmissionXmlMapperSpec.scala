@@ -112,5 +112,49 @@ final class ChrisSubmissionXmlMapperSpec extends AnyFreeSpec with Matchers with 
       e.errorType.toLowerCase mustBe "fatal"
       e.errorText.toLowerCase must include("catastrophic")
     }
+
+    "maps error number 3000 with fatal type to FATAL_ERROR" in {
+      val xml =
+        """<GovTalkMessage>
+          |  <Header>
+          |    <MessageDetails>
+          |      <Qualifier>error</Qualifier>
+          |      <Function>submit</Function>
+          |      <Class>CIS300MR</Class>
+          |      <CorrelationID>ABC123</CorrelationID>
+          |      <ResponseEndPoint PollInterval="20">/poll</ResponseEndPoint>
+          |    </MessageDetails>
+          |  </Header>
+          |  <GovTalkDetails>
+          |    <GovTalkErrors>
+          |      <Error>
+          |        <Number>3000</Number>
+          |        <Type>FaTaL</Type>
+          |        <Text>Fatal submission error</Text>
+          |      </Error>
+          |    </GovTalkErrors>
+          |  </GovTalkDetails>
+          |</GovTalkMessage>
+          |""".stripMargin
+
+      val res = ChrisSubmissionXmlMapper.parse(xml).value
+      res.status mustBe FATAL_ERROR
+
+      val err = res.meta.error.value
+      err.errorNumber mustBe "3000"
+      err.errorType.toLowerCase mustBe "fatal"
+    }
+
+    "maps unknown qualifier to FATAL_ERROR" in {
+      val xml = envelope(
+        headerXml(
+          qualifier = "unknown"
+        )
+      )
+
+      val res = ChrisSubmissionXmlMapper.parse(xml).value
+      res.status mustBe FATAL_ERROR
+      res.meta.error mustBe None
+    }
   }
 }
