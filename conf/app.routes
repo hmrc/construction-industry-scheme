@@ -15,6 +15,6 @@ POST       /agent/client-list/retrieval/status                           uk.gov.
 GET        /agent/client-list                                            uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.getAllClients
 GET        /agent/has-client/:taxOfficeNumber/:taxOfficeReference        uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.hasClient(taxOfficeNumber: String, taxOfficeReference: String)
 GET        /agent/client-taxpayer/:taxOfficeNumber/:taxOfficeReference   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getCisClientTaxpayer(taxOfficeNumber: String, taxOfficeReference: String)
-POST       /contractor-known-facts/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId               uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorKnownFacts(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
-
+POST       /contractor-known-facts/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId                     uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorKnownFacts(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
+POST       /scheme/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId                                     uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorAndSubcontractors(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
 

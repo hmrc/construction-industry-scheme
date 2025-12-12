@@ -63,4 +63,29 @@ class PrepopulationController @Inject()(
             InternalServerError(Json.obj("message" -> "Unexpected error"))
         }
     }
+
+  def prepopulateContractorAndSubcontractors(
+    taxOfficeNumber: String,
+    taxOfficeReference: String,
+    instanceId: String
+  ): Action[AnyContent] =
+    authorise.async { implicit request =>
+      implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
+
+      val employerRef = EmployerReference(
+        taxOfficeNumber = taxOfficeNumber,
+        taxOfficeReference = taxOfficeReference
+      )
+
+      service
+        .prepopulateContractorAndSubcontractors(instanceId, employerRef)
+        .map(_ => NoContent)
+        .recover {
+          case u: UpstreamErrorResponse =>
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t) =>
+            logger.error("[prepopulateContractorAndSubcontractors] failed", t)
+            InternalServerError(Json.obj("message" -> "Unexpected error"))
+        }
+    }
 }
