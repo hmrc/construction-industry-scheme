@@ -22,7 +22,7 @@ import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
 import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
-import uk.gov.hmrc.constructionindustryscheme.models.{ClientListStatus, EmployerReference}
+import uk.gov.hmrc.constructionindustryscheme.models.{ClientListStatus, EmployerReference, PrepopKnownFacts}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
 class DatacacheProxyConnectorIntegrationSpec
@@ -35,6 +35,12 @@ class DatacacheProxyConnectorIntegrationSpec
 
   private val er = EmployerReference("111", "test111")
   private val erJson = Json.toJson(er)
+  private val knownFacts = PrepopKnownFacts(
+    taxOfficeNumber = "111",
+    taxOfficeReference = "test111",
+    agentOwnReference = "agent-ref-123"
+  )
+  private val knownFactsJson = Json.toJson(knownFacts)
 
   "DatacacheProxyConnector getCisTaxpayer" should {
 
@@ -461,6 +467,118 @@ class DatacacheProxyConnectorIntegrationSpec
 
       val ex = connector.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId).failed.futureValue
       ex mustBe a[Throwable]
+    }
+  }
+
+  "DatacacheProxyConnector getSchemePrepopByKnownFacts" should {
+
+    "POST known facts to /rds-datacache-proxy/cis/prepop-contractor and return Some(PrePopContractorBody) (200)" in {
+      stubFor(
+        post(urlPathEqualTo("/rds-datacache-proxy/cis/prepop-contractor"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(knownFactsJson.toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(
+                """{
+                  |  "knownfacts": {
+                  |    "taxOfficeNumber": "111",
+                  |    "taxOfficeReference": "test111",
+                  |    "agentOwnReference": "agent-ref-123"
+                  |  },
+                  |  "prePopContractor": {
+                  |    "schemeName": "ABC Construction Ltd",
+                  |    "utr": "1234567890",
+                  |    "response": 1
+                  |  }
+                  |}""".stripMargin
+              )
+          )
+      )
+
+      val out = connector.getSchemePrepopByKnownFacts(knownFacts).futureValue
+      out mustBe defined
+      out.get.schemeName mustBe "ABC Construction Ltd"
+    }
+
+    "return None when upstream returns 404 (not found)" in {
+      stubFor(
+        post(urlPathEqualTo("/rds-datacache-proxy/cis/prepop-contractor"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(knownFactsJson.toString(), true, true))
+          .willReturn(aResponse().withStatus(404))
+      )
+
+      val out = connector.getSchemePrepopByKnownFacts(knownFacts).futureValue
+      out mustBe None
+    }
+  }
+
+  "DatacacheProxyConnector getSubcontractorsPrepopByKnownFacts" should {
+
+    "POST known facts to /rds-datacache-proxy/cis/prepop-subcontractor and return subcontractors (200)" in {
+      stubFor(
+        post(urlPathEqualTo("/rds-datacache-proxy/cis/prepop-subcontractor"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(knownFactsJson.toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(
+                """{
+                  |  "knownfacts": {
+                  |    "taxOfficeNumber": "111",
+                  |    "taxOfficeReference": "test111",
+                  |    "agentOwnReference": "agent-ref-123"
+                  |  },
+                  |  "prePopSubcontractors": {
+                  |    "response": 1,
+                  |    "subcontractors": [
+                  |      {
+                  |        "subcontractorType": "soletrader",
+                  |        "utr": "1111111111",
+                  |        "verificationNumber": "V123456",
+                  |        "verificationSuffix": "A",
+                  |        "title": "Mr",
+                  |        "firstName": "Subbie",
+                  |        "secondName": "One",
+                  |        "surname": "Test"
+                  |      },
+                  |      {
+                  |        "subcontractorType": "company",
+                  |        "utr": "2222222222",
+                  |        "verificationNumber": "V654321",
+                  |        "verificationSuffix": "B",
+                  |        "title": "Ms",
+                  |        "firstName": "Subbie",
+                  |        "secondName": "Two",
+                  |        "surname": "Test"
+                  |      }
+                  |    ]
+                  |  }
+                  |}""".stripMargin
+              )
+          )
+      )
+
+      val out = connector.getSubcontractorsPrepopByKnownFacts(knownFacts).futureValue
+      out must have size 2
+      out.head.subcontractorType mustBe "soletrader"
+      out.head.utr mustBe "1111111111"
+      out(1).subcontractorType mustBe "company"
+    }
+
+    "return empty Seq when upstream returns 404 (not found)" in {
+      stubFor(
+        post(urlPathEqualTo("/rds-datacache-proxy/cis/prepop-subcontractor"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(knownFactsJson.toString(), true, true))
+          .willReturn(aResponse().withStatus(404))
+      )
+
+      val out = connector.getSubcontractorsPrepopByKnownFacts(knownFacts).futureValue
+      out mustBe empty
     }
   }
 }

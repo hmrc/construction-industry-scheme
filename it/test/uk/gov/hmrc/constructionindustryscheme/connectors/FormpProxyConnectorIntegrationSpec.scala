@@ -24,7 +24,7 @@ import org.scalatest.OptionValues.convertOptionToValuable
 import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.{CreateContractorSchemeParams, NilMonthlyReturnRequest, UpdateContractorSchemeParams, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.{ApplyPrepopulationRequest, Company, CreateContractorSchemeParams, CreateSubcontractorRequest, NilMonthlyReturnRequest, SoleTrader, UpdateContractorSchemeParams, UpdateSchemeVersionRequest, UserMonthlyReturns}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
 class FormpProxyConnectorIntegrationSpec
@@ -382,6 +382,149 @@ class FormpProxyConnectorIntegrationSpec
       val ex = connector.updateContractorScheme(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 502
+    }
+  }
+
+  "FormpProxyConnector updateSchemeVersion" should {
+
+    "POST /formp-proxy/scheme/version-update and return version from JSON" in {
+      val req = UpdateSchemeVersionRequest(
+        instanceId = instanceId,
+        version = 1
+      )
+
+      val responseJson = Json.obj("version" -> 2)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/version-update"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.updateSchemeVersion(req).futureValue
+      out mustBe 2
+    }
+
+    "fail the future when upstream responds with non-2xx (e.g. 500)" in {
+      val req = UpdateSchemeVersionRequest(instanceId = instanceId, version = 1)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/version-update"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.updateSchemeVersion(req).failed.futureValue
+      ex mustBe a[play.api.libs.json.JsResultException]
+    }
+  }
+
+  "FormpProxyConnector createSubcontractor" should {
+
+    "POST /formp-proxy/subcontractor/create and return subbieResourceRef from JSON" in {
+      val req = CreateSubcontractorRequest(
+        schemeId = 999,
+        subcontractorType = SoleTrader,
+        version = 1
+      )
+
+      val responseJson = Json.obj("subbieResourceRef" -> 1234)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/subcontractor/create"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.createSubcontractor(req).futureValue
+      out mustBe 1234
+    }
+
+    "fail the future when upstream responds with non-2xx (e.g. 502) as failed Future" in {
+      val req = CreateSubcontractorRequest(schemeId = 999, subcontractorType = SoleTrader, version = 1)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/subcontractor/create"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(502).withBody("""{"message":"bad gateway"}"""))
+      )
+
+      val ex = connector.createSubcontractor(req).failed.futureValue
+      ex mustBe a[play.api.libs.json.JsResultException]
+    }
+  }
+
+  "FormpProxyConnector applyPrepopulation" should {
+
+    "POST /formp-proxy/scheme/prepopulate and return version from JSON" in {
+      val req = ApplyPrepopulationRequest(
+        schemeId = 789,
+        instanceId = "abc-123",
+        accountsOfficeReference = "111111111",
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AB456",
+        utr = Some("9876543210"),
+        name = "Test Contractor",
+        emailAddress = Some("test@test.com"),
+        displayWelcomePage = Some("Y"),
+        prePopCount = 5,
+        prePopSuccessful = "Y",
+        version = 1,
+        subcontractorTypes = Seq(SoleTrader, Company)
+      )
+
+      val responseJson = Json.obj("version" -> 2)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/prepopulate"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.applyPrepopulation(req).futureValue
+      out mustBe 2
+    }
+
+    "fail the future when upstream responds with non-2xx (e.g. 500)" in {
+      val req = ApplyPrepopulationRequest(
+        schemeId = 789,
+        instanceId = "abc-123",
+        accountsOfficeReference = "111111111",
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AB456",
+        utr = Some("9876543210"),
+        name = "Test Contractor",
+        emailAddress = Some("test@test.com"),
+        displayWelcomePage = Some("Y"),
+        prePopCount = 5,
+        prePopSuccessful = "Y",
+        version = 1,
+        subcontractorTypes = Seq(SoleTrader, Company)
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/prepopulate"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.applyPrepopulation(req).failed.futureValue
+      ex mustBe a[play.api.libs.json.JsResultException]
     }
   }
 

@@ -125,5 +125,69 @@ class PrepopulationControllerSpec extends SpecBase {
         (contentAsJson(result) \ "message").as[String] mustBe "Unexpected error"
       }
     }
+
+    "prepopulateContractorAndSubcontractors" - {
+
+      "must return 204 NoContent when service succeeds (happy path)" in {
+        val (controller, mockService) = newControllerAndMocks()
+
+        when(
+          mockService.prepopulateContractorAndSubcontractors(
+            eqTo(instanceId),
+            eqTo(EmployerReference(taxOfficeNumber, taxOfficeReference))
+          )(any[HeaderCarrier])
+        ).thenReturn(Future.unit)
+
+        val result =
+          controller
+            .prepopulateContractorAndSubcontractors(taxOfficeNumber, taxOfficeReference, instanceId)(fakeRequest)
+
+        status(result) mustBe NO_CONTENT
+
+        verify(mockService).prepopulateContractorAndSubcontractors(
+          eqTo(instanceId),
+          eqTo(EmployerReference(taxOfficeNumber, taxOfficeReference))
+        )(any[HeaderCarrier])
+        verifyNoMoreInteractions(mockService)
+      }
+
+      "must map UpstreamErrorResponse to same status with message" in {
+        val (controller, mockService) = newControllerAndMocks()
+
+        when(
+          mockService.prepopulateContractorAndSubcontractors(
+            eqTo(instanceId),
+            eqTo(EmployerReference(taxOfficeNumber, taxOfficeReference))
+          )(any[HeaderCarrier])
+        ).thenReturn(
+          Future.failed(UpstreamErrorResponse("boom from upstream", BAD_GATEWAY))
+        )
+
+        val result =
+          controller
+            .prepopulateContractorAndSubcontractors(taxOfficeNumber, taxOfficeReference, instanceId)(fakeRequest)
+
+        status(result) mustBe BAD_GATEWAY
+        (contentAsJson(result) \ "message").as[String] must include("boom from upstream")
+      }
+
+      "must return 500 InternalServerError with 'Unexpected error' on unknown exception" in {
+        val (controller, mockService) = newControllerAndMocks()
+
+        when(
+          mockService.prepopulateContractorAndSubcontractors(
+            eqTo(instanceId),
+            eqTo(EmployerReference(taxOfficeNumber, taxOfficeReference))
+          )(any[HeaderCarrier])
+        ).thenReturn(Future.failed(new RuntimeException("something bad happened")))
+
+        val result =
+          controller
+            .prepopulateContractorAndSubcontractors(taxOfficeNumber, taxOfficeReference, instanceId)(fakeRequest)
+
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        (contentAsJson(result) \ "message").as[String] mustBe "Unexpected error"
+      }
+    }
   }
 }

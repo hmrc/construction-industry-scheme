@@ -22,7 +22,7 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, ContractorScheme, CreateContractorSchemeParams, EmployerReference, UpdateContractorSchemeParams}
+import uk.gov.hmrc.constructionindustryscheme.models.{ApplyPrepopulationRequest, CisTaxpayer, Company, ContractorScheme, CreateContractorSchemeParams, EmployerReference, PrePopContractorBody, PrePopSubcontractor, PrepopKnownFacts, SoleTrader, UpdateContractorSchemeParams, UpdateSchemeVersionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnService, PrepopulationService}
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
@@ -114,6 +114,166 @@ class PrepopulationServiceSpec extends SpecBase {
       ex mustBe boom
 
       verifyNoInteractions(formpProxy)
+    }
+  }
+
+  "PrepopulationService.prepopulateContractorAndSubcontractors" - {
+
+    "fails when no FORMP scheme exists for instanceId (F1 not run)" in new Setup {
+      val cis = mkCis()
+
+      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(cis))
+
+      when(formpProxy.getContractorScheme(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(None))
+
+      val ex = service.prepopulateContractorAndSubcontractors(instanceId, employerRef).failed.futureValue
+      ex mustBe a[IllegalStateException]
+      ex.getMessage must include(s"No FORMP scheme found for instanceId=$instanceId")
+
+      verify(formpProxy, never).applyPrepopulation(any())(any[HeaderCarrier])
+      verify(formpProxy, never).updateContractorScheme(any())(any[HeaderCarrier])
+      verify(formpProxy, never).updateSchemeVersion(any())(any[HeaderCarrier])
+    }
+
+    "when contractor prepop is None, updates scheme prepopCount + sets prePopSuccessful=N and bumps version" in new Setup {
+      val cis = mkCis()
+      val existing = mkExistingScheme("123AB456789", cis.taxOfficeNumber, cis.taxOfficeRef).copy(
+        prePopCount = Some(1),
+        version = Some(5),
+        emailAddress = Some("test@example.com")
+      )
+
+      val expectedKnownFacts = PrepopKnownFacts(
+        taxOfficeNumber = cis.taxOfficeNumber,
+        taxOfficeReference = cis.taxOfficeRef,
+        agentOwnReference = "123AB456789"
+      )
+
+      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(cis))
+      when(formpProxy.getContractorScheme(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Some(existing)))
+
+      when(datacacheProxy.getSchemePrepopByKnownFacts(eqTo(expectedKnownFacts))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(None))
+      when(datacacheProxy.getSubcontractorsPrepopByKnownFacts(eqTo(expectedKnownFacts))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Seq.empty))
+
+      when(formpProxy.updateContractorScheme(any())(any[HeaderCarrier]))
+        .thenReturn(Future.unit)
+      when(formpProxy.updateSchemeVersion(eqTo(UpdateSchemeVersionRequest(instanceId, 5)))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(6))
+
+      service.prepopulateContractorAndSubcontractors(instanceId, employerRef).futureValue
+
+      val updateCaptor = ArgumentCaptor.forClass(classOf[UpdateContractorSchemeParams])
+      verify(formpProxy).updateContractorScheme(updateCaptor.capture())(any[HeaderCarrier])
+
+      val sentUpdate = updateCaptor.getValue
+      sentUpdate.schemeId mustBe existing.schemeId
+      sentUpdate.instanceId mustBe instanceId
+      sentUpdate.prePopCount mustBe Some(2)
+      sentUpdate.prePopSuccessful mustBe Some("N")
+      sentUpdate.emailAddress mustBe existing.emailAddress
+      sentUpdate.version mustBe existing.version
+
+      verify(formpProxy).updateSchemeVersion(eqTo(UpdateSchemeVersionRequest(instanceId, 5)))(any[HeaderCarrier])
+      verify(formpProxy, never).applyPrepopulation(any())(any[HeaderCarrier])
+    }
+
+    "when contractor prepop exists, calls applyPrepopulation with mapped subcontractor types and returns Unit" in new Setup {
+      val cis = mkCis()
+      val existing = mkExistingScheme("123AB456789", cis.taxOfficeNumber, cis.taxOfficeRef).copy(
+        prePopCount = Some(0),
+        version = Some(7),
+        emailAddress = Some("test@example.com"),
+        displayWelcomePage = Some("Y")
+      )
+
+      val expectedKnownFacts = PrepopKnownFacts(
+        taxOfficeNumber = cis.taxOfficeNumber,
+        taxOfficeReference = cis.taxOfficeRef,
+        agentOwnReference = "123AB456789"
+      )
+
+      val contractorPrepop = PrePopContractorBody(
+        schemeName = "ABC Construction Ltd",
+        utr = "1234567890",
+        response = 1
+      )
+
+      val subs = Seq(
+        PrePopSubcontractor("S", "1111111111", "V1", "A", "Mr", "A", "B", "C"),
+        PrePopSubcontractor("C", "2222222222", "V2", "B", "Ms", "D", "E", "F")
+      )
+
+      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(cis))
+      when(formpProxy.getContractorScheme(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Some(existing)))
+
+      when(datacacheProxy.getSchemePrepopByKnownFacts(eqTo(expectedKnownFacts))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Some(contractorPrepop)))
+      when(datacacheProxy.getSubcontractorsPrepopByKnownFacts(eqTo(expectedKnownFacts))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(subs))
+
+      when(formpProxy.applyPrepopulation(any())(any[HeaderCarrier]))
+        .thenReturn(Future.successful(8))
+
+      service.prepopulateContractorAndSubcontractors(instanceId, employerRef).futureValue
+
+      val reqCaptor = ArgumentCaptor.forClass(classOf[ApplyPrepopulationRequest])
+      verify(formpProxy).applyPrepopulation(reqCaptor.capture())(any[HeaderCarrier])
+
+      val sentReq = reqCaptor.getValue
+      sentReq.schemeId mustBe existing.schemeId
+      sentReq.instanceId mustBe instanceId
+      sentReq.name mustBe "ABC Construction Ltd"
+      sentReq.utr mustBe Some("1234567890")
+      sentReq.prePopCount mustBe 1
+      sentReq.prePopSuccessful mustBe "Y"
+      sentReq.version mustBe 7
+      sentReq.subcontractorTypes mustBe Seq(SoleTrader, Company)
+
+      verify(formpProxy, never).updateContractorScheme(any())(any[HeaderCarrier])
+      verify(formpProxy, never).updateSchemeVersion(any())(any[HeaderCarrier])
+    }
+
+    "throws IllegalArgumentException when subcontractor type is unknown" in new Setup {
+      val cis = mkCis()
+      val existing = mkExistingScheme("123AB456789", cis.taxOfficeNumber, cis.taxOfficeRef).copy(
+        prePopCount = Some(0),
+        version = Some(1)
+      )
+
+      val expectedKnownFacts = PrepopKnownFacts(
+        taxOfficeNumber = cis.taxOfficeNumber,
+        taxOfficeReference = cis.taxOfficeRef,
+        agentOwnReference = "123AB456789"
+      )
+
+      val contractorPrepop = PrePopContractorBody("ABC Construction Ltd", "1234567890", 1)
+      val subs = Seq(
+        PrePopSubcontractor("X", "1111111111", "V1", "A", "Mr", "A", "B", "C")
+      )
+
+      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(cis))
+      when(formpProxy.getContractorScheme(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Some(existing)))
+
+      when(datacacheProxy.getSchemePrepopByKnownFacts(eqTo(expectedKnownFacts))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Some(contractorPrepop)))
+      when(datacacheProxy.getSubcontractorsPrepopByKnownFacts(eqTo(expectedKnownFacts))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(subs))
+
+      val ex = service.prepopulateContractorAndSubcontractors(instanceId, employerRef).failed.futureValue
+      ex mustBe a[IllegalArgumentException]
+      ex.getMessage must include("Unknown TAXPAYER_TYPE")
+
+      verify(formpProxy, never).applyPrepopulation(any())(any[HeaderCarrier])
     }
   }
 
