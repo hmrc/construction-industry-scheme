@@ -18,7 +18,8 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, CreateContractorSchemeParams, EmployerReference, UpdateContractorSchemeParams}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, ContractorScheme, CreateContractorSchemeParams, EmployerReference, UpdateContractorSchemeParams}
+
 import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
@@ -36,6 +37,9 @@ class PrepopulationService @Inject()(
     monthlyReturnService.getCisTaxpayer(employerRef).flatMap { cis =>
       ensureContractorKnownFactsInFormp(instanceId, cis)
     }
+
+  def getContractorScheme(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[ContractorScheme]] =
+    formp.getContractorScheme(instanceId)  
 
   private def ensureContractorKnownFactsInFormp(
     instanceId: String,

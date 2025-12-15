@@ -117,6 +117,54 @@ class PrepopulationServiceSpec extends SpecBase {
     }
   }
 
+  "PrepopulationService.getContractorScheme" - {
+
+    "returns Some(ContractorScheme) when connector returns a scheme (happy path)" in new Setup {
+      val scheme = mkExistingScheme(
+        accountsOfficeReference = "123AB456789",
+        taxOfficeNumber = "163",
+        taxOfficeReference = "AB0063"
+      ).copy(
+        utr = Some("1234567890"),
+        name = Some("ABC Construction Ltd"),
+        version = Some(1)
+      )
+
+      when(formpProxy.getContractorScheme(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Some(scheme)))
+
+      val out = service.getContractorScheme(instanceId).futureValue
+      out mustBe Some(scheme)
+
+      verify(formpProxy).getContractorScheme(eqTo(instanceId))(any[HeaderCarrier])
+      verifyNoMoreInteractions(formpProxy)
+    }
+
+    "returns None when connector returns None" in new Setup {
+      when(formpProxy.getContractorScheme(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(None))
+
+      val out = service.getContractorScheme(instanceId).futureValue
+      out mustBe None
+
+      verify(formpProxy).getContractorScheme(eqTo(instanceId))(any[HeaderCarrier])
+      verifyNoMoreInteractions(formpProxy)
+    }
+
+    "propagates failures from the connector" in new Setup {
+      val boom = UpstreamErrorResponse("formp-proxy failed", 502)
+
+      when(formpProxy.getContractorScheme(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.getContractorScheme(instanceId).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).getContractorScheme(eqTo(instanceId))(any[HeaderCarrier])
+      verifyNoMoreInteractions(formpProxy)
+    }
+  }
+
   trait Setup {
     val monthlyReturnService: MonthlyReturnService = mock[MonthlyReturnService]
     val formpProxy: FormpProxyConnector = mock[FormpProxyConnector]
