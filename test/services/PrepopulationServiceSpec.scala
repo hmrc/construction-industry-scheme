@@ -21,7 +21,7 @@ import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
-import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
+import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, ContractorScheme, CreateContractorSchemeParams, EmployerReference, UpdateContractorSchemeParams}
 import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnService, PrepopulationService}
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
@@ -120,8 +120,9 @@ class PrepopulationServiceSpec extends SpecBase {
   trait Setup {
     val monthlyReturnService: MonthlyReturnService = mock[MonthlyReturnService]
     val formpProxy: FormpProxyConnector = mock[FormpProxyConnector]
+    val datacacheProxy: DatacacheProxyConnector = mock[DatacacheProxyConnector]
 
-    val service = new PrepopulationService(monthlyReturnService, formpProxy)
+    val service = new PrepopulationService(monthlyReturnService, formpProxy, datacacheProxy)
     val employerRef = EmployerReference("163", "AB0063")
     val instanceId = "CIS-123"
 
