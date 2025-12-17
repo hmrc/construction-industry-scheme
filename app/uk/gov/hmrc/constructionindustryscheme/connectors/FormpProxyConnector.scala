@@ -117,11 +117,11 @@ class FormpProxyConnector @Inject()(
       .withBody(Json.toJson(req))
       .execute[JsValue]
       .map(json => (json \ "subbieResourceRef").as[Int])
-  
+
   def applyPrepopulation(req: ApplyPrepopulationRequest)(implicit hc: HeaderCarrier): Future[Int] =
     http
       .post(url"$base/scheme/prepopulate")
       .withBody(Json.toJson(req))
       .execute[JsValue]
-      .map(json => (json \ "version").as[Int])  
+      .map(json => (json \ "version").as[Int])
 }
