@@ -76,7 +76,7 @@ class SubmissionController @Inject()(
 
           val correlationId = UUID.randomUUID().toString.replace("-", "").toUpperCase
           val emailParams = SuccessEmailParams(csr.email, csr.monthYear)
-          val payload = ChrisSubmissionEnvelopeBuilder.buildPayload(csr, req, correlationId, appConfig.chrisEnableMissingMandatory, appConfig.chrisEnableIrmarkBad)
+          val payload = ChrisSubmissionEnvelopeBuilder.buildPayload(csr, req, correlationId)
 
           val monthlyNilReturnRequestJson: JsValue = createMonthlyNilReturnRequestJson(payload)
           auditService.monthlyNilReturnRequestEvent(monthlyNilReturnRequestJson)
