@@ -88,4 +88,23 @@ class PrepopulationController @Inject()(
             InternalServerError(Json.obj("message" -> "Unexpected error"))
         }
     }
+
+  def getContractorScheme(instanceId: String): Action[AnyContent] =
+    authorise.async { implicit request =>
+      implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
+
+      service
+        .getContractorScheme(instanceId)
+        .map {
+          case Some(scheme) => Ok(Json.toJson(scheme))
+          case None => NotFound(Json.obj("message" -> "Scheme not found"))
+        }
+        .recover {
+          case u: UpstreamErrorResponse =>
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t) =>
+            logger.error("[getContractorScheme] failed", t)
+            InternalServerError(Json.obj("message" -> "Unexpected error"))
+        }
+    }  
 }

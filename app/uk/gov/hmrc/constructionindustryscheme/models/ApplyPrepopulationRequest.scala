@@ -18,7 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.libs.json.{Json, OFormat}
 
-final case class ApplyPrepopulationRequest(
+case class ApplyPrepopulationRequest(
   schemeId: Int,
   instanceId: String,
   accountsOfficeReference: String,

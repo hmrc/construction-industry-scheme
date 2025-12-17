@@ -39,6 +39,9 @@ class PrepopulationService @Inject()(
       ensureContractorKnownFactsInFormp(instanceId, cis)
     }
 
+  def getContractorScheme(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[ContractorScheme]] =
+    formp.getContractorScheme(instanceId)
+    
   private def ensureContractorKnownFactsInFormp(
     instanceId: String,
     cis: CisTaxpayer
