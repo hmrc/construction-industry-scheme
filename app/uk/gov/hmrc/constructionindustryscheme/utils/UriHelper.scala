@@ -30,7 +30,7 @@ object UriHelper {
         host <- Option(u.getHost)
       } yield {
         val rebuilt = new URI(
-          scheme,
+          "https", // force scheme
           null, // drop userInfo
           newHost,
           -1, // drop port

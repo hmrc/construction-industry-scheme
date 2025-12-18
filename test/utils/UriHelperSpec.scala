@@ -22,26 +22,26 @@ import org.scalatest.matchers.should.Matchers.shouldBe
 import uk.gov.hmrc.constructionindustryscheme.utils.UriHelper.replaceHostIgnoringUserInfoAndPort
 
 class UriHelperSpec extends SpecBase {
-  "replace host and drop userInfo and port" in {
+  "replace host and drop userInfo and port, force https" in {
     replaceHostIgnoringUserInfoAndPort(
-      "http://sa.chris.hmrc.gov.uk:9102/ChRIS/CISR/Filing/action/CISR",
-      "chris.ws.ibt.hmrc.gov.uk"
+      "http://chris.test/poll",
+      "override.chris.test"
     ) shouldBe
-      Some("http://chris.ws.ibt.hmrc.gov.uk/ChRIS/CISR/Filing/action/CISR")
+      Some("https://override.chris.test/poll")
   }
-  "replace host and keep path, query and fragment" in {
+  "replace host and keep path, query and fragment, force https" in {
     replaceHostIgnoringUserInfoAndPort(
       "http://example.com/api?x=1#frag",
       "new.example.com"
     ) shouldBe
-      Some("http://new.example.com/api?x=1#frag")
+      Some("https://new.example.com/api?x=1#frag")
   }
-  "replace IPv6 host and drop port" in {
+  "replace IPv6 host and drop port, force https" in {
     replaceHostIgnoringUserInfoAndPort(
       "http://[2001:db8::1]:8080/api",
       "example.com"
     ) shouldBe
-      Some("http://example.com/api")
+      Some("https://example.com/api")
   }
   "return None for invalid URI" in {
     replaceHostIgnoringUserInfoAndPort(

@@ -387,7 +387,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         val controller = mkController(service, appConfig = config)
 
         val pollUrl = "http://chris.test/poll"
-        val overridePollUrl = "http://override.chris.test/poll"
+        val overridePollUrl = "https://override.chris.test/poll"
         val correlationId = "CORR999"
 
         when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(overridePollUrl))(using any[HeaderCarrier]))
