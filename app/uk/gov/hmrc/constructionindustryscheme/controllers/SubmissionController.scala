@@ -33,10 +33,11 @@ import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, Submission
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionEnvelopeBuilder
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
-import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor
+import uk.gov.hmrc.constructionindustryscheme.utils.{UriHelper, XmlToJsonConvertor}
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
+
 import java.time.{Clock, Instant}
 import java.util.UUID
 
@@ -120,16 +121,30 @@ class SubmissionController @Inject()(
   def pollSubmission(pollUrl: RedirectUrl, correlationId: String): Action[AnyContent] =
     authorise.async { implicit req =>
       pollUrl.getEither(redirectUrlPolicy) match {
-        case Right(safeUrl) => submissionService.pollSubmission(correlationId,  safeUrl.url)
-          .map{ case ChrisPollResponse(status, pollUrl, interval) => Ok(Json.obj(
+        case Right(safeUrl) =>
+
+          // Temp logging override of polling url in QA environment - TODO remove once QA issue has been resolved
+          val overridePollUrl: String = if (appConfig.useOverridePollResponseEndPoint) {
+            UriHelper.replaceHostIgnoringUserInfoAndPort(safeUrl.url, appConfig.overridePollResponseEndPoint) match {
+              case Some(x) => x
+              case _ => safeUrl.url
+            }
+          } else safeUrl.url
+          logger.info(s"useOverridePollResponseEndPoint: $appConfig.useOverridePollResponseEndPoint")
+          logger.info(s"safeUrl.url: $safeUrl.url")
+          logger.info(s"overridePollUrl: $overridePollUrl")
+
+          submissionService.pollSubmission(correlationId,  overridePollUrl)
+          .map{ case ChrisPollResponse(status, overridePollUrl, interval) =>
+            Ok(Json.obj(
             "status" -> status.toString,
-            "pollUrl" -> pollUrl,
+            "pollUrl" -> overridePollUrl,
             "intervalSeconds" -> interval
-          ))}
-        case Left(value) => {
+          ))
+          }
+        case Left(value) =>
           logger.warn(s"could not poll the pollUrl provided as the host is not recognised: $value ")
           Future.successful(BadRequest(Json.obj("error" -> "pollUrl does not have the right host")))
-        }
       }
 
     }
