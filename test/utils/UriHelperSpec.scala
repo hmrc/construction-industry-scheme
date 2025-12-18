@@ -27,21 +27,21 @@ class UriHelperSpec extends SpecBase {
       "http://sa.chris.hmrc.gov.uk:9102/ChRIS/CISR/Filing/action/CISR",
       "chris.ws.ibt.hmrc.gov.uk"
     ) shouldBe
-      Some("http://chris.ws.ibt.hmrc.gov.uk/ChRIS/CISR/Filing/action/CISR")
+      Some("https://chris.ws.ibt.hmrc.gov.uk/ChRIS/CISR/Filing/action/CISR")
   }
   "replace host and keep path, query and fragment" in {
     replaceHostIgnoringUserInfoAndPort(
       "http://example.com/api?x=1#frag",
       "new.example.com"
     ) shouldBe
-      Some("http://new.example.com/api?x=1#frag")
+      Some("https://new.example.com/api?x=1#frag")
   }
   "replace IPv6 host and drop port" in {
     replaceHostIgnoringUserInfoAndPort(
       "http://[2001:db8::1]:8080/api",
       "example.com"
     ) shouldBe
-      Some("http://example.com/api")
+      Some("https://example.com/api")
   }
   "return None for invalid URI" in {
     replaceHostIgnoringUserInfoAndPort(
