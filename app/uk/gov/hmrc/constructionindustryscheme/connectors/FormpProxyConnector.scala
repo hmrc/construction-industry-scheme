@@ -17,12 +17,13 @@
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
 import play.api.http.Status.NOT_FOUND
+
 import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, CreateSubcontractorRequest, CreateSubmissionRequest, UpdateSchemeVersionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2

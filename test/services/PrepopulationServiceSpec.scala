@@ -22,7 +22,8 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{ApplyPrepopulationRequest, CisTaxpayer, Company, ContractorScheme, CreateContractorSchemeParams, EmployerReference, PrePopContractorBody, PrePopSubcontractor, PrepopKnownFacts, SoleTrader, UpdateContractorSchemeParams, UpdateSchemeVersionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, Company, ContractorScheme, CreateContractorSchemeParams, EmployerReference, PrePopContractorBody, PrePopSubcontractor, PrepopKnownFacts, SoleTrader, UpdateContractorSchemeParams}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, UpdateSchemeVersionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnService, PrepopulationService}
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
@@ -274,6 +275,54 @@ class PrepopulationServiceSpec extends SpecBase {
       ex.getMessage must include("Unknown TAXPAYER_TYPE")
 
       verify(formpProxy, never).applyPrepopulation(any())(any[HeaderCarrier])
+    }
+  }
+
+  "PrepopulationService.getContractorScheme" - {
+
+    "returns Some(ContractorScheme) when connector returns a scheme (happy path)" in new Setup {
+      val scheme = mkExistingScheme(
+        accountsOfficeReference = "123AB456789",
+        taxOfficeNumber = "163",
+        taxOfficeReference = "AB0063"
+      ).copy(
+        utr = Some("1234567890"),
+        name = Some("ABC Construction Ltd"),
+        version = Some(1)
+      )
+
+      when(formpProxy.getContractorScheme(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Some(scheme)))
+
+      val out = service.getContractorScheme(instanceId).futureValue
+      out mustBe Some(scheme)
+
+      verify(formpProxy).getContractorScheme(eqTo(instanceId))(any[HeaderCarrier])
+      verifyNoMoreInteractions(formpProxy)
+    }
+
+    "returns None when connector returns None" in new Setup {
+      when(formpProxy.getContractorScheme(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(None))
+
+      val out = service.getContractorScheme(instanceId).futureValue
+      out mustBe None
+
+      verify(formpProxy).getContractorScheme(eqTo(instanceId))(any[HeaderCarrier])
+      verifyNoMoreInteractions(formpProxy)
+    }
+
+    "propagates failures from the connector" in new Setup {
+      val boom = UpstreamErrorResponse("formp-proxy failed", 502)
+
+      when(formpProxy.getContractorScheme(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.getContractorScheme(instanceId).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).getContractorScheme(eqTo(instanceId))(any[HeaderCarrier])
+      verifyNoMoreInteractions(formpProxy)
     }
   }
 

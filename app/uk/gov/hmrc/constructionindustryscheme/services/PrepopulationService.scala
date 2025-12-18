@@ -19,6 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, UpdateSchemeVersionRequest}
 
 import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}

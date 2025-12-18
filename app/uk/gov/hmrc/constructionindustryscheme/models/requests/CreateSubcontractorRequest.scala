@@ -14,15 +14,16 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models
+package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
+import uk.gov.hmrc.constructionindustryscheme.models.SubcontractorType
 
 case class CreateSubcontractorRequest(
-                                       schemeId: Int,
-                                       subcontractorType: SubcontractorType,
-                                       version: Int
-                                     )
+  schemeId: Int,
+  subcontractorType: SubcontractorType,
+  version: Int
+)
 
 object CreateSubcontractorRequest {
   given format: OFormat[CreateSubcontractorRequest] = Json.format[CreateSubcontractorRequest]

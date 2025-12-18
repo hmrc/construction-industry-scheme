@@ -14,25 +14,12 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models
+package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
 
-final case class PrePopContractorBody(
-  schemeName: String,
-  utr: String,
-  response: Int
-)
+case class UpdateSchemeVersionRequest(instanceId: String, version: Int)
 
-object PrePopContractorBody {
-  implicit val format: OFormat[PrePopContractorBody] = Json.format[PrePopContractorBody]
-}
-
-final case class PrePopContractorResponse(
-  knownfacts: PrepopKnownFacts,
-  prePopContractor: PrePopContractorBody
-)
-
-object PrePopContractorResponse {
-  implicit val format: OFormat[PrePopContractorResponse] = Json.format[PrePopContractorResponse]
+object UpdateSchemeVersionRequest {
+  given format: OFormat[UpdateSchemeVersionRequest] = Json.format[UpdateSchemeVersionRequest]
 }

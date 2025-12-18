@@ -23,8 +23,8 @@ import org.scalatest.matchers.must.Matchers.mustBe
 import org.scalatest.OptionValues.convertOptionToValuable
 import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.{ApplyPrepopulationRequest, Company, CreateContractorSchemeParams, CreateSubcontractorRequest, NilMonthlyReturnRequest, SoleTrader, UpdateContractorSchemeParams, UpdateSchemeVersionRequest, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, CreateSubcontractorRequest, CreateSubmissionRequest, UpdateSchemeVersionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.{Company, CreateContractorSchemeParams, NilMonthlyReturnRequest, SoleTrader, UpdateContractorSchemeParams, UserMonthlyReturns}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
 class FormpProxyConnectorIntegrationSpec

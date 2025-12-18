@@ -14,12 +14,17 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models
+package models.requests
 
-import play.api.libs.json.{Json, OFormat}
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
+import play.api.libs.json.*
+import uk.gov.hmrc.constructionindustryscheme.models.requests.UpdateSchemeVersionRequest
 
-case class UpdateSchemeVersionRequest(instanceId: String, version: Int)
+class UpdateSchemeVersionRequestSpec extends AnyFreeSpec with Matchers {
 
-object UpdateSchemeVersionRequest {
-  given format: OFormat[UpdateSchemeVersionRequest] = Json.format[UpdateSchemeVersionRequest]
+  "UpdateSchemeVersionRequest JSON" in {
+    val model = UpdateSchemeVersionRequest("instance-123", 2)
+    Json.toJson(model).as[UpdateSchemeVersionRequest] shouldBe model
+  }
 }
