@@ -376,6 +376,38 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
   "pollSubmission" - {
 
+    "override polling url is true" - {
+
+      "returns 200 with ACCEPTED status and override pollUrl when service returns ACCEPTED with pollUrl" in {
+        val service = mock[SubmissionService]
+        val config = mock[AppConfig]
+        when(config.chrisHost).thenReturn(Seq("chris.test"))
+        when(config.useOverridePollResponseEndPoint).thenReturn(true)
+        when(config.overridePollResponseEndPoint).thenReturn("override.chris.test")
+        val controller = mkController(service, appConfig = config)
+
+        val pollUrl = "http://chris.test/poll"
+        val overridePollUrl = "http://override.chris.test/poll"
+        val correlationId = "CORR999"
+
+        when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(overridePollUrl))(using any[HeaderCarrier]))
+          .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, Some(overridePollUrl), Some(10))))
+
+        val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
+
+        val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
+
+        status(result) mustBe OK
+        val js = contentAsJson(result)
+        (js \ "status").as[String] mustBe "ACCEPTED"
+        (js \ "pollUrl").as[String] mustBe overridePollUrl
+        (js \ "intervalSeconds").as[Int] mustBe 10
+
+        verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(overridePollUrl))(using any[HeaderCarrier])
+      }
+
+    }
+
     "returns 200 with SUBMITTED status when service returns SUBMITTED" in {
       val service = mock[SubmissionService]
       val config = mock[AppConfig]

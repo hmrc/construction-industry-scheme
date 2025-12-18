@@ -32,5 +32,12 @@ class AppConfig @Inject()(config: Configuration) {
   val cisDefaultBrowserIntervalMs: Long = config.get[Long]("cis.defaultBrowserIntervalMs")
 
   val cisDefaultBusinessIntervalsMs: List[Long] = config.get[Seq[Long]]("cis.defaultBusinessIntervalsMs").toList
+
+  lazy val useOverridePollResponseEndPoint: Boolean     =
+    config.getOptional[Boolean]("cis.useOverridePollResponseEndPoint").getOrElse(false)
+
+  lazy val overridePollResponseEndPoint: String =
+    config.get[String]("cis.overridePollResponseEndPoint")
+    
 }
 
