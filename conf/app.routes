@@ -4,6 +4,7 @@ GET        /taxpayer                                                     uk.gov.
 GET        /monthly-returns                                              uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getAllMonthlyReturns(cisId: Option[String])
 POST       /monthly-returns/nil/create                                   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createNil()
 GET        /scheme/email/:instanceId                                     uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getSchemeEmail(instanceId: String)
+GET        /scheme/:instanceId                                           uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.getContractorScheme(instanceId: String)
 
 POST       /submissions/create                                           uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.createSubmission
 POST       /submissions/:submissionId/submit-to-chris                    uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.submitToChris(submissionId: String)
@@ -15,6 +16,6 @@ POST       /agent/client-list/retrieval/status                           uk.gov.
 GET        /agent/client-list                                            uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.getAllClients
 GET        /agent/has-client/:taxOfficeNumber/:taxOfficeReference        uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.hasClient(taxOfficeNumber: String, taxOfficeReference: String)
 GET        /agent/client-taxpayer/:taxOfficeNumber/:taxOfficeReference   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getCisClientTaxpayer(taxOfficeNumber: String, taxOfficeReference: String)
-POST       /contractor-known-facts/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId               uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorKnownFacts(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
-
+POST       /contractor-known-facts/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId                     uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorKnownFacts(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
+POST       /scheme/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId                                     uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorAndSubcontractors(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
 

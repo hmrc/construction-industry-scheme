@@ -17,8 +17,10 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, CreateContractorSchemeParams, EmployerReference, UpdateContractorSchemeParams}
+import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
+import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, UpdateSchemeVersionRequest}
+
 import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
@@ -26,7 +28,8 @@ import scala.concurrent.ExecutionContext
 @Singleton
 class PrepopulationService @Inject()(
   monthlyReturnService: MonthlyReturnService,
-  formp: FormpProxyConnector
+  formp: FormpProxyConnector,
+  datacache: DatacacheProxyConnector
 )(implicit ec: ExecutionContext) {
 
   def prepopulateContractorKnownFacts(
@@ -37,6 +40,9 @@ class PrepopulationService @Inject()(
       ensureContractorKnownFactsInFormp(instanceId, cis)
     }
 
+  def getContractorScheme(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[ContractorScheme]] =
+    formp.getContractorScheme(instanceId)
+    
   private def ensureContractorKnownFactsInFormp(
     instanceId: String,
     cis: CisTaxpayer
@@ -87,4 +93,99 @@ class PrepopulationService @Inject()(
         }
     }
   }
+
+  def prepopulateContractorAndSubcontractors(
+    instanceId: String,
+    employerRef: EmployerReference
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    monthlyReturnService.getCisTaxpayer(employerRef).flatMap { cis =>
+      val accountsOfficeRef: String =
+        List(cis.aoDistrict, cis.aoPayType, cis.aoCheckCode, cis.aoReference)
+          .flatten
+          .mkString
+
+      val knownFacts = PrepopKnownFacts(
+        taxOfficeNumber = cis.taxOfficeNumber,
+        taxOfficeReference = cis.taxOfficeRef,
+        accountOfficeReference = accountsOfficeRef
+      )
+
+      for {
+        maybeScheme <- formp.getContractorScheme(instanceId)
+        existing <- maybeScheme match {
+          case Some(s) => Future.successful(s)
+          case None =>
+            Future.failed(
+              new IllegalStateException(
+                s"No FORMP scheme found for instanceId=$instanceId; F1 must run first"
+              )
+            )
+        }
+
+        contractorPrepop <- datacache.getSchemePrepopByKnownFacts(knownFacts)
+        subcontractors <- datacache.getSubcontractorsPrepopByKnownFacts(knownFacts)
+        _ <- contractorPrepop match {
+
+          case None =>
+            val nextPrePopCount = Some(existing.prePopCount.getOrElse(0) + 1)
+            val currentVersion = existing.version.getOrElse(0)
+
+            val updated = UpdateContractorSchemeParams(
+              schemeId = existing.schemeId,
+              instanceId = instanceId,
+              accountsOfficeReference = existing.accountsOfficeReference,
+              taxOfficeNumber = existing.taxOfficeNumber,
+              taxOfficeReference = existing.taxOfficeReference,
+              emailAddress = existing.emailAddress,
+              prePopCount = nextPrePopCount,
+              prePopSuccessful = Some("N"),
+              version = existing.version
+            )
+
+            for {
+              _ <- formp.updateContractorScheme(updated)
+              _ <- formp.updateSchemeVersion(UpdateSchemeVersionRequest(instanceId, currentVersion)).map(_ => ())
+            } yield ()
+
+          case Some(prepopBody) =>
+            val name = prepopBody.schemeName
+            val utr = Option(prepopBody.utr).filter(_.nonEmpty)
+
+            val currentVersion = existing.version.getOrElse(0)
+            val nextPrePopCount = existing.prePopCount.getOrElse(0) + 1
+
+            val subTypes: Seq[SubcontractorType] =
+              subcontractors.map(s => toSubcontractorType(s.subcontractorType))
+
+            val req = ApplyPrepopulationRequest(
+              schemeId = existing.schemeId,
+              instanceId = instanceId,
+              accountsOfficeReference = existing.accountsOfficeReference,
+              taxOfficeNumber = existing.taxOfficeNumber,
+              taxOfficeReference = existing.taxOfficeReference,
+              utr = utr,
+              name = name,
+              emailAddress = existing.emailAddress,
+              displayWelcomePage = existing.displayWelcomePage,
+              prePopCount = nextPrePopCount,
+              prePopSuccessful = "Y",
+              version = currentVersion,
+              subcontractorTypes = subTypes
+            )
+
+            // This is atomic in FORMP: Update_Scheme + Create_Subcontractor* + Update_Version_Number
+            formp.applyPrepopulation(req).map(_ => ())
+        }
+      } yield ()
+    }
+
+  private def toSubcontractorType(raw: String): SubcontractorType =
+    raw.trim.toUpperCase match {
+      case "S" => SoleTrader
+      case "C" => Company
+      case "P" => Partnership
+      case "T" => Trust
+      case other =>
+        throw new IllegalArgumentException(s"Unknown TAXPAYER_TYPE '$other'")
+    }
 }
