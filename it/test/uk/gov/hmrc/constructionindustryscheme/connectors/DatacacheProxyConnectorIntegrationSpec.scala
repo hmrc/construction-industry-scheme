@@ -38,7 +38,7 @@ class DatacacheProxyConnectorIntegrationSpec
   private val knownFacts = PrepopKnownFacts(
     taxOfficeNumber = "111",
     taxOfficeReference = "test111",
-    agentOwnReference = "agent-ref-123"
+    accountOfficeReference = "agent-ref-123"
   )
   private val knownFactsJson = Json.toJson(knownFacts)
 
@@ -485,7 +485,7 @@ class DatacacheProxyConnectorIntegrationSpec
                   |  "knownfacts": {
                   |    "taxOfficeNumber": "111",
                   |    "taxOfficeReference": "test111",
-                  |    "agentOwnReference": "agent-ref-123"
+                  |    "accountOfficeReference": "agent-ref-123"
                   |  },
                   |  "prePopContractor": {
                   |    "schemeName": "ABC Construction Ltd",
@@ -530,7 +530,7 @@ class DatacacheProxyConnectorIntegrationSpec
                   |  "knownfacts": {
                   |    "taxOfficeNumber": "111",
                   |    "taxOfficeReference": "test111",
-                  |    "agentOwnReference": "agent-ref-123"
+                  |    "accountOfficeReference": "agent-ref-123"
                   |  },
                   |  "prePopSubcontractors": {
                   |    "response": 1,

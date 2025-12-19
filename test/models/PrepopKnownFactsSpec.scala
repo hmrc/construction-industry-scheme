@@ -34,7 +34,7 @@ class PrepopKnownFactsSpec extends AnyFreeSpec with Matchers {
       Json.obj(
         "taxOfficeNumber" -> "123",
         "taxOfficeReference" -> "ABC123"
-        // agentOwnReference missing
+        // accountOfficeReference missing
       ).validate[PrepopKnownFacts].isError shouldBe true
     }
   }

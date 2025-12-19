@@ -107,7 +107,7 @@ class PrepopulationService @Inject()(
       val knownFacts = PrepopKnownFacts(
         taxOfficeNumber = cis.taxOfficeNumber,
         taxOfficeReference = cis.taxOfficeRef,
-        agentOwnReference = accountsOfficeRef
+        accountOfficeReference = accountsOfficeRef
       )
 
       for {

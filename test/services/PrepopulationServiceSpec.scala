@@ -149,7 +149,7 @@ class PrepopulationServiceSpec extends SpecBase {
       val expectedKnownFacts = PrepopKnownFacts(
         taxOfficeNumber = cis.taxOfficeNumber,
         taxOfficeReference = cis.taxOfficeRef,
-        agentOwnReference = "123AB456789"
+        accountOfficeReference = "123AB456789"
       )
 
       when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
@@ -196,7 +196,7 @@ class PrepopulationServiceSpec extends SpecBase {
       val expectedKnownFacts = PrepopKnownFacts(
         taxOfficeNumber = cis.taxOfficeNumber,
         taxOfficeReference = cis.taxOfficeRef,
-        agentOwnReference = "123AB456789"
+        accountOfficeReference = "123AB456789"
       )
 
       val contractorPrepop = PrePopContractorBody(
@@ -252,7 +252,7 @@ class PrepopulationServiceSpec extends SpecBase {
       val expectedKnownFacts = PrepopKnownFacts(
         taxOfficeNumber = cis.taxOfficeNumber,
         taxOfficeReference = cis.taxOfficeRef,
-        agentOwnReference = "123AB456789"
+        accountOfficeReference = "123AB456789"
       )
 
       val contractorPrepop = PrePopContractorBody("ABC Construction Ltd", "1234567890", 1)
