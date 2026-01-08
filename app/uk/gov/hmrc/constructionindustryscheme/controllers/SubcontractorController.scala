@@ -20,7 +20,7 @@ import play.api.Logging
 import play.api.libs.json.{JsError, JsValue, Json}
 import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.requests.SubcontractorCreateRequest
+import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateSubcontractorRequest
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -36,11 +36,11 @@ class SubcontractorController @Inject() (
 
   def createSubcontractor(): Action[JsValue] =
     authorise(parse.json).async { implicit request =>
-      request.body.validate[SubcontractorCreateRequest].fold(
+      request.body.validate[CreateSubcontractorRequest].fold(
         errs => Future.successful(BadRequest(JsError.toJson(errs))),
-        scr =>
+        request =>
           subcontractorService
-            .createSubcontractor(scr)
+            .createSubcontractor(request)
             .map(resp => Created(Json.toJson(resp)))
             .recover { case ex =>
               logger.error("[create] formp-proxy create failed", ex)

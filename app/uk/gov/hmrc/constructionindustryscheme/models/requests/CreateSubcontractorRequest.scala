@@ -18,12 +18,12 @@ package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
 
-final case class SubcontractorCreateRequest(
+final case class CreateSubcontractorRequest(
                                              schemeId: Int,
                                              subcontractorType: String,
                                              currentVersion: Int
                                            )
 
-object SubcontractorCreateRequest {
-  implicit val format: OFormat[SubcontractorCreateRequest] = Json.format[SubcontractorCreateRequest]
+object CreateSubcontractorRequest {
+  implicit val format: OFormat[CreateSubcontractorRequest] = Json.format[CreateSubcontractorRequest]
 }

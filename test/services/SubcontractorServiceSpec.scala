@@ -20,8 +20,8 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.requests.SubcontractorCreateRequest
-import uk.gov.hmrc.constructionindustryscheme.models.response.SubcontractorCreateResponse
+import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateSubcontractorRequest
+import uk.gov.hmrc.constructionindustryscheme.models.response.CreateSubcontractorResponse
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -36,8 +36,8 @@ final class SubcontractorServiceSpec extends SpecBase {
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
       val service = new SubcontractorService(formpProxyConnector)
 
-      val request = SubcontractorCreateRequest(1, "trader", 0)
-      val response = SubcontractorCreateResponse(subbieResourceRef = 10)
+      val request = CreateSubcontractorRequest(1, "trader", 0)
+      val response = CreateSubcontractorResponse(subbieResourceRef = 10)
 
       when(formpProxyConnector.createSubcontractor(eqTo(request))(any[HeaderCarrier]))
         .thenReturn(Future.successful(response))
@@ -51,7 +51,7 @@ final class SubcontractorServiceSpec extends SpecBase {
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
       val service = new SubcontractorService(formpProxyConnector)
 
-      val request = SubcontractorCreateRequest(1, "trader", 0)
+      val request = CreateSubcontractorRequest(1, "trader", 0)
 
       when(formpProxyConnector.createSubcontractor(eqTo(request))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))

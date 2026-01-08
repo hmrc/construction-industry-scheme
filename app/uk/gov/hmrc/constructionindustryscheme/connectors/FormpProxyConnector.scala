@@ -23,7 +23,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, SubcontractorCreateRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, CreateSubcontractorRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
@@ -105,9 +105,9 @@ class FormpProxyConnector @Inject()(
         else Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
       }
 
-  def createSubcontractor(request: SubcontractorCreateRequest)(implicit hc: HeaderCarrier): Future[SubcontractorCreateResponse] =
+  def createSubcontractor(request: CreateSubcontractorRequest)(implicit hc: HeaderCarrier): Future[CreateSubcontractorResponse] =
     http
       .post(url"$base/cis/subcontractor/create")
       .withBody(Json.toJson(request))
-      .execute[SubcontractorCreateResponse]
+      .execute[CreateSubcontractorResponse]
 }

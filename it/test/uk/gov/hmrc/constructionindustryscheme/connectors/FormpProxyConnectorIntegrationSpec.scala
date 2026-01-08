@@ -24,7 +24,7 @@ import org.scalatest.OptionValues.convertOptionToValuable
 import play.api.http.Status.CREATED
 import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, SubcontractorCreateRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, CreateSubcontractorRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{CreateContractorSchemeParams, NilMonthlyReturnRequest, UpdateContractorSchemeParams, UserMonthlyReturns}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
@@ -389,7 +389,7 @@ class FormpProxyConnectorIntegrationSpec
   "FormpProxyConnector createSubcontractor" should {
 
     "POSTs request and returns response model (200)" in {
-      val request = SubcontractorCreateRequest(1, "trader", 0)
+      val request = CreateSubcontractorRequest(1, "trader", 0)
 
       val responseJson =
         """
@@ -410,7 +410,7 @@ class FormpProxyConnectorIntegrationSpec
     }
 
     "propagates upstream error for non-2xx" in {
-      val request = SubcontractorCreateRequest(1, "trader", 0)
+      val request = CreateSubcontractorRequest(1, "trader", 0)
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create"))

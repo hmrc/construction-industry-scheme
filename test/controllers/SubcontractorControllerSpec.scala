@@ -26,8 +26,8 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.SubcontractorCreateRequest
-import uk.gov.hmrc.constructionindustryscheme.models.response.SubcontractorCreateResponse
+import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateSubcontractorRequest
+import uk.gov.hmrc.constructionindustryscheme.models.response.CreateSubcontractorResponse
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -47,7 +47,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
   val createSubcontractorUrl = "/cis/subcontractor/create"
 
   val validCreateJson: JsValue = Json.toJson(
-    SubcontractorCreateRequest(
+    CreateSubcontractorRequest(
       schemeId = 1,
       subcontractorType = "trader",
       currentVersion = 0
@@ -59,10 +59,10 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
       val service = mock[SubcontractorService]
       val controller = mockController(service)
 
-      val response = SubcontractorCreateResponse(subbieResourceRef = 10)
+      val response = CreateSubcontractorResponse(subbieResourceRef = 10)
       val responseJson: JsValue = Json.toJson(response)
 
-      when(service.createSubcontractor(any[SubcontractorCreateRequest])(any[HeaderCarrier]))
+      when(service.createSubcontractor(any[CreateSubcontractorRequest])(any[HeaderCarrier]))
         .thenReturn(Future.successful(response))
 
       val req = FakeRequest(POST, createSubcontractorUrl)
@@ -74,7 +74,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
       status(result) mustBe CREATED
       contentAsJson(result) mustBe responseJson
 
-      verify(service).createSubcontractor(any[SubcontractorCreateRequest])(any[HeaderCarrier])
+      verify(service).createSubcontractor(any[CreateSubcontractorRequest])(any[HeaderCarrier])
     }
 
     "returns 400 when JSON is invalid" in {
@@ -98,7 +98,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
       val service = mock[SubcontractorService]
       val controller = mockController(service)
 
-      when(service.createSubcontractor(any[SubcontractorCreateRequest])(any[HeaderCarrier]))
+      when(service.createSubcontractor(any[CreateSubcontractorRequest])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("formp down")))
 
       val req = FakeRequest(POST, createSubcontractorUrl)

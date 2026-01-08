@@ -18,10 +18,10 @@ package uk.gov.hmrc.constructionindustryscheme.models.response
 
 import play.api.libs.json.{Json, OFormat}
 
-final case class SubcontractorCreateResponse(
+final case class CreateSubcontractorResponse(
                                               subbieResourceRef: Int
                                             )
 
-object SubcontractorCreateResponse {
-  implicit val format: OFormat[SubcontractorCreateResponse] = Json.format[SubcontractorCreateResponse]
+object CreateSubcontractorResponse {
+  implicit val format: OFormat[CreateSubcontractorResponse] = Json.format[CreateSubcontractorResponse]
 }
