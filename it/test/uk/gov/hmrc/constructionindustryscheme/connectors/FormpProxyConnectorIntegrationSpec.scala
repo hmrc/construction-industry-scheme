@@ -21,9 +21,10 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
 import org.scalatest.OptionValues.convertOptionToValuable
+import play.api.http.Status.CREATED
 import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, SubcontractorCreateRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{CreateContractorSchemeParams, NilMonthlyReturnRequest, UpdateContractorSchemeParams, UserMonthlyReturns}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
@@ -385,4 +386,40 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector createSubcontractor" should {
+
+    "POSTs request and returns response model (200)" in {
+      val request = SubcontractorCreateRequest(1, "trader", 0)
+
+      val responseJson =
+        """
+          |{
+          |  "subbieResourceRef": 10
+          |}
+                """.stripMargin
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
+          .willReturn(aResponse().withStatus(CREATED).withBody(responseJson))
+      )
+
+      val result = connector.createSubcontractor(request).futureValue
+      result.subbieResourceRef mustBe 10
+    }
+
+    "propagates upstream error for non-2xx" in {
+      val request = SubcontractorCreateRequest(1, "trader", 0)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create"))
+          .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{ "message": "boom" }"""))
+      )
+
+      val ex = intercept[Throwable](connector.createSubcontractor(request).futureValue)
+      ex.getMessage.toLowerCase must include("500")
+    }
+  }
 }
