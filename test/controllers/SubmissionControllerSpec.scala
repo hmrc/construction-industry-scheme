@@ -63,20 +63,12 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     super.beforeEach()
   }
 
-  private def mkAppConfig(
-                           missingMandatory: Boolean = false,
-                           irmarkBad: Boolean = false
-                         ): AppConfig = {
-    val appConfig = mock[AppConfig]
-    when(appConfig.chrisEnableMissingMandatory).thenReturn(missingMandatory)
-    when(appConfig.chrisEnableIrmarkBad).thenReturn(irmarkBad)
-    appConfig
-  }
+  val appConfig: AppConfig = mock[AppConfig]
 
   private def mkController(
                             service: SubmissionService,
                             auth: AuthAction = fakeAuthAction(),
-                            appConfig: AppConfig = mkAppConfig(),
+                            appConfig: AppConfig = appConfig,
                             clock: Clock = Clock.systemUTC()
                           ): SubmissionController =
     new SubmissionController(auth, service, mockAuditService, cc, appConfig, clock)
@@ -107,7 +99,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
       verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier])
     }
-    
+
     "returns 200 with SUBMITTED_NO_RECEIPT when service returns SubmittedNoReceiptStatus" in {
       val service    = mock[SubmissionService]
       val controller = mkController(service)
@@ -383,6 +375,38 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
   }
 
   "pollSubmission" - {
+
+    "override polling url is true" - {
+
+      "returns 200 with ACCEPTED status and override pollUrl when service returns ACCEPTED with pollUrl" in {
+        val service = mock[SubmissionService]
+        val config = mock[AppConfig]
+        when(config.chrisHost).thenReturn(Seq("chris.test"))
+        when(config.useOverridePollResponseEndPoint).thenReturn(true)
+        when(config.overridePollResponseEndPoint).thenReturn("override.chris.test")
+        val controller = mkController(service, appConfig = config)
+
+        val pollUrl = "http://chris.test/poll"
+        val overridePollUrl = "https://override.chris.test/poll"
+        val correlationId = "CORR999"
+
+        when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(overridePollUrl))(using any[HeaderCarrier]))
+          .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, Some(overridePollUrl), Some(10))))
+
+        val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
+
+        val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
+
+        status(result) mustBe OK
+        val js = contentAsJson(result)
+        (js \ "status").as[String] mustBe "ACCEPTED"
+        (js \ "pollUrl").as[String] mustBe overridePollUrl
+        (js \ "intervalSeconds").as[Int] mustBe 10
+
+        verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(overridePollUrl))(using any[HeaderCarrier])
+      }
+
+    }
 
     "returns 200 with SUBMITTED status when service returns SUBMITTED" in {
       val service = mock[SubmissionService]

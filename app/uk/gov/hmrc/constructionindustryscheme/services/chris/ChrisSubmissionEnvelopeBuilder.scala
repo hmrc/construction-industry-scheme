@@ -28,34 +28,16 @@ import scala.xml.{Elem, NodeSeq, PrettyPrinter, XML}
 import uk.gov.hmrc.constructionindustryscheme.utils.XxeHelper.secureSAXParser
 
 import scala.xml.*
-import scala.xml.transform.{RewriteRule, RuleTransformer}
 
 object ChrisSubmissionEnvelopeBuilder extends IrMarkGenerator {
   private val gatewayTimestampFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
   private val isoDateFmt = DateTimeFormatter.ISO_LOCAL_DATE
   private val prettyPrinter = new PrettyPrinter(120, 4)
 
-  private val removeEnvelopeVersionRule: RewriteRule = new RewriteRule {
-    override def transform(n: Node): Seq[Node] = n match {
-      case e: Elem if e.label == "EnvelopeVersion" => NodeSeq.Empty
-      case other => other
-    }
-  }
-
-  private def dropEnvelopeVersionIfEnabled(xml: Elem, enabled: Boolean): Elem =
-    if enabled then new RuleTransformer(removeEnvelopeVersionRule).transform(xml).head.asInstanceOf[Elem]
-    else xml
-
-  private def corruptIrMark(ir: String): String =
-    if (ir == null || ir.isEmpty) "A"
-    else ir.updated(0, if (ir.charAt(0) != 'A') 'A' else 'B')
-
   def build(
              request: ChrisSubmissionRequest,
              authRequest: AuthenticatedRequest[_],
-             correlationId: String,
-             enableMissingMandatory: Boolean,
-             enableIrmarkBad: Boolean
+             correlationId: String
            ): Elem = {
 
     val gatewayTimestamp = LocalDateTime.now(ZoneOffset.UTC).format(gatewayTimestampFormatter)
@@ -68,7 +50,7 @@ object ChrisSubmissionEnvelopeBuilder extends IrMarkGenerator {
 
     val periodEnd = parsePeriodEnd(request.monthYear)
 
-    val baseEnvelope: Elem =
+    val envelopeXml: Elem =
       <GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
         <EnvelopeVersion>2.0</EnvelopeVersion>
 
@@ -138,19 +120,8 @@ object ChrisSubmissionEnvelopeBuilder extends IrMarkGenerator {
         </Body>
       </GovTalkMessage>
 
-    val envelopeXml: Elem = dropEnvelopeVersionIfEnabled(baseEnvelope, enableMissingMandatory)
-
     val irMarkBase64 = generateIrMark(envelopeXml, ChrisEnvelopeConstants.Namespace)
-
-    logger.warn(s"Correct IRMark : $irMarkBase64")
-
-    val irMarkToUse = if (enableIrmarkBad) {
-      val bad = corruptIrMark(irMarkBase64)
-      logger.warn(s"IRMark corruption enabled: substituted computed IRMark with a mismatched value: $bad")
-      bad
-    } else irMarkBase64
-
-    val prettyXmlString = prettyPrinter.format(replaceIrMark(envelopeXml, irMarkToUse))
+    val prettyXmlString = prettyPrinter.format(replaceIrMark(envelopeXml, irMarkBase64))
 
     logger.info(s"Chris Envelope XML:\n$prettyXmlString")
     XML.loadString(prettyXmlString)
@@ -186,11 +157,9 @@ object ChrisSubmissionEnvelopeBuilder extends IrMarkGenerator {
   def buildPayload(
                     request: ChrisSubmissionRequest,
                     authRequest: AuthenticatedRequest[_],
-                    correlationId: String,
-                    enableMissingMandatory: Boolean,
-                    enableIrmarkBad: Boolean
+                    correlationId: String
                   ): BuiltSubmissionPayload = {
-    val finalEnvelope: scala.xml.Elem = build(request, authRequest, correlationId, enableMissingMandatory, enableIrmarkBad)
+    val finalEnvelope: scala.xml.Elem = build(request, authRequest, correlationId)
     val irMarkBase64: String = (finalEnvelope \\ "IRmark").text.trim
 
     BuiltSubmissionPayload(
