@@ -16,20 +16,19 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services.chris
 
+import play.api.Logging
 import uk.gov.hmrc.auth.core.Enrolments
 import uk.gov.hmrc.constructionindustryscheme.models.BuiltSubmissionPayload
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.services.irmark.IrMarkGenerator
+import uk.gov.hmrc.constructionindustryscheme.utils.IrMarkProcessor.UpdatedPayloadWithIrMark
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, YearMonth, ZoneOffset}
 import scala.util.Try
-import scala.xml.{Elem, NodeSeq, PrettyPrinter, XML}
-import uk.gov.hmrc.constructionindustryscheme.utils.XxeHelper.secureSAXParser
-
+import scala.xml.{Elem, NodeSeq, PrettyPrinter}
 import scala.xml.*
 
-object ChrisSubmissionEnvelopeBuilder extends IrMarkGenerator {
+object ChrisSubmissionEnvelopeBuilder extends Logging {
   private val gatewayTimestampFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
   private val isoDateFmt = DateTimeFormatter.ISO_LOCAL_DATE
   private val prettyPrinter = new PrettyPrinter(120, 4)
@@ -120,17 +119,12 @@ object ChrisSubmissionEnvelopeBuilder extends IrMarkGenerator {
         </Body>
       </GovTalkMessage>
 
-    val irMarkBase64 = generateIrMark(envelopeXml, ChrisEnvelopeConstants.Namespace)
-    val prettyXmlString = prettyPrinter.format(replaceIrMark(envelopeXml, irMarkBase64))
+    val (updatedXML, irMarkBase64, irMarkBase32) = UpdatedPayloadWithIrMark(envelopeXml.toString)
 
+    val prettyXmlString = prettyPrinter.format(updatedXML)
     logger.info(s"Chris Envelope XML:\n$prettyXmlString")
-    XML.loadString(prettyXmlString)
-  }
 
-  private def replaceIrMark(root: Elem, irMark: String) = {
-    val out = root.toString()
-    val subbed = out.replaceFirst( """<IRmark Type="generic">TBC</IRmark>""", s"""<IRmark Type="generic">$irMark</IRmark>""")
-    XML.withSAXParser(secureSAXParser).loadString(subbed)
+    updatedXML
   }
 
   private def extractTaxOfficeFromCisEnrolment(enrolments: Enrolments): Option[(String, String)] =
@@ -159,7 +153,7 @@ object ChrisSubmissionEnvelopeBuilder extends IrMarkGenerator {
                     authRequest: AuthenticatedRequest[_],
                     correlationId: String
                   ): BuiltSubmissionPayload = {
-    val finalEnvelope: scala.xml.Elem = build(request, authRequest, correlationId)
+    val finalEnvelope: Elem = build(request, authRequest, correlationId)
     val irMarkBase64: String = (finalEnvelope \\ "IRmark").text.trim
 
     BuiltSubmissionPayload(
