@@ -27,8 +27,9 @@ import org.apache.commons.codec.binary.Base32
 import scala.xml.*
 import scala.xml.XML.loadString
 import org.w3c.dom.Document
+import play.api.Logging
 
-object IrMarkProcessor {
+object IrMarkProcessor extends Logging {
   Init.init()
 
   // Removes the single IRmark node within the Elem tree
@@ -75,14 +76,14 @@ object IrMarkProcessor {
     canon.canonicalizeSubtree(domElem, baos)
     val canonicalBytes = baos.toByteArray
     val canonicalXml = new String(canonicalBytes, "UTF-8")
-    println("GenerateFullIrMark canonicalized XML (no comments):")
-    println(canonicalXml)
+    logger.info("GenerateFullIrMark canonicalized XML (no comments):")
+    logger.info(canonicalXml)
 
     val digest = MessageDigest.getInstance("SHA-1").digest(canonicalBytes)
     val b64 = Base64.getEncoder.encodeToString(digest)
     val b32 = new Base32().encodeToString(digest)
-    println(s"GenerateFullIrMark base64: $b64")
-    println(s"GenerateFullIrMark base32: $b32")
+    logger.info(s"GenerateFullIrMark base64: $b64")
+    logger.info(s"GenerateFullIrMark base32: $b32")
     (b64, b32)
   }
 
@@ -90,8 +91,6 @@ object IrMarkProcessor {
     val (b64, b32) = GenerateFullIrMark(xml)
     val inputElem = loadString(xml)
     val updatedXml = replaceSingleIrmarkWithValue(inputElem, b64)
-    println("UpdatedPayloadWithIrMark updated XML:")
-    println(updatedXml)
     (updatedXml, b64, b32)
   }
 
