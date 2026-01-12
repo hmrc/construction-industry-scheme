@@ -18,3 +18,4 @@ GET        /agent/client-taxpayer/:taxOfficeNumber/:taxOfficeReference   uk.gov.
 POST       /contractor-known-facts/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId               uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorKnownFacts(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
 
 POST       /subcontractor/create                                         uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.createSubcontractor()
+POST       /subcontractor/update                                         uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.updateSubcontractor()

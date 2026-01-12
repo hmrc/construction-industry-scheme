@@ -20,14 +20,14 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{verify, verifyNoInteractions, when}
 import org.scalatest.EitherValues
-import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED}
+import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, OK}
 import play.api.libs.json.{JsValue, Json}
 import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateSubcontractorRequest
-import uk.gov.hmrc.constructionindustryscheme.models.response.CreateSubcontractorResponse
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubcontractorRequest, UpdateSubcontractorRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -44,17 +44,17 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
                           ): SubcontractorController =
     new SubcontractorController(auth, subcontractorService, cc)
 
-  val createSubcontractorUrl = "/cis/subcontractor/create"
-
-  val validCreateJson: JsValue = Json.toJson(
-    CreateSubcontractorRequest(
-      schemeId = 1,
-      subcontractorType = "trader",
-      currentVersion = 0
-    )
-  )
-
   "createSubcontractor" - {
+
+    val createSubcontractorUrl = "/cis/subcontractor/create"
+
+    val validCreateJson: JsValue = Json.toJson(
+      CreateSubcontractorRequest(
+        schemeId = "1",
+        subcontractorType = "trader"
+      )
+    )
+
     "returns 201 with subcontractor response when service returns data" in {
       val service = mock[SubcontractorService]
       val controller = mockController(service)
@@ -109,6 +109,72 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
 
       status(result) mustBe BAD_GATEWAY
       (contentAsJson(result) \ "message").as[String] mustBe "create-subcontractor-failed"
+    }
+
+  }
+
+  "updateSubcontractor" - {
+
+    val updateSubcontractorUrl = "/cis/subcontractor/update"
+
+    val validUpdateJson: JsValue = Json.toJson(
+      UpdateSubcontractorRequest(schemeId = "1", subbieResourceRef = 10, tradingName = Some("trading Name"))
+    )
+
+    "returns 200 with update response when service returns data" in {
+      val service = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      val response = UpdateSubcontractorResponse(newVersion = 20)
+      val responseJson: JsValue = Json.toJson(response)
+
+      when(service.updateSubcontractor(any[UpdateSubcontractorRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      val req = FakeRequest(POST, updateSubcontractorUrl)
+        .withBody(validUpdateJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.updateSubcontractor()(req)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe responseJson
+
+      verify(service).updateSubcontractor(any[UpdateSubcontractorRequest])(any[HeaderCarrier])
+    }
+
+    "returns 400 when JSON is invalid" in {
+      val service = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      val bad = Json.obj("schemeId" -> 1)
+
+      val req = FakeRequest(POST, updateSubcontractorUrl)
+        .withBody(bad)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.updateSubcontractor()(req)
+
+      status(result) mustBe BAD_REQUEST
+      contentAsJson(result).toString must include("obj.subbieResourceRef")
+      verifyNoInteractions(service)
+    }
+
+    "returns 502 when service fails" in {
+      val service = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      when(service.updateSubcontractor(any[UpdateSubcontractorRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("formp down")))
+
+      val req = FakeRequest(POST, updateSubcontractorUrl)
+        .withBody(validUpdateJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.updateSubcontractor()(req)
+
+      status(result) mustBe BAD_GATEWAY
+      (contentAsJson(result) \ "message").as[String] mustBe "update-subcontractor-failed"
     }
 
   }

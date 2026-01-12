@@ -20,8 +20,8 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateSubcontractorRequest
-import uk.gov.hmrc.constructionindustryscheme.models.response.CreateSubcontractorResponse
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubcontractorRequest, UpdateSubcontractorRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -36,7 +36,7 @@ final class SubcontractorServiceSpec extends SpecBase {
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
       val service = new SubcontractorService(formpProxyConnector)
 
-      val request = CreateSubcontractorRequest(1, "trader", 0)
+      val request = CreateSubcontractorRequest("1", "trader")
       val response = CreateSubcontractorResponse(subbieResourceRef = 10)
 
       when(formpProxyConnector.createSubcontractor(eqTo(request))(any[HeaderCarrier]))
@@ -51,12 +51,43 @@ final class SubcontractorServiceSpec extends SpecBase {
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
       val service = new SubcontractorService(formpProxyConnector)
 
-      val request = CreateSubcontractorRequest(1, "trader", 0)
+      val request = CreateSubcontractorRequest("1", "trader")
 
       when(formpProxyConnector.createSubcontractor(eqTo(request))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.createSubcontractor(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "updateSubcontractor" - {
+
+    "delegates to FormpProxyConnector and returns response" in {
+
+      val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service = new SubcontractorService(formpProxyConnector)
+
+      val request = UpdateSubcontractorRequest(schemeId = "1", subbieResourceRef = 10, tradingName = Some("trading Name"))
+      val response = UpdateSubcontractorResponse(newVersion = 20)
+
+      when(formpProxyConnector.updateSubcontractor(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      service.updateSubcontractor(request).futureValue mustBe response
+      verify(formpProxyConnector).updateSubcontractor(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+
+      val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service = new SubcontractorService(formpProxyConnector)
+
+      val request = UpdateSubcontractorRequest(schemeId = "1", subbieResourceRef = 10, tradingName = Some("trading Name"))
+
+      when(formpProxyConnector.updateSubcontractor(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.updateSubcontractor(request).failed.futureValue.getMessage must include("boom")
     }
   }
 }

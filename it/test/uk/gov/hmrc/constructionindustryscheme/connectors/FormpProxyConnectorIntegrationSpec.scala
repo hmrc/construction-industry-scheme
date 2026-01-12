@@ -17,14 +17,14 @@
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
 import com.github.tomakehurst.wiremock.client.WireMock.*
+import org.scalatest.OptionValues.convertOptionToValuable
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
-import org.scalatest.OptionValues.convertOptionToValuable
 import play.api.http.Status.CREATED
 import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, CreateSubcontractorRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubcontractorRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{CreateContractorSchemeParams, NilMonthlyReturnRequest, UpdateContractorSchemeParams, UserMonthlyReturns}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
@@ -386,39 +386,39 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
-  "FormpProxyConnector createSubcontractor" should {
+  "FormpProxyConnector updateSubcontractor" should {
 
     "POSTs request and returns response model (200)" in {
-      val request = CreateSubcontractorRequest(1, "trader", 0)
+      val request = UpdateSubcontractorRequest(schemeId = "1", subbieResourceRef = 10, tradingName = Some("trading Name"))
 
       val responseJson =
         """
           |{
-          |  "subbieResourceRef": 10
+          |  "newVersion": 20
           |}
                 """.stripMargin
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create"))
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(CREATED).withBody(responseJson))
       )
 
-      val result = connector.createSubcontractor(request).futureValue
-      result.subbieResourceRef mustBe 10
+      val result = connector.updateSubcontractor(request).futureValue
+      result.newVersion mustBe 20
     }
 
     "propagates upstream error for non-2xx" in {
-      val request = CreateSubcontractorRequest(1, "trader", 0)
+      val request = UpdateSubcontractorRequest(schemeId = "1", subbieResourceRef = 10, tradingName = Some("trading Name"))
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create"))
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
           .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(500).withBody("""{ "message": "boom" }"""))
       )
 
-      val ex = intercept[Throwable](connector.createSubcontractor(request).futureValue)
+      val ex = intercept[Throwable](connector.updateSubcontractor(request).futureValue)
       ex.getMessage.toLowerCase must include("500")
     }
   }
