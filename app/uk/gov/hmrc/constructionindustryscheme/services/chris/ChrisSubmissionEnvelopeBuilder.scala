@@ -156,6 +156,10 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
     val finalEnvelope: Elem = build(request, authRequest, correlationId)
     val irMarkBase64: String = (finalEnvelope \\ "IRmark").text.trim
 
+    // TODO remove before deploying to prod
+    logger.info(s"[ChrisSubmissionEnvelopeBuilder] finalEnvelope: ${finalEnvelope.toString}")
+    logger.info(s"[ChrisSubmissionEnvelopeBuilder] irMarkBase64: $irMarkBase64")
+
     BuiltSubmissionPayload(
       envelope = finalEnvelope,
       correlationId = correlationId,
