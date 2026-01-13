@@ -80,13 +80,11 @@ class MonthlyReturnService @Inject()(
   
   private def mapStatus(raw: Option[String]): String = {
     raw.map(_.trim.toUpperCase) match {
-      case Some("STARTED") => "STARTED"
-      case Some("VALIDATED") => "VALIDATED"
-      case Some("PENDING") => "PENDING"
-      case Some("ACCEPTED") => "PENDING"
-      case Some("DEPARTMENTAL_ERROR") => "REJECTED"
-      case Some("FATAL_ERROR") => "REJECTED"
-      case _ => "STARTED"
+      case Some("STARTED") => "In progress"
+      case Some("VALIDATED") => "In progress"
+      case Some("PENDING") => "Awaiting confirmation"
+      case Some("REJECTED") => "Failed"
+      case _ => "In progress"
     }
   }
 }

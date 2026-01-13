@@ -192,8 +192,8 @@ class MonthlyReturnServiceSpec
           taxOfficeReference = "AB0063"
         ),
         monthlyReturn = Seq(
-          MonthlyReturn(1L, 2025, 1, nilReturnIndicator = Some("Y"), status = Some("ACCEPTED"), lastUpdate = last),
-          MonthlyReturn(2L, 2025, 2, nilReturnIndicator = Some("N"), status = Some("FATAL_ERROR"), lastUpdate = None)
+          MonthlyReturn(1L, 2025, 1, nilReturnIndicator = Some("Y"), status = Some("PENDING"), lastUpdate = last),
+          MonthlyReturn(2L, 2025, 2, nilReturnIndicator = Some("N"), status = Some("REJECTED"), lastUpdate = None)
         )
       )
 
@@ -204,8 +204,8 @@ class MonthlyReturnServiceSpec
 
       out mustBe UnsubmittedMonthlyReturnsResponse(
         unsubmittedCisReturns = Seq(
-          UnsubmittedMonthlyReturnsRow(2025, 1, "Nil", "PENDING", last),
-          UnsubmittedMonthlyReturnsRow(2025, 2, "Standard", "REJECTED", None)
+          UnsubmittedMonthlyReturnsRow(2025, 1, "Nil", "Awaiting confirmation", last),
+          UnsubmittedMonthlyReturnsRow(2025, 2, "Standard", "Failed", None)
         )
       )
 
