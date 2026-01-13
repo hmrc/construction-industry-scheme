@@ -528,4 +528,48 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector getUnsubmittedMonthlyReturns" should {
+
+    "POST instanceId to /formp-proxy/monthly-return and return wrapper (200)" in {
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "scheme": {
+           |    "schemeId": 999,
+           |    "instanceId": "$instanceId",
+           |    "accountsOfficeReference": "123PA00123456",
+           |    "taxOfficeNumber": "163",
+           |    "taxOfficeReference": "AB0063"
+           |  },
+           |  "monthlyReturn": [
+           |    { "monthlyReturnId": 66666, "taxYear": 2025, "taxMonth": 1 },
+           |    { "monthlyReturnId": 66667, "taxYear": 2025, "taxMonth": 7 }
+           |  ]
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/monthly-return"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
+          .willReturn(aResponse().withStatus(200).withBody(responseJson.toString()))
+      )
+
+      val out = connector.getUnsubmittedMonthlyReturns(instanceId).futureValue
+      Json.toJson(out) mustBe responseJson
+    }
+
+    "fail the future when upstream returns a non-2xx (e.g. 500)" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/monthly-return"))
+          .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = intercept[Throwable](connector.getUnsubmittedMonthlyReturns(instanceId).futureValue)
+      ex.getMessage must include("500")
+    }
+  }
+
 }

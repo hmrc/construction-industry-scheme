@@ -125,4 +125,10 @@ class FormpProxyConnector @Inject()(
       .withBody(Json.toJson(req))
       .execute[JsValue]
       .map(json => (json \ "version").as[Int])
+
+  def getUnsubmittedMonthlyReturns(instanceId: String)(implicit hc: HeaderCarrier): Future[UnsubmittedMonthlyReturns] =
+    http
+      .post(url"$base/monthly-return")
+      .withBody(Json.obj("instanceId" -> instanceId))
+      .execute[UnsubmittedMonthlyReturns]
 }
