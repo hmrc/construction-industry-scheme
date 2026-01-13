@@ -1,4 +1,5 @@
 /*
+ * Copyright 2025 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,17 +14,25 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.constructionindustryscheme.models.SubcontractorType
 
-case class CreateSubcontractorRequest(
-  schemeId: Int,
-  subcontractorType: SubcontractorType,
-  version: Int
+final case class PrePopContractorBody(
+  schemeName: String,
+  utr: String,
+  response: Int
 )
 
-object CreateSubcontractorRequest {
-  given format: OFormat[CreateSubcontractorRequest] = Json.format[CreateSubcontractorRequest]
+object PrePopContractorBody {
+  implicit val format: OFormat[PrePopContractorBody] = Json.format[PrePopContractorBody]
+}
+
+final case class PrePopContractorResponse(
+  knownfacts: PrepopKnownFacts,
+  prePopContractor: PrePopContractorBody
+)
+
+object PrePopContractorResponse {
+  implicit val format: OFormat[PrePopContractorResponse] = Json.format[PrePopContractorResponse]
 }

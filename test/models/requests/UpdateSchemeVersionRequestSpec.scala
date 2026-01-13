@@ -1,4 +1,5 @@
 /*
+ * Copyright 2025 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,17 +14,17 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package models.requests
 
-import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.constructionindustryscheme.models.SubcontractorType
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
+import play.api.libs.json.*
+import uk.gov.hmrc.constructionindustryscheme.models.requests.UpdateSchemeVersionRequest
 
-case class CreateSubcontractorRequest(
-  schemeId: Int,
-  subcontractorType: SubcontractorType,
-  version: Int
-)
+class UpdateSchemeVersionRequestSpec extends AnyFreeSpec with Matchers {
 
-object CreateSubcontractorRequest {
-  given format: OFormat[CreateSubcontractorRequest] = Json.format[CreateSubcontractorRequest]
+  "UpdateSchemeVersionRequest JSON" in {
+    val model = UpdateSchemeVersionRequest("instance-123", 2)
+    Json.toJson(model).as[UpdateSchemeVersionRequest] shouldBe model
+  }
 }

@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.utils
+package uk.gov.hmrc.constructionindustryscheme.models
 
-import javax.xml.parsers.{SAXParser, SAXParserFactory}
+import play.api.libs.json.{Json, OFormat}
 
-object XxeHelper {
-  def secureSAXParser: SAXParser = {
-    val saxParserFactory = SAXParserFactory.newInstance()
-    saxParserFactory.setFeature("http://xml.org/sax/features/external-general-entities", false)
-    saxParserFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-    saxParserFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
-    saxParserFactory.newSAXParser()
-  }
+final case class PrepopKnownFacts(
+  taxOfficeNumber: String,
+  taxOfficeReference: String,
+  accountOfficeReference: String
+)
 
+object PrepopKnownFacts {
+  implicit val format: OFormat[PrepopKnownFacts] = Json.format[PrepopKnownFacts]
 }

@@ -23,7 +23,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubcontractorRequest, CreateSubmissionRequest, UpdateSubcontractorRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, CreateSubcontractorRequest, CreateSubmissionRequest, UpdateSchemeVersionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
@@ -104,6 +104,27 @@ class FormpProxyConnector @Inject()(
         if (resp.status / 100 == 2) Future.unit
         else Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
       }
+
+  def updateSchemeVersion(req: UpdateSchemeVersionRequest)(implicit hc: HeaderCarrier): Future[Int] =
+    http
+      .post(url"$base/scheme/version-update")
+      .withBody(Json.toJson(req))
+      .execute[JsValue]
+      .map(json => (json \ "version").as[Int])
+
+  def createSubcontractor(req: CreateSubcontractorRequest)(implicit hc: HeaderCarrier): Future[Int] =
+    http
+      .post(url"$base/subcontractor/create")
+      .withBody(Json.toJson(req))
+      .execute[JsValue]
+      .map(json => (json \ "subbieResourceRef").as[Int])
+
+  def applyPrepopulation(req: ApplyPrepopulationRequest)(implicit hc: HeaderCarrier): Future[Int] =
+    http
+      .post(url"$base/scheme/prepopulate")
+      .withBody(Json.toJson(req))
+      .execute[JsValue]
+      .map(json => (json \ "version").as[Int])
 
   def createSubcontractor(request: CreateSubcontractorRequest)(implicit hc: HeaderCarrier): Future[CreateSubcontractorResponse] =
     http

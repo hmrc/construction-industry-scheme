@@ -1,4 +1,5 @@
 /*
+ * Copyright 2025 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +17,9 @@
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.constructionindustryscheme.models.SubcontractorType
 
-case class CreateSubcontractorRequest(
-  schemeId: Int,
-  subcontractorType: SubcontractorType,
-  version: Int
-)
+case class UpdateSchemeVersionRequest(instanceId: String, version: Int)
 
-object CreateSubcontractorRequest {
-  given format: OFormat[CreateSubcontractorRequest] = Json.format[CreateSubcontractorRequest]
+object UpdateSchemeVersionRequest {
+  given format: OFormat[UpdateSchemeVersionRequest] = Json.format[UpdateSchemeVersionRequest]
 }
