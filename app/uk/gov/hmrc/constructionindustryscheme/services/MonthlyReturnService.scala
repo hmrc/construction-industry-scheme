@@ -19,7 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UnsubmittedMonthlyReturnStatus, UserMonthlyReturns}
 
 import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}
@@ -79,13 +79,7 @@ class MonthlyReturnService @Inject()(
   }
   
   private def mapStatus(raw: Option[String]): String = {
-    raw.map(_.trim.toUpperCase) match {
-      case Some("STARTED") => "In progress"
-      case Some("VALIDATED") => "In progress"
-      case Some("PENDING") => "Awaiting confirmation"
-      case Some("REJECTED") => "Failed"
-      case _ => "In progress"
-    }
+    UnsubmittedMonthlyReturnStatus.fromRaw(raw).asText
   }
 }
 
