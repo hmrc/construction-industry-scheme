@@ -23,9 +23,6 @@ import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.OptionValues
-import play.api.{Application, Mode, inject}
-import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.routing.Router
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, ItResources, WireMockConstants}
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, DEPARTMENTAL_ERROR, FATAL_ERROR, SUBMITTED}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
