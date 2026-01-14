@@ -530,7 +530,7 @@ class FormpProxyConnectorIntegrationSpec
 
   "FormpProxyConnector getUnsubmittedMonthlyReturns" should {
 
-    "POST instanceId to /formp-proxy/monthly-return and return wrapper (200)" in {
+    "POST instanceId to /formp-proxy/cis/retrieve-unsubmitted-monthly-returns and return wrapper (200)" in {
       val responseJson = Json.parse(
         s"""
            |{
@@ -550,7 +550,7 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/monthly-return"))
+        post(urlPathEqualTo("/formp-proxy/cis/retrieve-unsubmitted-monthly-returns"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
           .willReturn(aResponse().withStatus(200).withBody(responseJson.toString()))
@@ -562,7 +562,7 @@ class FormpProxyConnectorIntegrationSpec
 
     "fail the future when upstream returns a non-2xx (e.g. 500)" in {
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/monthly-return"))
+        post(urlPathEqualTo("/formp-proxy/cis/retrieve-unsubmitted-monthly-returns"))
           .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
           .willReturn(aResponse().withStatus(500).withBody("formp error"))
       )
