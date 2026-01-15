@@ -21,11 +21,9 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubcontract
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.Inject
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
-class SubcontractorService @Inject()(
-                                      formpProxyConnector: FormpProxyConnector
-                                    )(implicit ec: ExecutionContext) {
+class SubcontractorService @Inject()(formpProxyConnector: FormpProxyConnector) {
 
   def createSubcontractor(request: CreateSubcontractorRequest)(implicit hc: HeaderCarrier): Future[Int] =
     formpProxyConnector.createSubcontractor(request)
