@@ -73,7 +73,10 @@ class SubmissionController @Inject()(
   def submitToChris(submissionId: String): Action[JsValue] =
     authorise(parse.json).async { implicit req =>
       req.body.validate[ChrisSubmissionRequest].fold(
-        errs => Future.successful(BadRequest(Json.obj("message" -> JsError.toJson(errs)))),
+        errs =>
+          Future.successful(
+            BadRequest(Json.obj("message" -> JsError.toJson(errs)))
+          ),
         csr => {
           logger.info(s"Submitting Nil Monthly Return to ChRIS for UTR=${csr.utr}")
 
@@ -81,30 +84,40 @@ class SubmissionController @Inject()(
           val emailParams = SuccessEmailParams(csr.email, csr.monthYear)
           val payload = ChrisSubmissionEnvelopeBuilder.buildPayload(csr, req, correlationId)
 
-          val monthlyNilReturnRequestJson: JsValue = createMonthlyNilReturnRequestJson(payload)
+          val monthlyNilReturnRequestJson: JsValue =
+            createMonthlyNilReturnRequestJson(payload)
           auditService.monthlyNilReturnRequestEvent(monthlyNilReturnRequestJson)
 
-          xmlValidator.validate(payload.irEnvelope) match {
+          Future {
+            xmlValidator.validate(payload.irEnvelope)
+          }.flatMap {
             case Success(_) =>
-              logger.info(s"ChRIS XML validation successful. Sending ChRIS submission for a correlationId = $correlationId.")
+              logger.info(
+                s"ChRIS XML validation successful. Sending ChRIS submission for a correlationId = $correlationId."
+              )
+
               submissionService
-              .submitToChris(payload, Some(emailParams))
-              .map(renderSubmissionResponse(submissionId, payload))
-              .recover { case ex =>
-                logger.error("[submitToChris] upstream failure", ex)
-                val fatalErrorJson = Json.obj(
-                  "submissionId" -> submissionId,
-                  "status" -> "FATAL_ERROR",
-                  "hmrcMarkGenerated" -> payload.irMark,
-                  "error" -> "upstream-failure"
-                )
-                val monthlyNilReturnResponse = AuditResponseReceivedModel(BAD_GATEWAY.toString, fatalErrorJson)
-                auditService.monthlyNilReturnResponseEvent(monthlyNilReturnResponse)
-                BadGateway(fatalErrorJson)
-              }
+                .submitToChris(payload, Some(emailParams))
+                .map(renderSubmissionResponse(submissionId, payload))
+                .recover { case ex =>
+                  logger.error("[submitToChris] upstream failure", ex)
+                  val fatalErrorJson = Json.obj(
+                    "submissionId" -> submissionId,
+                    "status" -> "FATAL_ERROR",
+                    "hmrcMarkGenerated" -> payload.irMark,
+                    "error" -> "upstream-failure"
+                  )
+                  val monthlyNilReturnResponse =
+                    AuditResponseReceivedModel(BAD_GATEWAY.toString, fatalErrorJson)
+                  auditService.monthlyNilReturnResponseEvent(monthlyNilReturnResponse)
+                  BadGateway(fatalErrorJson)
+                }
+
             case Failure(e) =>
               logger.error(s"ChRIS XML validation failed: ${e.getMessage}", e)
-              Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
+              Future.failed(
+                new RuntimeException(s"XML validation failed: ${e.getMessage}", e)
+              )
           }
         }
       )
