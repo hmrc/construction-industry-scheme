@@ -20,6 +20,7 @@ import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
+import uk.gov.hmrc.constructionindustryscheme.models.requests.MonthlyReturnRequest
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, NilMonthlyReturnRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
@@ -29,6 +30,7 @@ import uk.gov.hmrc.play.http.HeaderCarrierConverter
 
 import scala.concurrent.{ExecutionContext, Future}
 import javax.inject.Inject
+import scala.util.control.NonFatal
 
 class MonthlyReturnsController @Inject()(
                                          authorise: AuthAction,
@@ -131,6 +133,19 @@ class MonthlyReturnsController @Inject()(
           .map(monthlyReturn => Created(Json.toJson(monthlyReturn)))
           .recover { case u: UpstreamErrorResponse => Status(u.statusCode)(Json.obj("message" -> u.message)) }
     )
+  }
+
+  def createMonthlyReturn: Action[MonthlyReturnRequest] = 
+    authorise.async(parse.json[MonthlyReturnRequest]) { implicit request =>
+        service.createMonthlyReturn(request.body)
+          .map(_ => Created)
+          .recover { 
+            case u: UpstreamErrorResponse => 
+              Status(u.statusCode)(Json.obj("message" -> u.message))
+            case NonFatal(t) =>
+              logger.error("[createMonthlyReturn] failed", t)
+              InternalServerError(Json.obj("message" -> "Unexpected error"))
+          }
   }
 
   def getSchemeEmail(instanceId: String): Action[AnyContent] = authorise.async { implicit request =>

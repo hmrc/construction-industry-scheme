@@ -27,6 +27,7 @@ import play.api.mvc.Result
 import play.api.test.Helpers.{contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController
+import uk.gov.hmrc.constructionindustryscheme.models.requests.MonthlyReturnRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.CreateNilMonthlyReturnResponse
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
@@ -373,6 +374,60 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         (contentAsJson(result) \ "message").as[String] must equal ("Unexpected error")
       }
     }
+
+    "POST /monthly-returns/standard/create (createMonthlyReturn)" - {
+
+      "return 201 Created when service succeeds" in new SetupAuthOnly {
+        val payload = MonthlyReturnRequest(
+          instanceId = "CIS-123",
+          taxYear = 2025,
+          taxMonth = 1
+        )
+
+        when(mockMonthlyReturnService.createMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(()))
+
+        val result: Future[Result] =
+          controller.createMonthlyReturn()(fakeRequest.withBody(payload))
+
+        status(result) mustBe CREATED
+        verify(mockMonthlyReturnService).createMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      }
+
+      "map UpstreamErrorResponse to same status with message" in new SetupAuthOnly {
+        val payload = MonthlyReturnRequest(
+          instanceId = "CIS-123",
+          taxYear = 2025,
+          taxMonth = 1
+        )
+
+        when(mockMonthlyReturnService.createMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("boom from upstream", BAD_GATEWAY)))
+
+        val result: Future[Result] =
+          controller.createMonthlyReturn()(fakeRequest.withBody(payload))
+
+        status(result) mustBe BAD_GATEWAY
+        (contentAsJson(result) \ "message").as[String] must include("boom from upstream")
+      }
+
+      "return 500 Unexpected error on unknown exception" in new SetupAuthOnly {
+        val payload = MonthlyReturnRequest(
+          instanceId = "CIS-123",
+          taxYear = 2025,
+          taxMonth = 1
+        )
+
+        when(mockMonthlyReturnService.createMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("unexpected-exception")))
+
+        val result: Future[Result] =
+          controller.createMonthlyReturn()(fakeRequest.withBody(payload))
+
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        (contentAsJson(result) \ "message").as[String] mustBe "Unexpected error"
+      }
+    }
   }
 
     "POST /cis/monthly-returns/nil (createNil)" - {
@@ -405,6 +460,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         status(result) mustBe BAD_GATEWAY
       }
     }
+
+
 
   private lazy val sampleWrapper: UserMonthlyReturns = UserMonthlyReturns(
     Seq(

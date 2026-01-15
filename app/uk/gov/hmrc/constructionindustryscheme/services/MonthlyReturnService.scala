@@ -18,6 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.MonthlyReturnRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.CreateNilMonthlyReturnResponse
 import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 
@@ -53,6 +54,9 @@ class MonthlyReturnService @Inject()(
           formp.createNilMonthlyReturn(req)
       }
     }
+
+  def createMonthlyReturn(req: MonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    formp.createMonthlyReturn(req)  
 
   def getSchemeEmail(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[String]] =
     formp.getSchemeEmail(instanceId)

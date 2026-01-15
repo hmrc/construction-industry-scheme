@@ -23,7 +23,7 @@ import org.scalatest.matchers.must.Matchers.mustBe
 import org.scalatest.OptionValues.convertOptionToValuable
 import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, CreateSubcontractorRequest, CreateSubmissionRequest, UpdateSchemeVersionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, CreateSubcontractorRequest, CreateSubmissionRequest, MonthlyReturnRequest, UpdateSchemeVersionRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{Company, CreateContractorSchemeParams, NilMonthlyReturnRequest, SoleTrader, UpdateContractorSchemeParams, UserMonthlyReturns}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
@@ -124,6 +124,44 @@ class FormpProxyConnectorIntegrationSpec
 
       val ex = intercept[Throwable](connector.createNilMonthlyReturn(req).futureValue)
       ex.getMessage.toLowerCase must include("500")
+    }
+  }
+
+  "FormpProxyConnector createMonthlyReturn" should {
+
+    "POST /formp-proxy/monthly-return/standard/create and return Unit on 2xx" in {
+      val req = MonthlyReturnRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/monthly-return/standard/create"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(201))
+      )
+
+      connector.createMonthlyReturn(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-2xx (e.g. 500)" in {
+      val req = MonthlyReturnRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/monthly-return/standard/create"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = connector.createMonthlyReturn(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
 
