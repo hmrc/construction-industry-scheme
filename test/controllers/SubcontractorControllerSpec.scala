@@ -20,14 +20,14 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{verify, verifyNoInteractions, when}
 import org.scalatest.EitherValues
-import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, OK}
+import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, NO_CONTENT, OK}
 import play.api.libs.json.{JsValue, Json}
 import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController
+import uk.gov.hmrc.constructionindustryscheme.models.SoleTrader
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubcontractorRequest, UpdateSubcontractorRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -44,14 +44,18 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
                           ): SubcontractorController =
     new SubcontractorController(auth, subcontractorService, cc)
 
+  val schemeId = 1
+  val subbieResourceRef = 10
+
   "createSubcontractor" - {
 
-    val createSubcontractorUrl = "/cis/subcontractor/create"
+    val createSubcontractorUrl = "/subcontractor/create"
 
     val validCreateJson: JsValue = Json.toJson(
       CreateSubcontractorRequest(
-        schemeId = "1",
-        subcontractorType = "trader"
+        schemeId = schemeId,
+        subcontractorType = SoleTrader,
+        version = 0
       )
     )
 
@@ -59,11 +63,10 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
       val service = mock[SubcontractorService]
       val controller = mockController(service)
 
-      val response = CreateSubcontractorResponse(subbieResourceRef = 10)
-      val responseJson: JsValue = Json.toJson(response)
+      val responseJson = Json.obj("subbieResourceRef" -> subbieResourceRef)
 
       when(service.createSubcontractor(any[CreateSubcontractorRequest])(any[HeaderCarrier]))
-        .thenReturn(Future.successful(response))
+        .thenReturn(Future.successful(subbieResourceRef))
 
       val req = FakeRequest(POST, createSubcontractorUrl)
         .withBody(validCreateJson)
@@ -115,7 +118,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
 
   "updateSubcontractor" - {
 
-    val updateSubcontractorUrl = "/cis/subcontractor/update"
+    val updateSubcontractorUrl = "/subcontractor/update"
 
     val validUpdateJson: JsValue = Json.toJson(
       UpdateSubcontractorRequest(schemeId = "1", subbieResourceRef = 10, tradingName = Some("trading Name"))
@@ -125,11 +128,8 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
       val service = mock[SubcontractorService]
       val controller = mockController(service)
 
-      val response = UpdateSubcontractorResponse(newVersion = 20)
-      val responseJson: JsValue = Json.toJson(response)
-
       when(service.updateSubcontractor(any[UpdateSubcontractorRequest])(any[HeaderCarrier]))
-        .thenReturn(Future.successful(response))
+        .thenReturn(Future.successful(()))
 
       val req = FakeRequest(POST, updateSubcontractorUrl)
         .withBody(validUpdateJson)
@@ -137,8 +137,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
 
       val result = controller.updateSubcontractor()(req)
 
-      status(result) mustBe OK
-      contentAsJson(result) mustBe responseJson
+      status(result) mustBe NO_CONTENT
 
       verify(service).updateSubcontractor(any[UpdateSubcontractorRequest])(any[HeaderCarrier])
     }

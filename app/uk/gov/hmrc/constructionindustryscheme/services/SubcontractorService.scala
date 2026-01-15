@@ -18,7 +18,6 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubcontractorRequest, UpdateSubcontractorRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.Inject
@@ -28,9 +27,9 @@ class SubcontractorService @Inject()(
                                       formpProxyConnector: FormpProxyConnector
                                     )(implicit ec: ExecutionContext) {
 
-  def createSubcontractor(request: CreateSubcontractorRequest)(implicit hc: HeaderCarrier): Future[CreateSubcontractorResponse] =
+  def createSubcontractor(request: CreateSubcontractorRequest)(implicit hc: HeaderCarrier): Future[Int] =
     formpProxyConnector.createSubcontractor(request)
 
-  def updateSubcontractor(request: UpdateSubcontractorRequest)(implicit hc: HeaderCarrier): Future[UpdateSubcontractorResponse] =
+  def updateSubcontractor(request: UpdateSubcontractorRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.updateSubcontractor(request)
 }

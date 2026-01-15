@@ -21,11 +21,11 @@ import org.scalatest.OptionValues.convertOptionToValuable
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
-import play.api.http.Status.CREATED
+import play.api.http.Status.NO_CONTENT
 import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, CreateSubcontractorRequest, CreateSubmissionRequest, UpdateSchemeVersionRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.{Company, CreateContractorSchemeParams, NilMonthlyReturnRequest, SoleTrader, UpdateContractorSchemeParams, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
+import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
 class FormpProxyConnectorIntegrationSpec
@@ -437,7 +437,7 @@ class FormpProxyConnectorIntegrationSpec
       val responseJson = Json.obj("subbieResourceRef" -> 1234)
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/subcontractor/create"))
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
@@ -455,7 +455,7 @@ class FormpProxyConnectorIntegrationSpec
       val req = CreateSubcontractorRequest(schemeId = 999, subcontractorType = SoleTrader, version = 1)
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/subcontractor/create"))
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(502).withBody("""{"message":"bad gateway"}"""))
       )
@@ -531,25 +531,18 @@ class FormpProxyConnectorIntegrationSpec
 
   "FormpProxyConnector updateSubcontractor" should {
 
-    "POSTs request and returns response model (200)" in {
+    "POSTs request and returns response model (201)" in {
       val request = UpdateSubcontractorRequest(schemeId = "1", subbieResourceRef = 10, tradingName = Some("trading Name"))
-
-      val responseJson =
-        """
-          |{
-          |  "newVersion": 20
-          |}
-                """.stripMargin
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
-          .willReturn(aResponse().withStatus(CREATED).withBody(responseJson))
+          .willReturn(aResponse().withStatus(NO_CONTENT))
       )
 
-      val result = connector.updateSubcontractor(request).futureValue
-      result.newVersion mustBe 20
+      val result: Unit = connector.updateSubcontractor(request).futureValue
+      result mustBe ()
     }
 
     "propagates upstream error for non-2xx" in {

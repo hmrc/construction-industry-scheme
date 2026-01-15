@@ -20,14 +20,17 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
+import uk.gov.hmrc.constructionindustryscheme.models.SoleTrader
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubcontractorRequest, UpdateSubcontractorRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.Future
 
 final class SubcontractorServiceSpec extends SpecBase {
+
+  val schemeId = 1
+  val subbieResourceRef = 10
 
   "createSubcontractor" - {
 
@@ -36,13 +39,12 @@ final class SubcontractorServiceSpec extends SpecBase {
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
       val service = new SubcontractorService(formpProxyConnector)
 
-      val request = CreateSubcontractorRequest("1", "trader")
-      val response = CreateSubcontractorResponse(subbieResourceRef = 10)
+      val request = CreateSubcontractorRequest(schemeId, SoleTrader, 0)
 
       when(formpProxyConnector.createSubcontractor(eqTo(request))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(response))
+        .thenReturn(Future.successful(subbieResourceRef))
 
-      service.createSubcontractor(request).futureValue mustBe response
+      service.createSubcontractor(request).futureValue mustBe subbieResourceRef
       verify(formpProxyConnector).createSubcontractor(eqTo(request))(any[HeaderCarrier])
     }
 
@@ -51,7 +53,7 @@ final class SubcontractorServiceSpec extends SpecBase {
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
       val service = new SubcontractorService(formpProxyConnector)
 
-      val request = CreateSubcontractorRequest("1", "trader")
+      val request = CreateSubcontractorRequest(schemeId, SoleTrader, 0)
 
       when(formpProxyConnector.createSubcontractor(eqTo(request))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
@@ -68,12 +70,11 @@ final class SubcontractorServiceSpec extends SpecBase {
       val service = new SubcontractorService(formpProxyConnector)
 
       val request = UpdateSubcontractorRequest(schemeId = "1", subbieResourceRef = 10, tradingName = Some("trading Name"))
-      val response = UpdateSubcontractorResponse(newVersion = 20)
-
+      
       when(formpProxyConnector.updateSubcontractor(eqTo(request))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(response))
+        .thenReturn(Future.successful(()))
 
-      service.updateSubcontractor(request).futureValue mustBe response
+      service.updateSubcontractor(request).futureValue mustBe ()
       verify(formpProxyConnector).updateSubcontractor(eqTo(request))(any[HeaderCarrier])
     }
 

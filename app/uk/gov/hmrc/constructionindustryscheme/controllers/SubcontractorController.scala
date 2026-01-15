@@ -41,7 +41,7 @@ class SubcontractorController @Inject() (
         request =>
           subcontractorService
             .createSubcontractor(request)
-            .map(resp => Created(Json.toJson(resp)))
+            .map(subbieResourceRef => Created(Json.obj("subbieResourceRef" -> subbieResourceRef)))
             .recover { case ex =>
               logger.error("[create] formp-proxy create failed", ex)
               BadGateway(Json.obj("message" -> "create-subcontractor-failed"))
@@ -56,7 +56,7 @@ class SubcontractorController @Inject() (
         request =>
           subcontractorService
             .updateSubcontractor(request)
-            .map(resp => Ok(Json.toJson(resp)))
+            .map(resp => NoContent)
             .recover { case ex =>
               logger.error("[update] formp-proxy create failed", ex)
               BadGateway(Json.obj("message" -> "update-subcontractor-failed"))

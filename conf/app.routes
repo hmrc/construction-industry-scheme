@@ -20,4 +20,4 @@ POST       /contractor-known-facts/prepopulate/:taxOfficeNumber/:taxOfficeRefere
 POST       /scheme/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId                                     uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorAndSubcontractors(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
 
 POST       /subcontractor/create                                         uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.createSubcontractor()
-POST       /subcontractor/update
+POST       /subcontractor/update                                         uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.updateSubcontractor()
