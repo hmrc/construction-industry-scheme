@@ -14,7 +14,8 @@ lazy val microservice = Project("construction-industry-scheme", file("."))
     // https://www.scala-lang.org/2021/01/12/configuring-and-suppressing-warnings.html
     // suppress warnings in generated routes files
     scalacOptions += "-Wconf:src=routes/.*:s",
-    RoutesKeys.routesImport += "uk.gov.hmrc.play.bootstrap.binders.RedirectUrl"
+    RoutesKeys.routesImport += "uk.gov.hmrc.play.bootstrap.binders.RedirectUrl",
+    Compile / unmanagedSourceDirectories += baseDirectory.value / "resources"
   )
   .settings(CodeCoverageSettings.settings *)
 
