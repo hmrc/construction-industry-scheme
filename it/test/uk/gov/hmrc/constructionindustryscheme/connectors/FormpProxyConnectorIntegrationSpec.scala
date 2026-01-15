@@ -532,7 +532,7 @@ class FormpProxyConnectorIntegrationSpec
   "FormpProxyConnector updateSubcontractor" should {
 
     "POSTs request and returns response model (201)" in {
-      val request = UpdateSubcontractorRequest(schemeId = "1", subbieResourceRef = 10, tradingName = Some("trading Name"))
+      val request = UpdateSubcontractorRequest(schemeId = 10, subbieResourceRef = 10, tradingName = Some("trading Name"))
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
@@ -546,7 +546,7 @@ class FormpProxyConnectorIntegrationSpec
     }
 
     "propagates upstream error for non-2xx" in {
-      val request = UpdateSubcontractorRequest(schemeId = "1", subbieResourceRef = 10, tradingName = Some("trading Name"))
+      val request = UpdateSubcontractorRequest(schemeId = 10, subbieResourceRef = 10, tradingName = Some("trading Name"))
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))

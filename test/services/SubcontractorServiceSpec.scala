@@ -69,7 +69,7 @@ final class SubcontractorServiceSpec extends SpecBase {
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
       val service = new SubcontractorService(formpProxyConnector)
 
-      val request = UpdateSubcontractorRequest(schemeId = "1", subbieResourceRef = 10, tradingName = Some("trading Name"))
+      val request = UpdateSubcontractorRequest(schemeId = schemeId, subbieResourceRef = 10, tradingName = Some("trading Name"))
       
       when(formpProxyConnector.updateSubcontractor(eqTo(request))(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
@@ -83,7 +83,7 @@ final class SubcontractorServiceSpec extends SpecBase {
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
       val service = new SubcontractorService(formpProxyConnector)
 
-      val request = UpdateSubcontractorRequest(schemeId = "1", subbieResourceRef = 10, tradingName = Some("trading Name"))
+      val request = UpdateSubcontractorRequest(schemeId = schemeId, subbieResourceRef = 10, tradingName = Some("trading Name"))
 
       when(formpProxyConnector.updateSubcontractor(eqTo(request))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))

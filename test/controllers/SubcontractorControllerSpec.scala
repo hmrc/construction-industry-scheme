@@ -121,7 +121,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
     val updateSubcontractorUrl = "/subcontractor/update"
 
     val validUpdateJson: JsValue = Json.toJson(
-      UpdateSubcontractorRequest(schemeId = "1", subbieResourceRef = 10, tradingName = Some("trading Name"))
+      UpdateSubcontractorRequest(schemeId = schemeId, subbieResourceRef = 10, tradingName = Some("trading Name"))
     )
 
     "returns 200 with update response when service returns data" in {

@@ -51,6 +51,7 @@ class SubcontractorController @Inject() (
 
   def updateSubcontractor(): Action[JsValue] =
     authorise(parse.json).async { implicit request =>
+      println("Hello yohan")
       request.body.validate[UpdateSubcontractorRequest].fold(
         errs => Future.successful(BadRequest(JsError.toJson(errs))),
         request =>
