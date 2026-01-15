@@ -33,15 +33,14 @@ import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, Submission
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionEnvelopeBuilder
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
-import uk.gov.hmrc.constructionindustryscheme.utils.{UriHelper, XmlToJsonConvertor}
+import uk.gov.hmrc.constructionindustryscheme.utils.{UriHelper, XmlToJsonConvertor, XmlValidator}
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.constructionindustryscheme.utils.XmlValidator
 import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
 
 import java.time.{Clock, Instant}
 import java.util.UUID
-import scala.xml.NodeSeq
+import scala.util.{Failure, Success}
 
 class SubmissionController @Inject()(
                                            authorise: AuthAction,
@@ -85,8 +84,9 @@ class SubmissionController @Inject()(
           val monthlyNilReturnRequestJson: JsValue = createMonthlyNilReturnRequestJson(payload)
           auditService.monthlyNilReturnRequestEvent(monthlyNilReturnRequestJson)
 
-          xmlValidator.validateAgainstSchema(payload.irEnvelope, "CISreturn-v1-2.xsd") match {
-            case Right(_) =>
+          xmlValidator.validate(payload.irEnvelope) match {
+            case Success(_) =>
+              logger.info(s"ChRIS XML validation successful. Sending ChRIS submission for a correlationId = $correlationId.")
               submissionService
               .submitToChris(payload, Some(emailParams))
               .map(renderSubmissionResponse(submissionId, payload))
@@ -102,9 +102,9 @@ class SubmissionController @Inject()(
                 auditService.monthlyNilReturnResponseEvent(monthlyNilReturnResponse)
                 BadGateway(fatalErrorJson)
               }
-            case Left((status, xml)) =>
-              logger.error(s"[submitToChris] XML validation failed $xml")  // TODO remove before deploying to production
-              Future.failed(new RuntimeException(s"XML validation failed"))
+            case Failure(e) =>
+              logger.error(s"ChRIS XML validation failed: ${e.getMessage}", e)
+              Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
           }
         }
       )

@@ -37,10 +37,11 @@ import uk.gov.hmrc.constructionindustryscheme.utils.XmlValidator
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl
-import scala.xml.NodeSeq
 
+import scala.xml.NodeSeq
 import java.time.Clock
 import scala.concurrent.Future
+import scala.util.Success
 
 
 final class SubmissionControllerSpec extends SpecBase with EitherValues {
@@ -86,7 +87,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED)))
-      when(xmlValidator.validateAgainstSchema(any[NodeSeq], any[String])).thenReturn(Right(()))
+      when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
 
       val request: FakeRequest[JsValue] =
         FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -113,7 +114,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
-      when(xmlValidator.validateAgainstSchema(any[NodeSeq], any[String])).thenReturn(Right(()))
+      when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
         .withBody(validJson)
@@ -139,7 +140,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(ACCEPTED)))
-      when(xmlValidator.validateAgainstSchema(any[NodeSeq], any[String])).thenReturn(Right(()))
+      when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
         .withBody(validJson)
@@ -165,7 +166,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(DEPARTMENTAL_ERROR, Some(err))))
-      when(xmlValidator.validateAgainstSchema(any[NodeSeq], any[String])).thenReturn(Right(()))
+      when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
         .withBody(validJson)
@@ -190,7 +191,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val controller = mkController(service = service, xmlValidator = xmlValidator)
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
-      when(xmlValidator.validateAgainstSchema(any[NodeSeq], any[String])).thenReturn(Right(()))
+      when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
 
       val badJson = Json.obj("utr" -> 123)
 
@@ -214,7 +215,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
-      when(xmlValidator.validateAgainstSchema(any[NodeSeq], any[String])).thenReturn(Right(()))
+      when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
       when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
