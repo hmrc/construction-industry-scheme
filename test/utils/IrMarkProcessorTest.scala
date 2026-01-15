@@ -91,7 +91,7 @@ class IrMarkProcessorTest extends SpecBase {
     assert(b32.trim.length >= 32)
   }
 
-  "UpdatedPayloadWithIrMark replaces single IRmark and prints xml, returns Elem and base64/base32" in {
+  "UpdatedPayloadWithIrMark replaces single IRmark, returns the updatedXML, base64, base32 and irEnvelope" in {
     val xml =
       """<GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
     <EnvelopeVersion>2.0</EnvelopeVersion>

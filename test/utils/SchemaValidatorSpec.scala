@@ -86,7 +86,7 @@ class SchemaValidatorSpec extends AnyWordSpec with Matchers {
       validateXml(validXml, schema) shouldBe true
     }
 
-    "fail validation if knownFact service exceeds 4 characters" in {
+    "fail validation for invalid AOref" in {
       val invalidXml =
         """<?xml version="1.0" encoding="UTF-8"?>
           |<IRenvelope xmlns="http://www.govtalk.gov.uk/taxation/CISreturn">

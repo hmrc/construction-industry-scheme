@@ -29,30 +29,34 @@ class ValidationHandler extends ErrorHandler with Logging {
   var error = false
 
   override def warning(e: SAXParseException): Unit = {
-    logger.warn(s"SAX Warning $e")
+    logger.warn(s"[ValidationHandler] SAX Warning $e")
     error = true
   }
 
   override def error(e: SAXParseException): Unit = {
-    logger.error(s"SAX Error $e")
+    logger.error(s"[ValidationHandler] SAX Error $e")
     error = true
   }
 
   override def fatalError(e: SAXParseException): Unit = {
-    logger.error(s"SAX Fatal Error $e")
+    logger.error(s"[ValidationHandler] SAX Fatal Error $e")
     error = true
   }
 }
 
 @Singleton
-class SchemaValidator {
-
+class SchemaValidator extends Logging {
   def validate(xml: String, schema: Schema): Boolean = {
     val validator = schema.newValidator()
     val handler = new ValidationHandler
     validator.setErrorHandler(handler)
-    validator.validate(new StreamSource(new StringReader(xml)))
-    !handler.error
+    try {
+      validator.validate(new StreamSource(new StringReader(xml)))
+      !handler.error
+    } catch {
+      case e: Exception =>
+        logger.error(s"[SchemaValidator] Schema validation exception: ${e.getMessage}", e)
+        false
+    }
   }
-
 }
