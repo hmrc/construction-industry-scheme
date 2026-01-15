@@ -71,8 +71,6 @@ final class SubcontractorServiceSpec extends SpecBase {
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
       val service = new SubcontractorService(formpProxyConnector)
 
-
-
       when(formpProxyConnector.updateSubcontractor(eqTo(request))(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
 
