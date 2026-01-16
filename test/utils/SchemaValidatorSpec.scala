@@ -18,7 +18,9 @@ package utils
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import uk.gov.hmrc.constructionindustryscheme.utils.SchemaValidator
+import org.xml.sax.SAXParseException
+import uk.gov.hmrc.constructionindustryscheme.utils.{SchemaValidator, ValidationHandler}
+import org.mockito.ArgumentMatchers._
 
 import java.io.File
 import javax.xml.XMLConstants
@@ -45,84 +47,118 @@ class SchemaValidatorSpec extends AnyWordSpec with Matchers {
 
   private val schema = loadSchema()
 
+  val validXml: String =
+    """<?xml version="1.0" encoding="UTF-8"?>
+      |<IRenvelope xmlns="http://www.govtalk.gov.uk/taxation/CISreturn">
+      |      <IRheader>
+      |        <Keys>
+      |          <Key Type="TaxOfficeNumber">754</Key>
+      |          <Key Type="TaxOfficeReference">EZ00100</Key>
+      |        </Keys>
+      |        <PeriodEnd>2025-05-05</PeriodEnd>
+      |        <DefaultCurrency>GBP</DefaultCurrency>
+      |        <Manifest>
+      |          <Contains>
+      |            <Reference>
+      |              <Namespace>http://www.govtalk.gov.uk/taxation/CISreturn</Namespace>
+      |              <SchemaVersion>2005-v1.1</SchemaVersion>
+      |              <TopElementName>CISreturn</TopElementName>
+      |            </Reference>
+      |          </Contains>
+      |        </Manifest>
+      |        <IRmark Type="generic">Fv1KhWmy3UvlCGU/skHcT01qiiI=</IRmark>
+      |        <Sender>Company</Sender>
+      |      </IRheader>
+      |      <CISreturn>
+      |        <Contractor>
+      |          <UTR>1234567890</UTR>
+      |          <AOref>754PT00002240</AOref>
+      |        </Contractor>
+      |        <NilReturn>yes</NilReturn>
+      |        <Declarations>
+      |          <InformationCorrect>yes</InformationCorrect>
+      |        </Declarations>
+      |      </CISreturn>
+      |    </IRenvelope>
+      |""".stripMargin
+
+  val invalidXml: String =
+    """<?xml version="1.0" encoding="UTF-8"?>
+      |<IRenvelope xmlns="http://www.govtalk.gov.uk/taxation/CISreturn">
+      |      <IRheader>
+      |        <Keys>
+      |          <Key Type="TaxOfficeNumber">754</Key>
+      |          <Key Type="TaxOfficeReference">EZ00100</Key>
+      |        </Keys>
+      |        <PeriodEnd>2025-05-05</PeriodEnd>
+      |        <DefaultCurrency>GBP</DefaultCurrency>
+      |        <Manifest>
+      |          <Contains>
+      |            <Reference>
+      |              <Namespace>http://www.govtalk.gov.uk/taxation/CISreturn</Namespace>
+      |              <SchemaVersion>2005-v1.1</SchemaVersion>
+      |              <TopElementName>CISreturn</TopElementName>
+      |            </Reference>
+      |          </Contains>
+      |        </Manifest>
+      |        <IRmark Type="generic">Fv1KhWmy3UvlCGU/skHcT01qiiI=</IRmark>
+      |        <Sender>Company</Sender>
+      |      </IRheader>
+      |      <CISreturn>
+      |        <Contractor>
+      |          <UTR>1234567890</UTR>
+      |          <AOref>AOREF</AOref>
+      |        </Contractor>
+      |        <NilReturn>yes</NilReturn>
+      |        <Declarations>
+      |          <InformationCorrect>yes</InformationCorrect>
+      |        </Declarations>
+      |      </CISreturn>
+      |    </IRenvelope>
+      |""".stripMargin
+  
+  "ValidationHandler" should {
+
+    "set error to true on warning" in {
+      val handler = new ValidationHandler()
+      handler.error shouldBe false
+      val ex = new SAXParseException("warning", null)
+      handler.warning(ex)
+      handler.error shouldBe true
+    }
+
+    "set error to true on error" in {
+      val handler = new ValidationHandler()
+      handler.error shouldBe false
+      val ex = new SAXParseException("error", null)
+      handler.error(ex)
+      handler.error shouldBe true
+    }
+
+    "set error to true on fatalError" in {
+      val handler = new ValidationHandler()
+      handler.error shouldBe false
+      val ex = new SAXParseException("fatal", null)
+      handler.fatalError(ex)
+      handler.error shouldBe true
+    }
+
+  }
+
   "SchemaValidator" should {
 
-    "validate XML against all related XSDs from resources" in {
-      val validXml =
-        """<?xml version="1.0" encoding="UTF-8"?>
-          |<IRenvelope xmlns="http://www.govtalk.gov.uk/taxation/CISreturn">
-          |      <IRheader>
-          |        <Keys>
-          |          <Key Type="TaxOfficeNumber">754</Key>
-          |          <Key Type="TaxOfficeReference">EZ00100</Key>
-          |        </Keys>
-          |        <PeriodEnd>2025-05-05</PeriodEnd>
-          |        <DefaultCurrency>GBP</DefaultCurrency>
-          |        <Manifest>
-          |          <Contains>
-          |            <Reference>
-          |              <Namespace>http://www.govtalk.gov.uk/taxation/CISreturn</Namespace>
-          |              <SchemaVersion>2005-v1.1</SchemaVersion>
-          |              <TopElementName>CISreturn</TopElementName>
-          |            </Reference>
-          |          </Contains>
-          |        </Manifest>
-          |        <IRmark Type="generic">Fv1KhWmy3UvlCGU/skHcT01qiiI=</IRmark>
-          |        <Sender>Company</Sender>
-          |      </IRheader>
-          |      <CISreturn>
-          |        <Contractor>
-          |          <UTR>1234567890</UTR>
-          |          <AOref>754PT00002240</AOref>
-          |        </Contractor>
-          |        <NilReturn>yes</NilReturn>
-          |        <Declarations>
-          |          <InformationCorrect>yes</InformationCorrect>
-          |        </Declarations>
-          |      </CISreturn>
-          |    </IRenvelope>
-          |""".stripMargin
-
+    "return true for valid XML" in {
       validateXml(validXml, schema) shouldBe true
     }
 
-    "fail validation for invalid AOref" in {
-      val invalidXml =
-        """<?xml version="1.0" encoding="UTF-8"?>
-          |<IRenvelope xmlns="http://www.govtalk.gov.uk/taxation/CISreturn">
-          |      <IRheader>
-          |        <Keys>
-          |          <Key Type="TaxOfficeNumber">754</Key>
-          |          <Key Type="TaxOfficeReference">EZ00100</Key>
-          |        </Keys>
-          |        <PeriodEnd>2025-05-05</PeriodEnd>
-          |        <DefaultCurrency>GBP</DefaultCurrency>
-          |        <Manifest>
-          |          <Contains>
-          |            <Reference>
-          |              <Namespace>http://www.govtalk.gov.uk/taxation/CISreturn</Namespace>
-          |              <SchemaVersion>2005-v1.1</SchemaVersion>
-          |              <TopElementName>CISreturn</TopElementName>
-          |            </Reference>
-          |          </Contains>
-          |        </Manifest>
-          |        <IRmark Type="generic">Fv1KhWmy3UvlCGU/skHcT01qiiI=</IRmark>
-          |        <Sender>Company</Sender>
-          |      </IRheader>
-          |      <CISreturn>
-          |        <Contractor>
-          |          <UTR>1234567890</UTR>
-          |          <AOref>AOREF</AOref>
-          |        </Contractor>
-          |        <NilReturn>yes</NilReturn>
-          |        <Declarations>
-          |          <InformationCorrect>yes</InformationCorrect>
-          |        </Declarations>
-          |      </CISreturn>
-          |    </IRenvelope>
-          |""".stripMargin
-
+    "return false for invalid XML - invalid AOref" in {
       validateXml(invalidXml, schema) shouldBe false
     }
+
+    "return false for malformed XML" in {
+      val malformedXml = "<greeting>Hello"
+      validateXml(malformedXml, schema) shouldBe false
+    }
+
   }
 }

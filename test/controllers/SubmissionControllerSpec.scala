@@ -24,7 +24,7 @@ import org.scalatest.EitherValues
 import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, NO_CONTENT, OK, UNAUTHORIZED}
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.test.FakeRequest
-import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, status}
+import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, await, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
@@ -41,7 +41,7 @@ import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl
 import scala.xml.NodeSeq
 import java.time.Clock
 import scala.concurrent.Future
-import scala.util.Success
+import scala.util.{Failure, Success}
 
 
 final class SubmissionControllerSpec extends SpecBase with EitherValues {
@@ -235,6 +235,33 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
       verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier])
     }
+
+    "returns RuntimeException if xmlValidator.validate fails" in {
+      val service = mock[SubmissionService]
+      val xmlValidator = mock[XmlValidator]
+      val controller = mkController(service = service, xmlValidator = xmlValidator)
+
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
+      when(xmlValidator.validate(any[NodeSeq])).thenReturn(Failure(new RuntimeException("XML validation failed due to exception")))
+
+      when(xmlValidator.validate(any())).thenReturn(Failure(new Exception("invalid!")))
+
+      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(req)
+
+      val thrown = intercept[RuntimeException] {
+        await(result)
+      }
+      thrown.getMessage must include("XML validation failed: invalid!")
+    }
+
+
   }
 
   "createSubmission" - {
