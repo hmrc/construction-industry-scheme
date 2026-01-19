@@ -77,7 +77,7 @@ object IrMarkProcessor extends Logging {
     val canonicalBytes = baos.toByteArray
     val canonicalXml = new String(canonicalBytes, "UTF-8")
     logger.info("GenerateFullIrMark canonicalized XML (no comments):")
-    logger.info(canonicalXml)
+    logger.info(canonicalXml)  // TODO Remove this logger before deploying to production
 
     val digest = MessageDigest.getInstance("SHA-1").digest(canonicalBytes)
     val b64 = Base64.getEncoder.encodeToString(digest)
@@ -87,11 +87,12 @@ object IrMarkProcessor extends Logging {
     (b64, b32)
   }
 
-  def UpdatedPayloadWithIrMark(xml: String): (Elem, String, String) = {
+  def UpdatedPayloadWithIrMark(xml: String): (Elem, String, String, Elem) = {
     val (b64, b32) = GenerateFullIrMark(xml)
     val inputElem = loadString(xml)
     val updatedXml = replaceSingleIrmarkWithValue(inputElem, b64)
-    (updatedXml, b64, b32)
+    val irEnvelope = (updatedXml \\ "IRenvelope").head.asInstanceOf[Elem]
+    (updatedXml, b64, b32, irEnvelope)
   }
 
   // Replace the single IRmark node with <IRmark Type="generic">base64</IRmark>

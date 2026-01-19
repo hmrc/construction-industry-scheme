@@ -17,10 +17,13 @@
 package uk.gov.hmrc.constructionindustryscheme.config
 
 import javax.inject.{Inject, Singleton}
-import play.api.Configuration
+import play.api.{Configuration, Environment}
+import uk.gov.hmrc.constructionindustryscheme.utils.SchemaLoader
+
+import javax.xml.validation.Schema
 
 @Singleton
-class AppConfig @Inject()(config: Configuration) {
+class AppConfig @Inject()(val config: Configuration, val environment: Environment) {
   val appName: String = config.get[String]("appName")
 
   val chrisHost: Seq[String] = config.get[Seq[String]]("submissionPollUrlKnownHosts")
@@ -38,6 +41,11 @@ class AppConfig @Inject()(config: Configuration) {
 
   lazy val overridePollResponseEndPoint: String =
     config.get[String]("cis.overridePollResponseEndPoint")
-    
+
+  private val schemaNames: Seq[String] =
+    config.get[Seq[String]]("xsd.schemaNames")
+
+  lazy val schema: Schema = SchemaLoader.loadSchemas(schemaNames, environment)
+
 }
 

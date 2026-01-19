@@ -8,8 +8,8 @@ object AppDependencies {
 
   val compile: Seq[ModuleID] = Seq(
     "uk.gov.hmrc"             %% "bootstrap-backend-play-30"  % bootstrapVersion,
-    "commons-codec"           % "commons-codec"               % "1.19.0",
-    "org.apache.santuario"    % "xmlsec"                      % "3.0.3" exclude("com.fasterxml.woodstox" , "woodstox-core"),
+    "commons-codec"           % "commons-codec"               % "1.20.0",
+    "org.apache.santuario"    % "xmlsec"                      % "4.0.4" exclude("com.fasterxml.woodstox" , "woodstox-core"),
     "org.json4s"              %% "json4s-jackson"             % "4.0.7"
   )
 
