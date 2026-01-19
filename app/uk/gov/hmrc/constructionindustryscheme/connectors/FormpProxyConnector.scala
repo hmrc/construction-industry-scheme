@@ -16,14 +16,14 @@
 
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
-import play.api.http.Status.NOT_FOUND
+import play.api.http.Status.{NOT_FOUND, NO_CONTENT}
 
 import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, CreateSubcontractorRequest, CreateSubmissionRequest, UpdateSchemeVersionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, CreateSubcontractorRequest, CreateSubmissionRequest, UpdateSchemeVersionRequest, UpdateSubcontractorRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
@@ -114,7 +114,7 @@ class FormpProxyConnector @Inject()(
 
   def createSubcontractor(req: CreateSubcontractorRequest)(implicit hc: HeaderCarrier): Future[Int] =
     http
-      .post(url"$base/subcontractor/create")
+      .post(url"$base/cis/subcontractor/create")
       .withBody(Json.toJson(req))
       .execute[JsValue]
       .map(json => (json \ "subbieResourceRef").as[Int])
@@ -131,4 +131,21 @@ class FormpProxyConnector @Inject()(
       .post(url"$base/cis/retrieve-unsubmitted-monthly-returns")
       .withBody(Json.obj("instanceId" -> instanceId))
       .execute[UnsubmittedMonthlyReturns]
+
+  def updateSubcontractor(request: UpdateSubcontractorRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/subcontractor/update")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == NO_CONTENT) {
+          Future.successful(())
+        } else {
+          Future.failed(
+            new RuntimeException(
+              s"Update subcontractor failed, returned ${response.status}"
+            )
+          )
+        }
+      }
 }
