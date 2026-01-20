@@ -74,7 +74,7 @@ class FormpProxyConnector @Inject()(
       .execute[CreateNilMonthlyReturnResponse]
 
   def createMonthlyReturn(req: MonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
-    http.post(url"$base/monthly-return/standard/create")
+    http.post(url"$base/cis/monthly-return/standard/create")
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
       .map{ response =>

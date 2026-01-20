@@ -130,7 +130,7 @@ class FormpProxyConnectorIntegrationSpec
 
   "FormpProxyConnector createMonthlyReturn" should {
 
-    "POST /formp-proxy/monthly-return/standard/create and return Unit on 2xx" in {
+    "POST /formp-proxy/cis/monthly-return/standard/create and return Unit on 2xx" in {
       val req = MonthlyReturnRequest(
         instanceId = instanceId,
         taxYear = 2025,
@@ -138,7 +138,7 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/monthly-return/standard/create"))
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/standard/create"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(201))
@@ -155,7 +155,7 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/monthly-return/standard/create"))
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/standard/create"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(500).withBody("formp error"))
       )
