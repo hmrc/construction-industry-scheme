@@ -33,15 +33,16 @@ import scala.util.control.NonFatal
 import scala.xml.Elem
 
 @Singleton
-class ChrisConnector @Inject()(
-                                httpClient: HttpClientV2,
-                                servicesConfig: ServicesConfig,
-                              )(implicit ec: ExecutionContext) extends Logging {
+class ChrisConnector @Inject() (
+  httpClient: HttpClientV2,
+  servicesConfig: ServicesConfig
+)(implicit ec: ExecutionContext)
+    extends Logging {
 
   private val chrisCisReturnUrl: String =
     servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.submit-url")
 
-  def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] = {
+  def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] =
     httpClient
       .post(url"$pollUrl")
       .setHeader(
@@ -61,7 +62,8 @@ class ChrisConnector @Inject()(
           Future.fromTry(
             ChrisPollXmlMapper
               .parse(resp.body)
-              .left.map(err => new Exception(err))
+              .left
+              .map(err => new Exception(err))
               .toTry
           )
         }
@@ -72,10 +74,8 @@ class ChrisConnector @Inject()(
         )
         ChrisPollResponse(FATAL_ERROR, None, None)
       }
-    }
 
-  def submitEnvelope(envelope: Elem, correlationId: String)
-                    (implicit hc: HeaderCarrier): Future[SubmissionResult] =
+  def submitEnvelope(envelope: Elem, correlationId: String)(implicit hc: HeaderCarrier): Future[SubmissionResult] =
     httpClient
       .post(url"$chrisCisReturnUrl")
       .setHeader(
@@ -85,25 +85,29 @@ class ChrisConnector @Inject()(
       )
       .withBody(envelope.toString)
       .execute[HttpResponse]
-      .map{ resp =>
+      .map { resp =>
         if (is2xx(resp.status)) {
           logger.info(s"[ChrisConnector] corrId=$correlationId status=${resp.status} full-response-body:\n${resp.body}")
         }
         handleResponse(resp, correlationId)
       }
       .recover { case NonFatal(e) =>
-        logger.error(s"[ChrisConnector] Transport exception calling $chrisCisReturnUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("")}")
+        logger.error(
+          s"[ChrisConnector] Transport exception calling $chrisCisReturnUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${Option(e.getMessage)
+              .getOrElse("")}"
+        )
         connectionError(correlationId, e)
       }
-
 
   private def handleResponse(resp: HttpResponse, correlationId: String): SubmissionResult = {
     val body = resp.body
     if (is2xx(resp.status)) {
-      ChrisSubmissionXmlMapper.parse(body).fold(
-        err => parseError(correlationId, body, err),
-        ok  => ok
-      )
+      ChrisSubmissionXmlMapper
+        .parse(body)
+        .fold(
+          err => parseError(correlationId, body, err),
+          ok => ok
+        )
     } else {
       httpError(correlationId, body, resp.status)
     }
@@ -115,48 +119,48 @@ class ChrisConnector @Inject()(
   private def parseError(correlationId: String, rawXml: String, err: String): SubmissionResult =
     errorResult(
       correlationId = correlationId,
-      rawXml        = rawXml,
-      errorNumber   = "parse",
-      errorType     = "fatal",
-      errorText     = err
+      rawXml = rawXml,
+      errorNumber = "parse",
+      errorType = "fatal",
+      errorText = err
     )
 
   private def httpError(correlationId: String, rawXml: String, status: Int): SubmissionResult =
     errorResult(
       correlationId = correlationId,
-      rawXml        = rawXml,
-      errorNumber   = s"http-$status",
-      errorType     = "fatal",
-      errorText     = truncate(rawXml)
+      rawXml = rawXml,
+      errorNumber = s"http-$status",
+      errorType = "fatal",
+      errorText = truncate(rawXml)
     )
 
   private def connectionError(correlationId: String, e: Throwable): SubmissionResult =
     errorResult(
       correlationId = correlationId,
-      rawXml        = "<connection-error/>",
-      errorNumber   = "conn",
-      errorType     = "fatal",
-      errorText     = s"Connection error: ${e.getClass.getSimpleName}"
+      rawXml = "<connection-error/>",
+      errorNumber = "conn",
+      errorType = "fatal",
+      errorText = s"Connection error: ${e.getClass.getSimpleName}"
     )
 
   private def errorResult(
-                           correlationId: String,
-                           rawXml: String,
-                           errorNumber: String,
-                           errorType: String,
-                           errorText: String
-                         ): SubmissionResult =
+    correlationId: String,
+    rawXml: String,
+    errorNumber: String,
+    errorType: String,
+    errorText: String
+  ): SubmissionResult =
     SubmissionResult(
       status = FATAL_ERROR,
       rawXml = rawXml,
-      meta   = GovTalkMeta(
-        qualifier        = "error",
-        function         = "submit",
-        className        = "",
-        correlationId    = correlationId,
+      meta = GovTalkMeta(
+        qualifier = "error",
+        function = "submit",
+        className = "",
+        correlationId = correlationId,
         gatewayTimestamp = None,
         responseEndPoint = ResponseEndPoint("", 0),
-        error            = Some(GovTalkError(errorNumber, errorType, errorText))
+        error = Some(GovTalkError(errorNumber, errorType, errorText))
       )
     )
 

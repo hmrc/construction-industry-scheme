@@ -43,11 +43,11 @@ class ContractorSchemeSpec extends AnyWordSpec with Matchers {
       Json.toJson(model).as[ContractorScheme] mustBe model
 
       val minimalJson = Json.obj(
-        "schemeId" -> 1,
-        "instanceId" -> "CIS-123",
+        "schemeId"                -> 1,
+        "instanceId"              -> "CIS-123",
         "accountsOfficeReference" -> "AOR",
-        "taxOfficeNumber" -> "163",
-        "taxOfficeReference" -> "AB0063"
+        "taxOfficeNumber"         -> "163",
+        "taxOfficeReference"      -> "AB0063"
       )
 
       minimalJson.as[ContractorScheme].utr mustBe None

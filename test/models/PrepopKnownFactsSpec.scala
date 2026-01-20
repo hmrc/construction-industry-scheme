@@ -31,11 +31,14 @@ class PrepopKnownFactsSpec extends AnyFreeSpec with Matchers {
     }
 
     "fails if a required field is missing" in {
-      Json.obj(
-        "taxOfficeNumber" -> "123",
-        "taxOfficeReference" -> "ABC123"
-        // accountOfficeReference missing
-      ).validate[PrepopKnownFacts].isError shouldBe true
+      Json
+        .obj(
+          "taxOfficeNumber"    -> "123",
+          "taxOfficeReference" -> "ABC123"
+          // accountOfficeReference missing
+        )
+        .validate[PrepopKnownFacts]
+        .isError shouldBe true
     }
   }
 }

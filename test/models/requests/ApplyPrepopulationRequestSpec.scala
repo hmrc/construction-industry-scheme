@@ -72,4 +72,3 @@ class ApplyPrepopulationRequestSpec extends AnyWordSpec with Matchers {
     }
   }
 }
-

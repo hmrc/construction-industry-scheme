@@ -99,12 +99,11 @@ class XmlValidatorSpec extends AnyWordSpec with Matchers with MockitoSugar {
   "XmlValidator" should {
 
     val mockSchemaValidator = mock[SchemaValidator]
-    val mockConfig = mock[AppConfig]
-    val mockSchema = mock[Schema]
+    val mockConfig          = mock[AppConfig]
+    val mockSchema          = mock[Schema]
 
     when(mockConfig.schema).thenReturn(mockSchema)
     val validator = new XmlValidator(mockConfig, mockSchemaValidator)
-
 
     "validate returns Success(Unit) if schema validation returns true" in {
       when(mockSchemaValidator.validate(any[String], any[Schema])).thenReturn(true)

@@ -30,22 +30,24 @@ import scala.xml.*
 
 object ChrisSubmissionEnvelopeBuilder extends Logging {
   private val gatewayTimestampFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
-  private val isoDateFmt = DateTimeFormatter.ISO_LOCAL_DATE
-  private val prettyPrinter = new PrettyPrinter(120, 4)
+  private val isoDateFmt                = DateTimeFormatter.ISO_LOCAL_DATE
+  private val prettyPrinter             = new PrettyPrinter(120, 4)
 
   def build(
-             request: ChrisSubmissionRequest,
-             authRequest: AuthenticatedRequest[_],
-             correlationId: String
-           ): (Elem, Elem) = {
+    request: ChrisSubmissionRequest,
+    authRequest: AuthenticatedRequest[_],
+    correlationId: String
+  ): (Elem, Elem) = {
 
     val gatewayTimestamp = LocalDateTime.now(ZoneOffset.UTC).format(gatewayTimestampFormatter)
 
     val (taxOfficeNumber, taxOfficeReference) =
       extractTaxOfficeFromCisEnrolment(authRequest.enrolments)
-        .getOrElse(throw new IllegalStateException(
-          "Missing CIS enrolment identifiers (TaxOfficeNumber/TaxOfficeReference) in HMRC-CIS-ORG"
-        ))
+        .getOrElse(
+          throw new IllegalStateException(
+            "Missing CIS enrolment identifiers (TaxOfficeNumber/TaxOfficeReference) in HMRC-CIS-ORG"
+          )
+        )
 
     val periodEnd = parsePeriodEnd(request.monthYear)
 
@@ -108,7 +110,7 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
               <NilReturn>{ChrisEnvelopeConstants.NilReturn}</NilReturn>
               <Declarations>
                 <InformationCorrect>{request.informationCorrect}</InformationCorrect>
-                { if (request.inactivity.equalsIgnoreCase("yes")) <Inactivity>yes</Inactivity> else NodeSeq.Empty }
+                {if (request.inactivity.equalsIgnoreCase("yes")) <Inactivity>yes</Inactivity> else NodeSeq.Empty}
               </Declarations>
             </CISreturn>
           </IRenvelope>
@@ -145,12 +147,12 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
   }
 
   def buildPayload(
-                    request: ChrisSubmissionRequest,
-                    authRequest: AuthenticatedRequest[_],
-                    correlationId: String
-                  ): BuiltSubmissionPayload = {
+    request: ChrisSubmissionRequest,
+    authRequest: AuthenticatedRequest[_],
+    correlationId: String
+  ): BuiltSubmissionPayload = {
     val (finalEnvelope, irEnvelope) = build(request, authRequest, correlationId)
-    val irMarkBase64: String = (finalEnvelope \\ "IRmark").text.trim
+    val irMarkBase64: String        = (finalEnvelope \\ "IRmark").text.trim
 
     // TODO remove logger before deploying to prod
     logger.info(s"[ChrisSubmissionEnvelopeBuilder] finalEnvelope: ${finalEnvelope.toString}")

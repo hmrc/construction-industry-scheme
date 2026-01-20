@@ -19,13 +19,13 @@ package uk.gov.hmrc.constructionindustryscheme.models.requests
 import play.api.libs.json.{Json, OFormat}
 
 case class ChrisSubmissionRequest(
-                                   utr: String,
-                                   aoReference: String,
-                                   informationCorrect: String,
-                                   inactivity: String,
-                                   monthYear: String,
-                                   email: String
-                                 )
+  utr: String,
+  aoReference: String,
+  informationCorrect: String,
+  inactivity: String,
+  monthYear: String,
+  email: String
+)
 
 object ChrisSubmissionRequest {
   implicit val format: OFormat[ChrisSubmissionRequest] = Json.format[ChrisSubmissionRequest]

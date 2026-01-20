@@ -26,10 +26,10 @@ class SubcontractorTypeSpec extends AnyFreeSpec with Matchers {
   "SubcontractorType JSON" - {
 
     "reads valid values (case-insensitive)" in {
-      Json.fromJson[SubcontractorType](JsString("SOLETRADER")) shouldBe JsSuccess(SoleTrader)
-      Json.fromJson[SubcontractorType](JsString("company")) shouldBe JsSuccess(Company)
+      Json.fromJson[SubcontractorType](JsString("SOLETRADER"))  shouldBe JsSuccess(SoleTrader)
+      Json.fromJson[SubcontractorType](JsString("company"))     shouldBe JsSuccess(Company)
       Json.fromJson[SubcontractorType](JsString("Partnership")) shouldBe JsSuccess(Partnership)
-      Json.fromJson[SubcontractorType](JsString("trust")) shouldBe JsSuccess(Trust)
+      Json.fromJson[SubcontractorType](JsString("trust"))       shouldBe JsSuccess(Trust)
     }
 
     "rejects invalid value" in {

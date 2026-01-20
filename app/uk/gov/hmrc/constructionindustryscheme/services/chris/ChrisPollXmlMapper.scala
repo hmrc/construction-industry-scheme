@@ -25,14 +25,14 @@ import scala.xml.*
 object ChrisPollXmlMapper extends ChrisXmlMapper {
 
   def parse(xml: String): Either[String, ChrisPollResponse] = {
-    val doc = XML.loadString(xml)
+    val doc            = XML.loadString(xml)
     val messageDetails = doc \\ "Header" \\ "MessageDetails"
 
     for {
-      qualifier <- textRequired(messageDetails, "Qualifier", "Qualifier")
+      qualifier                     <- textRequired(messageDetails, "Qualifier", "Qualifier")
       endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
-      pollIntervalOpt: Option[Int] = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
-      errOpt <- parseError(qualifier, doc)
+      pollIntervalOpt: Option[Int]   = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
+      errOpt                        <- parseError(qualifier, doc)
     } yield {
       val status: SubmissionStatus = derivePollStatus(qualifier, errOpt, doc)
       ChrisPollResponse(status, endpointUrlOpt, pollIntervalOpt)
@@ -41,14 +41,14 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
 
   /** Stage 2 (polling) status mapping. */
   private def derivePollStatus(
-                                qualifier: String,
-                                errOpt: Option[GovTalkError],
-                                doc: Elem
-                              ): SubmissionStatus =
+    qualifier: String,
+    errOpt: Option[GovTalkError],
+    doc: Elem
+  ): SubmissionStatus =
     qualifier.toLowerCase match {
       case "acknowledgement" => ACCEPTED
-      case "response" => SUBMITTED
-      case "error" =>
+      case "response"        => SUBMITTED
+      case "error"           =>
         // Special case: IRMark mismatch ⇒ SUBMITTED_NO_RECEIPT
         if (isIrmarkMismatch(doc)) {
           SUBMITTED_NO_RECEIPT
@@ -56,20 +56,20 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
           errOpt match {
             // 3001 + business => departmental error
             case Some(err)
-              if err.errorNumber == "3001" &&
-                err.errorType.equalsIgnoreCase("business") =>
+                if err.errorNumber == "3001" &&
+                  err.errorType.equalsIgnoreCase("business") =>
               DEPARTMENTAL_ERROR
 
             // 3000 + fatal => fatal error
             case Some(err)
-              if err.errorNumber == "3000" &&
-                err.errorType.equalsIgnoreCase("fatal") =>
+                if err.errorNumber == "3000" &&
+                  err.errorType.equalsIgnoreCase("fatal") =>
               FATAL_ERROR
 
             case _ => FATAL_ERROR
           }
         }
-      case _ => FATAL_ERROR
+      case _                 => FATAL_ERROR
     }
 
   /** Detects IRMark mismatch error inside the <Body> ErrorResponse. */
@@ -77,14 +77,14 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
     val bodyErrors = (doc \\ "Body") \\ "Error"
 
     bodyErrors.exists { e =>
-      val number = (e \ "Number").text.trim
+      val number    = (e \ "Number").text.trim
       val errorType = (e \ "Type").text.trim
-      val text = (e \ "Text").text.trim.toLowerCase
+      val text      = (e \ "Text").text.trim.toLowerCase
 
       number == "2021" &&
-        errorType.equalsIgnoreCase("business") &&
-        text.contains("irmark") &&
-        text.contains("incorrect")
+      errorType.equalsIgnoreCase("business") &&
+      text.contains("irmark") &&
+      text.contains("incorrect")
     }
   }
 }

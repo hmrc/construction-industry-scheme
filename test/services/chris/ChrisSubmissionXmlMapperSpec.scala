@@ -26,15 +26,15 @@ import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionXmlM
 final class ChrisSubmissionXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValues {
 
   private def headerXml(
-   qualifier: String,
-   function: String = "submit",
-   clazz: String = "CIS300MR",
-   correlationId: String = "ABCDEF123456",
-   pollInterval: Option[Int] = Some(15),
-   endpointUrl: Option[String] = Some("/poll")
+    qualifier: String,
+    function: String = "submit",
+    clazz: String = "CIS300MR",
+    correlationId: String = "ABCDEF123456",
+    pollInterval: Option[Int] = Some(15),
+    endpointUrl: Option[String] = Some("/poll")
   ): String = {
-    val epAttr   = pollInterval.map(i => s""" PollInterval="$i"""").getOrElse("")
-    val epText   = endpointUrl.getOrElse("")
+    val epAttr = pollInterval.map(i => s""" PollInterval="$i"""").getOrElse("")
+    val epText = endpointUrl.getOrElse("")
     s"""
        |<Header>
        |  <MessageDetails>
@@ -61,8 +61,8 @@ final class ChrisSubmissionXmlMapperSpec extends AnyFreeSpec with Matchers with 
     "maps an acknowledgement to ACCEPTED, with poll interval and endpoint" in {
       val xml = envelope(
         headerXml(
-          qualifier   = "acknowledgement",
-          pollInterval= Some(15),
+          qualifier = "acknowledgement",
+          pollInterval = Some(15),
           endpointUrl = Some("/poll")
         )
       )
@@ -70,13 +70,13 @@ final class ChrisSubmissionXmlMapperSpec extends AnyFreeSpec with Matchers with 
       val res = ChrisSubmissionXmlMapper.parse(xml).value
       res.status mustBe ACCEPTED
       res.meta.qualifier mustBe "acknowledgement"
-      res.meta.function  mustBe "submit"
+      res.meta.function mustBe "submit"
       res.meta.className mustBe "CIS300MR"
       res.meta.correlationId mustBe "ABCDEF123456"
       res.meta.gatewayTimestamp mustBe None
       res.meta.responseEndPoint mustBe ResponseEndPoint("/poll", 15)
       res.meta.error mustBe None
-      res.rawXml.trim must include ("<GovTalkMessage>")
+      res.rawXml.trim must include("<GovTalkMessage>")
     }
 
     "maps GovTalk error Type=fatal to FATAL_ERROR" in {

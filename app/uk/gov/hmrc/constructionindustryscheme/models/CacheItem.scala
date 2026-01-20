@@ -23,4 +23,3 @@ case class CacheItem[T](value: T, expiresAt: Long)
 object CacheItem {
   given format[T](using Format[T]): Format[CacheItem[T]] = Json.format[CacheItem[T]]
 }
-

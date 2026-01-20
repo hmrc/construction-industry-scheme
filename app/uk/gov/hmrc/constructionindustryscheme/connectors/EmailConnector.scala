@@ -32,26 +32,27 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 @Singleton
-class EmailConnector @Inject()(servicesConfig: ServicesConfig, httpClient: HttpClientV2)
-                              (implicit ec: ExecutionContext) extends Logging {
+class EmailConnector @Inject() (servicesConfig: ServicesConfig, httpClient: HttpClientV2)(implicit ec: ExecutionContext)
+    extends Logging {
 
-  private val emailBaseUrl = servicesConfig.baseUrl("email") 
+  private val emailBaseUrl = servicesConfig.baseUrl("email")
 
   def send(sendEmailRequest: SendEmailRequest)(implicit hc: HeaderCarrier): Future[Done] =
-    httpClient.post(url"$emailBaseUrl/hmrc/email")
+    httpClient
+      .post(url"$emailBaseUrl/hmrc/email")
       .withBody(Json.toJson(sendEmailRequest))
       .execute[HttpResponse]
       .flatMap { response =>
         logger.warn(s"Email POST returned ${response.status}: ${response.body}")
         response.status match {
           case ACCEPTED => Future.successful(Done)
-          case status =>
+          case status   =>
             logger.warn(s"Send email failed with status: $status")
             Future.successful(Done)
         }
-      }.recoverWith {
-        case NonFatal(e) =>
-          logger.warn("Error sending email", e)
-          Future.successful(Done)
+      }
+      .recoverWith { case NonFatal(e) =>
+        logger.warn("Error sending email", e)
+        Future.successful(Done)
       }
 }

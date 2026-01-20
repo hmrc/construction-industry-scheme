@@ -19,7 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.models
 sealed trait ClientListStatus
 object ClientListStatus {
   case object InitiateDownload extends ClientListStatus
-  case object InProgress       extends ClientListStatus
-  case object Succeeded        extends ClientListStatus
-  case object Failed           extends ClientListStatus
+  case object InProgress extends ClientListStatus
+  case object Succeeded extends ClientListStatus
+  case object Failed extends ClientListStatus
 }

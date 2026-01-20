@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.constructionindustryscheme.controllers
 
-
 import javax.inject.Inject
 import play.api.mvc.*
 import play.api.libs.json.*
@@ -25,7 +24,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.Logging
 import play.api.http.Status.BAD_GATEWAY
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, SubmissionResult, SuccessEmailParams, ACCEPTED as AcceptedStatus, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, BuiltSubmissionPayload, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult, SuccessEmailParams}
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateSubmissionRequest, UpdateSubmissionRequest}
@@ -42,87 +41,98 @@ import java.time.{Clock, Instant}
 import java.util.UUID
 import scala.util.{Failure, Success}
 
-class SubmissionController @Inject()(
-                                           authorise: AuthAction,
-                                           submissionService: SubmissionService,
-                                           auditService: AuditService,
-                                           xmlValidator: XmlValidator,
-                                           cc: ControllerComponents,
-                                           appConfig: AppConfig,
-                                           clock: Clock
-                                         )(implicit ec: ExecutionContext)
-  extends BackendController(cc) with Logging {
+class SubmissionController @Inject() (
+  authorise: AuthAction,
+  submissionService: SubmissionService,
+  auditService: AuditService,
+  xmlValidator: XmlValidator,
+  cc: ControllerComponents,
+  appConfig: AppConfig,
+  clock: Clock
+)(implicit ec: ExecutionContext)
+    extends BackendController(cc)
+    with Logging {
 
   implicit val reads: Reads[ChrisSubmissionRequest] = Json.reads[ChrisSubmissionRequest]
 
   def createSubmission: Action[JsValue] =
     authorise(parse.json).async { implicit request =>
-      request.body.validate[CreateSubmissionRequest].fold(
-        errs => Future.successful(BadRequest(JsError.toJson(errs))),
-        csr =>
-          submissionService
-            .createSubmission(csr)
-            .map(id => Created(Json.obj("submissionId" -> id)))
-            .recover { case ex =>
-              logger.error("[create] formp-proxy create failed", ex)
-              BadGateway(Json.obj("message" -> "create-submission-failed"))
-            }
-      )
+      request.body
+        .validate[CreateSubmissionRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          csr =>
+            submissionService
+              .createSubmission(csr)
+              .map(id => Created(Json.obj("submissionId" -> id)))
+              .recover { case ex =>
+                logger.error("[create] formp-proxy create failed", ex)
+                BadGateway(Json.obj("message" -> "create-submission-failed"))
+              }
+        )
     }
 
   def submitToChris(submissionId: String): Action[JsValue] =
     authorise(parse.json).async { implicit req =>
-      req.body.validate[ChrisSubmissionRequest].fold(
-        errs => Future.successful(BadRequest(Json.obj("message" -> JsError.toJson(errs)))),
-        csr => {
-          logger.info(s"Submitting Nil Monthly Return to ChRIS for UTR=${csr.utr}")
+      req.body
+        .validate[ChrisSubmissionRequest]
+        .fold(
+          errs => Future.successful(BadRequest(Json.obj("message" -> JsError.toJson(errs)))),
+          csr => {
+            logger.info(s"Submitting Nil Monthly Return to ChRIS for UTR=${csr.utr}")
 
-          val correlationId = UUID.randomUUID().toString.replace("-", "").toUpperCase
-          val emailParams = SuccessEmailParams(csr.email, csr.monthYear)
-          val payload = ChrisSubmissionEnvelopeBuilder.buildPayload(csr, req, correlationId)
+            val correlationId = UUID.randomUUID().toString.replace("-", "").toUpperCase
+            val emailParams   = SuccessEmailParams(csr.email, csr.monthYear)
+            val payload       = ChrisSubmissionEnvelopeBuilder.buildPayload(csr, req, correlationId)
 
-          val monthlyNilReturnRequestJson: JsValue = createMonthlyNilReturnRequestJson(payload)
-          auditService.monthlyNilReturnRequestEvent(monthlyNilReturnRequestJson)
+            val monthlyNilReturnRequestJson: JsValue = createMonthlyNilReturnRequestJson(payload)
+            auditService.monthlyNilReturnRequestEvent(monthlyNilReturnRequestJson)
 
-          xmlValidator.validate(payload.irEnvelope) match {
-            case Success(_) =>
-              logger.info(s"ChRIS XML validation successful. Sending ChRIS submission for a correlationId = $correlationId.")
-              submissionService
-              .submitToChris(payload, Some(emailParams))
-              .map(renderSubmissionResponse(submissionId, payload))
-              .recover { case ex =>
-                logger.error("[submitToChris] upstream failure", ex)
-                val fatalErrorJson = Json.obj(
-                  "submissionId" -> submissionId,
-                  "status" -> "FATAL_ERROR",
-                  "hmrcMarkGenerated" -> payload.irMark,
-                  "error" -> "upstream-failure"
+            xmlValidator.validate(payload.irEnvelope) match {
+              case Success(_) =>
+                logger.info(
+                  s"ChRIS XML validation successful. Sending ChRIS submission for a correlationId = $correlationId."
                 )
-                val monthlyNilReturnResponse = AuditResponseReceivedModel(BAD_GATEWAY.toString, fatalErrorJson)
-                auditService.monthlyNilReturnResponseEvent(monthlyNilReturnResponse)
-                BadGateway(fatalErrorJson)
-              }
-            case Failure(e) =>
-              logger.error(s"ChRIS XML validation failed: ${e.getMessage}", e)
-              Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
+                submissionService
+                  .submitToChris(payload, Some(emailParams))
+                  .map(renderSubmissionResponse(submissionId, payload))
+                  .recover { case ex =>
+                    logger.error("[submitToChris] upstream failure", ex)
+                    val fatalErrorJson           = Json.obj(
+                      "submissionId"      -> submissionId,
+                      "status"            -> "FATAL_ERROR",
+                      "hmrcMarkGenerated" -> payload.irMark,
+                      "error"             -> "upstream-failure"
+                    )
+                    val monthlyNilReturnResponse = AuditResponseReceivedModel(BAD_GATEWAY.toString, fatalErrorJson)
+                    auditService.monthlyNilReturnResponseEvent(monthlyNilReturnResponse)
+                    BadGateway(fatalErrorJson)
+                  }
+              case Failure(e) =>
+                logger.error(s"ChRIS XML validation failed: ${e.getMessage}", e)
+                Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
+            }
           }
-        }
-      )
+        )
     }
 
   def updateSubmission(submissionId: String): Action[JsValue] =
     authorise(parse.json).async { implicit req =>
-      req.body.validate[UpdateSubmissionRequest].fold(
-        e => Future.successful(BadRequest(JsError.toJson(e))),
-        upd => {
-          submissionService.updateSubmission(upd).map { _ =>
-            NoContent
-          }.recover { case ex =>
-            logger.error("[updateSubmission] formp-proxy update failed", ex)
-            BadGateway(Json.obj("submissionId" -> submissionId, "message" -> "update-submission-failed"))
-          }
-        }
-      )
+      req.body
+        .validate[UpdateSubmissionRequest]
+        .fold(
+          e => Future.successful(BadRequest(JsError.toJson(e))),
+          upd =>
+            submissionService
+              .updateSubmission(upd)
+              .map { _ =>
+                NoContent
+              }
+              .recover { case ex =>
+                logger.error("[updateSubmission] formp-proxy update failed", ex)
+                BadGateway(Json.obj("submissionId" -> submissionId, "message" -> "update-submission-failed"))
+              }
+        )
     }
 
   private lazy val redirectUrlPolicy = AbsoluteWithHostnameFromAllowlist(appConfig.chrisHost.toSet)
@@ -131,46 +141,50 @@ class SubmissionController @Inject()(
     authorise.async { implicit req =>
       pollUrl.getEither(redirectUrlPolicy) match {
         case Right(safeUrl) =>
-
           val overridePollUrl: String = if (appConfig.useOverridePollResponseEndPoint) {
             UriHelper.replaceHostIgnoringUserInfoAndPort(safeUrl.url, appConfig.overridePollResponseEndPoint) match {
               case Some(x) => x
-              case _ => safeUrl.url
+              case _       => safeUrl.url
             }
           } else safeUrl.url
           logger.info(s"useOverridePollResponseEndPoint: $appConfig.useOverridePollResponseEndPoint")
           logger.info(s"safeUrl.url: $safeUrl.url")
           logger.info(s"overridePollUrl: $overridePollUrl")
 
-          submissionService.pollSubmission(correlationId,  overridePollUrl)
-          .map{ case ChrisPollResponse(status, overridePollUrl, interval) =>
-            Ok(Json.obj(
-            "status" -> status.toString,
-            "pollUrl" -> overridePollUrl,
-            "intervalSeconds" -> interval
-          ))
-          }
-        case Left(value) =>
+          submissionService
+            .pollSubmission(correlationId, overridePollUrl)
+            .map { case ChrisPollResponse(status, overridePollUrl, interval) =>
+              Ok(
+                Json.obj(
+                  "status"          -> status.toString,
+                  "pollUrl"         -> overridePollUrl,
+                  "intervalSeconds" -> interval
+                )
+              )
+            }
+        case Left(value)    =>
           logger.warn(s"could not poll the pollUrl provided as the host is not recognised: $value ")
           Future.successful(BadRequest(Json.obj("error" -> "pollUrl does not have the right host")))
       }
 
     }
 
-  private def renderSubmissionResponse(submissionId: String, payload: BuiltSubmissionPayload)(res: SubmissionResult): Result = {
+  private def renderSubmissionResponse(submissionId: String, payload: BuiltSubmissionPayload)(
+    res: SubmissionResult
+  ): Result = {
 
     implicit val hc: HeaderCarrier = HeaderCarrier()
 
     val gatewayTimestamp: String = res.meta.gatewayTimestamp match {
       case Some(s) if s.trim.nonEmpty => s.trim
-      case _ => Instant.now(clock).toString
+      case _                          => Instant.now(clock).toString
     }
 
     val base = Json.obj(
-      "submissionId" -> submissionId,
+      "submissionId"      -> submissionId,
       "hmrcMarkGenerated" -> payload.irMark,
-      "correlationId" -> res.meta.correlationId,
-      "gatewayTimestamp" -> gatewayTimestamp
+      "correlationId"     -> res.meta.correlationId,
+      "gatewayTimestamp"  -> gatewayTimestamp
     )
 
     def withStatus(s: String): JsObject = base ++ Json.obj("status" -> s)
@@ -179,17 +193,18 @@ class SubmissionController @Inject()(
       val endpoint = res.meta.responseEndPoint
       o ++ Json.obj(
         "responseEndPoint" -> Json.obj(
-          "url" -> endpoint.url,
+          "url"                 -> endpoint.url,
           "pollIntervalSeconds" -> endpoint.pollIntervalSeconds
         )
       )
     }
 
     def errorObj(defaultText: String): JsObject =
-      Json.obj("error" ->
-        res.meta.error
-          .map(e => Json.obj("number" -> e.errorNumber, "type" -> e.errorType, "text" -> e.errorText))
-          .getOrElse(Json.obj("text" -> defaultText))
+      Json.obj(
+        "error" ->
+          res.meta.error
+            .map(e => Json.obj("number" -> e.errorNumber, "type" -> e.errorType, "text" -> e.errorText))
+            .getOrElse(Json.obj("text" -> defaultText))
       )
 
     val monthlyNilReturnResponseJson: JsValue = createMonthlyNilReturnResponseJson(res)
@@ -198,27 +213,25 @@ class SubmissionController @Inject()(
     auditService.monthlyNilReturnResponseEvent(monthlyNilReturnResponse)
 
     res.status match {
-      case AcceptedStatus => Results.Accepted(withPoll(withStatus("ACCEPTED")))
-      case SubmittedStatus => Results.Ok(withStatus("SUBMITTED"))
+      case AcceptedStatus           => Results.Accepted(withPoll(withStatus("ACCEPTED")))
+      case SubmittedStatus          => Results.Ok(withStatus("SUBMITTED"))
       case SubmittedNoReceiptStatus => Results.Ok(withStatus("SUBMITTED_NO_RECEIPT"))
-      case DepartmentalErrorStatus => Results.Ok(withStatus("DEPARTMENTAL_ERROR") ++ errorObj("departmental error"))
-      case FatalErrorStatus => Results.Ok(withStatus("FATAL_ERROR") ++ errorObj("fatal"))
+      case DepartmentalErrorStatus  => Results.Ok(withStatus("DEPARTMENTAL_ERROR") ++ errorObj("departmental error"))
+      case FatalErrorStatus         => Results.Ok(withStatus("FATAL_ERROR") ++ errorObj("fatal"))
     }
   }
 
-  def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue = {
+  def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue =
     XmlToJsonConvertor.convertXmlToJson(payload.envelope.toString) match {
-      case XmlConversionResult(true, Some(json), _) => json
+      case XmlConversionResult(true, Some(json), _)   => json
       case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
-      case _ => Json.obj("error" -> "unexpected conversion failure")
+      case _                                          => Json.obj("error" -> "unexpected conversion failure")
     }
-  }
 
-  def createMonthlyNilReturnResponseJson(res: SubmissionResult): JsValue = {
+  def createMonthlyNilReturnResponseJson(res: SubmissionResult): JsValue =
     XmlToJsonConvertor.convertXmlToJson(res.rawXml) match {
       case XmlConversionResult(true, Some(json), _) => json
-      case _ => Json.toJson(res.rawXml)
+      case _                                        => Json.toJson(res.rawXml)
     }
-  }
 
 }

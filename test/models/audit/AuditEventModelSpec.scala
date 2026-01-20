@@ -24,27 +24,27 @@ import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceive
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor.convertXmlToJson
 
 class AuditEventModelSpec extends SpecBase {
-  
+
   "MonthlyNilReturnRequestEvent" - {
 
     "have the correct auditType and auditSource" in {
       val jsonPayload = Json.obj("period" -> "2025-09", "submittedBy" -> "user123")
-      val event = MonthlyNilReturnRequestEvent(jsonPayload)
-      val extended = event.extendedDataEvent
+      val event       = MonthlyNilReturnRequestEvent(jsonPayload)
+      val extended    = event.extendedDataEvent
       extended.auditSource shouldBe "construction-industry-scheme"
-      extended.auditType shouldBe "monthlyNilReturnRequest"
-      extended.detail shouldBe event.detailJson
+      extended.auditType   shouldBe "monthlyNilReturnRequest"
+      extended.detail      shouldBe event.detailJson
     }
 
     "serialize and deserialize correctly to/from JSON" in {
       val jsonPayload = Json.obj("period" -> "2025-09", "submittedBy" -> "user123")
-      val event = MonthlyNilReturnRequestEvent(jsonPayload)
-      val json = Json.toJson(event)
-      val parsed = json.as[MonthlyNilReturnRequestEvent]
+      val event       = MonthlyNilReturnRequestEvent(jsonPayload)
+      val json        = Json.toJson(event)
+      val parsed      = json.as[MonthlyNilReturnRequestEvent]
       parsed shouldBe event
     }
 
-    val validElem = scala.xml.XML.load(getClass.getResource("/irmark/ValidCisReturnEnvelope.xml"))
+    val validElem      = scala.xml.XML.load(getClass.getResource("/irmark/ValidCisReturnEnvelope.xml"))
     val submissionData = convertXmlToJson(validElem.toString)
 
     val dto = MonthlyNilReturnRequestEvent(
@@ -53,8 +53,7 @@ class AuditEventModelSpec extends SpecBase {
 
     val json = Json.toJson(dto)
 
-    val expected = Json.parse(
-      """{
+    val expected = Json.parse("""{
         |"payload": {
         |  "GovTalkMessage" : {
         |    "Header" : {
@@ -152,28 +151,28 @@ class AuditEventModelSpec extends SpecBase {
     }
 
   }
-  
+
   "MonthlyNilReturnResponseEvent" - {
 
     "have the correct auditType and auditSource" in {
       val responseModel = AuditResponseReceivedModel("SUCCESS", Json.toJson("Processed successfully"))
-      val event = MonthlyNilReturnResponseEvent(responseModel)
-      val extended = event.extendedDataEvent
+      val event         = MonthlyNilReturnResponseEvent(responseModel)
+      val extended      = event.extendedDataEvent
       extended.auditSource shouldBe "construction-industry-scheme"
-      extended.auditType shouldBe "monthlyNilReturnResponse"
-      extended.detail shouldBe event.detailJson
+      extended.auditType   shouldBe "monthlyNilReturnResponse"
+      extended.detail      shouldBe event.detailJson
     }
 
     "serialize and deserialize correctly to/from JSON" in {
       val responseModel = AuditResponseReceivedModel("SUCCESS", Json.toJson("Processed successfully"))
-      val event = MonthlyNilReturnResponseEvent(responseModel)
-      val json = Json.toJson(event)
-      val parsed = json.as[MonthlyNilReturnResponseEvent]
+      val event         = MonthlyNilReturnResponseEvent(responseModel)
+      val json          = Json.toJson(event)
+      val parsed        = json.as[MonthlyNilReturnResponseEvent]
       parsed shouldBe event
     }
 
     val validNiReturnElem = scala.xml.XML.load(getClass.getResource("/ValidNilReturnSubmissionResponse.xml"))
-    val responseData = convertXmlToJson(validNiReturnElem.toString)
+    val responseData      = convertXmlToJson(validNiReturnElem.toString)
 
     val dto = MonthlyNilReturnResponseEvent(
       response = AuditResponseReceivedModel("SUCCESS", responseData.json.get)
@@ -181,8 +180,7 @@ class AuditEventModelSpec extends SpecBase {
 
     val json = Json.toJson(dto)
 
-    val expected = Json.parse(
-      """{
+    val expected = Json.parse("""{
         |"response":{
         |   "status":"SUCCESS",
         |   "responseData":{
@@ -259,7 +257,6 @@ class AuditEventModelSpec extends SpecBase {
       json mustBe expected
     }
   }
-  
 
   "ClientListRetrievalFailedEvent" - {
 
@@ -273,14 +270,14 @@ class AuditEventModelSpec extends SpecBase {
       val extended = event.extendedDataEvent
 
       extended.auditSource shouldBe "construction-industry-scheme"
-      extended.auditType shouldBe "clientListRetrievalFailure"
+      extended.auditType   shouldBe "clientListRetrievalFailure"
 
       val expectedDetail = Json.obj(
         "credentialId" -> "cred-123",
-        "phase" -> "business#1",
-        "outcome" -> "failed",
-        "code" -> "3046",
-        "reason" -> "no-business-intervals"
+        "phase"        -> "business#1",
+        "outcome"      -> "failed",
+        "code"         -> "3046",
+        "reason"       -> "no-business-intervals"
       )
 
       extended.detail shouldBe expectedDetail
@@ -296,9 +293,9 @@ class AuditEventModelSpec extends SpecBase {
 
       val expectedDetail = Json.obj(
         "credentialId" -> "cred-999",
-        "phase" -> "browser",
-        "outcome" -> "failed",
-        "code" -> "3046"
+        "phase"        -> "browser",
+        "outcome"      -> "failed",
+        "code"         -> "3046"
       )
 
       event.detailJson shouldBe expectedDetail
@@ -308,10 +305,10 @@ class AuditEventModelSpec extends SpecBase {
       val event = ClientListRetrievalFailedEvent(
         credentialId = "cred-123",
         phase = "business#1",
-        reason = Some("initiate-on-final-business-interval"),
+        reason = Some("initiate-on-final-business-interval")
       )
 
-      val json = Json.toJson(event)
+      val json   = Json.toJson(event)
       val parsed = json.as[ClientListRetrievalFailedEvent]
 
       parsed shouldBe event
@@ -329,13 +326,13 @@ class AuditEventModelSpec extends SpecBase {
       val extended = event.extendedDataEvent
 
       extended.auditSource shouldBe "construction-industry-scheme"
-      extended.auditType shouldBe "clientListRetrievalInProgress"
+      extended.auditType   shouldBe "clientListRetrievalInProgress"
 
       val expectedDetail = Json.obj(
         "credentialId" -> "cred-456",
-        "phase" -> "browser",
-        "outcome" -> "in-progress",
-        "code" -> "3008"
+        "phase"        -> "browser",
+        "outcome"      -> "in-progress",
+        "code"         -> "3008"
       )
 
       extended.detail shouldBe expectedDetail
@@ -345,10 +342,10 @@ class AuditEventModelSpec extends SpecBase {
     "serialize and deserialize correctly to/from JSON" in {
       val event = ClientListRetrievalInProgressEvent(
         credentialId = "cred-456",
-        phase = "business",
+        phase = "business"
       )
 
-      val json = Json.toJson(event)
+      val json   = Json.toJson(event)
       val parsed = json.as[ClientListRetrievalInProgressEvent]
 
       parsed shouldBe event

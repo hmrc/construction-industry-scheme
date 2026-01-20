@@ -29,12 +29,12 @@ trait AuditEventModel {
 }
 
 case class MonthlyNilReturnRequestEvent(payload: JsValue) extends AuditEventModel {
-  override val auditType: String = "monthlyNilReturnRequest"
+  override val auditType: String   = "monthlyNilReturnRequest"
   override val detailJson: JsValue = Json.toJson(this)
 }
 
 case class MonthlyNilReturnResponseEvent(response: AuditResponseReceivedModel) extends AuditEventModel {
-  override val auditType: String = "monthlyNilReturnResponse"
+  override val auditType: String   = "monthlyNilReturnResponse"
   override val detailJson: JsValue = Json.toJson(this)
 }
 
@@ -47,12 +47,12 @@ object MonthlyNilReturnResponseEvent {
 }
 
 final case class ClientListRetrievalFailedEvent(
-                                                 credentialId: String,
-                                                 phase: String,
-                                                 reason: Option[String] = None,
-                                                 code: String = "3046"
-                                               ) extends AuditEventModel:
-  override val auditType: String = "clientListRetrievalFailure"
+  credentialId: String,
+  phase: String,
+  reason: Option[String] = None,
+  code: String = "3046"
+) extends AuditEventModel:
+  override val auditType: String   = "clientListRetrievalFailure"
   override val detailJson: JsValue =
     Json.obj(
       "credentialId" -> credentialId,
@@ -62,11 +62,11 @@ final case class ClientListRetrievalFailedEvent(
     ) ++ reason.fold(Json.obj())(r => Json.obj("reason" -> r))
 
 final case class ClientListRetrievalInProgressEvent(
-                                                     credentialId: String,
-                                                     phase: String,
-                                                     code: String = "3008"
-                                                   ) extends AuditEventModel:
-  override val auditType: String = "clientListRetrievalInProgress"
+  credentialId: String,
+  phase: String,
+  code: String = "3008"
+) extends AuditEventModel:
+  override val auditType: String   = "clientListRetrievalInProgress"
   override val detailJson: JsValue =
     Json.obj(
       "credentialId" -> credentialId,

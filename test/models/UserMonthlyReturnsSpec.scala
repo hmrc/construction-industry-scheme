@@ -28,13 +28,13 @@ class UserMonthlyReturnsSpec extends AnyWordSpec with Matchers {
   "UserMonthlyReturns (JSON)" should {
 
     "read and write a non-empty list" in {
-      val mr = MonthlyReturn(
-        monthlyReturnId        = 7L,
-        taxYear                = 2025,
-        taxMonth               = 2,
-        decInformationCorrect  = Some("Y"),
-        status                 = Some("Open"),
-        lastUpdate             = Some(LocalDateTime.parse("2025-02-10T10:00:00"))
+      val mr      = MonthlyReturn(
+        monthlyReturnId = 7L,
+        taxYear = 2025,
+        taxMonth = 2,
+        decInformationCorrect = Some("Y"),
+        status = Some("Open"),
+        lastUpdate = Some(LocalDateTime.parse("2025-02-10T10:00:00"))
       )
       val wrapper = UserMonthlyReturns(Seq(mr))
       val json    = Json.obj("monthlyReturnList" -> Json.arr(Json.toJson(mr)))

@@ -42,7 +42,7 @@ object NilMonthlyReturnOrgSuccessEmail {
 
   def apply(email: String, month: String, year: String): NilMonthlyReturnOrgSuccessEmail =
     NilMonthlyReturnOrgSuccessEmail(
-      to         = List(email),
+      to = List(email),
       templateId = TemplateId,
       parameters = Map(
         "month" -> month,
