@@ -27,7 +27,7 @@ import play.api.mvc.Result
 import play.api.test.Helpers.{contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController
-import uk.gov.hmrc.constructionindustryscheme.models.response.CreateNilMonthlyReturnResponse
+import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
@@ -373,6 +373,66 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         (contentAsJson(result) \ "message").as[String] must equal ("Unexpected error")
       }
     }
+
+    "GET /cis/monthly-returns/unsubmitted/:instanceId (getUnsubmittedMonthlyReturns)" - {
+
+      "return 200 with wrapper when service succeeds (happy path)" in new SetupAuthOnly {
+        val instanceId = "INSTANCE-123"
+
+        val payload = UnsubmittedMonthlyReturnsResponse(
+          unsubmittedCisReturns = Seq(
+            UnsubmittedMonthlyReturnsRow(
+              taxYear = 2025,
+              taxMonth = 1,
+              returnType = "Nil",
+              status = "STARTED",
+              lastUpdate = None
+            )
+          )
+        )
+
+        when(mockMonthlyReturnService.getUnsubmittedMonthlyReturns(eqTo(instanceId))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(payload))
+
+        val result = controller.getUnsubmittedMonthlyReturns(instanceId)(fakeRequest)
+
+        status(result) mustBe OK
+        contentAsJson(result) mustBe Json.toJson(payload)
+        verify(mockMonthlyReturnService).getUnsubmittedMonthlyReturns(eqTo(instanceId))(any[HeaderCarrier])
+      }
+
+      "return 400 when instanceId is blank" in new SetupAuthOnly {
+        val result = controller.getUnsubmittedMonthlyReturns("   ")(fakeRequest)
+
+        status(result) mustBe BAD_REQUEST
+        (contentAsJson(result) \ "message").as[String] mustBe "Missing 'cisId'"
+        verifyNoInteractions(mockMonthlyReturnService)
+      }
+
+      "map UpstreamErrorResponse to same status with message" in new SetupAuthOnly {
+        val instanceId = "abc-123"
+
+        when(mockMonthlyReturnService.getUnsubmittedMonthlyReturns(eqTo(instanceId))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("boom from upstream", BAD_GATEWAY)))
+
+        val result = controller.getUnsubmittedMonthlyReturns(instanceId)(fakeRequest)
+
+        status(result) mustBe BAD_GATEWAY
+        (contentAsJson(result) \ "message").as[String] must include("boom from upstream")
+      }
+
+      "return 500 with 'Unexpected error' when a NonFatal exception occurs" in new SetupAuthOnly {
+        val instanceId = "abc-123"
+
+        when(mockMonthlyReturnService.getUnsubmittedMonthlyReturns(eqTo(instanceId))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("boom")))
+
+        val result = controller.getUnsubmittedMonthlyReturns(instanceId)(fakeRequest)
+
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        (contentAsJson(result) \ "message").as[String] mustBe "Unexpected error"
+      }
+    }
   }
 
     "POST /cis/monthly-returns/nil (createNil)" - {
@@ -405,6 +465,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         status(result) mustBe BAD_GATEWAY
       }
     }
+
+
 
   private lazy val sampleWrapper: UserMonthlyReturns = UserMonthlyReturns(
     Seq(
