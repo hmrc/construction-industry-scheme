@@ -242,7 +242,7 @@ final class SubmissionServiceSpec extends SpecBase {
                    corrId: String = "CID-123",
                    envelope: Elem = <GovTalkMessage/>
                  ): BuiltSubmissionPayload =
-      BuiltSubmissionPayload(envelope = envelope, correlationId = corrId, irMark = "IRMK")
+      BuiltSubmissionPayload(envelope = envelope, correlationId = corrId, irMark = "IRMK", irEnvelope = envelope)
 
     def mkResult(
                   status: SubmissionStatus,

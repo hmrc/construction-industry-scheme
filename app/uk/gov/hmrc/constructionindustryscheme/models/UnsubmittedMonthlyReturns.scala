@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,13 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
-import scala.xml.Elem
+import play.api.libs.json.{Json, OFormat}
 
-case class BuiltSubmissionPayload(
-  envelope: Elem,
-  correlationId: String,
-  irMark: String,
-  irEnvelope: Elem
+case class UnsubmittedMonthlyReturns(
+  scheme: ContractorScheme,
+  monthlyReturn: Seq[MonthlyReturn]
 )
+
+object UnsubmittedMonthlyReturns {
+  given format: OFormat[UnsubmittedMonthlyReturns] = Json.format[UnsubmittedMonthlyReturns]
+}

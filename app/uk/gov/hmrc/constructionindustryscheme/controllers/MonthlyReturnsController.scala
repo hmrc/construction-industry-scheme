@@ -125,6 +125,23 @@ class MonthlyReturnsController @Inject()(
     }
   }
 
+  def getUnsubmittedMonthlyReturns(cisId: String): Action[AnyContent] = authorise.async { implicit request =>
+    val id = cisId.trim
+    if (id.isEmpty) {
+      Future.successful(BadRequest(Json.obj("message" -> "Missing 'cisId'")))
+    } else {
+      service.getUnsubmittedMonthlyReturns(id)
+        .map(res => Ok(Json.toJson(res)))
+        .recover {
+          case u: UpstreamErrorResponse =>
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t) =>
+            logger.error("[getUnsubmittedMonthlyReturns] failed", t)
+            InternalServerError(Json.obj("message" -> "Unexpected error"))
+        }
+    }
+  }
+
   def createNil(): Action[JsValue] = authorise.async(parse.json) { implicit request =>
     request.body.validate[NilMonthlyReturnRequest].fold(
       _ => Future.successful(BadRequest(Json.obj("message" -> "Invalid payload"))),

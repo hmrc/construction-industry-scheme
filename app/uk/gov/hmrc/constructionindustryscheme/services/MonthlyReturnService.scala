@@ -19,8 +19,8 @@ package uk.gov.hmrc.constructionindustryscheme.services
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.MonthlyReturnRequest
-import uk.gov.hmrc.constructionindustryscheme.models.response.CreateNilMonthlyReturnResponse
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UnsubmittedMonthlyReturnStatus, UserMonthlyReturns}
 
 import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}
@@ -37,6 +37,22 @@ class MonthlyReturnService @Inject()(
 
   def getAllMonthlyReturnsByCisId(cisId: String)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
     formp.getMonthlyReturns(cisId)
+
+  def getUnsubmittedMonthlyReturns(cisId: String)(implicit hc: HeaderCarrier): Future[UnsubmittedMonthlyReturnsResponse] =
+    formp.getUnsubmittedMonthlyReturns(cisId).map { unsubmitted =>
+      UnsubmittedMonthlyReturnsResponse(
+        unsubmittedCisReturns =
+          unsubmitted.monthlyReturn.map { monthlyReturn =>
+            UnsubmittedMonthlyReturnsRow(
+              taxYear = monthlyReturn.taxYear,
+              taxMonth = monthlyReturn.taxMonth,
+              returnType = mapType(monthlyReturn.nilReturnIndicator),
+              status = mapStatus(monthlyReturn.status),
+              lastUpdate = monthlyReturn.lastUpdate
+            )
+          }
+      )
+    }
 
   def createNilMonthlyReturn(req: NilMonthlyReturnRequest)
                             (implicit hc: HeaderCarrier): Future[CreateNilMonthlyReturnResponse] =
@@ -56,10 +72,18 @@ class MonthlyReturnService @Inject()(
     }
 
   def createMonthlyReturn(req: MonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
-    formp.createMonthlyReturn(req)  
+    formp.createMonthlyReturn(req)
 
   def getSchemeEmail(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[String]] =
     formp.getSchemeEmail(instanceId)
 
+  private def mapType(nilReturnIndicator: Option[String]): String = {
+    if (nilReturnIndicator.exists(_.trim.equalsIgnoreCase("Y"))) "Nil"
+    else "Standard"
+  }
+
+  private def mapStatus(raw: Option[String]): String = {
+    UnsubmittedMonthlyReturnStatus.fromRaw(raw).asText
+  }
 }
 
