@@ -16,7 +16,6 @@
 
 package models.requests
 
-
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers.*
 import play.api.libs.json.*
@@ -30,10 +29,10 @@ class NilMonthlyReturnOrgSuccessEmailSpec extends AnyWordSpec {
       val req = NilMonthlyReturnOrgSuccessEmail(
         email = "user@example.com",
         month = "October",
-        year  = "2025"
+        year = "2025"
       )
 
-      req.to shouldBe List("user@example.com")
+      req.to         shouldBe List("user@example.com")
       req.templateId shouldBe "dtr_cis_nil_monthly_return_org_success"
       req.parameters shouldBe Map("month" -> "October", "year" -> "2025")
     }
@@ -42,12 +41,12 @@ class NilMonthlyReturnOrgSuccessEmailSpec extends AnyWordSpec {
       val req = NilMonthlyReturnOrgSuccessEmail(
         email = "user@example.com",
         month = "October",
-        year  = "2025"
+        year = "2025"
       )
 
       val json = Json.toJson(req)
-      (json \ "to").as[List[String]] shouldBe List("user@example.com")
-      (json \ "templateId").as[String] shouldBe "dtr_cis_nil_monthly_return_org_success"
+      (json \ "to").as[List[String]]             shouldBe List("user@example.com")
+      (json \ "templateId").as[String]           shouldBe "dtr_cis_nil_monthly_return_org_success"
       (json \ "parameters" \ "month").as[String] shouldBe "October"
       (json \ "parameters" \ "year").as[String]  shouldBe "2025"
     }
@@ -62,7 +61,7 @@ class NilMonthlyReturnOrgSuccessEmailSpec extends AnyWordSpec {
       json.validate[NilMonthlyReturnOrgSuccessEmail] shouldBe a[JsSuccess[_]]
 
       val req = json.as[NilMonthlyReturnOrgSuccessEmail]
-      req.to shouldBe List("user@example.com")
+      req.to         shouldBe List("user@example.com")
       req.templateId shouldBe "dtr_cis_nil_monthly_return_org_success"
       req.parameters shouldBe Map("month" -> "October", "year" -> "2025")
     }
@@ -71,8 +70,8 @@ class NilMonthlyReturnOrgSuccessEmailSpec extends AnyWordSpec {
       val req: SendEmailRequest =
         NilMonthlyReturnOrgSuccessEmail("user@example.com", "October", "2025")
 
-      req.to shouldBe List("user@example.com")
-      req.templateId shouldBe "dtr_cis_nil_monthly_return_org_success"
+      req.to                  shouldBe List("user@example.com")
+      req.templateId          shouldBe "dtr_cis_nil_monthly_return_org_success"
       req.parameters("month") shouldBe "October"
       req.parameters("year")  shouldBe "2025"
     }

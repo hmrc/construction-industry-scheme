@@ -41,7 +41,6 @@ object ContractorScheme {
   given OFormat[ContractorScheme] = Json.format[ContractorScheme]
 }
 
-
 final case class CreateContractorSchemeParams(
   instanceId: String,
   accountsOfficeReference: String,

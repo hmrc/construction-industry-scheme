@@ -23,7 +23,7 @@ import uk.gov.hmrc.constructionindustryscheme.utils.SchemaLoader
 import javax.xml.validation.Schema
 
 @Singleton
-class AppConfig @Inject()(val config: Configuration, val environment: Environment) {
+class AppConfig @Inject() (val config: Configuration, val environment: Environment) {
   val appName: String = config.get[String]("appName")
 
   val chrisHost: Seq[String] = config.get[Seq[String]]("submissionPollUrlKnownHosts")
@@ -36,7 +36,7 @@ class AppConfig @Inject()(val config: Configuration, val environment: Environmen
 
   val cisDefaultBusinessIntervalsMs: List[Long] = config.get[Seq[Long]]("cis.defaultBusinessIntervalsMs").toList
 
-  lazy val useOverridePollResponseEndPoint: Boolean     =
+  lazy val useOverridePollResponseEndPoint: Boolean =
     config.getOptional[Boolean]("cis.useOverridePollResponseEndPoint").getOrElse(false)
 
   lazy val overridePollResponseEndPoint: String =
@@ -48,4 +48,3 @@ class AppConfig @Inject()(val config: Configuration, val environment: Environmen
   lazy val schema: Schema = SchemaLoader.loadSchemas(schemaNames, environment)
 
 }
-

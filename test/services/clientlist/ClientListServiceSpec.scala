@@ -38,23 +38,23 @@ import play.api.libs.json.{Format, Writes}
 
 class ClientListServiceSpec extends SpecBase {
 
-  private val appConfig: AppConfig = app.injector.instanceOf[AppConfig]
+  private val appConfig: AppConfig     = app.injector.instanceOf[AppConfig]
   private val actorSystem: ActorSystem = app.injector.instanceOf[ActorSystem]
 
   class TestClientListService(
-                               datacacheProxyConnector: DatacacheProxyConnector,
-                               clientExchangeProxyConnector: ClientExchangeProxyConnector,
-                               audit: AuditService,
-                               cacheService: CacheService
-                             )(implicit ec: ExecutionContext)
-    extends ClientListService(
-      datacacheProxyConnector,
-      clientExchangeProxyConnector,
-      audit,
-      appConfig,
-      cacheService,
-      actorSystem
-    ) {
+    datacacheProxyConnector: DatacacheProxyConnector,
+    clientExchangeProxyConnector: ClientExchangeProxyConnector,
+    audit: AuditService,
+    cacheService: CacheService
+  )(implicit ec: ExecutionContext)
+      extends ClientListService(
+        datacacheProxyConnector,
+        clientExchangeProxyConnector,
+        audit,
+        appConfig,
+        cacheService,
+        actorSystem
+      ) {
 
     // capture the wait plan actually used by processWithWaitPlan
     @volatile var lastWaitPlan: Option[AsynchronousProcessWaitTime] = None
@@ -66,18 +66,18 @@ class ClientListServiceSpec extends SpecBase {
       super.logWaitPlan(business, browserMs)
       lastWaitPlan = Some(
         AsynchronousProcessWaitTime(
-          browserIntervalMs   = browserMs,
+          browserIntervalMs = browserMs,
           businessIntervalsMs = business.toList
         )
       )
   }
 
   private def setupService(
-   datacache: DatacacheProxyConnector = mock[DatacacheProxyConnector],
-   clientExchangeProxy: ClientExchangeProxyConnector = mock[ClientExchangeProxyConnector],
-   audit: AuditService = mock[AuditService]
+    datacache: DatacacheProxyConnector = mock[DatacacheProxyConnector],
+    clientExchangeProxy: ClientExchangeProxyConnector = mock[ClientExchangeProxyConnector],
+    audit: AuditService = mock[AuditService]
   ): (TestClientListService, DatacacheProxyConnector, ClientExchangeProxyConnector, AuditService, CacheService) = {
-    val cacheService: CacheService  = new RealCacheService()
+    val cacheService: CacheService = new RealCacheService()
 
     val service = new TestClientListService(datacache, clientExchangeProxy, audit, cacheService)
     (service, datacache, clientExchangeProxy, audit, cacheService)
@@ -117,13 +117,13 @@ class ClientListServiceSpec extends SpecBase {
 
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
       .thenReturn(
-        Future.successful(ClientListStatus.InitiateDownload), 
-        Future.successful(ClientListStatus.Succeeded) 
+        Future.successful(ClientListStatus.InitiateDownload),
+        Future.successful(ClientListStatus.Succeeded)
       )
 
     val waitPlan = AsynchronousProcessWaitTime(
       browserIntervalMs = 1000L,
-      businessIntervalsMs = List(100L) 
+      businessIntervalsMs = List(100L)
     )
 
     when(clientExchangeProxy.initiate(any, any, any)(any))
@@ -161,7 +161,7 @@ class ClientListServiceSpec extends SpecBase {
 
   "AC5 - should call datacache after each business interval" in {
     val (service, datacache, clientExchangeProxy, audit, cache) = setupService()
-    val businessIntervals = List(10L, 20L, 30L)
+    val businessIntervals                                       = List(10L, 20L, 30L)
 
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
       .thenReturn(
@@ -317,7 +317,7 @@ class ClientListServiceSpec extends SpecBase {
     val (service, datacache, clientExchangeProxy, audit, _) = setupService()
 
     val cachedPlan = AsynchronousProcessWaitTime(
-      browserIntervalMs   = 9999L,
+      browserIntervalMs = 9999L,
       businessIntervalsMs = List(111L, 222L)
     )
 
@@ -381,7 +381,7 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.InProgress)
       )
 
-    when(audit.clientListRetrievalInProgress(any,any)(any))
+    when(audit.clientListRetrievalInProgress(any, any)(any))
       .thenReturn(Future.successful(AuditResult.Success))
 
     val status = service.process("cred-1", "agent-001").futureValue
@@ -404,7 +404,7 @@ class ClientListServiceSpec extends SpecBase {
     implicit val hc: HeaderCarrier = HeaderCarrier()
 
     val expectedServiceName = appConfig.cisServiceName
-    val expectedGrace = appConfig.cisGracePeriodSeconds
+    val expectedGrace       = appConfig.cisGracePeriodSeconds
 
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
       .thenReturn(Future.successful(ClientListStatus.Succeeded))
@@ -422,7 +422,7 @@ class ClientListServiceSpec extends SpecBase {
   "ClientListService.getClientList" - {
 
     val irAgentId = "SA123456"
-    val credId = "cred-123"
+    val credId    = "cred-123"
 
     "should return ClientSearchResult when connector succeeds" in {
       val (service, datacache, _, _, cache) = setupService()
@@ -455,10 +455,10 @@ class ClientListServiceSpec extends SpecBase {
 
       val result = service.getClientList(irAgentId, credId).futureValue
 
-      result shouldBe expectedResult
-      result.totalCount shouldBe 1
-      result.clients.size shouldBe 1
-      result.clients.head.uniqueId shouldBe "client-1"
+      result                              shouldBe expectedResult
+      result.totalCount                   shouldBe 1
+      result.clients.size                 shouldBe 1
+      result.clients.head.uniqueId        shouldBe "client-1"
       result.clientNameStartingCharacters shouldBe List("T")
 
       verify(datacache, times(1)).getClientList(eqTo(irAgentId), eqTo(credId))(using any[HeaderCarrier])
@@ -478,8 +478,8 @@ class ClientListServiceSpec extends SpecBase {
 
       val result = service.getClientList(irAgentId, credId).futureValue
 
-      result.totalCount shouldBe 0
-      result.clients shouldBe empty
+      result.totalCount                   shouldBe 0
+      result.clients                      shouldBe empty
       result.clientNameStartingCharacters shouldBe empty
 
       verify(datacache, times(1)).getClientList(eqTo(irAgentId), eqTo(credId))(using any[HeaderCarrier])
@@ -493,9 +493,9 @@ class ClientListServiceSpec extends SpecBase {
 
       val ex = service.getClientList(irAgentId, credId).failed.futureValue
 
-      ex shouldBe a[UpstreamErrorResponse]
+      ex                                                shouldBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode shouldBe 400
-      ex.getMessage shouldBe "Bad request"
+      ex.getMessage                                     shouldBe "Bad request"
     }
 
     "should propagate UpstreamErrorResponse when connector fails with 500" in {
@@ -506,16 +506,16 @@ class ClientListServiceSpec extends SpecBase {
 
       val ex = service.getClientList(irAgentId, credId).failed.futureValue
 
-      ex shouldBe a[UpstreamErrorResponse]
+      ex                                                shouldBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode shouldBe 500
-      ex.getMessage shouldBe "Internal server error"
+      ex.getMessage                                     shouldBe "Internal server error"
     }
 
     "should delegate to datacache connector with correct parameters" in {
       val (service, datacache, _, _, cache) = setupService()
 
       val testIrAgentId = "TEST123"
-      val testCredId = "test-cred"
+      val testCredId    = "test-cred"
 
       val result = ClientSearchResult(
         clients = List.empty,
@@ -534,10 +534,10 @@ class ClientListServiceSpec extends SpecBase {
 
   "ClientListService.hasClient" - {
 
-    val taxOfficeNumber = "123"
+    val taxOfficeNumber    = "123"
     val taxOfficeReference = "AB456"
-    val agentId = "SA123456"
-    val credId = "cred-123"
+    val agentId            = "SA123456"
+    val credId             = "cred-123"
 
     "return true when hasClient from connector returns true" in {
       val (service, datacache, _, _, cache) = setupService()
@@ -545,9 +545,11 @@ class ClientListServiceSpec extends SpecBase {
       when(datacache.hasClient(any, any, any, any)(any))
         .thenReturn(Future.successful(true))
 
-      val result = service.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId)(
-        using mock[HeaderCarrier]
-      ).futureValue
+      val result = service
+        .hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId)(using
+          mock[HeaderCarrier]
+        )
+        .futureValue
 
       result shouldBe true
       verify(datacache, times(1)).hasClient(any, any, any, any)(any)
@@ -559,9 +561,11 @@ class ClientListServiceSpec extends SpecBase {
       when(datacache.hasClient(any, any, any, any)(any))
         .thenReturn(Future.successful(false))
 
-      val result = service.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId)(
-        using mock[HeaderCarrier]
-      ).futureValue
+      val result = service
+        .hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId)(using
+          mock[HeaderCarrier]
+        )
+        .futureValue
 
       result shouldBe false
       verify(datacache, times(1)).hasClient(any, any, any, any)(any)
@@ -573,9 +577,11 @@ class ClientListServiceSpec extends SpecBase {
       // Pre-populate cache
       cache.cache[Boolean](s"hasClient:$taxOfficeNumber:$taxOfficeReference:$agentId:$credId", true, 1.hour)
 
-      val result = service.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId)(
-        using mock[HeaderCarrier]
-      ).futureValue
+      val result = service
+        .hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId)(using
+          mock[HeaderCarrier]
+        )
+        .futureValue
 
       result shouldBe true
       // Verify connector was never called (cache hit)
@@ -588,9 +594,11 @@ class ClientListServiceSpec extends SpecBase {
       when(datacache.hasClient(any, any, any, any)(any))
         .thenReturn(Future.successful(true))
 
-      val result = service.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId)(
-        using mock[HeaderCarrier]
-      ).futureValue
+      val result = service
+        .hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId)(using
+          mock[HeaderCarrier]
+        )
+        .futureValue
 
       result shouldBe true
 
@@ -605,20 +613,22 @@ class ClientListServiceSpec extends SpecBase {
       when(datacache.hasClient(any, any, any, any)(any))
         .thenReturn(Future.failed(UpstreamErrorResponse("Service unavailable", 503, 503)))
 
-      val ex = service.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId)(
-        using mock[HeaderCarrier]
-      ).failed.futureValue
+      val ex = service
+        .hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId)(using
+          mock[HeaderCarrier]
+        )
+        .failed
+        .futureValue
 
-      ex shouldBe a[UpstreamErrorResponse]
+      ex                                                shouldBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode shouldBe 503
     }
   }
 
   class RealCacheService extends CacheService(actorSystem) {
     // Simple test cache implementation that bypasses ActorSystem
-    override def cache[T](key: String, value: T, ttl: FiniteDuration)(using Format[T]): Unit = {
+    override def cache[T](key: String, value: T, ttl: FiniteDuration)(using Format[T]): Unit =
       super.cache(key, value, 10.hours) // Use longer TTL for tests to avoid expiration
-    }
   }
 
 }

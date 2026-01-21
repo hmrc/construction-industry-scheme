@@ -27,12 +27,13 @@ class CreateSubcontractorRequestSpec extends AnyFreeSpec with Matchers {
   "CreateSubcontractorRequest JSON" - {
 
     "round-trips" in {
-      val req = CreateSubcontractorRequest(123, SoleTrader, 1) 
+      val req = CreateSubcontractorRequest(123, SoleTrader, 1)
       Json.parse(Json.toJson(req).toString).as[CreateSubcontractorRequest] shouldBe req
     }
 
     "fails if required field missing" in {
-      Json.obj("schemeId" -> 123, "version" -> 1)
+      Json
+        .obj("schemeId" -> 123, "version" -> 1)
         .validate[CreateSubcontractorRequest]
         .isError shouldBe true
     }

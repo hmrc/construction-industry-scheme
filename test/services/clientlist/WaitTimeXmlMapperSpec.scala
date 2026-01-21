@@ -42,7 +42,7 @@ class WaitTimeXmlMapperSpec extends SpecBase with OptionValues {
 
       val waitTime = result.toOption.value
       waitTime mustBe AsynchronousProcessWaitTime(
-        browserIntervalMs   = 1000L,
+        browserIntervalMs = 1000L,
         businessIntervalsMs = List(100L, 200L, 300L)
       )
     }
@@ -60,12 +60,12 @@ class WaitTimeXmlMapperSpec extends SpecBase with OptionValues {
       result.isRight mustBe true
 
       val waitTime = result.toOption.value
-      waitTime.browserIntervalMs   mustBe 500L
+      waitTime.browserIntervalMs mustBe 500L
       waitTime.businessIntervalsMs mustBe List(10L, 20L)
     }
 
     "return Left('invalid XML document') when XML is not well-formed" in {
-      val xml = "<AsynchronousProcessWaitTime" 
+      val xml = "<AsynchronousProcessWaitTime"
 
       val result = WaitTimeXmlMapper.parse(xml)
 
@@ -135,7 +135,7 @@ class WaitTimeXmlMapperSpec extends SpecBase with OptionValues {
       result.isRight mustBe true
 
       val waitTime = result.toOption.value
-      waitTime.browserIntervalMs   mustBe 1000L
+      waitTime.browserIntervalMs mustBe 1000L
       waitTime.businessIntervalsMs mustBe Nil
     }
   }

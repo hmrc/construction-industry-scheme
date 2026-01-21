@@ -43,5 +43,5 @@ class AsynchronousProcessWaitTimeSpec extends SpecBase {
       waitTime.businessIntervalsMs mustBe Nil
     }
   }
-  
+
 }

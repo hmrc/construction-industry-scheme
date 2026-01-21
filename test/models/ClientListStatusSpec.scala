@@ -29,10 +29,10 @@ class ClientListStatusSpec extends SpecBase {
         Set(InitiateDownload, InProgress, Succeeded, Failed)
 
       all.size mustBe 4
-      all must contain (InitiateDownload)
-      all must contain (InProgress)
-      all must contain (Succeeded)
-      all must contain (Failed)
+      all must contain(InitiateDownload)
+      all must contain(InProgress)
+      all must contain(Succeeded)
+      all must contain(Failed)
     }
 
     "support pattern matching over all cases" in {
@@ -45,9 +45,9 @@ class ClientListStatusSpec extends SpecBase {
         }
 
       describe(InitiateDownload) mustBe "initiate"
-      describe(InProgress)       mustBe "in-progress"
-      describe(Succeeded)        mustBe "succeeded"
-      describe(Failed)           mustBe "failed"
+      describe(InProgress) mustBe "in-progress"
+      describe(Succeeded) mustBe "succeeded"
+      describe(Failed) mustBe "failed"
     }
   }
 }

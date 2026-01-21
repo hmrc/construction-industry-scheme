@@ -39,21 +39,21 @@ final case class SystemException(msg: String) extends RuntimeException(msg)
 final case class NoBusinessIntervalsException(msg: String) extends RuntimeException(msg)
 
 @Singleton
-class ClientListService @Inject()(
+class ClientListService @Inject() (
   datacacheProxyConnector: DatacacheProxyConnector,
   clientExchangeProxyConnector: ClientExchangeProxyConnector,
   audit: AuditService,
   appConfig: AppConfig,
   cache: CacheService,
   actorSystem: ActorSystem
-)(implicit ec: ExecutionContext) extends Logging {
+)(implicit ec: ExecutionContext)
+    extends Logging {
 
   private val serviceName = appConfig.cisServiceName
-  private val grace = appConfig.cisGracePeriodSeconds
+  private val grace       = appConfig.cisGracePeriodSeconds
 
-  def getClientList(irAgentId: String, credentialId: String)(using HeaderCarrier): Future[ClientSearchResult] = {
+  def getClientList(irAgentId: String, credentialId: String)(using HeaderCarrier): Future[ClientSearchResult] =
     datacacheProxyConnector.getClientList(irAgentId, credentialId)
-  }
 
   def hasClient(
     taxOfficeNumber: String,
@@ -69,16 +69,16 @@ class ClientListService @Inject()(
       case Some(cachedResult) =>
         logger.debug(s"[ClientListService.hasClient] cache hit for key: $cacheKey")
         Future.successful(cachedResult)
-      case None =>
+      case None               =>
         logger.debug(s"[ClientListService.hasClient] cache miss for key: $cacheKey")
         // Cache miss - fetch from connector and cache the result
-        datacacheProxyConnector.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credentialId)(using hc).map { result =>
-          cache.cache(cacheKey, result, cacheTtl)
-          result
+        datacacheProxyConnector.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credentialId)(using hc).map {
+          result =>
+            cache.cache(cacheKey, result, cacheTtl)
+            result
         }
     }
   }
-
 
   // ------------------------------------------------------------
   // Cache: wait plans per credentialId
@@ -97,7 +97,7 @@ class ClientListService @Inject()(
 
   private def defaultWaitPlan: AsynchronousProcessWaitTime =
     AsynchronousProcessWaitTime(
-      browserIntervalMs   = appConfig.cisDefaultBrowserIntervalMs,
+      browserIntervalMs = appConfig.cisDefaultBrowserIntervalMs,
       businessIntervalsMs = appConfig.cisDefaultBusinessIntervalsMs
     )
 
@@ -114,7 +114,9 @@ class ClientListService @Inject()(
     datacacheProxyConnector.getClientListDownloadStatus(credId, serviceName, grace)
 
   protected def logWaitPlan(business: Seq[Long], browserMs: Long): Unit =
-    logger.info(s"""event="wait_plan" service="$serviceName" business_ms="${business.mkString(",")}" browser_ms=$browserMs""")
+    logger.info(
+      s"""event="wait_plan" service="$serviceName" business_ms="${business.mkString(",")}" browser_ms=$browserMs"""
+    )
 
   private def logStatus(context: String, index: Option[Int], status: ClientListStatus): Unit =
     val indexString = index.map(i => s" index=$i").getOrElse("")
@@ -125,8 +127,8 @@ class ClientListService @Inject()(
   // ------------------------------------------------------------
 
   private def processWithWaitPlan(
-   credentialId: String,
-   waitPlan: AsynchronousProcessWaitTime
+    credentialId: String,
+    waitPlan: AsynchronousProcessWaitTime
   )(implicit hc: HeaderCarrier): Future[Unit] =
     val business = waitPlan.businessIntervalsMs
     logWaitPlan(business, waitPlan.browserIntervalMs)
@@ -138,69 +140,70 @@ class ClientListService @Inject()(
       Future.failed(NoBusinessIntervalsException("No business intervals"))
     else
       def loop(index: Int): Future[Boolean] =
-        if index >= business.length then
-          Future.successful(false)
+        if index >= business.length then Future.successful(false)
         else
           for
             _      <- sleep(business(index))
             status <- getStatus(credentialId)
             _       = logStatus("business", Some(index), status)
             result <- status match
-              case Succeeded =>
-                clearWaitTime(credentialId)
-                Future.successful(true)
+                        case Succeeded =>
+                          clearWaitTime(credentialId)
+                          Future.successful(true)
 
-              case Failed =>
-                audit.clientListRetrievalFailed(credentialId, phase = s"business#$index")
-                clearWaitTime(credentialId)
-                Future.failed(ClientListDownloadFailedException("Failed"))
+                        case Failed =>
+                          audit.clientListRetrievalFailed(credentialId, phase = s"business#$index")
+                          clearWaitTime(credentialId)
+                          Future.failed(ClientListDownloadFailedException("Failed"))
 
-              case InProgress =>
-                loop(index + 1)
+                        case InProgress =>
+                          loop(index + 1)
 
-              case InitiateDownload =>
-                if index < business.length - 1 then
-                  loop(index + 1)
-                else
-                  audit.clientListRetrievalFailed(
-                    credentialId,
-                    phase  = s"business#$index",
-                    reason = Some("initiate-on-final-business-interval")
-                  )
-                  clearWaitTime(credentialId)
-                  Future.failed(SystemException("Initiate on final business interval"))
+                        case InitiateDownload =>
+                          if index < business.length - 1 then loop(index + 1)
+                          else
+                            audit.clientListRetrievalFailed(
+                              credentialId,
+                              phase = s"business#$index",
+                              reason = Some("initiate-on-final-business-interval")
+                            )
+                            clearWaitTime(credentialId)
+                            Future.failed(SystemException("Initiate on final business interval"))
           yield result
 
       for
         businessSucceeded <- loop(0)
-        outcome <-
+        outcome           <-
           // BROWSER PHASE: only when we exhaust business intervals with last status = InProgress
-          if businessSucceeded then
-            Future.unit
+          if businessSucceeded then Future.unit
           else
             for
-              _      <- sleep(waitPlan.browserIntervalMs)
-              status <- getStatus(credentialId)
-              _       = logStatus("browser", None, status)
+              _           <- sleep(waitPlan.browserIntervalMs)
+              status      <- getStatus(credentialId)
+              _            = logStatus("browser", None, status)
               finalResult <- status match
-                case Succeeded =>
-                  clearWaitTime(credentialId)
-                  Future.unit
+                               case Succeeded =>
+                                 clearWaitTime(credentialId)
+                                 Future.unit
 
-                case Failed =>
-                  audit.clientListRetrievalFailed(credentialId, phase = "browser")
-                  clearWaitTime(credentialId)
-                  Future.failed(ClientListDownloadFailedException("Failed after browser interval"))
+                               case Failed =>
+                                 audit.clientListRetrievalFailed(credentialId, phase = "browser")
+                                 clearWaitTime(credentialId)
+                                 Future.failed(ClientListDownloadFailedException("Failed after browser interval"))
 
-                case InitiateDownload =>
-                  audit.clientListRetrievalFailed(credentialId, phase = "browser", reason = Some("initiate-after-browser"))
-                  clearWaitTime(credentialId)
-                  Future.failed(SystemException("Initiate after browser interval"))
+                               case InitiateDownload =>
+                                 audit.clientListRetrievalFailed(
+                                   credentialId,
+                                   phase = "browser",
+                                   reason = Some("initiate-after-browser")
+                                 )
+                                 clearWaitTime(credentialId)
+                                 Future.failed(SystemException("Initiate after browser interval"))
 
-                case InProgress =>
-                  audit.clientListRetrievalInProgress(credentialId, phase = "browser")
-                  clearWaitTime(credentialId)
-                  Future.failed(ClientListDownloadInProgressException("Still in progress"))
+                               case InProgress =>
+                                 audit.clientListRetrievalInProgress(credentialId, phase = "browser")
+                                 clearWaitTime(credentialId)
+                                 Future.failed(ClientListDownloadInProgressException("Still in progress"))
             yield finalResult
       yield outcome
 
@@ -239,7 +242,7 @@ class ClientListService @Inject()(
       }
 
     underlying
-    .map(_ => Succeeded)
+      .map(_ => Succeeded)
       .recover {
         case _: ClientListDownloadInProgressException => InProgress
         case _: ClientListDownloadFailedException     => Failed

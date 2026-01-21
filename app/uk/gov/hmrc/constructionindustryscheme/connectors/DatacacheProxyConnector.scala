@@ -31,10 +31,12 @@ import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
 @Singleton
-class DatacacheProxyConnector @Inject()(
-                                         http: HttpClientV2,
-                                         config: ServicesConfig
-                                       )(implicit ec: ExecutionContext) extends HttpReadsInstances with Logging {
+class DatacacheProxyConnector @Inject() (
+  http: HttpClientV2,
+  config: ServicesConfig
+)(implicit ec: ExecutionContext)
+    extends HttpReadsInstances
+    with Logging {
 
   private val base = config.baseUrl("rds-datacache-proxy") + "/rds-datacache-proxy"
 
@@ -44,25 +46,27 @@ class DatacacheProxyConnector @Inject()(
       .withBody(Json.toJson(employerReference))
       .execute[CisTaxpayer]
 
-
   def getClientListDownloadStatus(
-   credentialId: String,
-   serviceName: String,
-   gracePeriodSeconds: Int
+    credentialId: String,
+    serviceName: String,
+    gracePeriodSeconds: Int
   )(implicit hc: HeaderCarrier): Future[ClientListStatus] = {
-    val endpoint = url"$base/cis/client-list-status?credentialId=$credentialId&serviceName=$serviceName&gracePeriod=$gracePeriodSeconds"
+    val endpoint =
+      url"$base/cis/client-list-status?credentialId=$credentialId&serviceName=$serviceName&gracePeriod=$gracePeriodSeconds"
 
-    http.get(endpoint)
+    http
+      .get(endpoint)
       .execute[JsValue]
       .flatMap { json =>
         (json \ "status").asOpt[String] match {
           case Some(s) =>
             Future.successful(mapProxyStatus(s))
-          case None =>
+          case None    =>
             logger.error(s"[DatacacheProxyConnector] invalid payload (missing 'status'): ${json.toString}")
             Future.failed(
               UpstreamErrorResponse("rds-datacache-proxy invalid payload", 502, 502)
-            )        }
+            )
+        }
       }
   }
 
@@ -72,15 +76,17 @@ class DatacacheProxyConnector @Inject()(
     agentId: String,
     credentialId: String
   )(implicit hc: HeaderCarrier): Future[Boolean] = {
-    val endpoint = url"$base/cis/has-client?credentialId=$credentialId&irAgentId=$agentId&taxOfficeNumber=$taxOfficeNumber&taxOfficeReference=$taxOfficeReference"
+    val endpoint =
+      url"$base/cis/has-client?credentialId=$credentialId&irAgentId=$agentId&taxOfficeNumber=$taxOfficeNumber&taxOfficeReference=$taxOfficeReference"
 
-    http.get(endpoint)
+    http
+      .get(endpoint)
       .execute[JsValue]
       .flatMap { json =>
         (json \ "hasClient").validate[Boolean] match {
           case JsSuccess(hasClient, _) =>
             Future.successful(hasClient)
-          case JsError(errors) =>
+          case JsError(errors)         =>
             logger.error(s"[DatacacheProxyConnector] invalid payload (missing 'hasClient'): ${json.toString}")
             Future.failed(
               UpstreamErrorResponse("rds-datacache-proxy invalid payload", 502, 502)
@@ -91,10 +97,10 @@ class DatacacheProxyConnector @Inject()(
 
   private def mapProxyStatus(s: String): ClientListStatus = s match {
     case "InitiateDownload" => InitiateDownload
-    case "InProgress" => InProgress
-    case "Succeeded" => Succeeded
-    case "Failed" => Failed
-    case other =>
+    case "InProgress"       => InProgress
+    case "Succeeded"        => Succeeded
+    case "Failed"           => Failed
+    case other              =>
       logger.error(s"[DatacacheProxyConnector] unknown status '$other' from rds-datacache-proxy")
       throw new RuntimeException(s"Unknown status '$other' from rds-datacache-proxy")
   }

@@ -37,30 +37,30 @@ import uk.gov.hmrc.http.{HeaderCarrier, SessionId}
 import scala.concurrent.{ExecutionContext, Future}
 
 trait SpecBase
-  extends AnyFreeSpec
+    extends AnyFreeSpec
     with Matchers
     with DefaultAwaitTimeout
     with ScalaFutures
     with FakeApplicationFactory
     with BaseOneAppPerSuite
-    with MockitoSugar 
-    with BeforeAndAfterEach{
+    with MockitoSugar
+    with BeforeAndAfterEach {
 
   override def fakeApplication(): Application =
     new GuiceApplicationBuilder()
       .configure(
-        "microservice.services.auth.host" -> "localhost",
-        "microservice.services.auth.port" -> 11111,
+        "microservice.services.auth.host"                -> "localhost",
+        "microservice.services.auth.port"                -> 11111,
         "microservice.services.rds-datacache-proxy.host" -> "localhost",
         "microservice.services.rds-datacache-proxy.port" -> 11111
       )
       .build()
 
-  val cc: ControllerComponents = stubControllerComponents()
+  val cc: ControllerComponents                         = stubControllerComponents()
   val fakeRequest: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
-  val bodyParsers: PlayBodyParsers = app.injector.instanceOf[PlayBodyParsers]
+  val bodyParsers: PlayBodyParsers                     = app.injector.instanceOf[PlayBodyParsers]
 
-  implicit val hc: HeaderCarrier = HeaderCarrier()
+  implicit val hc: HeaderCarrier    = HeaderCarrier()
   implicit val ec: ExecutionContext = cc.executionContext
 
   def fakeAuthAction(ton: String = "123", tor: String = "AB456"): AuthAction =
@@ -70,12 +70,12 @@ trait SpecBase
     FakeAuthAction.empty(bodyParsers)
 
   def rejectingAuthAction: AuthAction = new AuthAction {
-    override def parser: BodyParser[AnyContent] = bodyParsers.default
+    override def parser: BodyParser[AnyContent]               = bodyParsers.default
     override protected def executionContext: ExecutionContext = ec
 
     override def invokeBlock[A](
-     request: Request[A],
-     block: AuthenticatedRequest[A] => Future[Result]
+      request: Request[A],
+      block: AuthenticatedRequest[A] => Future[Result]
     ): Future[Result] =
       Future.successful(Results.Unauthorized)
   }
@@ -85,24 +85,24 @@ trait SpecBase
     ton: String = "123",
     tor: String = "AB456",
     employerName1: Option[String] = Some("TEST LTD")
-                ): CisTaxpayer =
+  ): CisTaxpayer =
     CisTaxpayer(
-      uniqueId         = id,
-      taxOfficeNumber  = ton,
-      taxOfficeRef     = tor,
-      aoDistrict       = None,
-      aoPayType        = None,
-      aoCheckCode      = None,
-      aoReference      = None,
-      validBusinessAddr= None,
-      correlation      = None,
-      ggAgentId        = None,
-      employerName1    = employerName1,
-      employerName2    = None,
-      agentOwnRef      = None,
-      schemeName       = None,
-      utr              = None,
-      enrolledSig      = None
+      uniqueId = id,
+      taxOfficeNumber = ton,
+      taxOfficeRef = tor,
+      aoDistrict = None,
+      aoPayType = None,
+      aoCheckCode = None,
+      aoReference = None,
+      validBusinessAddr = None,
+      correlation = None,
+      ggAgentId = None,
+      employerName1 = employerName1,
+      employerName2 = None,
+      agentOwnRef = None,
+      schemeName = None,
+      utr = None,
+      enrolledSig = None
     )
 
   def cisEnrolment(taxOfficeNumber: String = "123", taxOfficeReference: String = "AB456"): Enrolment =
@@ -116,11 +116,11 @@ trait SpecBase
     )
 
   def createAuthReq(
-                 request: FakeRequest[_] = fakeRequest,
-                 internalId: String = "internalId-123",
-                 session: SessionId = SessionId("session-123"),
-                 enrols: Enrolments = Enrolments(Set(cisEnrolment()))
-               ): AuthenticatedRequest[_] =
+    request: FakeRequest[_] = fakeRequest,
+    internalId: String = "internalId-123",
+    session: SessionId = SessionId("session-123"),
+    enrols: Enrolments = Enrolments(Set(cisEnrolment()))
+  ): AuthenticatedRequest[_] =
     AuthenticatedRequest(
       request = request,
       internalId = internalId,
@@ -129,13 +129,13 @@ trait SpecBase
     )
 
   def createChrisRequest(
-                  utr: String = "1234567890",
-                  aoRef: String = "123/AB456",
-                  infoCorrect: String = "yes",
-                  inactivity: String = "yes",
-                  monthYear: String = "2025-09",
-                  email: String = "test@test.com"
-                ): ChrisSubmissionRequest =
+    utr: String = "1234567890",
+    aoRef: String = "123/AB456",
+    infoCorrect: String = "yes",
+    inactivity: String = "yes",
+    monthYear: String = "2025-09",
+    email: String = "test@test.com"
+  ): ChrisSubmissionRequest =
     ChrisSubmissionRequest(
       utr = utr,
       aoReference = aoRef,

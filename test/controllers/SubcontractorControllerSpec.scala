@@ -34,17 +34,16 @@ import uk.gov.hmrc.http.HeaderCarrier
 import scala.concurrent.Future
 
 final class SubcontractorControllerSpec extends SpecBase with EitherValues {
-  override def beforeEach(): Unit = {
+  override def beforeEach(): Unit =
     super.beforeEach()
-  }
 
   private def mockController(
-                              subcontractorService: SubcontractorService,
-                            auth: AuthAction = fakeAuthAction(),
-                          ): SubcontractorController =
+    subcontractorService: SubcontractorService,
+    auth: AuthAction = fakeAuthAction()
+  ): SubcontractorController =
     new SubcontractorController(auth, subcontractorService, cc)
 
-  val schemeId = 1
+  val schemeId          = 1
   val subbieResourceRef = 10
 
   "createSubcontractor" - {
@@ -60,7 +59,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
     )
 
     "returns 201 with subcontractor response when service returns data" in {
-      val service = mock[SubcontractorService]
+      val service    = mock[SubcontractorService]
       val controller = mockController(service)
 
       val responseJson = Json.obj("subbieResourceRef" -> subbieResourceRef)
@@ -81,7 +80,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 400 when JSON is invalid" in {
-      val service = mock[SubcontractorService]
+      val service    = mock[SubcontractorService]
       val controller = mockController(service)
 
       val bad = Json.obj("schemeId" -> 1)
@@ -98,7 +97,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 502 when service fails" in {
-      val service = mock[SubcontractorService]
+      val service    = mock[SubcontractorService]
       val controller = mockController(service)
 
       when(service.createSubcontractor(any[CreateSubcontractorRequest])(any[HeaderCarrier]))
@@ -125,7 +124,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
     )
 
     "returns 200 with update response when service returns data" in {
-      val service = mock[SubcontractorService]
+      val service    = mock[SubcontractorService]
       val controller = mockController(service)
 
       when(service.updateSubcontractor(any[UpdateSubcontractorRequest])(any[HeaderCarrier]))
@@ -143,7 +142,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 400 when JSON is invalid" in {
-      val service = mock[SubcontractorService]
+      val service    = mock[SubcontractorService]
       val controller = mockController(service)
 
       val bad = Json.obj("schemeId" -> 1)
@@ -160,7 +159,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 502 when service fails" in {
-      val service = mock[SubcontractorService]
+      val service    = mock[SubcontractorService]
       val controller = mockController(service)
 
       when(service.updateSubcontractor(any[UpdateSubcontractorRequest])(any[HeaderCarrier]))

@@ -26,16 +26,16 @@ import scala.concurrent.duration._
 class CacheServiceSpec extends SpecBase {
 
   private val actorSystem: ActorSystem = app.injector.instanceOf[ActorSystem]
-  private val cacheService = new CacheService(actorSystem)
+  private val cacheService             = new CacheService(actorSystem)
 
   // Define implicit Writes and Reads for String (Play provides these by default)
   private given stringWrites: Writes[String] = Writes.StringWrites
-  private given stringReads: Reads[String] = Reads.StringReads
+  private given stringReads: Reads[String]   = Reads.StringReads
 
   "CacheService.cache" - {
 
     "should store a value with a TTL" in {
-      val key = "test-key-1"
+      val key   = "test-key-1"
       val value = "test-value"
 
       cacheService.cache(key, value, 1.second)
@@ -45,8 +45,8 @@ class CacheServiceSpec extends SpecBase {
     }
 
     "should store multiple values independently" in {
-      val key1 = "key-1"
-      val key2 = "key-2"
+      val key1   = "key-1"
+      val key2   = "key-2"
       val value1 = "value-1"
       val value2 = "value-2"
 
@@ -61,7 +61,7 @@ class CacheServiceSpec extends SpecBase {
       case class TestObject(name: String, value: Int)
 
       given testObjectWrites: Writes[TestObject] = Json.writes[TestObject]
-      given testObjectReads: Reads[TestObject] = Json.reads[TestObject]
+      given testObjectReads: Reads[TestObject]   = Json.reads[TestObject]
 
       val key = "complex-object"
       val obj = TestObject("test", 42)
@@ -91,7 +91,7 @@ class CacheServiceSpec extends SpecBase {
     }
 
     "should remove expired entries from cache" in {
-      val key = "expiring-key"
+      val key   = "expiring-key"
       val value = "expiring-value"
 
       cacheService.cache(key, value, 100.millis)
@@ -103,7 +103,7 @@ class CacheServiceSpec extends SpecBase {
     }
 
     "should return value before expiration" in {
-      val key = "valid-key"
+      val key   = "valid-key"
       val value = "valid-value"
 
       cacheService.cache(key, value, 5.seconds)
@@ -148,7 +148,7 @@ class CacheServiceSpec extends SpecBase {
   "CacheService.refresh" - {
 
     "should extend TTL for existing entry" in {
-      val key = "refresh-test"
+      val key   = "refresh-test"
       val value = "test-value"
 
       cacheService.cache(key, value, 10.seconds)
@@ -164,7 +164,7 @@ class CacheServiceSpec extends SpecBase {
     }
 
     "should update TTL correctly" in {
-      val key = "update-ttl"
+      val key   = "update-ttl"
       val value = "test-value"
 
       cacheService.cache(key, value, 10.seconds)
@@ -179,7 +179,7 @@ class CacheServiceSpec extends SpecBase {
       case class TestData(id: String, data: String)
 
       given testDataWrites: Writes[TestData] = Json.writes[TestData]
-      given testDataReads: Reads[TestData] = Json.reads[TestData]
+      given testDataReads: Reads[TestData]   = Json.reads[TestData]
 
       val key = "complex-refresh"
       val obj = TestData("test-id", "test-data")
@@ -195,7 +195,7 @@ class CacheServiceSpec extends SpecBase {
   "CacheService scheduler" - {
 
     "should automatically remove expired entries" in {
-      val key = "auto-expire"
+      val key   = "auto-expire"
       val value = "expires"
 
       cacheService.cache(key, value, 200.millis)

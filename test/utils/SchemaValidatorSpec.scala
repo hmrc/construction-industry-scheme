@@ -116,7 +116,7 @@ class SchemaValidatorSpec extends AnyWordSpec with Matchers {
       |      </CISreturn>
       |    </IRenvelope>
       |""".stripMargin
-  
+
   "ValidationHandler" should {
 
     "set error to true on warning" in {

@@ -44,5 +44,5 @@ case class UserMonthlyReturns(monthlyReturnList: Seq[MonthlyReturn])
 object UserMonthlyReturns {
   import MonthlyReturn.format
   implicit val format: OFormat[UserMonthlyReturns] = Json.format[UserMonthlyReturns]
-  val empty: UserMonthlyReturns = UserMonthlyReturns(Seq.empty)
+  val empty: UserMonthlyReturns                    = UserMonthlyReturns(Seq.empty)
 }

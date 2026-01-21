@@ -29,13 +29,11 @@ import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import java.time.LocalDateTime
 import scala.concurrent.Future
 
-class MonthlyReturnServiceSpec
-  extends SpecBase {
+class MonthlyReturnServiceSpec extends SpecBase {
 
-  var setup: Setup = _
-  override def beforeEach(): Unit = {
+  var setup: Setup                = new Setup {}
+  override def beforeEach(): Unit =
     setup = new Setup {}
-  }
 
   "getCisTaxpayer" - {
 
@@ -109,7 +107,7 @@ class MonthlyReturnServiceSpec
     "calls single endpoint and returns status response" in {
       val s = setup; import s._
 
-      val payload = NilMonthlyReturnRequest("abc-123", 2024, 3, "Y", "Y")
+      val payload          = NilMonthlyReturnRequest("abc-123", 2024, 3, "Y", "Y")
       val expectedResponse = CreateNilMonthlyReturnResponse("STARTED")
 
       when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
@@ -128,7 +126,7 @@ class MonthlyReturnServiceSpec
     "returns status response from existing monthly return when duplicate exist" in {
       val s = setup; import s._
 
-      val payload = NilMonthlyReturnRequest("abc-123", 2025, 1, "Y", "Y")
+      val payload        = NilMonthlyReturnRequest("abc-123", 2025, 1, "Y", "Y")
       val existingReturn = MonthlyReturn(
         monthlyReturnId = 66666L,
         taxYear = 2025,
@@ -160,7 +158,7 @@ class MonthlyReturnServiceSpec
       val s = setup; import s._
 
       val payload = NilMonthlyReturnRequest("abc-123", 2024, 3, "Y", "Y")
-      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+      val boom    = UpstreamErrorResponse("formp proxy failure", 500)
 
       when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
         .thenReturn(Future.successful(returnsFixture))
@@ -231,11 +229,11 @@ class MonthlyReturnServiceSpec
 
   trait Setup {
     val datacacheProxy = mock[DatacacheProxyConnector]
-    val formpProxy = mock[FormpProxyConnector]
-    val service = new MonthlyReturnService(datacacheProxy, formpProxy)
+    val formpProxy     = mock[FormpProxyConnector]
+    val service        = new MonthlyReturnService(datacacheProxy, formpProxy)
 
-    val employerRef = EmployerReference("123", "AB456")
-    val cisInstanceId = "abc-123"
+    val employerRef    = EmployerReference("123", "AB456")
+    val cisInstanceId  = "abc-123"
     val returnsFixture = UserMonthlyReturns(Seq(MonthlyReturn(66666L, 2025, 1)))
   }
 }

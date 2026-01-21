@@ -21,7 +21,7 @@ import uk.gov.hmrc.constructionindustryscheme.utils.IrMarkProcessor
 
 class IrMarkProcessorTest extends SpecBase {
   "GenerateFullIrMark produces base64/base32 for canonicalized Body with IRmark removed" in {
-    val xml =
+    val xml        =
       """<GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
     <EnvelopeVersion>2.0</EnvelopeVersion>
     <Header>
@@ -92,7 +92,7 @@ class IrMarkProcessorTest extends SpecBase {
   }
 
   "UpdatedPayloadWithIrMark replaces single IRmark, returns the updatedXML, base64, base32 and irEnvelope" in {
-    val xml =
+    val xml                                      =
       """<GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
     <EnvelopeVersion>2.0</EnvelopeVersion>
     <Header>

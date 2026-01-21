@@ -19,33 +19,33 @@ package uk.gov.hmrc.constructionindustryscheme.models
 import play.api.libs.json.{Json, OFormat}
 
 final case class PrePopSubcontractor(
-                                      subcontractorType: String,
-                                      utr: String,
-                                      verificationNumber: String,
-                                      verificationSuffix: String,
-                                      title: String,
-                                      firstName: String,
-                                      secondName: String,
-                                      surname: String
-                                    )
+  subcontractorType: String,
+  utr: String,
+  verificationNumber: String,
+  verificationSuffix: String,
+  title: String,
+  firstName: String,
+  secondName: String,
+  surname: String
+)
 
 object PrePopSubcontractor {
   implicit val format: OFormat[PrePopSubcontractor] = Json.format[PrePopSubcontractor]
 }
 
 final case class PrePopSubcontractorsBody(
-                                           response: Int,
-                                           subcontractors: Seq[PrePopSubcontractor]
-                                         )
+  response: Int,
+  subcontractors: Seq[PrePopSubcontractor]
+)
 
 object PrePopSubcontractorsBody {
   implicit val format: OFormat[PrePopSubcontractorsBody] = Json.format[PrePopSubcontractorsBody]
 }
 
 final case class PrePopSubcontractorsResponse(
-                                               knownfacts: PrepopKnownFacts,
-                                               prePopSubcontractors: PrePopSubcontractorsBody
-                                             )
+  knownfacts: PrepopKnownFacts,
+  prePopSubcontractors: PrePopSubcontractorsBody
+)
 
 object PrePopSubcontractorsResponse {
   implicit val format: OFormat[PrePopSubcontractorsResponse] = Json.format[PrePopSubcontractorsResponse]

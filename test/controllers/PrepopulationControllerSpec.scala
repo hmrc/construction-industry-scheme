@@ -38,7 +38,7 @@ class PrepopulationControllerSpec extends SpecBase {
 
   private def newControllerAndMocks() = {
     val mockService = mock[PrepopulationService]
-    val authAction  = noEnrolmentReferenceAuthAction 
+    val authAction  = noEnrolmentReferenceAuthAction
     val controller  = new PrepopulationController(authAction, mockService, cc)
     (controller, mockService)
   }

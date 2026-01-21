@@ -34,8 +34,8 @@ class PrepopulationServiceSpec extends SpecBase {
   "PrepopulationService.prepopulateContractorKnownFacts" - {
 
     "creates contractor scheme when none exists" in new Setup {
-      val cis            = mkCis()
-      val expectedAoRef  = "123AB456789"
+      val cis           = mkCis()
+      val expectedAoRef = "123AB456789"
 
       when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
         .thenReturn(Future.successful(cis))
@@ -59,9 +59,9 @@ class PrepopulationServiceSpec extends SpecBase {
     }
 
     "does nothing when existing scheme already matches CIS data" in new Setup {
-      val cis         = mkCis()
-      val aoRef       = "123AB456789"
-      val existing    = mkExistingScheme(aoRef, cis.taxOfficeNumber, cis.taxOfficeRef)
+      val cis      = mkCis()
+      val aoRef    = "123AB456789"
+      val existing = mkExistingScheme(aoRef, cis.taxOfficeNumber, cis.taxOfficeRef)
 
       when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
         .thenReturn(Future.successful(cis))
@@ -139,7 +139,7 @@ class PrepopulationServiceSpec extends SpecBase {
     }
 
     "when contractor prepop is None, updates scheme prepopCount + sets prePopSuccessful=N and bumps version" in new Setup {
-      val cis = mkCis()
+      val cis      = mkCis()
       val existing = mkExistingScheme("123AB456789", cis.taxOfficeNumber, cis.taxOfficeRef).copy(
         prePopCount = Some(1),
         version = Some(5),
@@ -185,7 +185,7 @@ class PrepopulationServiceSpec extends SpecBase {
     }
 
     "when contractor prepop exists, calls applyPrepopulation with mapped subcontractor types and returns Unit" in new Setup {
-      val cis = mkCis()
+      val cis      = mkCis()
       val existing = mkExistingScheme("123AB456789", cis.taxOfficeNumber, cis.taxOfficeRef).copy(
         prePopCount = Some(0),
         version = Some(7),
@@ -243,7 +243,7 @@ class PrepopulationServiceSpec extends SpecBase {
     }
 
     "throws IllegalArgumentException when subcontractor type is unknown" in new Setup {
-      val cis = mkCis()
+      val cis      = mkCis()
       val existing = mkExistingScheme("123AB456789", cis.taxOfficeNumber, cis.taxOfficeRef).copy(
         prePopCount = Some(0),
         version = Some(1)
@@ -256,7 +256,7 @@ class PrepopulationServiceSpec extends SpecBase {
       )
 
       val contractorPrepop = PrePopContractorBody("ABC Construction Ltd", "1234567890", 1)
-      val subs = Seq(
+      val subs             = Seq(
         PrePopSubcontractor("X", "1111111111", "V1", "A", "Mr", "A", "B", "C")
       )
 
@@ -328,19 +328,19 @@ class PrepopulationServiceSpec extends SpecBase {
 
   trait Setup {
     val monthlyReturnService: MonthlyReturnService = mock[MonthlyReturnService]
-    val formpProxy: FormpProxyConnector = mock[FormpProxyConnector]
-    val datacacheProxy: DatacacheProxyConnector = mock[DatacacheProxyConnector]
+    val formpProxy: FormpProxyConnector            = mock[FormpProxyConnector]
+    val datacacheProxy: DatacacheProxyConnector    = mock[DatacacheProxyConnector]
 
-    val service = new PrepopulationService(monthlyReturnService, formpProxy, datacacheProxy)
+    val service     = new PrepopulationService(monthlyReturnService, formpProxy, datacacheProxy)
     val employerRef = EmployerReference("163", "AB0063")
-    val instanceId = "CIS-123"
+    val instanceId  = "CIS-123"
 
     def mkCis(
-               aoDistrict: Option[String] = Some("123"),
-               aoPayType: Option[String] = Some("AB"),
-               aoCheckCode: Option[String] = Some("45"),
-               aoReference: Option[String] = Some("6789")
-             ): CisTaxpayer =
+      aoDistrict: Option[String] = Some("123"),
+      aoPayType: Option[String] = Some("AB"),
+      aoCheckCode: Option[String] = Some("45"),
+      aoReference: Option[String] = Some("6789")
+    ): CisTaxpayer =
       CisTaxpayer(
         uniqueId = instanceId,
         taxOfficeNumber = employerRef.taxOfficeNumber,
@@ -361,10 +361,10 @@ class PrepopulationServiceSpec extends SpecBase {
       )
 
     def mkExistingScheme(
-                          accountsOfficeReference: String,
-                          taxOfficeNumber: String,
-                          taxOfficeReference: String
-                        ): ContractorScheme =
+      accountsOfficeReference: String,
+      taxOfficeNumber: String,
+      taxOfficeReference: String
+    ): ContractorScheme =
       ContractorScheme(
         schemeId = 999,
         instanceId = instanceId,
