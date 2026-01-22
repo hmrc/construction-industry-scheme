@@ -20,7 +20,7 @@ import play.api.libs.json.{Json, OFormat}
 import uk.gov.hmrc.constructionindustryscheme.models.SubcontractorType
 
 case class CreateSubcontractorRequest(
-  schemeId: Int,
+  instanceId: Int,
   subcontractorType: SubcontractorType,
   version: Int
 )

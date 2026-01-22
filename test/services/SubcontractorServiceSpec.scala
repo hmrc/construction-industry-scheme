@@ -29,7 +29,7 @@ import scala.concurrent.Future
 
 final class SubcontractorServiceSpec extends SpecBase {
 
-  val schemeId          = 1
+  val instanceId        = 1
   val subbieResourceRef = 10
 
   "createSubcontractor" - {
@@ -39,7 +39,7 @@ final class SubcontractorServiceSpec extends SpecBase {
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
       val service                                  = new SubcontractorService(formpProxyConnector)
 
-      val request = CreateSubcontractorRequest(schemeId, SoleTrader, 0)
+      val request = CreateSubcontractorRequest(instanceId, SoleTrader, 0)
 
       when(formpProxyConnector.createSubcontractor(eqTo(request))(any[HeaderCarrier]))
         .thenReturn(Future.successful(subbieResourceRef))
@@ -53,7 +53,7 @@ final class SubcontractorServiceSpec extends SpecBase {
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
       val service                                  = new SubcontractorService(formpProxyConnector)
 
-      val request = CreateSubcontractorRequest(schemeId, SoleTrader, 0)
+      val request = CreateSubcontractorRequest(instanceId, SoleTrader, 0)
 
       when(formpProxyConnector.createSubcontractor(eqTo(request))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
@@ -65,7 +65,7 @@ final class SubcontractorServiceSpec extends SpecBase {
   "updateSubcontractor" - {
 
     val request =
-      UpdateSubcontractorRequest(schemeId = schemeId, subbieResourceRef = 10, tradingName = Some("trading Name"))
+      UpdateSubcontractorRequest(instanceId = instanceId, subbieResourceRef = 10, tradingName = Some("trading Name"))
 
     "delegates to FormpProxyConnector and returns response" in {
 

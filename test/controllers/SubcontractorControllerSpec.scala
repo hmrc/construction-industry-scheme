@@ -43,7 +43,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
   ): SubcontractorController =
     new SubcontractorController(auth, subcontractorService, cc)
 
-  val schemeId          = 1
+  val instanceId        = 1
   val subbieResourceRef = 10
 
   "createSubcontractor" - {
@@ -52,7 +52,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
 
     val validCreateJson: JsValue = Json.toJson(
       CreateSubcontractorRequest(
-        schemeId = schemeId,
+        instanceId = instanceId,
         subcontractorType = SoleTrader,
         version = 0
       )
@@ -120,7 +120,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
     val updateSubcontractorUrl = "/subcontractor/update"
 
     val validUpdateJson: JsValue = Json.toJson(
-      UpdateSubcontractorRequest(schemeId = schemeId, subbieResourceRef = 10, tradingName = Some("trading Name"))
+      UpdateSubcontractorRequest(instanceId = instanceId, subbieResourceRef = 10, tradingName = Some("trading Name"))
     )
 
     "returns 200 with update response when service returns data" in {
