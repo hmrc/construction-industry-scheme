@@ -494,6 +494,25 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         (contentAsJson(result) \ "message").as[String] mustBe "Unexpected error"
       }
     }
+
+    "GET /cis/monthly-returns/details/:instanceId/:taxMonth/:taxYear (getAllDetails)" - {
+
+      "return 200 with all monthly return details" in new SetupAuthOnly {
+        val instanceId = "INSTANCE-123"
+        val taxMonth   = 1
+        val taxYear    = 2025
+
+        val result = controller.getAllDetails(instanceId, taxMonth, taxYear)(fakeRequest)
+
+        status(result) mustBe OK
+        val json = contentAsJson(result)
+        (json \ "scheme").as[Seq[play.api.libs.json.JsValue]]             must not be empty
+        (json \ "monthlyReturn").as[Seq[play.api.libs.json.JsValue]]      must not be empty
+        (json \ "subcontractors").as[Seq[play.api.libs.json.JsValue]]     must not be empty
+        (json \ "monthlyReturnItems").as[Seq[play.api.libs.json.JsValue]] must not be empty
+        (json \ "submission").as[Seq[play.api.libs.json.JsValue]]         must not be empty
+      }
+    }
   }
 
   "POST /cis/monthly-returns/nil (createNil)" - {

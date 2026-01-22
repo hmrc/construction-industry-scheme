@@ -4,6 +4,7 @@ GET        /taxpayer                                                     uk.gov.
 GET        /monthly-returns                                              uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getAllMonthlyReturns(cisId: Option[String])
 GET        /monthly-returns/unsubmitted/:instanceId                      uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getUnsubmittedMonthlyReturns(instanceId: String)
 POST       /monthly-returns/nil/create                                   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createNil()
+GET        /monthly-returns/all-details/:taxMonth/:taxYear/:instanceId   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getAllDetails(instanceId: String, taxMonth: Int, taxYear: Int)
 GET        /scheme/email/:instanceId                                     uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getSchemeEmail(instanceId: String)
 GET        /scheme/:instanceId                                           uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.getContractorScheme(instanceId: String)
 
