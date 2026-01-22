@@ -78,10 +78,11 @@ class FormpProxyConnector @Inject() (
       .execute[CreateNilMonthlyReturnResponse]
 
   def createMonthlyReturn(req: MonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
-    http.post(url"$base/cis/monthly-return/standard/create")
+    http
+      .post(url"$base/cis/monthly-return/standard/create")
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
-      .map{ response =>
+      .map { response =>
         if (response.status == 201) ()
         else throw UpstreamErrorResponse(response.body, response.status, response.status)
       }

@@ -36,16 +36,16 @@ class MonthlyReturnRequestSpec extends AnyFreeSpec with Matchers {
 
       result mustBe MonthlyReturnRequest(
         instanceId = "abc-123",
-        taxYear    = 2025,
-        taxMonth   = 2
+        taxYear = 2025,
+        taxMonth = 2
       )
     }
 
     "write to JSON correctly" in {
       val model = MonthlyReturnRequest(
         instanceId = "abc-123",
-        taxYear    = 2025,
-        taxMonth   = 2
+        taxYear = 2025,
+        taxMonth = 2
       )
 
       val json = Json.toJson(model)

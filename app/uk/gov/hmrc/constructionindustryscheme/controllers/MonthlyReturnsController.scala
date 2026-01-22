@@ -168,16 +168,17 @@ class MonthlyReturnsController @Inject() (
 
   def createMonthlyReturn: Action[MonthlyReturnRequest] =
     authorise.async(parse.json[MonthlyReturnRequest]) { implicit request =>
-        service.createMonthlyReturn(request.body)
-          .map(_ => Created)
-          .recover {
-            case u: UpstreamErrorResponse =>
-              Status(u.statusCode)(Json.obj("message" -> u.message))
-            case NonFatal(t) =>
-              logger.error("[createMonthlyReturn] failed", t)
-              InternalServerError(Json.obj("message" -> "Unexpected error"))
-          }
-  }
+      service
+        .createMonthlyReturn(request.body)
+        .map(_ => Created)
+        .recover {
+          case u: UpstreamErrorResponse =>
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t)              =>
+            logger.error("[createMonthlyReturn] failed", t)
+            InternalServerError(Json.obj("message" -> "Unexpected error"))
+        }
+    }
 
   def getSchemeEmail(instanceId: String): Action[AnyContent] = authorise.async { implicit request =>
     service
