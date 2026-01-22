@@ -36,10 +36,8 @@ object UnsubmittedMonthlyReturnStatus {
   def fromRaw(raw: Option[String]): UnsubmittedMonthlyReturnStatus =
     raw.map(_.trim.toUpperCase) match {
       case Some("STARTED") | Some("VALIDATED") => InProgress
-      case Some("PENDING") => AwaitingConfirmation
-      case Some("REJECTED") => Failed
-      case _ => InProgress
+      case Some("PENDING")                     => AwaitingConfirmation
+      case Some("REJECTED")                    => Failed
+      case _                                   => InProgress
     }
 }
-  
-  

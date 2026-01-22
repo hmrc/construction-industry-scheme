@@ -28,35 +28,39 @@ import uk.gov.hmrc.constructionindustryscheme.services.clientlist.WaitTimeXmlMap
 import play.api.Logging
 
 @Singleton
-class ClientExchangeProxyConnector @Inject()(
-                                              httpClient: HttpClientV2,
-                                              servicesConfig: ServicesConfig
-                                            )(implicit ec: ExecutionContext) extends Logging {
+class ClientExchangeProxyConnector @Inject() (
+  httpClient: HttpClientV2,
+  servicesConfig: ServicesConfig
+)(implicit ec: ExecutionContext)
+    extends Logging {
 
-  private val base = servicesConfig.baseUrl("client-exchange-proxy")
+  private val base       = servicesConfig.baseUrl("client-exchange-proxy")
   private val pathPrefix = servicesConfig.getConfString(
-    "client-exchange-proxy.pathPrefix", "client-exchange-proxy"
+    "client-exchange-proxy.pathPrefix",
+    "client-exchange-proxy"
   )
   logger.info(s"[ClientExchangeProxyConnector] resolved base=$base pathPrefix=$pathPrefix")
 
-  def initiate(service: String, credentialId: String, agentId: String)
-              (implicit hc: HeaderCarrier): Future[AsynchronousProcessWaitTime] = {
+  def initiate(service: String, credentialId: String, agentId: String)(implicit
+    hc: HeaderCarrier
+  ): Future[AsynchronousProcessWaitTime] = {
     val endpoint = url"$base/$pathPrefix/$service/$credentialId/$agentId/clientlist"
     httpClient
       .get(endpoint)
       .execute[HttpResponse]
       .flatMap { response =>
         if (is2xx(response.status)) {
-          WaitTimeXmlMapper.parse(response.body).fold(
-            err => {
-              logger.error(s"[ClientExchangeProxyConnector] parse error: $err; body: ${response.body}")
-              Future.failed(
-                UpstreamErrorResponse(s"client-exchange-proxy parse error: $err", 502, 502)
-              )
-            },
-            ok  =>
-              Future.successful(ok)
-          )
+          WaitTimeXmlMapper
+            .parse(response.body)
+            .fold(
+              err => {
+                logger.error(s"[ClientExchangeProxyConnector] parse error: $err; body: ${response.body}")
+                Future.failed(
+                  UpstreamErrorResponse(s"client-exchange-proxy parse error: $err", 502, 502)
+                )
+              },
+              ok => Future.successful(ok)
+            )
         } else {
           logger.error(s"[ClientExchangeProxyConnector] non-2xx ${response.status}; body: ${response.body}")
           Future.failed(

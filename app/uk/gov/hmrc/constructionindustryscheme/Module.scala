@@ -22,7 +22,6 @@ import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 
 import java.time.{Clock, ZoneOffset}
 
-
 class Module extends AbstractModule {
 
   override def configure(): Unit = {

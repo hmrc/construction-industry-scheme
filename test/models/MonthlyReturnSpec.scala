@@ -26,7 +26,7 @@ import java.time.LocalDateTime
 class MonthlyReturnSpec extends AnyWordSpec with Matchers {
 
   private val tsStr = "2025-08-31T12:34:56"
-  private val ts = LocalDateTime.parse(tsStr)
+  private val ts    = LocalDateTime.parse(tsStr)
 
   "MonthlyReturn (JSON)" should {
 

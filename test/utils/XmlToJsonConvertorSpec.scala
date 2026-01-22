@@ -23,8 +23,8 @@ import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor
 class XmlToJsonConvertorSpec extends SpecBase {
 
   "should return success = true for valid XML" in {
-    val xml =
-          """<GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
+    val xml       =
+      """<GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
             |  <GovTalkDetails>
             |    <Keys>
             |      <Key Type="TaxOfficeNumber">754</Key>
@@ -32,12 +32,12 @@ class XmlToJsonConvertorSpec extends SpecBase {
             |    </Keys>
             |  </GovTalkDetails>
             |</GovTalkMessage>""".stripMargin
-    val result = XmlToJsonConvertor.convertXmlToJson(xml)
+    val result    = XmlToJsonConvertor.convertXmlToJson(xml)
     assert(result.success)
     assert(result.json.isDefined)
     val keysArray = (result.json.get \ "GovTalkMessage" \ "GovTalkDetails" \ "Keys" \ "Key").as[JsArray]
     assert(keysArray.value.size == 2)
-    val firstKey = keysArray.value.head.as[JsObject]
+    val firstKey  = keysArray.value.head.as[JsObject]
     assert((firstKey \ "Type").as[String] == "TaxOfficeNumber")
     assert((firstKey \ "Key").as[String] == "754")
     val secondKey = keysArray.value(1).as[JsObject]
@@ -55,10 +55,10 @@ class XmlToJsonConvertorSpec extends SpecBase {
         |    </Keys>
         |  </GovTalkDetails>
         |</GovTalkMessage>""".stripMargin // malformed XML
-    val result = XmlToJsonConvertor.convertXmlToJson(invalidXml)
+    val result     = XmlToJsonConvertor.convertXmlToJson(invalidXml)
     assert(!result.success)
     assert(result.json.isEmpty)
     assert(result.error.exists(_.startsWith("Invalid XML input:")))
   }
-  
+
 }

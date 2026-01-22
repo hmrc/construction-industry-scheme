@@ -22,12 +22,12 @@ import play.api.libs.json.{JsNull, JsValue, Json}
 import uk.gov.hmrc.constructionindustryscheme.models.audit.XmlConversionResult
 
 class XmlConversionResultSpec extends SpecBase {
-  
+
   "XmlConversionResult" - {
 
     "should create ConversionResult with all fields populated" in {
       val jsonValue = Json.obj("Envelope" -> Json.obj("Version" -> "2.0"))
-      val result = XmlConversionResult(success = true, json = Some(jsonValue), error = None)
+      val result    = XmlConversionResult(success = true, json = Some(jsonValue), error = None)
       assert(result.success)
       assert(result.json.contains(jsonValue))
       assert(result.error.isEmpty)
@@ -42,17 +42,17 @@ class XmlConversionResultSpec extends SpecBase {
 
     "should serialize ConversionResult to JSON" in {
       val result = XmlConversionResult(success = true, json = Some(Json.obj("key" -> "value")), error = None)
-      val json = Json.toJson(result)
+      val json   = Json.toJson(result)
       assert((json \ "success").as[Boolean])
       assert((json \ "json" \ "key").as[String] == "value")
       assert((json \ "error").toOption.isEmpty)
     }
 
     "should deserialize JSON back to ConversionResult" in {
-      val json = Json.obj(
+      val json   = Json.obj(
         "success" -> true,
-        "json" -> Json.obj("data" -> "test"),
-        "error" -> JsNull
+        "json"    -> Json.obj("data" -> "test"),
+        "error"   -> JsNull
       )
       val result = json.as[XmlConversionResult]
       assert(result.success)
@@ -61,7 +61,7 @@ class XmlConversionResultSpec extends SpecBase {
     }
 
     "should handle missing optional fields gracefully" in {
-      val json = Json.obj("success" -> false)
+      val json   = Json.obj("success" -> false)
       val result = json.as[XmlConversionResult]
       assert(!result.success)
       assert(result.json.isEmpty)

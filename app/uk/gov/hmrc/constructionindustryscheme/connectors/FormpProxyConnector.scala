@@ -30,10 +30,11 @@ import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 @Singleton
-class FormpProxyConnector @Inject()(
-                                     http: HttpClientV2,
-                                     config: ServicesConfig
-                                   )(implicit ec: ExecutionContext) extends HttpReadsInstances {
+class FormpProxyConnector @Inject() (
+  http: HttpClientV2,
+  config: ServicesConfig
+)(implicit ec: ExecutionContext)
+    extends HttpReadsInstances {
 
   private val base = config.baseUrl("formp-proxy") + "/formp-proxy"
 
@@ -60,14 +61,17 @@ class FormpProxyConnector @Inject()(
         else Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
       }
 
-  def createNilMonthlyReturn(req: NilMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[CreateNilMonthlyReturnResponse] =
-    http.post(url"$base/monthly-return/nil/create")
+  def createNilMonthlyReturn(
+    req: NilMonthlyReturnRequest
+  )(implicit hc: HeaderCarrier): Future[CreateNilMonthlyReturnResponse] =
+    http
+      .post(url"$base/monthly-return/nil/create")
       .withBody(
         Json.obj(
-          "instanceId" -> req.instanceId,
-          "taxYear" -> req.taxYear,
-          "taxMonth" -> req.taxMonth,
-          "decInformationCorrect" -> req.decInformationCorrect,
+          "instanceId"             -> req.instanceId,
+          "taxYear"                -> req.taxYear,
+          "taxMonth"               -> req.taxMonth,
+          "decInformationCorrect"  -> req.decInformationCorrect,
           "decNilReturnNoPayments" -> req.decNilReturnNoPayments
         )
       )
@@ -83,7 +87,8 @@ class FormpProxyConnector @Inject()(
       }
 
   def getSchemeEmail(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[String]] =
-    http.post(url"$base/scheme/email")
+    http
+      .post(url"$base/scheme/email")
       .withBody(Json.obj("instanceId" -> instanceId))
       .execute[Option[String]]
 

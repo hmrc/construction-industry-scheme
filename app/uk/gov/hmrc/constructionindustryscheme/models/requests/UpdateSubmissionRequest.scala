@@ -20,21 +20,21 @@ import play.api.libs.json.{Json, OFormat}
 import java.time.Instant
 
 case class UpdateSubmissionRequest(
-                                    instanceId: String,
-                                    taxYear: Int,
-                                    taxMonth: Int,
-                                    hmrcMarkGenerated: Option[String] = None,
-                                    submittableStatus: String,
-                                    amendment: Option[String] = None,
-                                    hmrcMarkGgis: Option[String] = None,
-                                    submissionRequestDate: Option[Instant] = None,
-                                    acceptedTime: Option[String] = None,
-                                    emailRecipient: Option[String] = None,
-                                    agentId: Option[String] = None,
-                                    govtalkErrorCode: Option[String] = None,
-                                    govtalkErrorType: Option[String] = None,
-                                    govtalkErrorMessage: Option[String] = None
-                                  )
+  instanceId: String,
+  taxYear: Int,
+  taxMonth: Int,
+  hmrcMarkGenerated: Option[String] = None,
+  submittableStatus: String,
+  amendment: Option[String] = None,
+  hmrcMarkGgis: Option[String] = None,
+  submissionRequestDate: Option[Instant] = None,
+  acceptedTime: Option[String] = None,
+  emailRecipient: Option[String] = None,
+  agentId: Option[String] = None,
+  govtalkErrorCode: Option[String] = None,
+  govtalkErrorType: Option[String] = None,
+  govtalkErrorMessage: Option[String] = None
+)
 
 object UpdateSubmissionRequest {
   implicit val format: OFormat[UpdateSubmissionRequest] = Json.format[UpdateSubmissionRequest]

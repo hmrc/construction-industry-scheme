@@ -26,7 +26,7 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
 
 @Singleton
-class PrepopulationService @Inject()(
+class PrepopulationService @Inject() (
   monthlyReturnService: MonthlyReturnService,
   formp: FormpProxyConnector,
   datacache: DatacacheProxyConnector
@@ -42,7 +42,7 @@ class PrepopulationService @Inject()(
 
   def getContractorScheme(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[ContractorScheme]] =
     formp.getContractorScheme(instanceId)
-    
+
   private def ensureContractorKnownFactsInFormp(
     instanceId: String,
     cis: CisTaxpayer
@@ -50,9 +50,7 @@ class PrepopulationService @Inject()(
 
     // AO reference = aoDistrict + aoPayType + aoCheckCode + aoReference
     val accountsOfficeRef: String =
-      List(cis.aoDistrict, cis.aoPayType, cis.aoCheckCode, cis.aoReference)
-        .flatten
-        .mkString
+      List(cis.aoDistrict, cis.aoPayType, cis.aoCheckCode, cis.aoReference).flatten.mkString
 
     formp.getContractorScheme(instanceId).flatMap {
       case None =>
@@ -68,8 +66,8 @@ class PrepopulationService @Inject()(
       case Some(existing) =>
         val needsUpdate =
           existing.accountsOfficeReference != accountsOfficeRef ||
-            existing.taxOfficeNumber        != cis.taxOfficeNumber ||
-            existing.taxOfficeReference     != cis.taxOfficeRef
+            existing.taxOfficeNumber != cis.taxOfficeNumber ||
+            existing.taxOfficeReference != cis.taxOfficeRef
 
         if (!needsUpdate) {
           Future.unit
@@ -100,9 +98,7 @@ class PrepopulationService @Inject()(
   )(implicit hc: HeaderCarrier): Future[Unit] =
     monthlyReturnService.getCisTaxpayer(employerRef).flatMap { cis =>
       val accountsOfficeRef: String =
-        List(cis.aoDistrict, cis.aoPayType, cis.aoCheckCode, cis.aoReference)
-          .flatten
-          .mkString
+        List(cis.aoDistrict, cis.aoPayType, cis.aoCheckCode, cis.aoReference).flatten.mkString
 
       val knownFacts = PrepopKnownFacts(
         taxOfficeNumber = cis.taxOfficeNumber,
@@ -112,79 +108,79 @@ class PrepopulationService @Inject()(
 
       for {
         maybeScheme <- formp.getContractorScheme(instanceId)
-        existing <- maybeScheme match {
-          case Some(s) => Future.successful(s)
-          case None =>
-            Future.failed(
-              new IllegalStateException(
-                s"No FORMP scheme found for instanceId=$instanceId; F1 must run first"
-              )
-            )
-        }
+        existing    <- maybeScheme match {
+                         case Some(s) => Future.successful(s)
+                         case None    =>
+                           Future.failed(
+                             new IllegalStateException(
+                               s"No FORMP scheme found for instanceId=$instanceId; F1 must run first"
+                             )
+                           )
+                       }
 
         contractorPrepop <- datacache.getSchemePrepopByKnownFacts(knownFacts)
-        subcontractors <- datacache.getSubcontractorsPrepopByKnownFacts(knownFacts)
-        _ <- contractorPrepop match {
+        subcontractors   <- datacache.getSubcontractorsPrepopByKnownFacts(knownFacts)
+        _                <- contractorPrepop match {
 
-          case None =>
-            val nextPrePopCount = Some(existing.prePopCount.getOrElse(0) + 1)
-            val currentVersion = existing.version.getOrElse(0)
+                              case None =>
+                                val nextPrePopCount = Some(existing.prePopCount.getOrElse(0) + 1)
+                                val currentVersion  = existing.version.getOrElse(0)
 
-            val updated = UpdateContractorSchemeParams(
-              schemeId = existing.schemeId,
-              instanceId = instanceId,
-              accountsOfficeReference = existing.accountsOfficeReference,
-              taxOfficeNumber = existing.taxOfficeNumber,
-              taxOfficeReference = existing.taxOfficeReference,
-              emailAddress = existing.emailAddress,
-              prePopCount = nextPrePopCount,
-              prePopSuccessful = Some("N"),
-              version = existing.version
-            )
+                                val updated = UpdateContractorSchemeParams(
+                                  schemeId = existing.schemeId,
+                                  instanceId = instanceId,
+                                  accountsOfficeReference = existing.accountsOfficeReference,
+                                  taxOfficeNumber = existing.taxOfficeNumber,
+                                  taxOfficeReference = existing.taxOfficeReference,
+                                  emailAddress = existing.emailAddress,
+                                  prePopCount = nextPrePopCount,
+                                  prePopSuccessful = Some("N"),
+                                  version = existing.version
+                                )
 
-            for {
-              _ <- formp.updateContractorScheme(updated)
-              _ <- formp.updateSchemeVersion(UpdateSchemeVersionRequest(instanceId, currentVersion)).map(_ => ())
-            } yield ()
+                                for {
+                                  _ <- formp.updateContractorScheme(updated)
+                                  _ <- formp.updateSchemeVersion(UpdateSchemeVersionRequest(instanceId, currentVersion)).map(_ => ())
+                                } yield ()
 
-          case Some(prepopBody) =>
-            val name = prepopBody.schemeName
-            val utr = Option(prepopBody.utr).filter(_.nonEmpty)
+                              case Some(prepopBody) =>
+                                val name = prepopBody.schemeName
+                                val utr  = Option(prepopBody.utr).filter(_.nonEmpty)
 
-            val currentVersion = existing.version.getOrElse(0)
-            val nextPrePopCount = existing.prePopCount.getOrElse(0) + 1
+                                val currentVersion  = existing.version.getOrElse(0)
+                                val nextPrePopCount = existing.prePopCount.getOrElse(0) + 1
 
-            val subTypes: Seq[SubcontractorType] =
-              subcontractors.map(s => toSubcontractorType(s.subcontractorType))
+                                val subTypes: Seq[SubcontractorType] =
+                                  subcontractors.map(s => toSubcontractorType(s.subcontractorType))
 
-            val req = ApplyPrepopulationRequest(
-              schemeId = existing.schemeId,
-              instanceId = instanceId,
-              accountsOfficeReference = existing.accountsOfficeReference,
-              taxOfficeNumber = existing.taxOfficeNumber,
-              taxOfficeReference = existing.taxOfficeReference,
-              utr = utr,
-              name = name,
-              emailAddress = existing.emailAddress,
-              displayWelcomePage = existing.displayWelcomePage,
-              prePopCount = nextPrePopCount,
-              prePopSuccessful = "Y",
-              version = currentVersion,
-              subcontractorTypes = subTypes
-            )
+                                val req = ApplyPrepopulationRequest(
+                                  schemeId = existing.schemeId,
+                                  instanceId = instanceId,
+                                  accountsOfficeReference = existing.accountsOfficeReference,
+                                  taxOfficeNumber = existing.taxOfficeNumber,
+                                  taxOfficeReference = existing.taxOfficeReference,
+                                  utr = utr,
+                                  name = name,
+                                  emailAddress = existing.emailAddress,
+                                  displayWelcomePage = existing.displayWelcomePage,
+                                  prePopCount = nextPrePopCount,
+                                  prePopSuccessful = "Y",
+                                  version = currentVersion,
+                                  subcontractorTypes = subTypes
+                                )
 
-            // This is atomic in FORMP: Update_Scheme + Create_Subcontractor* + Update_Version_Number
-            formp.applyPrepopulation(req).map(_ => ())
-        }
+                                // This is atomic in FORMP: Update_Scheme + Create_Subcontractor* + Update_Version_Number
+                                formp.applyPrepopulation(req).map(_ => ())
+                            }
       } yield ()
     }
 
   private def toSubcontractorType(raw: String): SubcontractorType =
     raw.trim.toUpperCase match {
-      case "S" => SoleTrader
-      case "C" => Company
-      case "P" => Partnership
-      case "T" => Trust
+      case "S"   => SoleTrader
+      case "C"   => Company
+      case "P"   => Partnership
+      case "T"   => Trust
       case other =>
         throw new IllegalArgumentException(s"Unknown TAXPAYER_TYPE '$other'")
     }

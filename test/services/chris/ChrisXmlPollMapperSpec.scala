@@ -29,7 +29,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
     endpointUrl: Option[String] = None,
     pollInterval: Option[Int] = None
   ): String = {
-    val epText = endpointUrl.getOrElse("")
+    val epText           = endpointUrl.getOrElse("")
     val pollIntervalAttr = pollInterval.map(pi => s""" PollInterval="$pi"""").getOrElse("")
     s"""
        |<Header>
@@ -254,7 +254,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
         res.status mustBe SUBMITTED_NO_RECEIPT
         res.pollUrl mustBe Some("/business/error")
       }
-      
+
       "unknown error type defaults to FATAL_ERROR" in {
         val xml =
           """<GovTalkMessage>

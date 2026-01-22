@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,20 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
-import play.api.libs.json.{Format, Json, Reads, Writes}
+import play.api.libs.json.{Json, OFormat}
 
-case class CacheItem[T](value: T, expiresAt: Long)
+case class MonthlyReturnItem(
+  monthlyReturnId: Long,
+  monthlyReturnItemId: Long,
+  totalPayments: Option[String],
+  costOfMaterials: Option[String],
+  totalDeducted: Option[String],
+  unmatchedTaxRateIndicator: Option[String],
+  subcontractorId: Option[Long],
+  subcontractorName: Option[String],
+  verificationNumber: Option[String],
+  itemResourceReference: Option[Long]
+)
 
-object CacheItem {
-  given format[T](using Format[T]): Format[CacheItem[T]] = Json.format[CacheItem[T]]
-}
+object MonthlyReturnItem:
+  given format: OFormat[MonthlyReturnItem] = Json.format[MonthlyReturnItem]

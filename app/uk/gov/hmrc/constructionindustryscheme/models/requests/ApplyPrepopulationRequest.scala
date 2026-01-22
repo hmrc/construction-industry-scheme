@@ -30,7 +30,7 @@ case class ApplyPrepopulationRequest(
   emailAddress: Option[String],
   displayWelcomePage: Option[String],
   prePopCount: Int,
-  prePopSuccessful: String,                 
+  prePopSuccessful: String,
   version: Int,
   subcontractorTypes: Seq[SubcontractorType]
 )

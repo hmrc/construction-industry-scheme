@@ -27,10 +27,10 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
 
 @Singleton
-class MonthlyReturnService @Inject()(
-                                      datacache: DatacacheProxyConnector,
-                                      formp: FormpProxyConnector
-                                    )(implicit ec: ExecutionContext) {
+class MonthlyReturnService @Inject() (
+  datacache: DatacacheProxyConnector,
+  formp: FormpProxyConnector
+)(implicit ec: ExecutionContext) {
 
   def getCisTaxpayer(employerReference: EmployerReference)(implicit hc: HeaderCarrier): Future[CisTaxpayer] =
     datacache.getCisTaxpayer(employerReference)
@@ -38,35 +38,39 @@ class MonthlyReturnService @Inject()(
   def getAllMonthlyReturnsByCisId(cisId: String)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
     formp.getMonthlyReturns(cisId)
 
-  def getUnsubmittedMonthlyReturns(cisId: String)(implicit hc: HeaderCarrier): Future[UnsubmittedMonthlyReturnsResponse] =
+  def getUnsubmittedMonthlyReturns(
+    cisId: String
+  )(implicit hc: HeaderCarrier): Future[UnsubmittedMonthlyReturnsResponse] =
     formp.getUnsubmittedMonthlyReturns(cisId).map { unsubmitted =>
       UnsubmittedMonthlyReturnsResponse(
-        unsubmittedCisReturns =
-          unsubmitted.monthlyReturn.map { monthlyReturn =>
-            UnsubmittedMonthlyReturnsRow(
-              taxYear = monthlyReturn.taxYear,
-              taxMonth = monthlyReturn.taxMonth,
-              returnType = mapType(monthlyReturn.nilReturnIndicator),
-              status = mapStatus(monthlyReturn.status),
-              lastUpdate = monthlyReturn.lastUpdate
-            )
-          }
+        unsubmittedCisReturns = unsubmitted.monthlyReturn.map { monthlyReturn =>
+          UnsubmittedMonthlyReturnsRow(
+            taxYear = monthlyReturn.taxYear,
+            taxMonth = monthlyReturn.taxMonth,
+            returnType = mapType(monthlyReturn.nilReturnIndicator),
+            status = mapStatus(monthlyReturn.status),
+            lastUpdate = monthlyReturn.lastUpdate
+          )
+        }
       )
     }
 
-  def createNilMonthlyReturn(req: NilMonthlyReturnRequest)
-                            (implicit hc: HeaderCarrier): Future[CreateNilMonthlyReturnResponse] =
+  def createNilMonthlyReturn(
+    req: NilMonthlyReturnRequest
+  )(implicit hc: HeaderCarrier): Future[CreateNilMonthlyReturnResponse] =
     formp.getMonthlyReturns(req.instanceId).flatMap { existing =>
       existing.monthlyReturnList.find(r => r.taxYear == req.taxYear && r.taxMonth == req.taxMonth) match {
         case Some(mr) =>
           mr.status match {
             case Some(s) => Future.successful(CreateNilMonthlyReturnResponse(status = s))
-            case None =>
-              Future.failed(new IllegalStateException(
-                s"Existing monthly return has no status (instanceId=${req.instanceId}, taxYear=${req.taxYear}, taxMonth=${req.taxMonth})"
-              ))
+            case None    =>
+              Future.failed(
+                new IllegalStateException(
+                  s"Existing monthly return has no status (instanceId=${req.instanceId}, taxYear=${req.taxYear}, taxMonth=${req.taxMonth})"
+                )
+              )
           }
-        case None =>
+        case None     =>
           formp.createNilMonthlyReturn(req)
       }
     }
@@ -77,13 +81,10 @@ class MonthlyReturnService @Inject()(
   def getSchemeEmail(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[String]] =
     formp.getSchemeEmail(instanceId)
 
-  private def mapType(nilReturnIndicator: Option[String]): String = {
+  private def mapType(nilReturnIndicator: Option[String]): String =
     if (nilReturnIndicator.exists(_.trim.equalsIgnoreCase("Y"))) "Nil"
     else "Standard"
-  }
 
-  private def mapStatus(raw: Option[String]): String = {
+  private def mapStatus(raw: Option[String]): String =
     UnsubmittedMonthlyReturnStatus.fromRaw(raw).asText
-  }
 }
-

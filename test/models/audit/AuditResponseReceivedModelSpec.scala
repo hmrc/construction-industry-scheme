@@ -23,11 +23,11 @@ import uk.gov.hmrc.constructionindustryscheme.models.audit.AuditResponseReceived
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor.convertXmlToJson
 
 class AuditResponseReceivedModelSpec extends SpecBase {
-  
+
   "AuditResponseReceivedModel" - {
 
     val validNiReturnElem = scala.xml.XML.load(getClass.getResource("/ValidNilReturnSubmissionResponse.xml"))
-    val responseData = convertXmlToJson(validNiReturnElem.toString)
+    val responseData      = convertXmlToJson(validNiReturnElem.toString)
 
     val dto = AuditResponseReceivedModel(
       status = "200",

@@ -27,7 +27,7 @@ object UriHelper {
       val u = new URI(uri)
       for {
         scheme <- Option(u.getScheme)
-        host <- Option(u.getHost)
+        host   <- Option(u.getHost)
       } yield {
         val rebuilt = new URI(
           "https", // force scheme

@@ -31,29 +31,30 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 @Singleton
-class SubmissionService @Inject()(
+class SubmissionService @Inject() (
   chrisConnector: ChrisConnector,
   formpProxyConnector: FormpProxyConnector,
   emailConnector: EmailConnector
-)(implicit ec: ExecutionContext) extends Logging {
+)(implicit ec: ExecutionContext)
+    extends Logging {
   def createSubmission(request: CreateSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
     formpProxyConnector.createSubmission(request)
 
   def updateSubmission(req: UpdateSubmissionRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.updateSubmission(req)
 
-  def submitToChris(payload: BuiltSubmissionPayload,
-                    successEmail: Option[SuccessEmailParams]=None)
-                   (implicit hc: HeaderCarrier): Future[SubmissionResult] = {
-    chrisConnector.submitEnvelope(payload.envelope, payload.correlationId).flatMap{ res =>
+  def submitToChris(payload: BuiltSubmissionPayload, successEmail: Option[SuccessEmailParams] = None)(implicit
+    hc: HeaderCarrier
+  ): Future[SubmissionResult] =
+    chrisConnector.submitEnvelope(payload.envelope, payload.correlationId).flatMap { res =>
       res.status match {
         case SUBMITTED =>
           successEmail match {
             case Some(emailParams) =>
               logger.info(s"[email] SUBMITTED → sending success email to=${emailParams.to}")
-              val ym = parseYearMonthFlexible(emailParams.monthYear)
+              val ym    = parseYearMonthFlexible(emailParams.monthYear)
               val month = ym.format(monthFmt)
-              val year = ym.format(yearFmt)
+              val year  = ym.format(yearFmt)
               emailConnector
                 .send(NilMonthlyReturnOrgSuccessEmail(emailParams.to, month, year))
                 .map(_ => res)
@@ -62,21 +63,19 @@ class SubmissionService @Inject()(
               logger.warn("[email] SUBMITTED but no email params supplied; skipping send")
               Future.successful(res)
           }
-        case _ =>
+        case _         =>
           Future.successful(res)
       }
     }
-  }
 
-  def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] = {
+  def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] =
     chrisConnector.pollSubmission(correlationId, pollUrl)
-  }
-  
+
   private def parseYearMonthFlexible(s: String): YearMonth =
     Try(YearMonth.parse(s))
       .orElse(Try(YearMonth.parse(s.replace('/', '-'))))
       .getOrElse(throw new IllegalArgumentException(s"Invalid monthYear: $s (expected YYYY-MM or YYYY/MM)"))
 
   private val monthFmt = DateTimeFormatter.ofPattern("MMMM", Locale.UK)
-  private val yearFmt = DateTimeFormatter.ofPattern("uuuu", Locale.UK)
+  private val yearFmt  = DateTimeFormatter.ofPattern("uuuu", Locale.UK)
 }

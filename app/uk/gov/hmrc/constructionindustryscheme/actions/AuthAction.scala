@@ -20,7 +20,7 @@ import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.*
 import uk.gov.hmrc.auth.core.retrieve.~
-import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals.{allEnrolments, internalId, credentials}
+import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals.{allEnrolments, credentials, internalId}
 import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisationException, AuthorisedFunctions, NoActiveSession}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.AuthenticatedRequest
 import uk.gov.hmrc.http.{HeaderCarrier, UnauthorizedException}
@@ -29,27 +29,30 @@ import uk.gov.hmrc.play.http.HeaderCarrierConverter
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class DefaultAuthAction @Inject()(
-                                   override val authConnector: AuthConnector,
-                                   val parser: BodyParsers.Default
-                                 )(implicit val executionContext: ExecutionContext)
-  extends AuthAction with AuthorisedFunctions with Logging:
+class DefaultAuthAction @Inject() (
+  override val authConnector: AuthConnector,
+  val parser: BodyParsers.Default
+)(implicit val executionContext: ExecutionContext)
+    extends AuthAction
+    with AuthorisedFunctions
+    with Logging:
 
   override def invokeBlock[A](request: Request[A], block: AuthenticatedRequest[A] => Future[Result]): Future[Result] =
     given hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
 
-    val sessionId = hc.sessionId.getOrElse(throw new UnauthorizedException("Unable to retrieve session ID from headers"))
+    val sessionId =
+      hc.sessionId.getOrElse(throw new UnauthorizedException("Unable to retrieve session ID from headers"))
 
     authorised()
       .retrieve(allEnrolments and internalId and credentials) {
         case enrols ~ Some(intId) ~ credsOpt =>
           val credId = credsOpt.map(_.providerId)
           block(AuthenticatedRequest(request, intId, sessionId, enrols, credId))
-        case _ =>
+        case _                               =>
           Future.failed(new UnauthorizedException("Unable to retrieve internal ID from auth"))
       }
       .recover {
-        case _: NoActiveSession =>
+        case _: NoActiveSession        =>
           Results.Unauthorized(Json.obj("message" -> "No active session"))
         case _: AuthorisationException =>
           val msg = "Failed to authorise request"
@@ -58,4 +61,5 @@ class DefaultAuthAction @Inject()(
       }
 
 trait AuthAction
-  extends ActionBuilder[AuthenticatedRequest, AnyContent] with ActionFunction[Request, AuthenticatedRequest]
+    extends ActionBuilder[AuthenticatedRequest, AnyContent]
+    with ActionFunction[Request, AuthenticatedRequest]

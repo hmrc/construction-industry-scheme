@@ -28,25 +28,25 @@ class BuiltSubmissionPayloadSpec extends SpecBase {
   "BuiltSubmissionPayload" - {
 
     "correctly construct and compare instances" in {
-      val envelope: Elem = <envelope><id>1</id></envelope>
+      val envelope: Elem   = <envelope><id>1</id></envelope>
       val irEnvelope: Elem = <irEnvelope><mark>X</mark></irEnvelope>
-      val payload1 = BuiltSubmissionPayload(
+      val payload1         = BuiltSubmissionPayload(
         envelope = envelope,
         correlationId = "abc123",
         irMark = "mark456",
         irEnvelope = irEnvelope
       )
-      val payload2 = BuiltSubmissionPayload(
+      val payload2         = BuiltSubmissionPayload(
         envelope = envelope,
         correlationId = "abc123",
         irMark = "mark456",
         irEnvelope = irEnvelope
       )
 
-      payload1.envelope shouldBe envelope
+      payload1.envelope      shouldBe envelope
       payload1.correlationId shouldBe "abc123"
-      payload1.irMark shouldBe "mark456"
-      payload1.irEnvelope shouldBe irEnvelope
+      payload1.irMark        shouldBe "mark456"
+      payload1.irEnvelope    shouldBe irEnvelope
 
       payload1 shouldBe payload2
     }

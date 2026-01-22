@@ -19,10 +19,10 @@ package uk.gov.hmrc.constructionindustryscheme.models.audit
 import play.api.libs.json.*
 
 case class XmlConversionResult(
-                                success: Boolean,
-                                json: Option[JsValue] = None,
-                                error: Option[String] = None
-                              )
+  success: Boolean,
+  json: Option[JsValue] = None,
+  error: Option[String] = None
+)
 
 object XmlConversionResult {
   implicit val formats: OFormat[XmlConversionResult] = Json.format[XmlConversionResult]

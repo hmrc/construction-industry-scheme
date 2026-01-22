@@ -43,18 +43,17 @@ import java.time.Clock
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-
 final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
   private val submissionId = "sub-123"
 
   private val validJson: JsValue = Json.obj(
-    "utr" -> "1234567890",
-    "aoReference" -> "123/AB456",
+    "utr"                -> "1234567890",
+    "aoReference"        -> "123/AB456",
     "informationCorrect" -> "yes",
-    "inactivity" -> "yes",
-    "monthYear" -> "2025-09",
-    "email" -> "test@test.com"
+    "inactivity"         -> "yes",
+    "monthYear"          -> "2025-09",
+    "email"              -> "test@test.com"
   )
 
   val mockAuditService: AuditService = mock[AuditService]
@@ -69,22 +68,24 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
   val appConfig: AppConfig = mock[AppConfig]
 
   private def mkController(
-                            service: SubmissionService,
-                            auth: AuthAction = fakeAuthAction(),
-                            xmlValidator: XmlValidator,
-                            appConfig: AppConfig = appConfig,
-                            clock: Clock = Clock.systemUTC()
-                          ): SubmissionController =
+    service: SubmissionService,
+    auth: AuthAction = fakeAuthAction(),
+    xmlValidator: XmlValidator,
+    appConfig: AppConfig = appConfig,
+    clock: Clock = Clock.systemUTC()
+  ): SubmissionController =
     new SubmissionController(auth, service, mockAuditService, xmlValidator, cc, appConfig, clock)
 
   "submitToChris" - {
 
     "returns 200 with SUBMITTED when service returns SubmittedStatus" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service = service, xmlValidator = xmlValidator)
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
-      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
       when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED)))
       when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
@@ -94,7 +95,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           .withBody(validJson)
           .withHeaders(CONTENT_TYPE -> JSON)
 
-      val result= controller.submitToChris(submissionId)(request)
+      val result = controller.submitToChris(submissionId)(request)
 
       status(result) mustBe OK
       val js = contentAsJson(result)
@@ -102,16 +103,20 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       verify(mockAuditService, times(1)).monthlyNilReturnRequestEvent(any())(any())
       verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
-      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier])
+      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(
+        any[HeaderCarrier]
+      )
     }
 
     "returns 200 with SUBMITTED_NO_RECEIPT when service returns SubmittedNoReceiptStatus" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service = service, xmlValidator = xmlValidator)
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
-      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
       when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
       when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
@@ -132,12 +137,14 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 202 with ACCEPTED when service returns AcceptedStatus (includes nextPollInSeconds)" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service = service, xmlValidator = xmlValidator)
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
-      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
       when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(ACCEPTED)))
       when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
@@ -157,13 +164,15 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 200 with DEPARTMENTAL_ERROR and error object when service returns DepartmentalErrorStatus" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service = service, xmlValidator = xmlValidator)
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
 
       val err = GovTalkError("1234", "fatal", "boom")
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
-      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
       when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(DEPARTMENTAL_ERROR, Some(err))))
       when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
@@ -179,18 +188,19 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "DEPARTMENTAL_ERROR"
-      val e = (js \ "error").as[JsObject]
+      val e  = (js \ "error").as[JsObject]
       (e \ "number").as[String] mustBe "1234"
       (e \ "type").as[String] mustBe "fatal"
-      (e \ "text").as[String].toLowerCase must include ("boom")
+      (e \ "text").as[String].toLowerCase must include("boom")
     }
 
     "returns 400 when request JSON is invalid" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service = service, xmlValidator = xmlValidator)
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
 
       val badJson = Json.obj("utr" -> 123)
@@ -209,12 +219,14 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 502 BadGateway when service fails" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service = service, xmlValidator = xmlValidator)
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
-      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
       when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
@@ -233,19 +245,24 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       verify(mockAuditService, times(1)).monthlyNilReturnRequestEvent(any())(any())
       verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
-      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier])
+      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(
+        any[HeaderCarrier]
+      )
     }
 
     "returns RuntimeException if xmlValidator.validate fails" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service = service, xmlValidator = xmlValidator)
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
-      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any())).thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
       when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
-      when(xmlValidator.validate(any[NodeSeq])).thenReturn(Failure(new RuntimeException("XML validation failed due to exception")))
+      when(xmlValidator.validate(any[NodeSeq]))
+        .thenReturn(Failure(new RuntimeException("XML validation failed due to exception")))
 
       when(xmlValidator.validate(any())).thenReturn(Failure(new Exception("invalid!")))
 
@@ -261,22 +278,20 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       thrown.getMessage must include("XML validation failed: invalid!")
     }
 
-
   }
 
   "createSubmission" - {
 
     val validCreateJson = Json.obj(
       "instanceId" -> "123",
-      "taxYear" -> 2024,
-      "taxMonth" -> 4
+      "taxYear"    -> 2024,
+      "taxMonth"   -> 4
     )
 
-
     "returns 201 with submissionId when service returns id" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service = service, xmlValidator = xmlValidator)
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
 
       when(service.createSubmission(any[CreateSubmissionRequest])(any[HeaderCarrier]))
         .thenReturn(Future.successful("sub-999"))
@@ -294,9 +309,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 400 when JSON is invalid" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service = service, xmlValidator = xmlValidator)
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
 
       val bad = Json.obj("taxYear" -> 2024)
 
@@ -312,9 +327,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 502 when service fails" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service = service, xmlValidator = xmlValidator)
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
 
       when(service.createSubmission(any[CreateSubmissionRequest])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("formp down")))
@@ -330,9 +345,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 401 when unauthorised" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service, auth = rejectingAuthAction, xmlValidator = xmlValidator)
+      val controller   = mkController(service, auth = rejectingAuthAction, xmlValidator = xmlValidator)
 
       val req = FakeRequest(POST, "/cis/submissions/create-and-track")
         .withBody(validCreateJson)
@@ -348,16 +363,16 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
   "updateSubmission" - {
 
     val minimalUpdateJson = Json.obj(
-      "instanceId" -> "123",
-      "taxYear" -> 2024,
-      "taxMonth" -> 4,
+      "instanceId"        -> "123",
+      "taxYear"           -> 2024,
+      "taxMonth"          -> 4,
       "submittableStatus" -> "REJECTED"
     )
 
     "returns 204 NoContent when service updates ok" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service = service, xmlValidator = xmlValidator)
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
 
       when(service.updateSubmission(any[UpdateSubmissionRequest])(any[HeaderCarrier]))
         .thenReturn(Future.unit)
@@ -373,9 +388,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 400 when JSON is invalid" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service = service, xmlValidator = xmlValidator)
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
 
       val bad = Json.obj("instanceId" -> "123")
 
@@ -390,9 +405,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 502 BadGateway when service fails" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service = service, xmlValidator = xmlValidator)
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
 
       when(service.updateSubmission(any[UpdateSubmissionRequest])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("formp update failed")))
@@ -410,9 +425,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 401 when unauthorised" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service, auth = rejectingAuthAction, xmlValidator = xmlValidator)
+      val controller   = mkController(service, auth = rejectingAuthAction, xmlValidator = xmlValidator)
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/update")
         .withBody(minimalUpdateJson)
@@ -430,8 +445,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "override polling url is true" - {
 
       "returns 200 with ACCEPTED status and override pollUrl when service returns ACCEPTED with pollUrl" in {
-        val service = mock[SubmissionService]
-        val config = mock[AppConfig]
+        val service      = mock[SubmissionService]
+        val config       = mock[AppConfig]
         val xmlValidator = mock[XmlValidator]
 
         when(config.chrisHost).thenReturn(Seq("chris.test"))
@@ -439,11 +454,15 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         when(config.overridePollResponseEndPoint).thenReturn("override.chris.test")
         val controller = mkController(service, appConfig = config, xmlValidator = xmlValidator)
 
-        val pollUrl = "http://chris.test/poll"
+        val pollUrl         = "http://chris.test/poll"
         val overridePollUrl = "https://override.chris.test/poll"
-        val correlationId = "CORR999"
+        val correlationId   = "CORR999"
 
-        when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(overridePollUrl))(using any[HeaderCarrier]))
+        when(
+          service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(overridePollUrl))(using
+            any[HeaderCarrier]
+          )
+        )
           .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, Some(overridePollUrl), Some(10))))
 
         val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
@@ -456,23 +475,29 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         (js \ "pollUrl").as[String] mustBe overridePollUrl
         (js \ "intervalSeconds").as[Int] mustBe 10
 
-        verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(overridePollUrl))(using any[HeaderCarrier])
+        verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(overridePollUrl))(using
+          any[HeaderCarrier]
+        )
       }
 
     }
 
     "returns 200 with SUBMITTED status when service returns SUBMITTED" in {
-      val service = mock[SubmissionService]
-      val config = mock[AppConfig]
+      val service      = mock[SubmissionService]
+      val config       = mock[AppConfig]
       val xmlValidator = mock[XmlValidator]
 
       when(config.chrisHost).thenReturn(Seq("chris.test"))
       val controller = mkController(service, appConfig = config, xmlValidator = xmlValidator)
 
-      val pollUrl = "http://chris.test/poll"
+      val pollUrl       = "http://chris.test/poll"
       val correlationId = "CORR123"
 
-      when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
+      when(
+        service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
+          any[HeaderCarrier]
+        )
+      )
         .thenReturn(Future.successful(ChrisPollResponse(SUBMITTED, None, None)))
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
@@ -485,22 +510,30 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "pollUrl").asOpt[String] mustBe None
       (js \ "intervalSeconds").asOpt[Int] mustBe None
 
-      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
+      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
+        any[HeaderCarrier]
+      )
     }
 
     "returns 200 with FATAL_ERROR status when service returns FATAL_ERROR" in {
-      val service = mock[SubmissionService]
-      val config = mock[AppConfig]
+      val service      = mock[SubmissionService]
+      val config       = mock[AppConfig]
       val xmlValidator = mock[XmlValidator]
 
       when(config.chrisHost).thenReturn(Seq("chris.test"))
       val controller = mkController(service, appConfig = config, xmlValidator = xmlValidator)
 
-      val pollUrl = "http://chris.test/poll"
+      val pollUrl       = "http://chris.test/poll"
       val correlationId = "CORR456"
 
-      when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(ChrisPollResponse(uk.gov.hmrc.constructionindustryscheme.models.FATAL_ERROR, None, None)))
+      when(
+        service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
+          any[HeaderCarrier]
+        )
+      )
+        .thenReturn(
+          Future.successful(ChrisPollResponse(uk.gov.hmrc.constructionindustryscheme.models.FATAL_ERROR, None, None))
+        )
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
@@ -512,21 +545,27 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "pollUrl").asOpt[String] mustBe None
       (js \ "intervalSeconds").asOpt[Int] mustBe None
 
-      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
+      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
+        any[HeaderCarrier]
+      )
     }
 
     "returns 200 with DEPARTMENTAL_ERROR status when service returns DEPARTMENTAL_ERROR" in {
-      val service = mock[SubmissionService]
-      val config = mock[AppConfig]
+      val service      = mock[SubmissionService]
+      val config       = mock[AppConfig]
       val xmlValidator = mock[XmlValidator]
 
       when(config.chrisHost).thenReturn(Seq("chris.test"))
       val controller = mkController(service, appConfig = config, xmlValidator = xmlValidator)
 
-      val pollUrl = "http://chris.test/poll"
+      val pollUrl       = "http://chris.test/poll"
       val correlationId = "CORR789"
 
-      when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
+      when(
+        service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
+          any[HeaderCarrier]
+        )
+      )
         .thenReturn(Future.successful(ChrisPollResponse(DEPARTMENTAL_ERROR, None, None)))
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
@@ -539,21 +578,27 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "pollUrl").asOpt[String] mustBe None
       (js \ "intervalSeconds").asOpt[Int] mustBe None
 
-      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
+      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
+        any[HeaderCarrier]
+      )
     }
 
     "returns 200 with ACCEPTED status and pollUrl when service returns ACCEPTED with pollUrl" in {
-      val service = mock[SubmissionService]
-      val config = mock[AppConfig]
+      val service      = mock[SubmissionService]
+      val config       = mock[AppConfig]
       val xmlValidator = mock[XmlValidator]
 
       when(config.chrisHost).thenReturn(Seq("chris.test"))
       val controller = mkController(service, appConfig = config, xmlValidator = xmlValidator)
 
-      val pollUrl = "http://chris.test/poll"
+      val pollUrl       = "http://chris.test/poll"
       val correlationId = "CORR999"
 
-      when(service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier]))
+      when(
+        service.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
+          any[HeaderCarrier]
+        )
+      )
         .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, Some(pollUrl), Some(10))))
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
@@ -566,15 +611,17 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "pollUrl").as[String] mustBe pollUrl
       (js \ "intervalSeconds").as[Int] mustBe 10
 
-      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using any[HeaderCarrier])
+      verify(service).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
+        any[HeaderCarrier]
+      )
     }
 
     "returns 401 when unauthorised" in {
-      val service = mock[SubmissionService]
+      val service      = mock[SubmissionService]
       val xmlValidator = mock[XmlValidator]
-      val controller = mkController(service, auth = rejectingAuthAction, xmlValidator = xmlValidator)
+      val controller   = mkController(service, auth = rejectingAuthAction, xmlValidator = xmlValidator)
 
-      val pollUrl = "http://chris.test/poll"
+      val pollUrl       = "http://chris.test/poll"
       val correlationId = "CORR-UNAUTH"
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
@@ -598,16 +645,15 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         def convertXmlToJson(xml: String): XmlConversionResult =
           XmlConversionResult(true, Some(Json.obj("ok" -> true)), None)
 
-        def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue = {
+        def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue =
           convertXmlToJson(payload.envelope.toString) match {
-            case XmlConversionResult(true, Some(json), _) => json
+            case XmlConversionResult(true, Some(json), _)   => json
             case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
-            case _ => Json.obj("error" -> "unexpected conversion failure")
+            case _                                          => Json.obj("error" -> "unexpected conversion failure")
           }
-        }
       }
-      val payload = BuiltSubmissionPayload(<xml></xml>, "corr-1", "irmark-1", <xml></xml>)
-      val result = service.createMonthlyNilReturnRequestJson(payload)
+      val payload                                  = BuiltSubmissionPayload(<xml></xml>, "corr-1", "irmark-1", <xml></xml>)
+      val result                                   = service.createMonthlyNilReturnRequestJson(payload)
       result mustBe Json.obj("ok" -> true)
     }
     "return error JSON when XML conversion fails" in {
@@ -615,16 +661,15 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         def convertXmlToJson(xml: String): XmlConversionResult =
           XmlConversionResult(false, None, Some("Invalid XML"))
 
-        def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue = {
+        def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue =
           convertXmlToJson(payload.envelope.toString) match {
-            case XmlConversionResult(true, Some(json), _) => json
+            case XmlConversionResult(true, Some(json), _)   => json
             case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
-            case _ => Json.obj("error" -> "unexpected conversion failure")
+            case _                                          => Json.obj("error" -> "unexpected conversion failure")
           }
-        }
       }
-      val payload = BuiltSubmissionPayload(<xml>bad</xml>, "corr-2", "irmark-2", <xml></xml>)
-      val result = service.createMonthlyNilReturnRequestJson(payload)
+      val payload                                  = BuiltSubmissionPayload(<xml>bad</xml>, "corr-2", "irmark-2", <xml></xml>)
+      val result                                   = service.createMonthlyNilReturnRequestJson(payload)
       result mustBe Json.obj("error" -> "Invalid XML")
     }
     "return unexpected conversion failure when neither json nor error provided" in {
@@ -632,16 +677,15 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         def convertXmlToJson(xml: String): XmlConversionResult =
           XmlConversionResult(false, None, None)
 
-        def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue = {
+        def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue =
           convertXmlToJson(payload.envelope.toString) match {
-            case XmlConversionResult(true, Some(json), _) => json
+            case XmlConversionResult(true, Some(json), _)   => json
             case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
-            case _ => Json.obj("error" -> "unexpected conversion failure")
+            case _                                          => Json.obj("error" -> "unexpected conversion failure")
           }
-        }
       }
-      val payload = BuiltSubmissionPayload(<xml>weird</xml>, "corr-3", "irmark-3", <xml></xml>)
-      val result = service.createMonthlyNilReturnRequestJson(payload)
+      val payload                                  = BuiltSubmissionPayload(<xml>weird</xml>, "corr-3", "irmark-3", <xml></xml>)
+      val result                                   = service.createMonthlyNilReturnRequestJson(payload)
       result mustBe Json.obj("error" -> "unexpected conversion failure")
     }
   }
@@ -662,21 +706,20 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       responseEndPoint = ResponseEndPoint("/poll", 100),
       error = None
     )
-    val res = SubmissionResult(SUBMITTED, "rawXml", govTalkMeta)
+    val res         = SubmissionResult(SUBMITTED, "rawXml", govTalkMeta)
 
     "return correct JSON for successful conversion" in {
       val service: TestableMonthlyNilResponseService = new TestableMonthlyNilResponseService {
         def convertXmlToJson(xml: String): XmlConversionResult =
           XmlConversionResult(true, Some(Json.obj("ok" -> true)), None)
 
-        def createMonthlyNilReturnResponseJson(res: SubmissionResult): JsValue = {
+        def createMonthlyNilReturnResponseJson(res: SubmissionResult): JsValue =
           convertXmlToJson(res.rawXml) match {
             case XmlConversionResult(true, Some(json), _) => json
-            case _ => Json.toJson(res.rawXml)
+            case _                                        => Json.toJson(res.rawXml)
           }
-        }
       }
-      val result = service.createMonthlyNilReturnResponseJson(res)
+      val result                                     = service.createMonthlyNilReturnResponseJson(res)
       result mustBe Json.obj("ok" -> true)
     }
     "return error JSON when XML conversion fails" in {
@@ -684,12 +727,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         def convertXmlToJson(xml: String): XmlConversionResult =
           XmlConversionResult(false, None, Some("Invalid XML"))
 
-        def createMonthlyNilReturnResponseJson(res: SubmissionResult): JsValue = {
+        def createMonthlyNilReturnResponseJson(res: SubmissionResult): JsValue =
           convertXmlToJson(res.rawXml) match {
             case XmlConversionResult(true, Some(json), _) => json
-            case _ => Json.toJson(res.rawXml)
+            case _                                        => Json.toJson(res.rawXml)
           }
-        }
       }
 
       val result = service.createMonthlyNilReturnResponseJson(res)
@@ -697,13 +739,12 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
   }
 
-
   private def mkMeta(
-                      corrId: String = "CID123",
-                      pollSecs: Int = 15,
-                      ts: Option[String] = None,
-                      err: Option[GovTalkError] = None
-                    ): GovTalkMeta =
+    corrId: String = "CID123",
+    pollSecs: Int = 15,
+    ts: Option[String] = None,
+    err: Option[GovTalkError] = None
+  ): GovTalkMeta =
     GovTalkMeta(
       qualifier = "response",
       function = "submit",
@@ -715,9 +756,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     )
 
   private def mkSubmissionResult(
-                                  status: SubmissionStatus,
-                                  err: Option[GovTalkError] = None
-                                ): SubmissionResult =
+    status: SubmissionStatus,
+    err: Option[GovTalkError] = None
+  ): SubmissionResult =
     SubmissionResult(
       status = status,
       rawXml = "<ack/>",

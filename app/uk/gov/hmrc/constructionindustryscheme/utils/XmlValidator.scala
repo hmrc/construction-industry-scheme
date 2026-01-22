@@ -24,11 +24,11 @@ import scala.util.{Failure, Try}
 import scala.xml.NodeSeq
 
 @Singleton
-class XmlValidator @Inject()(appConfig: AppConfig, schemaValidator: SchemaValidator) extends Logging {
+class XmlValidator @Inject() (appConfig: AppConfig, schemaValidator: SchemaValidator) extends Logging {
 
   def validate(xml: NodeSeq): Try[Unit] = Try {
     val envelope = xml.mkString
-    val isValid = schemaValidator.validate(envelope, appConfig.schema)
+    val isValid  = schemaValidator.validate(envelope, appConfig.schema)
 
     if (!isValid) {
       logger.error("XML validation failed against schema")

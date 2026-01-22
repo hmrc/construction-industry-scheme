@@ -21,25 +21,24 @@ import scala.util.Try
 import scala.xml.XML
 
 object WaitTimeXmlMapper {
-  def parse(xmlBody: String): Either[String, AsynchronousProcessWaitTime] = {
+  def parse(xmlBody: String): Either[String, AsynchronousProcessWaitTime] =
     for {
-      xml     <- Try(XML.loadString(xmlBody)).toEither.left.map(_ => "invalid XML document")
-      root    <- (xml \\ "AsynchronousProcessWaitTime").headOption.toRight("missing AsynchronousProcessWaitTime element")
-      browser <- root.attribute("browserInterval").map(_.text.trim).toRight("missing browserInterval attribute")
-      browserMs <- Try(browser.toLong).toEither.left.map(_ => s"invalid browserInterval '$browser'")
+      xml         <- Try(XML.loadString(xmlBody)).toEither.left.map(_ => "invalid XML document")
+      root        <- (xml \\ "AsynchronousProcessWaitTime").headOption.toRight("missing AsynchronousProcessWaitTime element")
+      browser     <- root.attribute("browserInterval").map(_.text.trim).toRight("missing browserInterval attribute")
+      browserMs   <- Try(browser.toLong).toEither.left.map(_ => s"invalid browserInterval '$browser'")
       businessVals = (xml \\ "BusinessServiceInterval").map(_.text.trim).toList
-      businessMs <- sequence(businessVals.map { s =>
-        Try(s.toLong).toEither.left.map(_ => s"invalid BusinessServiceInterval '$s'")
-      })
+      businessMs  <- sequence(businessVals.map { s =>
+                       Try(s.toLong).toEither.left.map(_ => s"invalid BusinessServiceInterval '$s'")
+                     })
     } yield AsynchronousProcessWaitTime(browserMs, businessMs)
-  }
 
   private def sequence[A](values: List[Either[String, A]]): Either[String, List[A]] =
     values.foldRight(Right(Nil): Either[String, List[A]]) { (currentEither, accEither) =>
       (currentEither, accEither) match {
         case (Right(v), Right(acc)) => Right(v :: acc)
-        case (Left(err), _) => Left(err)
-        case (_, Left(err)) => Left(err)
+        case (Left(err), _)         => Left(err)
+        case (_, Left(err))         => Left(err)
       }
     }
 }

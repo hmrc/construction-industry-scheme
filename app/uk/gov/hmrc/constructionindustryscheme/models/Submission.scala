@@ -18,11 +18,28 @@ package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.libs.json.{Json, OFormat}
 
-case class UnsubmittedMonthlyReturns(
-  scheme: ContractorScheme,
-  monthlyReturn: Seq[MonthlyReturn]
+import java.time.LocalDateTime
+
+case class Submission(
+  submissionId: Long,
+  submissionType: String,
+  activeObjectId: Option[Long],
+  status: Option[String],
+  hmrcMarkGenerated: Option[String],
+  hmrcMarkGgis: Option[String],
+  emailRecipient: Option[String],
+  acceptedTime: Option[String],
+  createDate: Option[LocalDateTime],
+  lastUpdate: Option[LocalDateTime],
+  schemeId: Long,
+  agentId: Option[String],
+  l_Migrated: Option[Long],
+  submissionRequestDate: Option[LocalDateTime],
+  govTalkErrorCode: Option[String],
+  govTalkErrorType: Option[String],
+  govTalkErrorMessage: Option[String]
 )
 
-object UnsubmittedMonthlyReturns {
-  given format: OFormat[UnsubmittedMonthlyReturns] = Json.format[UnsubmittedMonthlyReturns]
+object Submission {
+  given format: OFormat[Submission] = Json.format[Submission]
 }

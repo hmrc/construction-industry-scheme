@@ -28,45 +28,43 @@ import uk.gov.hmrc.play.audit.http.connector.{AuditConnector, AuditResult}
 import uk.gov.hmrc.play.audit.model.ExtendedDataEvent
 import scala.concurrent.Future
 
-
 class AuditServiceSpec extends SpecBase {
   "AuditService" - {
     "call AuditConnector.sendExtendedEvent for MonthlyNilReturnRequestEvent" in {
       val mockAuditConnector = mock[AuditConnector]
-      val jsonData = Json.obj("period" -> "2025-10", "submittedBy" -> "user123")
-      val expectedEvent = MonthlyNilReturnRequestEvent(jsonData).extendedDataEvent
+      val jsonData           = Json.obj("period" -> "2025-10", "submittedBy" -> "user123")
+      val expectedEvent      = MonthlyNilReturnRequestEvent(jsonData).extendedDataEvent
       when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      val service = new AuditService(mockAuditConnector)
-      val resultF = service.monthlyNilReturnRequestEvent(jsonData)
+      val service            = new AuditService(mockAuditConnector)
+      val resultF            = service.monthlyNilReturnRequestEvent(jsonData)
       resultF.map { result =>
         result shouldBe AuditResult.Success
-        val captor = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
+        val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
         verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
         val capturedEvent = captor.getValue
         capturedEvent.auditType shouldBe expectedEvent.auditType
-        capturedEvent.detail shouldBe expectedEvent.detail
+        capturedEvent.detail    shouldBe expectedEvent.detail
       }
     }
     "call AuditConnector.sendExtendedEvent for MonthlyNilReturnResponseEvent" in {
       val mockAuditConnector = mock[AuditConnector]
-      val responseData = Json.obj("message" -> "No return required")
-      val responseModel = AuditResponseReceivedModel("OK", responseData)
-      val expectedEvent = MonthlyNilReturnResponseEvent(responseModel).extendedDataEvent
+      val responseData       = Json.obj("message" -> "No return required")
+      val responseModel      = AuditResponseReceivedModel("OK", responseData)
+      val expectedEvent      = MonthlyNilReturnResponseEvent(responseModel).extendedDataEvent
       when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      val service = new AuditService(mockAuditConnector)
-      val resultF = service.monthlyNilReturnResponseEvent(responseModel)
+      val service            = new AuditService(mockAuditConnector)
+      val resultF            = service.monthlyNilReturnResponseEvent(responseModel)
       resultF.map { result =>
         result shouldBe AuditResult.Success
-        val captor = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
+        val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
         verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
         val capturedEvent = captor.getValue
         capturedEvent.auditType shouldBe expectedEvent.auditType
-        capturedEvent.detail shouldBe expectedEvent.detail
+        capturedEvent.detail    shouldBe expectedEvent.detail
       }
     }
-
 
     "call AuditConnector.sendExtendedEvent for ClientListRetrievalFailedEvent" in {
       val mockAuditConnector = mock[AuditConnector]

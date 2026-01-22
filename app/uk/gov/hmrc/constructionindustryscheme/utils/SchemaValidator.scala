@@ -48,7 +48,7 @@ class ValidationHandler extends ErrorHandler with Logging {
 class SchemaValidator extends Logging {
   def validate(xml: String, schema: Schema): Boolean = {
     val validator = schema.newValidator()
-    val handler = new ValidationHandler
+    val handler   = new ValidationHandler
     validator.setErrorHandler(handler)
     try {
       validator.validate(new StreamSource(new StringReader(xml)))

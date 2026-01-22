@@ -16,28 +16,27 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
-
 import play.api.libs.json.{Json, OFormat}
 
 final case class UpdateSubcontractorRequest(
-                                             schemeId: Int,
-                                             subbieResourceRef: Int,
-                                             firstName: Option[String] = None,
-                                             secondName: Option[String] = None,
-                                             surname: Option[String] = None,
-                                             tradingName: Option[String] = None,
-                                             addressLine1: Option[String] = None,
-                                             addressLine2: Option[String] = None,
-                                             addressLine3: Option[String] = None,
-                                             addressLine4: Option[String] = None,
-                                             country: Option[String] = None,
-                                             postcode: Option[String] = None,
-                                             nino: Option[String] = None,
-                                             utr: Option[String] = None,
-                                             worksReferenceNumber: Option[String] = None,
-                                             emailAddress: Option[String] = None,
-                                             phoneNumber: Option[String] = None
-                                           )
+  schemeId: Int,
+  subbieResourceRef: Int,
+  firstName: Option[String] = None,
+  secondName: Option[String] = None,
+  surname: Option[String] = None,
+  tradingName: Option[String] = None,
+  addressLine1: Option[String] = None,
+  addressLine2: Option[String] = None,
+  addressLine3: Option[String] = None,
+  addressLine4: Option[String] = None,
+  country: Option[String] = None,
+  postcode: Option[String] = None,
+  nino: Option[String] = None,
+  utr: Option[String] = None,
+  worksReferenceNumber: Option[String] = None,
+  emailAddress: Option[String] = None,
+  phoneNumber: Option[String] = None
+)
 
 object UpdateSubcontractorRequest {
   implicit val format: OFormat[UpdateSubcontractorRequest] = Json.format[UpdateSubcontractorRequest]
