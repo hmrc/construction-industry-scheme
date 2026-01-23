@@ -180,6 +180,44 @@ class MonthlyReturnsController @Inject() (
 
   def getAllDetails(instanceId: String, taxMonth: Int, taxYear: Int): Action[AnyContent] = authorise {
     implicit request =>
+      val subcontractor = Subcontractor(
+        subcontractorId = 1L,
+        utr = Some("9876543210"),
+        pageVisited = Some(1),
+        partnerUtr = None,
+        crn = None,
+        firstName = Some("John"),
+        nino = Some("AB123456C"),
+        secondName = None,
+        surname = Some("Smith"),
+        partnershipTradingName = None,
+        tradingName = Some("Smith Construction"),
+        subcontractorType = Some("SOLE_TRADER"),
+        addressLine1 = Some("123 Main Street"),
+        addressLine2 = Some("Business Park"),
+        addressLine3 = None,
+        addressLine4 = None,
+        country = Some("GB"),
+        postCode = Some("AB12 3CD"),
+        emailAddress = Some("john.smith@example.com"),
+        phoneNumber = Some("01onal234567890"),
+        mobilePhoneNumber = None,
+        worksReferenceNumber = Some("WRN001"),
+        createDate = Some(LocalDateTime.now()),
+        lastUpdate = Some(LocalDateTime.now()),
+        subbieResourceRef = Some(1L),
+        matched = Some("Y"),
+        autoVerified = Some("N"),
+        verified = Some("Y"),
+        verificationNumber = Some("V1234567890"),
+        taxTreatment = Some("GROSS"),
+        verificationDate = Some(LocalDateTime.now()),
+        version = Some(1),
+        updatedTaxTreatment = None,
+        lastMonthlyReturnDate = None,
+        pendingVerifications = Some(0)
+      )
+
       Ok(
         Json.toJson(
           GetAllMonthlyReturnDetailsResponse(
@@ -219,80 +257,58 @@ class MonthlyReturnsController @Inject() (
                 supersededBy = None
               )
             ),
-            subcontractors = Seq(
-              Subcontractor(
-                subcontractorId = 1L,
-                utr = Some("9876543210"),
-                pageVisited = Some(1),
-                partnerUtr = None,
-                crn = None,
-                firstName = Some("John"),
-                nino = Some("AB123456C"),
-                secondName = None,
-                surname = Some("Smith"),
-                partnershipTradingName = None,
-                tradingName = Some("Smith Construction"),
-                subcontractorType = Some("SOLE_TRADER"),
-                addressLine1 = Some("123 Main Street"),
-                addressLine2 = Some("Business Park"),
-                addressLine3 = None,
-                addressLine4 = None,
-                country = Some("GB"),
-                postCode = Some("AB12 3CD"),
-                emailAddress = Some("john.smith@example.com"),
-                phoneNumber = Some("01onal234567890"),
-                mobilePhoneNumber = None,
-                worksReferenceNumber = Some("WRN001"),
-                createDate = Some(LocalDateTime.now()),
-                lastUpdate = Some(LocalDateTime.now()),
-                subbieResourceRef = Some(1L),
-                matched = Some("Y"),
-                autoVerified = Some("N"),
-                verified = Some("Y"),
-                verificationNumber = Some("V1234567890"),
-                taxTreatment = Some("GROSS"),
-                verificationDate = Some(LocalDateTime.now()),
-                version = Some(1),
-                updatedTaxTreatment = None,
-                lastMonthlyReturnDate = None,
-                pendingVerifications = Some(0)
-              )
-            ),
-            monthlyReturnItems = Seq(
-              MonthlyReturnItem(
-                monthlyReturnId = 1L,
-                monthlyReturnItemId = 1L,
-                totalPayments = Some("5000.00"),
-                costOfMaterials = Some("1000.00"),
-                totalDeducted = Some("800.00"),
-                unmatchedTaxRateIndicator = None,
-                subcontractorId = Some(1L),
-                subcontractorName = Some("John Smith"),
-                verificationNumber = Some("V1234567890"),
-                itemResourceReference = Some(1L)
-              )
-            ),
-            submission = Seq(
-              Submission(
-                submissionId = 1L,
-                submissionType = "MONTHLY_RETURN",
-                activeObjectId = Some(1L),
-                status = Some("DRAFT"),
-                hmrcMarkGenerated = None,
-                hmrcMarkGgis = None,
-                emailRecipient = Some("test@example.com"),
-                acceptedTime = None,
-                createDate = Some(LocalDateTime.now()),
-                lastUpdate = Some(LocalDateTime.now()),
-                schemeId = 1L,
-                agentId = None,
-                l_Migrated = None,
-                submissionRequestDate = None,
-                govTalkErrorCode = None,
-                govTalkErrorType = None,
-                govTalkErrorMessage = None
-              )
-            )
+            subcontractors =
+              if (instanceId == "0") Nil
+              else
+                Seq(
+                  subcontractor.copy(tradingName = Some("Alice, A")),
+                  subcontractor.copy(tradingName = Some("Bob, B")),
+                  subcontractor.copy(tradingName = Some("Charles, C")),
+                  subcontractor.copy(tradingName = Some("Dave, D")),
+                  subcontractor.copy(tradingName = Some("Elise, E")),
+                  subcontractor.copy(tradingName = Some("Frank, F"))
+                ),
+            monthlyReturnItems =
+              if (instanceId == "0") Nil
+              else
+                Seq(
+                  MonthlyReturnItem(
+                    monthlyReturnId = 1L,
+                    monthlyReturnItemId = 1L,
+                    totalPayments = Some("5000.00"),
+                    costOfMaterials = Some("1000.00"),
+                    totalDeducted = Some("800.00"),
+                    unmatchedTaxRateIndicator = None,
+                    subcontractorId = Some(1L),
+                    subcontractorName = Some("John Smith"),
+                    verificationNumber = Some("V1234567890"),
+                    itemResourceReference = Some(1L)
+                  )
+                ),
+            submission =
+              if (instanceId == "0") Nil
+              else
+                Seq(
+                  Submission(
+                    submissionId = 1L,
+                    submissionType = "MONTHLY_RETURN",
+                    activeObjectId = Some(1L),
+                    status = Some("DRAFT"),
+                    hmrcMarkGenerated = None,
+                    hmrcMarkGgis = None,
+                    emailRecipient = Some("test@example.com"),
+                    acceptedTime = None,
+                    createDate = Some(LocalDateTime.now()),
+                    lastUpdate = Some(LocalDateTime.now()),
+                    schemeId = 1L,
+                    agentId = None,
+                    l_Migrated = None,
+                    submissionRequestDate = None,
+                    govTalkErrorCode = None,
+                    govTalkErrorType = None,
+                    govTalkErrorMessage = None
+                  )
+                )
           )
         )
       )

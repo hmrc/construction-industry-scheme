@@ -512,6 +512,22 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         (json \ "monthlyReturnItems").as[Seq[play.api.libs.json.JsValue]] must not be empty
         (json \ "submission").as[Seq[play.api.libs.json.JsValue]]         must not be empty
       }
+
+      "return 200 with empty subcontractors, monthlyReturnItems and submission when instanceId is 0" in new SetupAuthOnly {
+        val instanceId = "0"
+        val taxMonth   = 1
+        val taxYear    = 2025
+
+        val result = controller.getAllDetails(instanceId, taxMonth, taxYear)(fakeRequest)
+
+        status(result) mustBe OK
+        val json = contentAsJson(result)
+        (json \ "scheme").as[Seq[play.api.libs.json.JsValue]]        must not be empty
+        (json \ "monthlyReturn").as[Seq[play.api.libs.json.JsValue]] must not be empty
+        (json \ "subcontractors").as[Seq[play.api.libs.json.JsValue]] mustBe empty
+        (json \ "monthlyReturnItems").as[Seq[play.api.libs.json.JsValue]] mustBe empty
+        (json \ "submission").as[Seq[play.api.libs.json.JsValue]] mustBe empty
+      }
     }
   }
 
