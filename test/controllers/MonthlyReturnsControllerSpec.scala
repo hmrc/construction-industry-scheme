@@ -29,6 +29,7 @@ import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController
 import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
@@ -495,14 +496,12 @@ class MonthlyReturnsControllerSpec extends SpecBase {
       }
     }
 
-    "GET /cis/monthly-returns/details/:instanceId/:taxMonth/:taxYear (getAllDetails)" - {
+    "POST /cis/monthly-returns/edit (getMonthlyReturnForEdit)" - {
 
       "return 200 with all monthly return details" in new SetupAuthOnly {
-        val instanceId = "INSTANCE-123"
-        val taxMonth   = 1
-        val taxYear    = 2025
+        val payload = GetMonthlyReturnForEditRequest(instanceId = "INSTANCE-123", taxYear = 2025, taxMonth = 1)
 
-        val result = controller.getAllDetails(instanceId, taxMonth, taxYear)(fakeRequest)
+        val result = controller.getMonthlyReturnForEdit()(fakeRequest.withBody(Json.toJson(payload)))
 
         status(result) mustBe OK
         val json = contentAsJson(result)
@@ -514,11 +513,9 @@ class MonthlyReturnsControllerSpec extends SpecBase {
       }
 
       "return 200 with empty subcontractors, monthlyReturnItems and submission when instanceId is 0" in new SetupAuthOnly {
-        val instanceId = "0"
-        val taxMonth   = 1
-        val taxYear    = 2025
+        val payload = GetMonthlyReturnForEditRequest(instanceId = "0", taxYear = 2025, taxMonth = 1)
 
-        val result = controller.getAllDetails(instanceId, taxMonth, taxYear)(fakeRequest)
+        val result = controller.getMonthlyReturnForEdit()(fakeRequest.withBody(Json.toJson(payload)))
 
         status(result) mustBe OK
         val json = contentAsJson(result)
@@ -527,6 +524,13 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         (json \ "subcontractors").as[Seq[play.api.libs.json.JsValue]] mustBe empty
         (json \ "monthlyReturnItems").as[Seq[play.api.libs.json.JsValue]] mustBe empty
         (json \ "submission").as[Seq[play.api.libs.json.JsValue]] mustBe empty
+      }
+
+      "return 400 on invalid json payload" in new SetupAuthOnly {
+        val result = controller.getMonthlyReturnForEdit()(fakeRequest.withBody(Json.obj("bad" -> "json")))
+
+        status(result) mustBe BAD_REQUEST
+        (contentAsJson(result) \ "message").as[String] mustBe "Invalid payload"
       }
     }
   }
