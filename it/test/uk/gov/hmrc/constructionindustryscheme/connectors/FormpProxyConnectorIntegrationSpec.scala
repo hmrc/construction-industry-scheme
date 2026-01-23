@@ -602,4 +602,55 @@ class FormpProxyConnectorIntegrationSpec
       ex.getMessage.toLowerCase must include("500")
     }
   }
+
+  "FormpProxyConnector getMonthlyReturnForEdit" should {
+
+    "POST request to /formp-proxy/cis/monthly-return-edit and return payload (200)" in {
+      val req = GetMonthlyReturnForEditRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 7
+      )
+
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "scheme": [],
+           |  "monthlyReturn": [],
+           |  "monthlyReturnItems": [],
+           |  "subcontractors": [],
+           |  "submission": []
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-edit"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.getMonthlyReturnForEdit(req).futureValue
+      Json.toJson(out) mustBe responseJson
+    }
+
+    "fail the future when upstream returns non-2xx (e.g. 500)" in {
+      val req = GetMonthlyReturnForEditRequest(instanceId = instanceId, taxYear = 2025, taxMonth = 7)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-edit"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.getMonthlyReturnForEdit(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
 }

@@ -21,13 +21,19 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
+import org.scalatest.OptionValues.*
 import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, FORBIDDEN, INTERNAL_SERVER_ERROR, NOT_FOUND, OK}
+import play.api.http.HttpVerbs.POST
 import play.api.libs.json.Json
 import play.api.mvc.Result
-import play.api.test.Helpers.{contentAsJson, status}
+import play.api.test.FakeRequest
+import play.api.test.Helpers.*
+import play.api.http.HeaderNames
+import play.api.http.MimeTypes
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController
-import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
+import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, GetMonthlyReturnForEditResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
@@ -543,6 +549,72 @@ class MonthlyReturnsControllerSpec extends SpecBase {
       val result: Future[Result] = controller.createNil()(fakeRequest.withBody(Json.toJson(payload)))
 
       status(result) mustBe BAD_GATEWAY
+    }
+  }
+
+  "getMonthlyReturnForEdit" - {
+
+    "returns 200 with json payload when service succeeds" in new SetupWithEnrolmentReference {
+
+      val reqBody = GetMonthlyReturnForEditRequest("abc-123", 2025, 1)
+
+      val payload = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq.empty,
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      when(mockMonthlyReturnService.getMonthlyReturnForEdit(eqTo(reqBody))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(payload))
+
+      val request =
+        FakeRequest(POST, "/")
+          .withHeaders("Content-Type" -> "application/json")
+          .withBody(Json.toJson(reqBody))
+
+      val result = call(controller.getMonthlyReturnForEdit, request)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.toJson(payload)
+    }
+
+    "returns upstream status + message when service fails with UpstreamErrorResponse" in new SetupWithEnrolmentReference {
+
+      val reqBody = GetMonthlyReturnForEditRequest("abc-123", 2025, 1)
+      val boom    = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
+
+      when(mockMonthlyReturnService.getMonthlyReturnForEdit(eqTo(reqBody))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val request =
+        FakeRequest(POST, "/")
+          .withHeaders("Content-Type" -> "application/json")
+          .withBody(Json.toJson(reqBody))
+
+      val result = call(controller.getMonthlyReturnForEdit, request)
+
+      status(result) mustBe BAD_GATEWAY
+      contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
+    }
+
+    "returns 500 with Unexpected error when service fails with NonFatal" in new SetupWithEnrolmentReference {
+
+      val reqBody = GetMonthlyReturnForEditRequest("abc-123", 2025, 1)
+
+      when(mockMonthlyReturnService.getMonthlyReturnForEdit(eqTo(reqBody))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val request =
+        FakeRequest(POST, "/")
+          .withHeaders("Content-Type" -> "application/json")
+          .withBody(Json.toJson(reqBody))
+
+      val result = call(controller.getMonthlyReturnForEdit, request)
+
+      status(result) mustBe INTERNAL_SERVER_ERROR
+      contentAsJson(result) mustBe Json.obj("message" -> "Unexpected error")
     }
   }
 
