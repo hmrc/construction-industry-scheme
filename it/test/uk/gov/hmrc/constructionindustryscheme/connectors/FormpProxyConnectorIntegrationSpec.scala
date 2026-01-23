@@ -29,26 +29,25 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
 class FormpProxyConnectorIntegrationSpec
-  extends ApplicationWithWiremock
+    extends ApplicationWithWiremock
     with Matchers
     with ScalaFutures
     with IntegrationPatience {
-  
+
   private val connector = app.injector.instanceOf[FormpProxyConnector]
 
-  private val instanceId = "123"
+  private val instanceId      = "123"
   private val instanceReqJson = Json.obj("instanceId" -> instanceId)
 
   "FormpProxyConnector getMonthlyReturns" should {
 
     "POST instanceId to /formp-proxy/monthly-returns and return wrapper (200)" in {
-      val responseJson = Json.parse(
-        """{
+      val responseJson = Json.parse("""{
           |  "monthlyReturnList": [
           |    { "monthlyReturnId": 66666, "taxYear": 2025, "taxMonth": 1 },
           |    { "monthlyReturnId": 66667, "taxYear": 2025, "taxMonth": 7 }
           |  ]
-          |}""".stripMargin) 
+          |}""".stripMargin)
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-returns"))
@@ -86,7 +85,7 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = intercept[Throwable](connector.getMonthlyReturns(instanceId).futureValue)
-      ex.getMessage must include ("500")
+      ex.getMessage must include("500")
     }
   }
 
@@ -188,8 +187,11 @@ class FormpProxyConnectorIntegrationSpec
 
     "fails with UpstreamErrorResponse when non-2xx" in {
       val req = UpdateSubmissionRequest(
-        instanceId = instanceId, taxYear = 2024, taxMonth = 4,
-        hmrcMarkGenerated = Some("Dj5TVJDyRYCn9zta5EdySeY4fyA="), submittableStatus = "REJECTED"
+        instanceId = instanceId,
+        taxYear = 2024,
+        taxMonth = 4,
+        hmrcMarkGenerated = Some("Dj5TVJDyRYCn9zta5EdySeY4fyA="),
+        submittableStatus = "REJECTED"
       )
 
       stubFor(
@@ -429,7 +431,7 @@ class FormpProxyConnectorIntegrationSpec
 
     "POST /formp-proxy/subcontractor/create and return subbieResourceRef from JSON" in {
       val req = CreateSubcontractorRequest(
-        schemeId = 999,
+        instanceId = 999,
         subcontractorType = SoleTrader,
         version = 1
       )
@@ -452,7 +454,7 @@ class FormpProxyConnectorIntegrationSpec
     }
 
     "fail the future when upstream responds with non-2xx (e.g. 502) as failed Future" in {
-      val req = CreateSubcontractorRequest(schemeId = 999, subcontractorType = SoleTrader, version = 1)
+      val req = CreateSubcontractorRequest(instanceId = 999, subcontractorType = SoleTrader, version = 1)
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create"))
@@ -576,10 +578,11 @@ class FormpProxyConnectorIntegrationSpec
   "FormpProxyConnector updateSubcontractor" should {
 
     "POSTs request and returns response model (201)" in {
-      val request = CreateAndUpdateSubcontractorRequest(schemeId = 10, subbieResourceRef = 10, tradingName = Some("trading Name"))
+      val request =
+        CreateAndUpdateSubcontractorRequest(cisId = "10", subcontractorType = SoleTrader)
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(NO_CONTENT))
@@ -590,10 +593,11 @@ class FormpProxyConnectorIntegrationSpec
     }
 
     "propagates upstream error for non-2xx" in {
-      val request = CreateAndUpdateSubcontractorRequest(schemeId = 10, subbieResourceRef = 10, tradingName = Some("trading Name"))
+      val request =
+        CreateAndUpdateSubcontractorRequest(cisId = "10", subcontractorType = SoleTrader)
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
           .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(500).withBody("""{ "message": "boom" }"""))
       )

@@ -29,7 +29,7 @@ import scala.concurrent.Future
 
 final class SubcontractorServiceSpec extends SpecBase {
 
-  val cisId = 1
+  val cisId = "1"
 
   "updateSubcontractor" - {
 

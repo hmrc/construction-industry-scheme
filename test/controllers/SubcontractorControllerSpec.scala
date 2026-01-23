@@ -43,7 +43,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
   ): SubcontractorController =
     new SubcontractorController(auth, subcontractorService, cc)
 
-  val cisId             = 1
+  val cisId             = "1"
   val subbieResourceRef = 10
 
   "createAndUpdateSubcontractor" - {
