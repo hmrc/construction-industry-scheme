@@ -20,7 +20,7 @@ import play.api.libs.json.{Json, OFormat}
 import uk.gov.hmrc.constructionindustryscheme.models.SubcontractorType
 
 final case class CreateAndUpdateSubcontractorRequest(
-  cisId: Int,
+  cisId: String,
   subcontractorType: SubcontractorType,
   firstName: Option[String] = None,
   secondName: Option[String] = None,
