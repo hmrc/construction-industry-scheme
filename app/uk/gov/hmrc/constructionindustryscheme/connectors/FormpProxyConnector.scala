@@ -23,7 +23,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, CreateSubcontractorRequest, CreateSubmissionRequest, UpdateSchemeVersionRequest, UpdateSubcontractorRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, CreateSubcontractorRequest, CreateSubmissionRequest, GetMonthlyReturnForEditRequest, UpdateSchemeVersionRequest, UpdateSubcontractorRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
@@ -153,4 +153,12 @@ class FormpProxyConnector @Inject() (
           )
         }
       }
+
+  def getMonthlyReturnForEdit(
+    request: GetMonthlyReturnForEditRequest
+  )(implicit hc: HeaderCarrier): Future[GetMonthlyReturnForEditResponse] =
+    http
+      .post(url"$base/cis/monthly-return-edit")
+      .withBody(Json.toJson(request))
+      .execute[GetMonthlyReturnForEditResponse]
 }

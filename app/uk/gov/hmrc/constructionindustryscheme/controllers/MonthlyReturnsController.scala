@@ -20,6 +20,7 @@ import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
+import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.GetAllMonthlyReturnDetailsResponse
 import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, EmployerReference, MonthlyReturn, MonthlyReturnItem, NilMonthlyReturnRequest, Subcontractor, Submission}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
@@ -177,6 +178,20 @@ class MonthlyReturnsController @Inject() (
           InternalServerError(Json.obj("message" -> "Unexpected error"))
       }
   }
+
+  def getMonthlyReturnForEdit: Action[GetMonthlyReturnForEditRequest] =
+    authorise.async(parse.json[GetMonthlyReturnForEditRequest]) { implicit request =>
+      service
+        .getMonthlyReturnForEdit(request.body)
+        .map(payload => Ok(Json.toJson(payload)))
+        .recover {
+          case u: UpstreamErrorResponse =>
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t)              =>
+            logger.error("[getMonthlyReturnForEdit] failed", t)
+            InternalServerError(Json.obj("message" -> "Unexpected error"))
+        }
+    }
 
   def getAllDetails(instanceId: String, taxMonth: Int, taxYear: Int): Action[AnyContent] = authorise {
     implicit request =>
