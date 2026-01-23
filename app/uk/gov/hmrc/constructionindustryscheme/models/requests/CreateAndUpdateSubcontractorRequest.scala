@@ -17,10 +17,11 @@
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
+import uk.gov.hmrc.constructionindustryscheme.models.SubcontractorType
 
-final case class UpdateSubcontractorRequest(
-  instanceId: Int,
-  subbieResourceRef: Int,
+final case class CreateAndUpdateSubcontractorRequest(
+  cisId: Int,
+  subcontractorType: SubcontractorType,
   firstName: Option[String] = None,
   secondName: Option[String] = None,
   surname: Option[String] = None,
@@ -38,6 +39,6 @@ final case class UpdateSubcontractorRequest(
   phoneNumber: Option[String] = None
 )
 
-object UpdateSubcontractorRequest {
-  implicit val format: OFormat[UpdateSubcontractorRequest] = Json.format[UpdateSubcontractorRequest]
+object CreateAndUpdateSubcontractorRequest {
+  implicit val format: OFormat[CreateAndUpdateSubcontractorRequest] = Json.format[CreateAndUpdateSubcontractorRequest]
 }

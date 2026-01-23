@@ -576,7 +576,7 @@ class FormpProxyConnectorIntegrationSpec
   "FormpProxyConnector updateSubcontractor" should {
 
     "POSTs request and returns response model (201)" in {
-      val request = UpdateSubcontractorRequest(schemeId = 10, subbieResourceRef = 10, tradingName = Some("trading Name"))
+      val request = CreateAndUpdateSubcontractorRequest(schemeId = 10, subbieResourceRef = 10, tradingName = Some("trading Name"))
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
@@ -585,12 +585,12 @@ class FormpProxyConnectorIntegrationSpec
           .willReturn(aResponse().withStatus(NO_CONTENT))
       )
 
-      val result: Unit = connector.updateSubcontractor(request).futureValue
+      val result: Unit = connector.createAndUpdateSubcontractor(request).futureValue
       result mustBe ()
     }
 
     "propagates upstream error for non-2xx" in {
-      val request = UpdateSubcontractorRequest(schemeId = 10, subbieResourceRef = 10, tradingName = Some("trading Name"))
+      val request = CreateAndUpdateSubcontractorRequest(schemeId = 10, subbieResourceRef = 10, tradingName = Some("trading Name"))
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
@@ -598,7 +598,7 @@ class FormpProxyConnectorIntegrationSpec
           .willReturn(aResponse().withStatus(500).withBody("""{ "message": "boom" }"""))
       )
 
-      val ex = intercept[Throwable](connector.updateSubcontractor(request).futureValue)
+      val ex = intercept[Throwable](connector.createAndUpdateSubcontractor(request).futureValue)
       ex.getMessage.toLowerCase must include("500")
     }
   }
