@@ -71,13 +71,13 @@ class SubcontractorController @Inject() (
 
   def getSubcontractorUTRs(cisId: String): Action[AnyContent] =
     authorise.async { implicit request =>
-          subcontractorService
-            .getSubcontractorUTRs(cisId)
-            .map(subcontractorUTRs => Ok(Json.obj("subcontractorUTRs" -> subcontractorUTRs)))
-            .recover { case ex =>
-              logger.error("[get] formp-proxy get failed", ex)
-              BadGateway(Json.obj("message" -> "get-subcontractorUTRs-failed"))
-            }
+      subcontractorService
+        .getSubcontractorUTRs(cisId)
+        .map(subcontractorUTRs => Ok(Json.obj("subcontractorUTRs" -> subcontractorUTRs)))
+        .recover { case ex =>
+          logger.error("[get] formp-proxy get failed", ex)
+          BadGateway(Json.obj("message" -> "get-subcontractorUTRs-failed"))
+        }
     }
-    
+
 }

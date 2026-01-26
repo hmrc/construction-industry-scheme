@@ -98,7 +98,7 @@ final class SubcontractorServiceSpec extends SpecBase {
     "delegates to FormpProxyConnector and returns response" in {
 
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
-      val service = new SubcontractorService(formpProxyConnector)
+      val service                                  = new SubcontractorService(formpProxyConnector)
 
       val subcontractorUTRs: Seq[String] = Seq("1111111111", "2222222222")
 
@@ -112,7 +112,7 @@ final class SubcontractorServiceSpec extends SpecBase {
     "propagates failures from FormpProxyConnector" in {
 
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
-      val service = new SubcontractorService(formpProxyConnector)
+      val service                                  = new SubcontractorService(formpProxyConnector)
 
       when(formpProxyConnector.getSubcontractorUTRs(eqTo(cisId))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))

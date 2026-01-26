@@ -180,37 +180,37 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
 
   "getSubcontractorUTRs" - {
 
-    val cisId = "cis-123"
+    val cisId                   = "cis-123"
     val getSubcontractorUTRsUrl = s"/subcontractors/utr/$cisId"
 
     "returns 200 with subcontractor UTR list response when service returns data" in {
-      val service = mock[SubcontractorService]
+      val service    = mock[SubcontractorService]
       val controller = mockController(service)
 
       val subcontractorUTRs: Seq[String] = Seq("1111111111", "2222222222")
-      val responseJson = Json.obj("subcontractorUTRs" -> subcontractorUTRs)
+      val responseJson                   = Json.obj("subcontractorUTRs" -> subcontractorUTRs)
 
       when(service.getSubcontractorUTRs(eqTo(cisId))(any[HeaderCarrier]))
         .thenReturn(Future.successful(subcontractorUTRs))
 
       val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, getSubcontractorUTRsUrl)
-      val result = controller.getSubcontractorUTRs(cisId)(req)
+      val result                                   = controller.getSubcontractorUTRs(cisId)(req)
 
       status(result) mustBe OK
       contentAsJson(result) mustBe responseJson
 
       verify(service).getSubcontractorUTRs(eqTo(cisId))(any[HeaderCarrier])
     }
-    
+
     "returns 502 when service fails" in {
-      val service = mock[SubcontractorService]
+      val service    = mock[SubcontractorService]
       val controller = mockController(service)
 
       when(service.getSubcontractorUTRs(eqTo(cisId))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("formp down")))
 
       val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, getSubcontractorUTRsUrl)
-      val result = controller.getSubcontractorUTRs(cisId)(req)
+      val result                                   = controller.getSubcontractorUTRs(cisId)(req)
 
       status(result) mustBe BAD_GATEWAY
       (contentAsJson(result) \ "message").as[String] mustBe "get-subcontractorUTRs-failed"
