@@ -23,39 +23,38 @@ import scala.util.{Failure, Success, Try}
 import scala.xml.*
 
 object XmlToJsonConvertor {
-  private def xmlToJson(node: Node): JsValue = {
-      val attributes: Map[String, JsValue] = node.attributes.asAttrMap.map {
-        case (k, v) => k -> JsString(v)
+  private def xmlToJson(node: Node): JsValue                   = {
+    val attributes: Map[String, JsValue]      = node.attributes.asAttrMap.map { case (k, v) =>
+      k -> JsString(v)
+    }
+    val children                              = node.child.collect {
+      case e: Elem                                           => e.label -> xmlToJson(e)
+      case t if t.isInstanceOf[Text] && t.text.trim.nonEmpty => "#text" -> JsString(t.text.trim)
+    }
+    val groupedChildren: Map[String, JsValue] = children
+      .groupBy(_._1)
+      .map { case (k, v) =>
+        if (v.size == 1) k -> v.head._2
+        else k             -> JsArray(v.map(_._2).toSeq)
       }
-      val children = node.child.collect {
-        case e: Elem => e.label -> xmlToJson(e)
-        case t if t.isInstanceOf[Text] && t.text.trim.nonEmpty => "#text" -> JsString(t.text.trim)
-      }
-      val groupedChildren: Map[String, JsValue] = children
-        .groupBy(_._1)
-        .map {
-          case (k, v) =>
-            if (v.size == 1) k -> v.head._2
-            else k -> JsArray(v.map(_._2).toSeq)
-        }
-      val combined = attributes ++ groupedChildren
-      combined.toList match {
-        case List(("#text", JsString(value))) => JsString(value)
-        case _ if combined.contains("#text") && attributes.nonEmpty =>
-          JsObject((attributes + (node.label -> combined("#text"))).toSeq)
-        case _ => JsObject(combined.filterNot(_._1 == "#text").toSeq)
-      }
+    val combined                              = attributes ++ groupedChildren
+    combined.toList match {
+      case List(("#text", JsString(value)))                       => JsString(value)
+      case _ if combined.contains("#text") && attributes.nonEmpty =>
+        JsObject((attributes + (node.label -> combined("#text"))).toSeq)
+      case _                                                      => JsObject(combined.filterNot(_._1 == "#text").toSeq)
+    }
   }
   def convertXmlToJson(xmlString: String): XmlConversionResult = {
     val conversionAttempt = for {
       cleanedXmlString <- Try(xmlString.replaceAll("xmlns(:\\w+)?=\"[^\"]*\"", ""))
-      xml <- Try(XML.loadString(cleanedXmlString))
-      json <- Try(Json.obj(xml.label -> xmlToJson(xml)))
+      xml              <- Try(XML.loadString(cleanedXmlString))
+      json             <- Try(Json.obj(xml.label -> xmlToJson(xml)))
     } yield json
     conversionAttempt match {
       case Success(json) =>
         XmlConversionResult(success = true, json = Some(json))
-      case Failure(ex) =>
+      case Failure(ex)   =>
         XmlConversionResult(success = false, error = Some(s"Invalid XML input: ${ex.getMessage}"))
     }
   }

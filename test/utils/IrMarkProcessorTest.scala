@@ -16,12 +16,12 @@
 
 package utils
 
-import org.scalatest.funsuite.AnyFunSuite
+import base.SpecBase
 import uk.gov.hmrc.constructionindustryscheme.utils.IrMarkProcessor
 
-class IrMarkProcessorTest extends AnyFunSuite {
-  test("GenerateFullIrMark produces base64/base32 for canonicalized Body with IRmark removed") {
-    val xml =
+class IrMarkProcessorTest extends SpecBase {
+  "GenerateFullIrMark produces base64/base32 for canonicalized Body with IRmark removed" in {
+    val xml        =
       """<GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
     <EnvelopeVersion>2.0</EnvelopeVersion>
     <Header>
@@ -89,11 +89,10 @@ class IrMarkProcessorTest extends AnyFunSuite {
     val (b64, b32) = IrMarkProcessor.GenerateFullIrMark(xml)
     assert(b64.length == 28)
     assert(b32.trim.length >= 32)
-    // Should not include IRmark in canonicalized result
   }
 
-  test("UpdatedPayloadWithIrMark replaces single IRmark and prints xml, returns Elem and base64/base32") {
-    val xml =
+  "UpdatedPayloadWithIrMark replaces single IRmark, returns the updatedXML, base64, base32 and irEnvelope" in {
+    val xml                                      =
       """<GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
     <EnvelopeVersion>2.0</EnvelopeVersion>
     <Header>
@@ -158,10 +157,9 @@ class IrMarkProcessorTest extends AnyFunSuite {
         </IRenvelope>
     </Body>
 </GovTalkMessage>"""
-    val (resultElem, base64, base32) = IrMarkProcessor.UpdatedPayloadWithIrMark(xml)
+    val (resultElem, base64, base32, irEnvelope) = IrMarkProcessor.UpdatedPayloadWithIrMark(xml)
     assert(resultElem.toString.contains("""<IRmark Type="generic">tpwOaKfCHJDirqJn31ceHrX1XYc=</IRmark>"""))
     assert(base64.length == 28)
     assert(base32.trim.length >= 32)
-    // Should be exactly one IRmark in result, and the Base64 value is correct
   }
 }

@@ -23,7 +23,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import javax.inject.Inject
 import scala.concurrent.Future
 
-class SubcontractorService @Inject()(formpProxyConnector: FormpProxyConnector) {
+class SubcontractorService @Inject() (formpProxyConnector: FormpProxyConnector) {
 
   def createSubcontractor(request: CreateSubcontractorRequest)(implicit hc: HeaderCarrier): Future[Int] =
     formpProxyConnector.createSubcontractor(request)

@@ -29,7 +29,7 @@ import scala.concurrent.Future
 
 final class SubcontractorServiceSpec extends SpecBase {
 
-  val schemeId = 1
+  val schemeId          = 1
   val subbieResourceRef = 10
 
   "createSubcontractor" - {
@@ -37,7 +37,7 @@ final class SubcontractorServiceSpec extends SpecBase {
     "delegates to FormpProxyConnector and returns response" in {
 
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
-      val service = new SubcontractorService(formpProxyConnector)
+      val service                                  = new SubcontractorService(formpProxyConnector)
 
       val request = CreateSubcontractorRequest(schemeId, SoleTrader, 0)
 
@@ -51,7 +51,7 @@ final class SubcontractorServiceSpec extends SpecBase {
     "propagates failures from FormpProxyConnector" in {
 
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
-      val service = new SubcontractorService(formpProxyConnector)
+      val service                                  = new SubcontractorService(formpProxyConnector)
 
       val request = CreateSubcontractorRequest(schemeId, SoleTrader, 0)
 
@@ -64,12 +64,13 @@ final class SubcontractorServiceSpec extends SpecBase {
 
   "updateSubcontractor" - {
 
-    val request = UpdateSubcontractorRequest(schemeId = schemeId, subbieResourceRef = 10, tradingName = Some("trading Name"))
+    val request =
+      UpdateSubcontractorRequest(schemeId = schemeId, subbieResourceRef = 10, tradingName = Some("trading Name"))
 
     "delegates to FormpProxyConnector and returns response" in {
 
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
-      val service = new SubcontractorService(formpProxyConnector)
+      val service                                  = new SubcontractorService(formpProxyConnector)
 
       when(formpProxyConnector.updateSubcontractor(eqTo(request))(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
@@ -81,7 +82,7 @@ final class SubcontractorServiceSpec extends SpecBase {
     "propagates failures from FormpProxyConnector" in {
 
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
-      val service = new SubcontractorService(formpProxyConnector)
+      val service                                  = new SubcontractorService(formpProxyConnector)
 
       when(formpProxyConnector.updateSubcontractor(eqTo(request))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))

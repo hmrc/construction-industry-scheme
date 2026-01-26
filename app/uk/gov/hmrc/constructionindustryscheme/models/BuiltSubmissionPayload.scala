@@ -21,5 +21,6 @@ import scala.xml.Elem
 case class BuiltSubmissionPayload(
   envelope: Elem,
   correlationId: String,
-  irMark: String
+  irMark: String,
+  irEnvelope: Elem
 )

@@ -41,9 +41,9 @@ trait ChrisXmlMapper {
       val e = doc \\ "GovTalkErrors" \\ "Error"
       for {
         errorNumber <- textRequired(e, "Number", "GovTalkErrors/Error/Number")
-        errorType <- textRequired(e, "Type", "GovTalkErrors/Error/Type")
-        errorText <- textRequired(e, "Text", "GovTalkErrors/Error/Text")
+        errorType   <- textRequired(e, "Type", "GovTalkErrors/Error/Type")
+        errorText   <- textRequired(e, "Text", "GovTalkErrors/Error/Text")
       } yield Some(GovTalkError(errorNumber = errorNumber, errorType = errorType, errorText = errorText))
     } else Right(None)
-  
+
 }

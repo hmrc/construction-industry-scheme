@@ -29,12 +29,12 @@ import scala.util.control.NonFatal
 import scala.concurrent.ExecutionContext
 import javax.inject.Inject
 
-class PrepopulationController @Inject()(
+class PrepopulationController @Inject() (
   authorise: AuthAction,
   service: PrepopulationService,
   val cc: ControllerComponents
 )(implicit ec: ExecutionContext)
-  extends BackendController(cc)
+    extends BackendController(cc)
     with Logging {
 
   def prepopulateContractorKnownFacts(
@@ -46,7 +46,7 @@ class PrepopulationController @Inject()(
       implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
 
       val employerRef = EmployerReference(
-        taxOfficeNumber    = taxOfficeNumber,
+        taxOfficeNumber = taxOfficeNumber,
         taxOfficeReference = taxOfficeReference
       )
 
@@ -56,9 +56,9 @@ class PrepopulationController @Inject()(
         .recover {
           case u: UpstreamErrorResponse if u.statusCode == NOT_FOUND =>
             PreconditionFailed(Json.obj("message" -> "CIS taxpayer not found"))
-          case u: UpstreamErrorResponse =>
+          case u: UpstreamErrorResponse                              =>
             Status(u.statusCode)(Json.obj("message" -> u.message))
-          case NonFatal(t) =>
+          case NonFatal(t)                                           =>
             logger.error("[prepopulateContractorKnownFacts] failed", t)
             InternalServerError(Json.obj("message" -> "Unexpected error"))
         }
@@ -83,7 +83,7 @@ class PrepopulationController @Inject()(
         .recover {
           case u: UpstreamErrorResponse =>
             Status(u.statusCode)(Json.obj("message" -> u.message))
-          case NonFatal(t) =>
+          case NonFatal(t)              =>
             logger.error("[prepopulateContractorAndSubcontractors] failed", t)
             InternalServerError(Json.obj("message" -> "Unexpected error"))
         }
@@ -97,14 +97,14 @@ class PrepopulationController @Inject()(
         .getContractorScheme(instanceId)
         .map {
           case Some(scheme) => Ok(Json.toJson(scheme))
-          case None => NotFound(Json.obj("message" -> "Scheme not found"))
+          case None         => NotFound(Json.obj("message" -> "Scheme not found"))
         }
         .recover {
           case u: UpstreamErrorResponse =>
             Status(u.statusCode)(Json.obj("message" -> u.message))
-          case NonFatal(t) =>
+          case NonFatal(t)              =>
             logger.error("[getContractorScheme] failed", t)
             InternalServerError(Json.obj("message" -> "Unexpected error"))
         }
-    }  
+    }
 }

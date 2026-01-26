@@ -21,20 +21,19 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.response.CreateNilMonthlyReturnResponse
-import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
+import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UnsubmittedMonthlyReturns, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
+import java.time.LocalDateTime
 import scala.concurrent.Future
 
-class MonthlyReturnServiceSpec
-  extends SpecBase {
+class MonthlyReturnServiceSpec extends SpecBase {
 
-  var setup: Setup = _
-  override def beforeEach(): Unit = {
+  var setup: Setup                = new Setup {}
+  override def beforeEach(): Unit =
     setup = new Setup {}
-  }
 
   "getCisTaxpayer" - {
 
@@ -108,7 +107,7 @@ class MonthlyReturnServiceSpec
     "calls single endpoint and returns status response" in {
       val s = setup; import s._
 
-      val payload = NilMonthlyReturnRequest("abc-123", 2024, 3, "Y", "Y")
+      val payload          = NilMonthlyReturnRequest("abc-123", 2024, 3, "Y", "Y")
       val expectedResponse = CreateNilMonthlyReturnResponse("STARTED")
 
       when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
@@ -127,7 +126,7 @@ class MonthlyReturnServiceSpec
     "returns status response from existing monthly return when duplicate exist" in {
       val s = setup; import s._
 
-      val payload = NilMonthlyReturnRequest("abc-123", 2025, 1, "Y", "Y")
+      val payload        = NilMonthlyReturnRequest("abc-123", 2025, 1, "Y", "Y")
       val existingReturn = MonthlyReturn(
         monthlyReturnId = 66666L,
         taxYear = 2025,
@@ -159,7 +158,7 @@ class MonthlyReturnServiceSpec
       val s = setup; import s._
 
       val payload = NilMonthlyReturnRequest("abc-123", 2024, 3, "Y", "Y")
-      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+      val boom    = UpstreamErrorResponse("formp proxy failure", 500)
 
       when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
         .thenReturn(Future.successful(returnsFixture))
@@ -175,13 +174,66 @@ class MonthlyReturnServiceSpec
     }
   }
 
+  "getUnsubmittedMonthlyReturns" - {
+
+    "maps formp monthly returns into response rows" in {
+      val s = setup; import s._
+
+      val last = Some(LocalDateTime.parse("2025-01-01T00:00:00"))
+
+      val unsubmitted = UnsubmittedMonthlyReturns(
+        scheme = ContractorScheme(
+          schemeId = 1,
+          instanceId = cisInstanceId,
+          accountsOfficeReference = "123PA00123456",
+          taxOfficeNumber = "163",
+          taxOfficeReference = "AB0063"
+        ),
+        monthlyReturn = Seq(
+          MonthlyReturn(1L, 2025, 1, nilReturnIndicator = Some("Y"), status = Some("PENDING"), lastUpdate = last),
+          MonthlyReturn(2L, 2025, 2, nilReturnIndicator = Some("N"), status = Some("REJECTED"), lastUpdate = None)
+        )
+      )
+
+      when(formpProxy.getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(unsubmitted))
+
+      val out = service.getUnsubmittedMonthlyReturns(cisInstanceId).futureValue
+
+      out mustBe UnsubmittedMonthlyReturnsResponse(
+        unsubmittedCisReturns = Seq(
+          UnsubmittedMonthlyReturnsRow(2025, 1, "Nil", "Awaiting confirmation", last),
+          UnsubmittedMonthlyReturnsRow(2025, 2, "Standard", "Failed", None)
+        )
+      )
+
+      verify(formpProxy).getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp" in {
+      val s = setup; import s._
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.getUnsubmittedMonthlyReturns(cisInstanceId).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
   trait Setup {
     val datacacheProxy = mock[DatacacheProxyConnector]
-    val formpProxy = mock[FormpProxyConnector]
-    val service = new MonthlyReturnService(datacacheProxy, formpProxy)
+    val formpProxy     = mock[FormpProxyConnector]
+    val service        = new MonthlyReturnService(datacacheProxy, formpProxy)
 
-    val employerRef = EmployerReference("123", "AB456")
-    val cisInstanceId = "abc-123"
+    val employerRef    = EmployerReference("123", "AB456")
+    val cisInstanceId  = "abc-123"
     val returnsFixture = UserMonthlyReturns(Seq(MonthlyReturn(66666L, 2025, 1)))
   }
 }

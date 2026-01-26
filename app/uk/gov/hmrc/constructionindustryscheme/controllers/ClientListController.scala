@@ -32,27 +32,27 @@ import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
 import scala.concurrent.{ExecutionContext, Future}
 
-
 @Singleton
-class ClientListController @Inject()(
+class ClientListController @Inject() (
   authorise: AuthAction,
   service: ClientListService,
   cc: ControllerComponents
 )(using ec: ExecutionContext)
-  extends BackendController(cc) with Logging {
+    extends BackendController(cc)
+    with Logging {
 
   private def resultJson(status: ClientListStatus): Result =
     status match {
-      case Succeeded => Ok(Json.obj("result" -> "succeeded"))
-      case InProgress => Ok(Json.obj("result" -> "in-progress"))
-      case Failed => Ok(Json.obj("result" -> "failed"))
+      case Succeeded        => Ok(Json.obj("result" -> "succeeded"))
+      case InProgress       => Ok(Json.obj("result" -> "in-progress"))
+      case Failed           => Ok(Json.obj("result" -> "failed"))
       case InitiateDownload => Ok(Json.obj("result" -> "initiate-download"))
     }
 
   def start: Action[AnyContent] = authorise.async { implicit request =>
     implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
-    val credIdOpt = request.credentialId
-    val agentIdOpt =
+    val credIdOpt                  = request.credentialId
+    val agentIdOpt                 =
       request.enrolments
         .getEnrolment("IR-PAYE-AGENT")
         .flatMap(_.getIdentifier("IRAgentReference"))
@@ -63,12 +63,12 @@ class ClientListController @Inject()(
         service
           .process(credId, agentId)
           .map(resultJson)
-          .recover {
-            case _: NoBusinessIntervalsException =>
-              InternalServerError(Json.obj("result" -> "system-error"))
+          .recover { case _: NoBusinessIntervalsException =>
+            InternalServerError(Json.obj("result" -> "system-error"))
           }
-      case (None, _) => Future.successful(BadRequest(Json.obj("message" -> "Missing credentialId")))
-      case (_, None) => Future.successful(Forbidden(Json.obj("message" -> "Missing IR-PAYE-AGENT enrolment / agent id")))
+      case (None, _)                     => Future.successful(BadRequest(Json.obj("message" -> "Missing credentialId")))
+      case (_, None)                     =>
+        Future.successful(Forbidden(Json.obj("message" -> "Missing IR-PAYE-AGENT enrolment / agent id")))
     }
   }
 
@@ -91,14 +91,16 @@ class ClientListController @Inject()(
   def getAllClients: Action[AnyContent] = authorise.async { implicit request =>
     given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
 
-    val irAgentId = request.enrolments.getEnrolment("IR-PAYE-AGENT").flatMap(_.getIdentifier("IRAgentReference"))
+    val irAgentId    = request.enrolments.getEnrolment("IR-PAYE-AGENT").flatMap(_.getIdentifier("IRAgentReference"))
     val credentialId = request.credentialId
 
     (irAgentId, credentialId) match {
       case (Some(agentId), Some(credId)) =>
         service.getClientList(agentId.value, credId).map((result: ClientSearchResult) => Ok(Json.toJson(result)))
-      case (maybeAgentId, maybeCredId) =>
-        logger.info(s"[ClientListController.getAllClients] authenticated request with missing agent enrollments - agentId: $maybeAgentId, credId: $maybeCredId")
+      case (maybeAgentId, maybeCredId)   =>
+        logger.info(
+          s"[ClientListController.getAllClients] authenticated request with missing agent enrollments - agentId: $maybeAgentId, credId: $maybeCredId"
+        )
         Future.successful(Forbidden(Json.obj("error" -> "credentialId and/or irAgentId are missing from session")))
     }
   }
@@ -113,12 +115,12 @@ class ClientListController @Inject()(
 
     (request.credentialId, agentIdOpt) match {
       case (Some(credId), Some(agentIdEnrolment)) =>
-        service.hasClient(taxOfficeNumber, taxOfficeReference, agentIdEnrolment.value, credId)
+        service
+          .hasClient(taxOfficeNumber, taxOfficeReference, agentIdEnrolment.value, credId)
           .map(hasClient => Ok(Json.obj("hasClient" -> hasClient)))
-          .recover {
-            case e: Exception =>
-              logger.error(s"[ClientListController.checkClientExists] error checking client: ${e.getMessage}", e)
-              InternalServerError(Json.obj("error" -> "Failed to check client"))
+          .recover { case e: Exception =>
+            logger.error(s"[ClientListController.checkClientExists] error checking client: ${e.getMessage}", e)
+            InternalServerError(Json.obj("error" -> "Failed to check client"))
           }
 
       case (None, _) =>

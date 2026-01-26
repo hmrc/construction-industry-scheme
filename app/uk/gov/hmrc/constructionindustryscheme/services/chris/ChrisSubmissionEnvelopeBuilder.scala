@@ -30,29 +30,30 @@ import scala.xml.*
 
 object ChrisSubmissionEnvelopeBuilder extends Logging {
   private val gatewayTimestampFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
-  private val isoDateFmt = DateTimeFormatter.ISO_LOCAL_DATE
-  private val prettyPrinter = new PrettyPrinter(120, 4)
+  private val isoDateFmt                = DateTimeFormatter.ISO_LOCAL_DATE
+  private val prettyPrinter             = new PrettyPrinter(120, 4)
 
   def build(
-             request: ChrisSubmissionRequest,
-             authRequest: AuthenticatedRequest[_],
-             correlationId: String
-           ): Elem = {
+    request: ChrisSubmissionRequest,
+    authRequest: AuthenticatedRequest[_],
+    correlationId: String
+  ): (Elem, Elem) = {
 
     val gatewayTimestamp = LocalDateTime.now(ZoneOffset.UTC).format(gatewayTimestampFormatter)
 
     val (taxOfficeNumber, taxOfficeReference) =
       extractTaxOfficeFromCisEnrolment(authRequest.enrolments)
-        .getOrElse(throw new IllegalStateException(
-          "Missing CIS enrolment identifiers (TaxOfficeNumber/TaxOfficeReference) in HMRC-CIS-ORG"
-        ))
+        .getOrElse(
+          throw new IllegalStateException(
+            "Missing CIS enrolment identifiers (TaxOfficeNumber/TaxOfficeReference) in HMRC-CIS-ORG"
+          )
+        )
 
     val periodEnd = parsePeriodEnd(request.monthYear)
 
     val envelopeXml: Elem =
       <GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
         <EnvelopeVersion>2.0</EnvelopeVersion>
-
         <Header>
           <MessageDetails>
             <Class>{ChrisEnvelopeConstants.MessageDetailsClass}</Class>
@@ -64,7 +65,6 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
           </MessageDetails>
           <SenderDetails/>
         </Header>
-
         <GovTalkDetails>
           <Keys>
             <Key Type="TaxOfficeNumber">{taxOfficeNumber}</Key>
@@ -81,7 +81,6 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
             </Channel>
           </ChannelRouting>
         </GovTalkDetails>
-
         <Body>
           <IRenvelope xmlns={ChrisEnvelopeConstants.Namespace}>
             <IRheader>
@@ -103,7 +102,6 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
               <IRmark Type="generic">TBC</IRmark>
               <Sender>{ChrisEnvelopeConstants.Sender}</Sender>
             </IRheader>
-
             <CISreturn>
               <Contractor>
                 <UTR>{request.utr}</UTR>
@@ -112,19 +110,19 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
               <NilReturn>{ChrisEnvelopeConstants.NilReturn}</NilReturn>
               <Declarations>
                 <InformationCorrect>{request.informationCorrect}</InformationCorrect>
-                { if (request.inactivity.equalsIgnoreCase("yes")) <Inactivity>yes</Inactivity> else NodeSeq.Empty }
+                {if (request.inactivity.equalsIgnoreCase("yes")) <Inactivity>yes</Inactivity> else NodeSeq.Empty}
               </Declarations>
             </CISreturn>
           </IRenvelope>
         </Body>
       </GovTalkMessage>
 
-    val (updatedXML, irMarkBase64, irMarkBase32) = UpdatedPayloadWithIrMark(envelopeXml.toString)
+    val (updatedXML, irMarkBase64, irMarkBase32, irEnvelope) = UpdatedPayloadWithIrMark(envelopeXml.toString)
 
     val prettyXmlString = prettyPrinter.format(updatedXML)
     logger.info(s"Chris Envelope XML:\n$prettyXmlString")
 
-    updatedXML
+    (updatedXML, irEnvelope)
   }
 
   private def extractTaxOfficeFromCisEnrolment(enrolments: Enrolments): Option[(String, String)] =
@@ -149,21 +147,22 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
   }
 
   def buildPayload(
-                    request: ChrisSubmissionRequest,
-                    authRequest: AuthenticatedRequest[_],
-                    correlationId: String
-                  ): BuiltSubmissionPayload = {
-    val finalEnvelope: Elem = build(request, authRequest, correlationId)
-    val irMarkBase64: String = (finalEnvelope \\ "IRmark").text.trim
+    request: ChrisSubmissionRequest,
+    authRequest: AuthenticatedRequest[_],
+    correlationId: String
+  ): BuiltSubmissionPayload = {
+    val (finalEnvelope, irEnvelope) = build(request, authRequest, correlationId)
+    val irMarkBase64: String        = (finalEnvelope \\ "IRmark").text.trim
 
-    // TODO remove before deploying to prod
+    // TODO remove logger before deploying to prod
     logger.info(s"[ChrisSubmissionEnvelopeBuilder] finalEnvelope: ${finalEnvelope.toString}")
     logger.info(s"[ChrisSubmissionEnvelopeBuilder] irMarkBase64: $irMarkBase64")
 
     BuiltSubmissionPayload(
       envelope = finalEnvelope,
       correlationId = correlationId,
-      irMark = irMarkBase64
+      irMark = irMarkBase64,
+      irEnvelope = irEnvelope
     )
   }
 }

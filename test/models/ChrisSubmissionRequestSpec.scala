@@ -24,12 +24,12 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisSubmissionReq
 class ChrisSubmissionRequestSpec extends AnyWordSpec with Matchers {
 
   private val model = ChrisSubmissionRequest(
-    utr                = "1234567890",
-    aoReference        = "123/AB456",
+    utr = "1234567890",
+    aoReference = "123/AB456",
     informationCorrect = "yes",
-    inactivity         = "no",
-    monthYear          = "2025-05",
-    email              = "test@test.com"
+    inactivity = "no",
+    monthYear = "2025-05",
+    email = "test@test.com"
   )
 
   private val json: JsValue = Json.obj(
@@ -59,7 +59,7 @@ class ChrisSubmissionRequestSpec extends AnyWordSpec with Matchers {
       val missing = json.as[JsObject] - "utr"
       val result  = missing.validate[ChrisSubmissionRequest]
       result.isError mustBe true
-      val errors = result.fold(identity, _ => fail("expected JsError"))
+      val errors  = result.fold(identity, _ => fail("expected JsError"))
       errors.exists { case (path, _) => path == (JsPath \ "utr") } mustBe true
     }
 

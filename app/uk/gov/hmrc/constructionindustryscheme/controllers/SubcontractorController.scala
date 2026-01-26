@@ -28,40 +28,45 @@ import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
 class SubcontractorController @Inject() (
-                                          authorise: AuthAction,
-                                          subcontractorService: SubcontractorService,
-                                          cc: ControllerComponents
-                                        )(implicit ec: ExecutionContext)
-  extends BackendController(cc) with Logging {
+  authorise: AuthAction,
+  subcontractorService: SubcontractorService,
+  cc: ControllerComponents
+)(implicit ec: ExecutionContext)
+    extends BackendController(cc)
+    with Logging {
 
   def createSubcontractor(): Action[JsValue] =
     authorise(parse.json).async { implicit request =>
-      request.body.validate[CreateSubcontractorRequest].fold(
-        errs => Future.successful(BadRequest(JsError.toJson(errs))),
-        request =>
-          subcontractorService
-            .createSubcontractor(request)
-            .map(subbieResourceRef => Created(Json.obj("subbieResourceRef" -> subbieResourceRef)))
-            .recover { case ex =>
-              logger.error("[create] formp-proxy create failed", ex)
-              BadGateway(Json.obj("message" -> "create-subcontractor-failed"))
-            }
-      )
+      request.body
+        .validate[CreateSubcontractorRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          request =>
+            subcontractorService
+              .createSubcontractor(request)
+              .map(subbieResourceRef => Created(Json.obj("subbieResourceRef" -> subbieResourceRef)))
+              .recover { case ex =>
+                logger.error("[create] formp-proxy create failed", ex)
+                BadGateway(Json.obj("message" -> "create-subcontractor-failed"))
+              }
+        )
     }
 
   def updateSubcontractor(): Action[JsValue] =
     authorise(parse.json).async { implicit request =>
-      request.body.validate[UpdateSubcontractorRequest].fold(
-        errs => Future.successful(BadRequest(JsError.toJson(errs))),
-        request =>
-          subcontractorService
-            .updateSubcontractor(request)
-            .map(resp => NoContent)
-            .recover { case ex =>
-              logger.error("[update] formp-proxy create failed", ex)
-              BadGateway(Json.obj("message" -> "update-subcontractor-failed"))
-            }
-      )
+      request.body
+        .validate[UpdateSubcontractorRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          request =>
+            subcontractorService
+              .updateSubcontractor(request)
+              .map(resp => NoContent)
+              .recover { case ex =>
+                logger.error("[update] formp-proxy create failed", ex)
+                BadGateway(Json.obj("message" -> "update-subcontractor-failed"))
+              }
+        )
     }
 
   def getSubcontractorUTRs(cisId: String): Action[AnyContent] =

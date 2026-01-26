@@ -24,20 +24,21 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.AuthenticatedReque
 
 import scala.concurrent.{ExecutionContext, Future}
 
-final class FakeAuthAction(enrols: Enrolments, parsers: PlayBodyParsers, credId: Option[String]=None)
-                          (implicit ec: ExecutionContext) extends AuthAction {
+final class FakeAuthAction(enrols: Enrolments, parsers: PlayBodyParsers, credId: Option[String] = None)(implicit
+  ec: ExecutionContext
+) extends AuthAction {
 
-  override def parser: BodyParser[AnyContent] = parsers.defaultBodyParser
+  override def parser: BodyParser[AnyContent]               = parsers.defaultBodyParser
   override protected def executionContext: ExecutionContext = ec
 
-  override def invokeBlock[A](request: Request[A],
-                              block: AuthenticatedRequest[A] => Future[Result]): Future[Result] =
+  override def invokeBlock[A](request: Request[A], block: AuthenticatedRequest[A] => Future[Result]): Future[Result] =
     block(AuthenticatedRequest(request, "internalId", SessionId("sessionId"), enrols, credId))
 }
 
 object FakeAuthAction {
-  def withCisIdentifiers(ton: String, tor: String, parsers: PlayBodyParsers)
-                        (implicit ec: ExecutionContext): FakeAuthAction = {
+  def withCisIdentifiers(ton: String, tor: String, parsers: PlayBodyParsers)(implicit
+    ec: ExecutionContext
+  ): FakeAuthAction = {
     val cis = Enrolment(
       key = "HMRC-CIS-ORG",
       identifiers = Seq(
@@ -49,8 +50,9 @@ object FakeAuthAction {
     new FakeAuthAction(Enrolments(Set(cis)), parsers, Some("cred-123"))
   }
 
-  def withIrPayeAgent(irAgentReference: String, parsers: PlayBodyParsers, credId: String = "cred-123")
-                     (implicit ec: ExecutionContext): FakeAuthAction = {
+  def withIrPayeAgent(irAgentReference: String, parsers: PlayBodyParsers, credId: String = "cred-123")(implicit
+    ec: ExecutionContext
+  ): FakeAuthAction = {
     val irPayeAgent = Enrolment(
       key = "IR-PAYE-AGENT",
       identifiers = Seq(
@@ -61,8 +63,9 @@ object FakeAuthAction {
     new FakeAuthAction(Enrolments(Set(irPayeAgent)), parsers, Some(credId))
   }
 
-  def withEnrolments(enrolments: Set[Enrolment], parsers: PlayBodyParsers, credId: Option[String] = Some("cred-123"))
-                    (implicit ec: ExecutionContext): FakeAuthAction =
+  def withEnrolments(enrolments: Set[Enrolment], parsers: PlayBodyParsers, credId: Option[String] = Some("cred-123"))(
+    implicit ec: ExecutionContext
+  ): FakeAuthAction =
     new FakeAuthAction(Enrolments(enrolments), parsers, credId)
 
   def empty(parsers: PlayBodyParsers)(implicit ec: ExecutionContext): FakeAuthAction =

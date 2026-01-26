@@ -28,7 +28,7 @@ final case class ResponseEndPoint(url: String, pollIntervalSeconds: Int)
 final case class GovTalkError(
   errorNumber: String,
   errorType: String,
-  errorText: String 
+  errorText: String
 )
 
 final case class GovTalkMeta(

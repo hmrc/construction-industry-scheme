@@ -59,7 +59,7 @@ final class SubmissionServiceSpec extends SpecBase {
       when(formpProxyConnector.createSubmission(eqTo(req))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
-      service.createSubmission(req).failed.futureValue.getMessage must include ("boom")
+      service.createSubmission(req).failed.futureValue.getMessage must include("boom")
     }
   }
 
@@ -69,8 +69,11 @@ final class SubmissionServiceSpec extends SpecBase {
       val s = setup; import s._
 
       val req = UpdateSubmissionRequest(
-        instanceId = "123", taxYear = 2024, taxMonth = 4,
-        hmrcMarkGenerated = Some("Dj5TVJDyRYCn9zta5EdySeY4fyA="), submittableStatus = "ACCEPTED"
+        instanceId = "123",
+        taxYear = 2024,
+        taxMonth = 4,
+        hmrcMarkGenerated = Some("Dj5TVJDyRYCn9zta5EdySeY4fyA="),
+        submittableStatus = "ACCEPTED"
       )
 
       when(formpProxyConnector.updateSubmission(eqTo(req))(any[HeaderCarrier]))
@@ -85,13 +88,16 @@ final class SubmissionServiceSpec extends SpecBase {
       val s = setup; import s._
 
       val req = UpdateSubmissionRequest(
-        instanceId = "123", taxYear = 2024, taxMonth = 4, submittableStatus = "REJECTED"
+        instanceId = "123",
+        taxYear = 2024,
+        taxMonth = 4,
+        submittableStatus = "REJECTED"
       )
 
       when(formpProxyConnector.updateSubmission(eqTo(req))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new IllegalStateException("nope")))
 
-      service.updateSubmission(req).failed.futureValue.getMessage must include ("nope")
+      service.updateSubmission(req).failed.futureValue.getMessage must include("nope")
     }
   }
 
@@ -109,7 +115,8 @@ final class SubmissionServiceSpec extends SpecBase {
       service.submitToChris(payload).futureValue mustBe expected
 
       verify(chrisConnector).submitEnvelope(
-        eqTo(payload.envelope), eqTo(payload.correlationId)
+        eqTo(payload.envelope),
+        eqTo(payload.correlationId)
       )(any[HeaderCarrier])
       verifyNoInteractions(formpProxyConnector)
     }
@@ -122,14 +129,13 @@ final class SubmissionServiceSpec extends SpecBase {
       when(chrisConnector.submitEnvelope(eqTo(payload.envelope), eqTo(payload.correlationId))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("downstream boom")))
 
-      service.submitToChris(payload).failed.futureValue.getMessage must include ("downstream boom")
+      service.submitToChris(payload).failed.futureValue.getMessage must include("downstream boom")
     }
-
 
     "on SUBMITTED and successEmail present, sends success email and returns result" in {
       val s = setup; import s._
 
-      val payload = mkPayload()
+      val payload  = mkPayload()
       val chrisRes = mkResult(SUBMITTED, corrId = payload.correlationId)
 
       when(chrisConnector.submitEnvelope(eqTo(payload.envelope), eqTo(payload.correlationId))(any[HeaderCarrier]))
@@ -158,8 +164,8 @@ final class SubmissionServiceSpec extends SpecBase {
       val s = setup; import s._
 
       val correlationId = "CORR-123"
-      val pollUrl = "http://example.com/poll"
-      val expected = ChrisPollResponse(SUBMITTED, None, None)
+      val pollUrl       = "http://example.com/poll"
+      val expected      = ChrisPollResponse(SUBMITTED, None, None)
 
       when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(expected))
@@ -174,8 +180,8 @@ final class SubmissionServiceSpec extends SpecBase {
       val s = setup; import s._
 
       val correlationId = "CORR-456"
-      val pollUrl = "http://example.com/poll"
-      val expected = ChrisPollResponse(ACCEPTED, Some(pollUrl), Some(10))
+      val pollUrl       = "http://example.com/poll"
+      val expected      = ChrisPollResponse(ACCEPTED, Some(pollUrl), Some(10))
 
       when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(expected))
@@ -190,8 +196,8 @@ final class SubmissionServiceSpec extends SpecBase {
       val s = setup; import s._
 
       val correlationId = "CORR-789"
-      val pollUrl = "http://example.com/poll"
-      val expected = ChrisPollResponse(FATAL_ERROR, None, None)
+      val pollUrl       = "http://example.com/poll"
+      val expected      = ChrisPollResponse(FATAL_ERROR, None, None)
 
       when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(expected))
@@ -206,8 +212,8 @@ final class SubmissionServiceSpec extends SpecBase {
       val s = setup; import s._
 
       val correlationId = "CORR-ABC"
-      val pollUrl = "http://example.com/poll"
-      val expected = ChrisPollResponse(DEPARTMENTAL_ERROR, None, None)
+      val pollUrl       = "http://example.com/poll"
+      val expected      = ChrisPollResponse(DEPARTMENTAL_ERROR, None, None)
 
       when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(expected))
@@ -222,49 +228,48 @@ final class SubmissionServiceSpec extends SpecBase {
       val s = setup; import s._
 
       val correlationId = "CORR-FAIL"
-      val pollUrl = "http://example.com/poll"
+      val pollUrl       = "http://example.com/poll"
 
       when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("polling failed")))
 
-      service.pollSubmission(correlationId, pollUrl).failed.futureValue.getMessage must include ("polling failed")
+      service.pollSubmission(correlationId, pollUrl).failed.futureValue.getMessage must include("polling failed")
     }
   }
 
   trait Setup {
-    val chrisConnector: ChrisConnector = mock[ChrisConnector]
+    val chrisConnector: ChrisConnector           = mock[ChrisConnector]
     val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
-    val emailConnector: EmailConnector = mock[EmailConnector]
+    val emailConnector: EmailConnector           = mock[EmailConnector]
 
     val service = new SubmissionService(chrisConnector, formpProxyConnector, emailConnector)
 
     def mkPayload(
-                   corrId: String = "CID-123",
-                   envelope: Elem = <GovTalkMessage/>
-                 ): BuiltSubmissionPayload =
-      BuiltSubmissionPayload(envelope = envelope, correlationId = corrId, irMark = "IRMK")
+      corrId: String = "CID-123",
+      envelope: Elem = <GovTalkMessage/>
+    ): BuiltSubmissionPayload =
+      BuiltSubmissionPayload(envelope = envelope, correlationId = corrId, irMark = "IRMK", irEnvelope = envelope)
 
     def mkResult(
-                  status: SubmissionStatus,
-                  corrId: String = "CID-123",
-                  pollSecs: Int = 15,
-                  ts: Option[String] = None,
-                  err: Option[GovTalkError] = None
-                ): SubmissionResult =
+      status: SubmissionStatus,
+      corrId: String = "CID-123",
+      pollSecs: Int = 15,
+      ts: Option[String] = None,
+      err: Option[GovTalkError] = None
+    ): SubmissionResult =
       SubmissionResult(
         status = status,
         rawXml = "<ack/>",
-        meta   = GovTalkMeta(
-          qualifier        = "response",
-          function         = "submit",
-          className        = "CIS300MR",
-          correlationId    = corrId,
+        meta = GovTalkMeta(
+          qualifier = "response",
+          function = "submit",
+          className = "CIS300MR",
+          correlationId = corrId,
           gatewayTimestamp = ts,
           responseEndPoint = ResponseEndPoint("/poll", pollSecs),
-          error            = err
+          error = err
         )
       )
   }
 
 }
-

@@ -25,28 +25,30 @@ import uk.gov.hmrc.play.audit.http.connector.*
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class AuditService @Inject(
+class AuditService @Inject (
   auditConnector: AuditConnector
 )(implicit ec: ExecutionContext) {
-  
-  def monthlyNilReturnRequestEvent(jsonData: JsValue)(implicit hc: HeaderCarrier): Future[AuditResult] = {
+
+  def monthlyNilReturnRequestEvent(jsonData: JsValue)(implicit hc: HeaderCarrier): Future[AuditResult] =
     auditConnector.sendExtendedEvent(MonthlyNilReturnRequestEvent(jsonData).extendedDataEvent)
-  }
 
-  def monthlyNilReturnResponseEvent(response: AuditResponseReceivedModel)(implicit hc: HeaderCarrier): Future[AuditResult] = {
+  def monthlyNilReturnResponseEvent(response: AuditResponseReceivedModel)(implicit
+    hc: HeaderCarrier
+  ): Future[AuditResult] =
     auditConnector.sendExtendedEvent(MonthlyNilReturnResponseEvent(response).extendedDataEvent)
-  }
 
-  def clientListRetrievalFailed(credentialId: String, phase: String, reason: Option[String] = None)
-                               (implicit hc: HeaderCarrier): Future[AuditResult] =
+  def clientListRetrievalFailed(credentialId: String, phase: String, reason: Option[String] = None)(implicit
+    hc: HeaderCarrier
+  ): Future[AuditResult] =
     auditConnector.sendExtendedEvent(
       ClientListRetrievalFailedEvent(credentialId, phase, reason).extendedDataEvent
     )
 
-  def clientListRetrievalInProgress(credentialId: String, phase: String)
-                                   (implicit hc: HeaderCarrier): Future[AuditResult] =
+  def clientListRetrievalInProgress(credentialId: String, phase: String)(implicit
+    hc: HeaderCarrier
+  ): Future[AuditResult] =
     auditConnector.sendExtendedEvent(
       ClientListRetrievalInProgressEvent(credentialId, phase).extendedDataEvent
     )
-  
+
 }

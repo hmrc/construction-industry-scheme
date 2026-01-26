@@ -25,7 +25,7 @@ import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.FiniteDuration
 
 @Singleton
-class CacheService @Inject(actorSystem: ActorSystem) {
+class CacheService @Inject (actorSystem: ActorSystem) {
 
   private val cache: TrieMap[String, String] = TrieMap.empty
 
@@ -35,7 +35,7 @@ class CacheService @Inject(actorSystem: ActorSystem) {
     scheduleEviction(key, ttl)
   }
 
-  def get[T](key: String)(using Format[T]): Option[T] = {
+  def get[T](key: String)(using Format[T]): Option[T] =
     cache.get(key).flatMap { cachedString =>
       Json.parse(cachedString).asOpt[CacheItem[T]].flatMap { cachedJson =>
         if (System.currentTimeMillis() < cachedJson.expiresAt) {
@@ -46,21 +46,19 @@ class CacheService @Inject(actorSystem: ActorSystem) {
         }
       }
     }
-  }
 
   def clear(key: String): Unit =
     cache.remove(key)
 
-  def refresh[T](key: String, ttl: FiniteDuration)(using Format[T]): Unit = {
+  def refresh[T](key: String, ttl: FiniteDuration)(using Format[T]): Unit =
     for {
       cachedString <- cache.get(key)
-      cachedItem <- Json.parse(cachedString).asOpt[CacheItem[T]]
+      cachedItem   <- Json.parse(cachedString).asOpt[CacheItem[T]]
     } {
       val expiresAt = System.currentTimeMillis() + ttl.toMillis
       cache.update(key, Json.toJson(cachedItem.copy(expiresAt = expiresAt)).toString)
       scheduleEviction(key, ttl)
     }
-  }
 
   private def scheduleEviction(key: String, ttl: FiniteDuration): Unit = {
     import scala.concurrent.ExecutionContext.Implicits.global
