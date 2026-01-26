@@ -18,7 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.controllers
 
 import play.api.Logging
 import play.api.libs.json.{JsError, JsValue, Json}
-import play.api.mvc.{Action, ControllerComponents}
+import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubcontractorRequest, UpdateSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
@@ -63,4 +63,16 @@ class SubcontractorController @Inject() (
             }
       )
     }
+
+  def getSubcontractorUTRs(cisId: String): Action[AnyContent] =
+    authorise.async { implicit request =>
+          subcontractorService
+            .getSubcontractorUTRs(cisId)
+            .map(subcontractorUTRs => Ok(Json.obj("subcontractorUTRs" -> subcontractorUTRs)))
+            .recover { case ex =>
+              logger.error("[get] formp-proxy get failed", ex)
+              BadGateway(Json.obj("message" -> "get-subcontractorUTRs-failed"))
+            }
+    }
+    
 }

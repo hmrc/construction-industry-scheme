@@ -558,4 +558,63 @@ class FormpProxyConnectorIntegrationSpec
       ex.getMessage.toLowerCase must include("500")
     }
   }
+
+  "FormpProxyConnector getSubcontractorUTRs" should {
+
+    val cisId = "cis-123"
+
+    "GET /formp-proxy/subcontractor/:cisId and return subcontractor utr list from JSON" in {
+
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "subcontractors":
+           |  [
+           |    {
+           |      "subcontractorId": "10101",
+           |      "subbieResourceRef": "1",
+           |      "type": "soletrader",
+           |      "utr": "1111111111",
+           |      "tradingName": "AAA",
+           |      "version": "1"
+           |     },
+           |     {
+           |      "subcontractorId": "20202",
+           |      "subbieResourceRef": "2",
+           |      "type": "soletrader",
+           |      "utr": "2222222222",
+           |      "tradingName": "BBB",
+           |      "version": "2"
+           |     }
+           |  ]
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.getSubcontractorUTRs(cisId).futureValue
+      out mustBe Seq("1111111111", "2222222222")
+    }
+
+    "fail the future when upstream responds with non-2xx (e.g. 502) as failed Future" in {
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .willReturn(aResponse().withStatus(502).withBody("""{"message":"bad gateway"}"""))
+      )
+
+      val ex = connector.getSubcontractorUTRs(cisId).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 502
+    }
+  }
+
 }

@@ -89,4 +89,35 @@ final class SubcontractorServiceSpec extends SpecBase {
       service.updateSubcontractor(request).failed.futureValue.getMessage must include("boom")
     }
   }
+
+  "getSubcontractorUTRs" - {
+
+    val cisId = "cis-123"
+
+    "delegates to FormpProxyConnector and returns response" in {
+
+      val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service = new SubcontractorService(formpProxyConnector)
+
+      val subcontractorUTRs: Seq[String] = Seq("1111111111", "2222222222")
+
+      when(formpProxyConnector.getSubcontractorUTRs(eqTo(cisId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(subcontractorUTRs))
+
+      service.getSubcontractorUTRs(cisId).futureValue mustBe subcontractorUTRs
+      verify(formpProxyConnector).getSubcontractorUTRs(eqTo(cisId))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+
+      val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service = new SubcontractorService(formpProxyConnector)
+
+      when(formpProxyConnector.getSubcontractorUTRs(eqTo(cisId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.getSubcontractorUTRs(cisId).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
 }
