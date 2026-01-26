@@ -75,7 +75,7 @@ class SubcontractorController @Inject() (
         .getSubcontractorUTRs(cisId)
         .map(subcontractorUTRs => Ok(Json.obj("subcontractorUTRs" -> subcontractorUTRs)))
         .recover { case ex =>
-          logger.error("[get] formp-proxy get failed", ex)
+          logger.error("[getSubcontractorUTRs] formp-proxy get failed", ex)
           BadGateway(Json.obj("message" -> "get-subcontractorUTRs-failed"))
         }
     }
