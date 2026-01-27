@@ -104,7 +104,7 @@ final class SubmissionServiceSpec extends SpecBase {
   "submitToChris" - {
 
     "passes envelope + correlationId to ChrisConnector and returns SubmissionResult" in {
-      val s = setup;
+      val s = setup
       import s._
 
       val payload  = mkPayload(corrId = "ABCDEF1234567890ABCDEF1234567890")
@@ -121,7 +121,7 @@ final class SubmissionServiceSpec extends SpecBase {
     }
 
     "propagates failures from ChrisConnector" in {
-      val s = setup;
+      val s = setup
       import s._
 
       val payload = mkPayload()
@@ -218,7 +218,7 @@ final class SubmissionServiceSpec extends SpecBase {
   "sendSuccessfulEmail" - {
 
     "builds NilMonthlyReturnOrgSuccessEmail and calls EmailConnector, returning Unit" in {
-      val s = setup;
+      val s = setup
       import s._
 
       val submissionId = "90001"
@@ -238,14 +238,14 @@ final class SubmissionServiceSpec extends SpecBase {
       when(emailConnector.sendSuccessfulEmail(eqTo(expectedPayload))(any[HeaderCarrier]))
         .thenReturn(Future.successful(Done))
 
-      service.sendSuccessfulEmail(submissionId, req).futureValue mustBe (())
+      service.sendSuccessfulEmail(submissionId, req).futureValue mustBe ()
 
       verify(emailConnector).sendSuccessfulEmail(eqTo(expectedPayload))(any[HeaderCarrier])
       verifyNoMoreInteractions(emailConnector)
     }
 
     "propagates failures from EmailConnector" in {
-      val s = setup;
+      val s = setup
       import s._
 
       val submissionId = "90001"
