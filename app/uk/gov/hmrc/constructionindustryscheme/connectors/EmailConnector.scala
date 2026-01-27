@@ -21,7 +21,7 @@ import play.api.Logging
 import play.api.http.Status.ACCEPTED
 import play.api.libs.json.Json
 import play.api.libs.ws.writeableOf_JsValue
-import uk.gov.hmrc.constructionindustryscheme.models.requests.SendEmailRequest
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{NilMonthlyReturnOrgSuccessEmail}
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
@@ -29,7 +29,6 @@ import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
 
 @Singleton
 class EmailConnector @Inject() (servicesConfig: ServicesConfig, httpClient: HttpClientV2)(implicit ec: ExecutionContext)
@@ -37,22 +36,17 @@ class EmailConnector @Inject() (servicesConfig: ServicesConfig, httpClient: Http
 
   private val emailBaseUrl = servicesConfig.baseUrl("email")
 
-  def send(sendEmailRequest: SendEmailRequest)(implicit hc: HeaderCarrier): Future[Done] =
+  def sendSuccessfulEmail(request: NilMonthlyReturnOrgSuccessEmail)(implicit hc: HeaderCarrier): Future[Done] =
     httpClient
       .post(url"$emailBaseUrl/hmrc/email")
-      .withBody(Json.toJson(sendEmailRequest))
+      .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
         logger.warn(s"Email POST returned ${response.status}: ${response.body}")
         response.status match {
           case ACCEPTED => Future.successful(Done)
           case status   =>
-            logger.warn(s"Send email failed with status: $status")
-            Future.successful(Done)
+            Future.failed(new RuntimeException(s"Send email failed: status: $status body: ${response.body}"))
         }
-      }
-      .recoverWith { case NonFatal(e) =>
-        logger.warn("Error sending email", e)
-        Future.successful(Done)
       }
 }
