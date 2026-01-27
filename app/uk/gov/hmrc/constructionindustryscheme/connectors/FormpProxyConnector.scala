@@ -153,4 +153,19 @@ class FormpProxyConnector @Inject() (
           )
         }
       }
+
+  def getSubcontractorUTRs(cisId: String)(implicit hc: HeaderCarrier): Future[Seq[String]] = {
+
+    implicit val readsSubcontractorUTRsOnly: Reads[Seq[String]] =
+      (JsPath \ "subcontractors")
+        .read(
+          Reads.seq((JsPath \ "utr").readNullable[String])
+        )
+        .map(_.flatten)
+
+    http
+      .get(url"$base/cis/subcontractors/$cisId")
+      .execute[Seq[String]]
+  }
+
 }
