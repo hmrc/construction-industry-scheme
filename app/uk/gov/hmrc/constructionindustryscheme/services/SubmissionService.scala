@@ -18,17 +18,12 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, SUBMITTED, SubmissionResult, SuccessEmailParams}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, NilMonthlyReturnOrgSuccessEmail, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, NilMonthlyReturnOrgSuccessEmail, SendSuccessEmailRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.http.HeaderCarrier
-
-import java.time.YearMonth
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
 
 @Singleton
 class SubmissionService @Inject() (
@@ -43,39 +38,16 @@ class SubmissionService @Inject() (
   def updateSubmission(req: UpdateSubmissionRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.updateSubmission(req)
 
-  def submitToChris(payload: BuiltSubmissionPayload, successEmail: Option[SuccessEmailParams] = None)(implicit
-    hc: HeaderCarrier
-  ): Future[SubmissionResult] =
-    chrisConnector.submitEnvelope(payload.envelope, payload.correlationId).flatMap { res =>
-      res.status match {
-        case SUBMITTED =>
-          successEmail match {
-            case Some(emailParams) =>
-              logger.info(s"[email] SUBMITTED → sending success email to=${emailParams.to}")
-              val ym    = parseYearMonthFlexible(emailParams.monthYear)
-              val month = ym.format(monthFmt)
-              val year  = ym.format(yearFmt)
-              emailConnector
-                .send(NilMonthlyReturnOrgSuccessEmail(emailParams.to, month, year))
-                .map(_ => res)
-
-            case None =>
-              logger.warn("[email] SUBMITTED but no email params supplied; skipping send")
-              Future.successful(res)
-          }
-        case _         =>
-          Future.successful(res)
-      }
-    }
+  def submitToChris(payload: BuiltSubmissionPayload)(implicit hc: HeaderCarrier): Future[SubmissionResult] =
+    chrisConnector.submitEnvelope(payload.envelope, payload.correlationId)
 
   def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] =
     chrisConnector.pollSubmission(correlationId, pollUrl)
 
-  private def parseYearMonthFlexible(s: String): YearMonth =
-    Try(YearMonth.parse(s))
-      .orElse(Try(YearMonth.parse(s.replace('/', '-'))))
-      .getOrElse(throw new IllegalArgumentException(s"Invalid monthYear: $s (expected YYYY-MM or YYYY/MM)"))
-
-  private val monthFmt = DateTimeFormatter.ofPattern("MMMM", Locale.UK)
-  private val yearFmt  = DateTimeFormatter.ofPattern("uuuu", Locale.UK)
+  def sendSuccessfulEmail(submissionId: String, request: SendSuccessEmailRequest)(implicit
+    hc: HeaderCarrier
+  ): Future[Unit] = {
+    val emailPayload = NilMonthlyReturnOrgSuccessEmail(request.email, request.month, request.year)
+    emailConnector.sendSuccessfulEmail(emailPayload).map(_ => ())
+  }
 }

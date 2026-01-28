@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,12 @@
  * limitations under the License.
  */
 
-package models
+package uk.gov.hmrc.constructionindustryscheme.models.requests
 
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers.*
-import uk.gov.hmrc.constructionindustryscheme.models.SuccessEmailParams
+import play.api.libs.json.{Json, OFormat}
 
-class SuccessEmailParamsSpec extends AnyWordSpec {
+case class SendSuccessEmailRequest(email: String, month: String, year: String)
 
-  "SuccessEmailParams" should {
-    "store the provided values" in {
-      val p = SuccessEmailParams(to = "test@test.com", monthYear = "October 2025")
-      p.to        shouldBe "test@test.com"
-      p.monthYear shouldBe "October 2025"
-    }
-  }
+object SendSuccessEmailRequest {
+  given OFormat[SendSuccessEmailRequest] = Json.format[SendSuccessEmailRequest]
 }

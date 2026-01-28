@@ -19,15 +19,15 @@ package uk.gov.hmrc.constructionindustryscheme.controllers
 import javax.inject.Inject
 import play.api.mvc.*
 import play.api.libs.json.*
-
+import play.api.mvc.Results.*
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Logging
 import play.api.http.Status.BAD_GATEWAY
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, BuiltSubmissionPayload, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult, SuccessEmailParams}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, BuiltSubmissionPayload, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateSubmissionRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateSubmissionRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionEnvelopeBuilder
 import uk.gov.hmrc.http.HeaderCarrier
@@ -82,7 +82,6 @@ class SubmissionController @Inject() (
             logger.info(s"Submitting Nil Monthly Return to ChRIS for UTR=${csr.utr}")
 
             val correlationId = UUID.randomUUID().toString.replace("-", "").toUpperCase
-            val emailParams   = SuccessEmailParams(csr.email, csr.monthYear)
             val payload       = ChrisSubmissionEnvelopeBuilder.buildPayload(csr, req, correlationId)
 
             val monthlyNilReturnRequestJson: JsValue = createMonthlyNilReturnRequestJson(payload)
@@ -94,7 +93,7 @@ class SubmissionController @Inject() (
                   s"ChRIS XML validation successful. Sending ChRIS submission for a correlationId = $correlationId."
                 )
                 submissionService
-                  .submitToChris(payload, Some(emailParams))
+                  .submitToChris(payload)
                   .map(renderSubmissionResponse(submissionId, payload))
                   .recover { case ex =>
                     logger.error("[submitToChris] upstream failure", ex)
@@ -167,6 +166,23 @@ class SubmissionController @Inject() (
           Future.successful(BadRequest(Json.obj("error" -> "pollUrl does not have the right host")))
       }
 
+    }
+
+  def sendSuccessfulEmail(submissionId: String): Action[JsValue] =
+    authorise(parse.json).async { implicit req =>
+      req.body
+        .validate[SendSuccessEmailRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          params =>
+            submissionService
+              .sendSuccessfulEmail(submissionId, params)
+              .map(_ => Accepted)
+              .recover { case ex =>
+                logger.error(s"[sendSuccessfulEmail] failed submissionId=$submissionId", ex)
+                BadGateway(Json.obj("message" -> "send-success-email-failed"))
+              }
+        )
     }
 
   private def renderSubmissionResponse(submissionId: String, payload: BuiltSubmissionPayload)(

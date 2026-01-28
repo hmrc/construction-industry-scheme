@@ -29,8 +29,8 @@ import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
 import uk.gov.hmrc.constructionindustryscheme.models.audit.XmlConversionResult
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus, SuccessEmailParams}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlValidator
@@ -86,7 +86,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED)))
       when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
 
@@ -103,7 +103,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       verify(mockAuditService, times(1)).monthlyNilReturnRequestEvent(any())(any())
       verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
-      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(
+      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload])(
         any[HeaderCarrier]
       )
     }
@@ -117,7 +117,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
       when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
 
@@ -145,7 +145,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(ACCEPTED)))
       when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
 
@@ -173,7 +173,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(DEPARTMENTAL_ERROR, Some(err))))
       when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
 
@@ -228,7 +228,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
-      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -245,7 +245,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       verify(mockAuditService, times(1)).monthlyNilReturnRequestEvent(any())(any())
       verify(mockAuditService, times(1)).monthlyNilReturnResponseEvent(any())(any())
-      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(
+      verify(service, times(1)).submitToChris(any[BuiltSubmissionPayload])(
         any[HeaderCarrier]
       )
     }
@@ -259,7 +259,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(service.submitToChris(any[BuiltSubmissionPayload], any[Option[SuccessEmailParams]])(any[HeaderCarrier]))
+      when(service.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
       when(xmlValidator.validate(any[NodeSeq]))
         .thenReturn(Failure(new RuntimeException("XML validation failed due to exception")))
@@ -736,6 +736,80 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val result = service.createMonthlyNilReturnResponseJson(res)
       result mustBe Json.toJson(res.rawXml)
+    }
+  }
+
+  "sendSuccessfulEmail" - {
+
+    "returns 202 when service succeeds" in {
+      val service      = mock[SubmissionService]
+      val xmlValidator = mock[XmlValidator]
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
+
+      val body = Json.obj(
+        "email" -> "test@test.com",
+        "month" -> "September",
+        "year"  -> "2025"
+      )
+
+      when(service.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val req =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/send-success-email")
+          .withBody(body)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.sendSuccessfulEmail(submissionId)(req)
+
+      status(result) mustBe 202
+
+      verify(service, times(1)).sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(
+        any[HeaderCarrier]
+      )
+    }
+
+    "returns 400 when request JSON is invalid" in {
+      val service      = mock[SubmissionService]
+      val xmlValidator = mock[XmlValidator]
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
+
+      val badJson = Json.obj("email" -> "test@test.com")
+
+      val req =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/send-success-email")
+          .withBody(badJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.sendSuccessfulEmail(submissionId)(req)
+
+      status(result) mustBe BAD_REQUEST
+      verifyNoInteractions(service)
+    }
+
+    "returns 502 when service fails" in {
+      val service      = mock[SubmissionService]
+      val xmlValidator = mock[XmlValidator]
+      val controller   = mkController(service = service, xmlValidator = xmlValidator)
+
+      val body = Json.obj(
+        "email" -> "test@test.com",
+        "month" -> "September",
+        "year"  -> "2025"
+      )
+
+      when(service.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/send-success-email")
+          .withBody(body)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.sendSuccessfulEmail(submissionId)(req)
+
+      status(result) mustBe BAD_GATEWAY
+      (contentAsJson(result) \ "message").as[String] mustBe "send-success-email-failed"
     }
   }
 
