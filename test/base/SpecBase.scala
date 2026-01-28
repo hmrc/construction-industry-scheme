@@ -17,6 +17,8 @@
 package base
 
 import actions.FakeAuthAction
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.{Materializer, SystemMaterializer}
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
@@ -60,8 +62,10 @@ trait SpecBase
   val fakeRequest: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
   val bodyParsers: PlayBodyParsers                     = app.injector.instanceOf[PlayBodyParsers]
 
-  implicit val hc: HeaderCarrier    = HeaderCarrier()
-  implicit val ec: ExecutionContext = cc.executionContext
+  implicit val hc: HeaderCarrier               = HeaderCarrier()
+  implicit val ec: ExecutionContext            = cc.executionContext
+  implicit lazy val system: ActorSystem        = app.actorSystem
+  implicit lazy val materializer: Materializer = SystemMaterializer(system).materializer
 
   def fakeAuthAction(ton: String = "123", tor: String = "AB456"): AuthAction =
     FakeAuthAction.withCisIdentifiers(ton, tor, bodyParsers)
