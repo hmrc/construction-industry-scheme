@@ -144,12 +144,12 @@ class SubcontractorControllerIntegrationSpec
       )
     }
 
-    "bubble up 500 if formp proxy fails" in {
+    "bubble up error when FormP fails" in {
       AuthStub.authorisedWithCisEnrolment()
 
       stubFor(
         get(urlPathEqualTo("/formp-proxy/cis/subcontractors/123"))
-          .willReturn(aResponse().withStatus(500).withBody("FormP error"))
+          .willReturn(aResponse().withStatus(502).withBody("FormP error"))
       )
 
       val resp = getJson(
