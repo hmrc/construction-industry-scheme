@@ -27,11 +27,11 @@ class GetMonthlyReturnForEditResponseSpec extends AnyWordSpec with Matchers {
 
     "serialize and deserialize correctly" in {
       val model = GetMonthlyReturnForEditResponse(
-        scheme             = Seq.empty,
-        monthlyReturn      = Seq.empty,
-        subcontractors     = Seq.empty,
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq.empty,
         monthlyReturnItems = Seq.empty,
-        submission         = Seq.empty
+        submission = Seq.empty
       )
 
       val json = Json.toJson(model)
