@@ -23,7 +23,6 @@ import org.scalatest.matchers.must.Matchers.mustBe
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.http.Status.*
 import play.api.libs.json.{JsValue, Json}
-import uk.gov.hmrc.constructionindustryscheme.itutil.AuthStub.authorisedWithCisEnrolment
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, AuthStub}
 
 class SubcontractorControllerIntegrationSpec
@@ -33,11 +32,12 @@ class SubcontractorControllerIntegrationSpec
     with IntegrationPatience {
 
   private val createAndUpdateSubcontractorUrl = s"$base/subcontractor/create-and-update"
+  private val getUtrUrl                       = s"$base/subcontractors/utr/123"
 
   "POST /cis/subcontractor/create-and-update" should {
 
     "return 204 when FormP succeeds" in {
-      authorisedWithCisEnrolment()
+      AuthStub.authorisedWithCisEnrolment()
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
@@ -80,7 +80,7 @@ class SubcontractorControllerIntegrationSpec
     }
 
     "bubble up error when FormP fails" in {
-      authorisedWithCisEnrolment()
+      AuthStub.authorisedWithCisEnrolment()
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
@@ -105,6 +105,65 @@ class SubcontractorControllerIntegrationSpec
 
       resp.status mustBe BAD_GATEWAY
       (resp.json \ "message").as[String].toLowerCase must include("create-and-update-subcontractor-failed")
+    }
+  }
+
+  "GET /cis/subcontractors/utr/:cisId" should {
+
+    "return 200 with wrapper when authorised and formp proxy succeeds" in {
+      AuthStub.authorisedWithCisEnrolment()
+
+      stubFor(
+        get(urlPathEqualTo("/formp-proxy/cis/subcontractors/123"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(
+                """{
+                  | "subcontractors": [
+                  |   { "utr": "1234567890" },
+                  |   { "utr": "9876543210" },
+                  |   { "utr": "1122334455" }
+                  | ]
+                  |}""".stripMargin
+              )
+          )
+      )
+
+      val resp = getJson(
+        getUtrUrl,
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
+
+      resp.status mustBe OK
+      (resp.json \ "subcontractorUTRs").as[Seq[JsValue]].size mustBe 3
+
+      verify(
+        getRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractors/123"))
+      )
+    }
+
+    "bubble up 500 if formp proxy fails" in {
+      AuthStub.authorisedWithCisEnrolment()
+
+      stubFor(
+        get(urlPathEqualTo("/formp-proxy/cis/subcontractors/123"))
+          .willReturn(aResponse().withStatus(500).withBody("FormP error"))
+      )
+
+      val resp = getJson(
+        getUtrUrl,
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
+
+      resp.status mustBe BAD_GATEWAY
+      (resp.json \ "message").as[String] must include("get-subcontractorUTRs-failed")
+
+      verify(
+        getRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractors/123"))
+      )
     }
   }
 }
