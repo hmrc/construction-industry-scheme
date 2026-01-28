@@ -20,7 +20,7 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.{SoleTrader, SubcontractorType}
+import uk.gov.hmrc.constructionindustryscheme.models.SoleTrader
 import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -31,7 +31,7 @@ final class SubcontractorServiceSpec extends SpecBase {
 
   val cisId = "1"
 
-  "updateSubcontractor" - {
+  "createAndUpdateSubcontractor" - {
 
     val request =
       CreateAndUpdateSubcontractorRequest(
