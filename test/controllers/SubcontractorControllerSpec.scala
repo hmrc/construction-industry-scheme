@@ -17,13 +17,14 @@
 package controllers
 
 import base.SpecBase
-import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, verifyNoInteractions, when}
 import org.scalatest.EitherValues
 import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, NO_CONTENT}
 import play.api.libs.json.{JsValue, Json}
+import play.api.mvc.AnyContentAsEmpty
 import play.api.test.FakeRequest
-import play.api.test.Helpers.{CONTENT_TYPE, JSON, POST, contentAsJson, status}
+import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController
 import uk.gov.hmrc.constructionindustryscheme.models.SoleTrader
@@ -176,4 +177,44 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
     }
 
   }
+
+  "getSubcontractorUTRs" - {
+
+    val cisId                   = "cis-123"
+    val getSubcontractorUTRsUrl = s"/subcontractors/utr/$cisId"
+
+    "returns 200 with subcontractor UTR list response when service returns data" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      val subcontractorUTRs: Seq[String] = Seq("1111111111", "2222222222")
+      val responseJson                   = Json.obj("subcontractorUTRs" -> subcontractorUTRs)
+
+      when(service.getSubcontractorUTRs(eqTo(cisId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(subcontractorUTRs))
+
+      val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, getSubcontractorUTRsUrl)
+      val result                                   = controller.getSubcontractorUTRs(cisId)(req)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe responseJson
+
+      verify(service).getSubcontractorUTRs(eqTo(cisId))(any[HeaderCarrier])
+    }
+
+    "returns 502 when service fails" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      when(service.getSubcontractorUTRs(eqTo(cisId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("formp down")))
+
+      val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, getSubcontractorUTRsUrl)
+      val result                                   = controller.getSubcontractorUTRs(cisId)(req)
+
+      status(result) mustBe BAD_GATEWAY
+      (contentAsJson(result) \ "message").as[String] mustBe "get-subcontractorUTRs-failed"
+    }
+  }
+
 }

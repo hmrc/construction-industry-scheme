@@ -5,7 +5,7 @@ GET        /monthly-returns                                              uk.gov.
 GET        /monthly-returns/unsubmitted/:instanceId                      uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getUnsubmittedMonthlyReturns(instanceId: String)
 POST       /monthly-returns/nil/create                                   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createNil()
 POST       /monthly-returns/standard/create                              uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createMonthlyReturn
-GET        /monthly-returns/all-details/:taxMonth/:taxYear/:instanceId   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getAllDetails(instanceId: String, taxMonth: Int, taxYear: Int)
+POST       /monthly-returns-edit                                         uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getMonthlyReturnForEdit
 GET        /scheme/email/:instanceId                                     uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getSchemeEmail(instanceId: String)
 GET        /scheme/:instanceId                                           uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.getContractorScheme(instanceId: String)
 
@@ -24,3 +24,4 @@ POST       /scheme/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId 
 
 POST       /subcontractor/create                                         uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.createSubcontractor()
 POST       /subcontractor/update                                         uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.updateSubcontractor()
+GET        /subcontractors/utr/:cisId                                    uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractorUTRs(cisId: String)
