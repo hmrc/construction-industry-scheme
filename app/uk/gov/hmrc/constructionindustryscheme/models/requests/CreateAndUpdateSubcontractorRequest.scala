@@ -30,7 +30,6 @@ final case class CreateAndUpdateSubcontractorRequest(
   addressLine2: Option[String] = None,
   addressLine3: Option[String] = None,
   addressLine4: Option[String] = None,
-  country: Option[String] = None,
   postcode: Option[String] = None,
   nino: Option[String] = None,
   utr: Option[String] = None,
