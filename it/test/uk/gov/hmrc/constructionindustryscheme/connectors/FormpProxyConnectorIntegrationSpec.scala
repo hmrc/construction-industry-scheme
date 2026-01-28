@@ -537,7 +537,7 @@ class FormpProxyConnectorIntegrationSpec
 
   "FormpProxyConnector createAndUpdateSubcontractor" should {
 
-    "POSTs request and returns response model (201)" in {
+    "POSTs request and returns response model (204)" in {
       val request =
         CreateAndUpdateSubcontractorRequest(cisId = "10", subcontractorType = SoleTrader)
 
