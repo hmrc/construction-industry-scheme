@@ -161,4 +161,19 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/monthly-return-edit")
       .withBody(Json.toJson(request))
       .execute[GetMonthlyReturnForEditResponse]
+
+  def getSubcontractorUTRs(cisId: String)(implicit hc: HeaderCarrier): Future[Seq[String]] = {
+
+    implicit val readsSubcontractorUTRsOnly: Reads[Seq[String]] =
+      (JsPath \ "subcontractors")
+        .read(
+          Reads.seq((JsPath \ "utr").readNullable[String])
+        )
+        .map(_.flatten)
+
+    http
+      .get(url"$base/cis/subcontractors/$cisId")
+      .execute[Seq[String]]
+  }
+
 }
