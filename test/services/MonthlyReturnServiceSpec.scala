@@ -21,8 +21,8 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
-import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, GetMonthlyReturnForEditResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UnsubmittedMonthlyReturns, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
@@ -171,6 +171,51 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
       verify(formpProxy).getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
       verify(formpProxy).createNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
+  "createMonthlyReturn" - {
+
+    "delegates to formp connector and returns Unit" in {
+      val s = setup
+      import s._
+
+      val payload = MonthlyReturnRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1
+      )
+
+      when(formpProxy.createMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val result = service.createMonthlyReturn(payload).futureValue
+      result mustBe ()
+
+      verify(formpProxy).createMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp connector" in {
+      val s = setup
+      import s._
+
+      val payload = MonthlyReturnRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1
+      )
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.createMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.createMonthlyReturn(payload).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).createMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
   }
