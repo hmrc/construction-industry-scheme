@@ -23,7 +23,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, CreateSubcontractorRequest, CreateSubmissionRequest, UpdateSchemeVersionRequest, UpdateSubcontractorRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
@@ -76,6 +76,16 @@ class FormpProxyConnector @Inject() (
         )
       )
       .execute[CreateNilMonthlyReturnResponse]
+
+  def createMonthlyReturn(req: MonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/monthly-return/standard/create")
+      .withBody(Json.toJson(req))
+      .execute[HttpResponse]
+      .map { response =>
+        if (response.status == 201) ()
+        else throw UpstreamErrorResponse(response.body, response.status, response.status)
+      }
 
   def getSchemeEmail(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[String]] =
     http
@@ -153,4 +163,27 @@ class FormpProxyConnector @Inject() (
           )
         }
       }
+
+  def getMonthlyReturnForEdit(
+    request: GetMonthlyReturnForEditRequest
+  )(implicit hc: HeaderCarrier): Future[GetMonthlyReturnForEditResponse] =
+    http
+      .post(url"$base/cis/monthly-return-edit")
+      .withBody(Json.toJson(request))
+      .execute[GetMonthlyReturnForEditResponse]
+
+  def getSubcontractorUTRs(cisId: String)(implicit hc: HeaderCarrier): Future[Seq[String]] = {
+
+    implicit val readsSubcontractorUTRsOnly: Reads[Seq[String]] =
+      (JsPath \ "subcontractors")
+        .read(
+          Reads.seq((JsPath \ "utr").readNullable[String])
+        )
+        .map(_.flatten)
+
+    http
+      .get(url"$base/cis/subcontractors/$cisId")
+      .execute[Seq[String]]
+  }
+
 }

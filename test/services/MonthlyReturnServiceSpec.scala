@@ -21,7 +21,8 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UnsubmittedMonthlyReturns, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
@@ -174,6 +175,51 @@ class MonthlyReturnServiceSpec extends SpecBase {
     }
   }
 
+  "createMonthlyReturn" - {
+
+    "delegates to formp connector and returns Unit" in {
+      val s = setup
+      import s._
+
+      val payload = MonthlyReturnRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1
+      )
+
+      when(formpProxy.createMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val result = service.createMonthlyReturn(payload).futureValue
+      result mustBe ()
+
+      verify(formpProxy).createMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp connector" in {
+      val s = setup
+      import s._
+
+      val payload = MonthlyReturnRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1
+      )
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.createMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.createMonthlyReturn(payload).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).createMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
   "getUnsubmittedMonthlyReturns" - {
 
     "maps formp monthly returns into response rows" in {
@@ -223,6 +269,59 @@ class MonthlyReturnServiceSpec extends SpecBase {
       ex mustBe boom
 
       verify(formpProxy).getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
+  "getMonthlyReturnForEdit" - {
+
+    "returns the response from formp" in {
+      val s = setup;
+      import s._
+
+      val request = GetMonthlyReturnForEditRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1
+      )
+
+      val expected = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq.empty,
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(expected))
+
+      val out = service.getMonthlyReturnForEdit(request).futureValue
+      out mustBe expected
+
+      verify(formpProxy).getMonthlyReturnForEdit(eqTo(request))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp" in {
+      val s = setup;
+      import s._
+
+      val request = GetMonthlyReturnForEditRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1
+      )
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.getMonthlyReturnForEdit(request).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).getMonthlyReturnForEdit(eqTo(request))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
   }

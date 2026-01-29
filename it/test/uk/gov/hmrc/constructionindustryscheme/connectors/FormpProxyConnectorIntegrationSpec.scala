@@ -29,26 +29,25 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
 class FormpProxyConnectorIntegrationSpec
-  extends ApplicationWithWiremock
+    extends ApplicationWithWiremock
     with Matchers
     with ScalaFutures
     with IntegrationPatience {
-  
+
   private val connector = app.injector.instanceOf[FormpProxyConnector]
 
-  private val instanceId = "123"
+  private val instanceId      = "123"
   private val instanceReqJson = Json.obj("instanceId" -> instanceId)
 
   "FormpProxyConnector getMonthlyReturns" should {
 
     "POST instanceId to /formp-proxy/monthly-returns and return wrapper (200)" in {
-      val responseJson = Json.parse(
-        """{
+      val responseJson = Json.parse("""{
           |  "monthlyReturnList": [
           |    { "monthlyReturnId": 66666, "taxYear": 2025, "taxMonth": 1 },
           |    { "monthlyReturnId": 66667, "taxYear": 2025, "taxMonth": 7 }
           |  ]
-          |}""".stripMargin) 
+          |}""".stripMargin)
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-returns"))
@@ -86,7 +85,7 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = intercept[Throwable](connector.getMonthlyReturns(instanceId).futureValue)
-      ex.getMessage must include ("500")
+      ex.getMessage must include("500")
     }
   }
 
@@ -125,6 +124,44 @@ class FormpProxyConnectorIntegrationSpec
 
       val ex = intercept[Throwable](connector.createNilMonthlyReturn(req).futureValue)
       ex.getMessage.toLowerCase must include("500")
+    }
+  }
+
+  "FormpProxyConnector createMonthlyReturn" should {
+
+    "POST /formp-proxy/cis/monthly-return/standard/create and return Unit on 2xx" in {
+      val req = MonthlyReturnRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/standard/create"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(201))
+      )
+
+      connector.createMonthlyReturn(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-2xx (e.g. 500)" in {
+      val req = MonthlyReturnRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/standard/create"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = connector.createMonthlyReturn(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
 
@@ -188,8 +225,11 @@ class FormpProxyConnectorIntegrationSpec
 
     "fails with UpstreamErrorResponse when non-2xx" in {
       val req = UpdateSubmissionRequest(
-        instanceId = instanceId, taxYear = 2024, taxMonth = 4,
-        hmrcMarkGenerated = Some("Dj5TVJDyRYCn9zta5EdySeY4fyA="), submittableStatus = "REJECTED"
+        instanceId = instanceId,
+        taxYear = 2024,
+        taxMonth = 4,
+        hmrcMarkGenerated = Some("Dj5TVJDyRYCn9zta5EdySeY4fyA="),
+        submittableStatus = "REJECTED"
       )
 
       stubFor(
@@ -576,7 +616,8 @@ class FormpProxyConnectorIntegrationSpec
   "FormpProxyConnector updateSubcontractor" should {
 
     "POSTs request and returns response model (201)" in {
-      val request = UpdateSubcontractorRequest(schemeId = 10, subbieResourceRef = 10, tradingName = Some("trading Name"))
+      val request =
+        UpdateSubcontractorRequest(schemeId = 10, subbieResourceRef = 10, tradingName = Some("trading Name"))
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
@@ -590,7 +631,8 @@ class FormpProxyConnectorIntegrationSpec
     }
 
     "propagates upstream error for non-2xx" in {
-      val request = UpdateSubcontractorRequest(schemeId = 10, subbieResourceRef = 10, tradingName = Some("trading Name"))
+      val request =
+        UpdateSubcontractorRequest(schemeId = 10, subbieResourceRef = 10, tradingName = Some("trading Name"))
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
@@ -602,4 +644,160 @@ class FormpProxyConnectorIntegrationSpec
       ex.getMessage.toLowerCase must include("500")
     }
   }
+
+  "FormpProxyConnector getMonthlyReturnForEdit" should {
+
+    "POST request to /formp-proxy/cis/monthly-return-edit and return payload (200)" in {
+      val req = GetMonthlyReturnForEditRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 7
+      )
+
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "scheme": [],
+           |  "monthlyReturn": [],
+           |  "monthlyReturnItems": [],
+           |  "subcontractors": [],
+           |  "submission": []
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-edit"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.getMonthlyReturnForEdit(req).futureValue
+      Json.toJson(out) mustBe responseJson
+    }
+
+    "fail the future when upstream returns non-2xx (e.g. 500)" in {
+      val req = GetMonthlyReturnForEditRequest(instanceId = instanceId, taxYear = 2025, taxMonth = 7)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-edit"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.getMonthlyReturnForEdit(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector getSubcontractorUTRs" should {
+
+    val cisId = "cis-123"
+
+    "GET /formp-proxy/subcontractor/:cisId and return subcontractor utr list from JSON" in {
+
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "subcontractors":
+           |  [
+           |    {
+           |      "subcontractorId": "10101",
+           |      "subbieResourceRef": "1",
+           |      "type": "soletrader",
+           |      "utr": "1111111111",
+           |      "tradingName": "AAA",
+           |      "version": "1"
+           |    },
+           |    {
+           |      "subcontractorId": "20202",
+           |      "subbieResourceRef": "2",
+           |      "type": "soletrader",
+           |      "utr": "2222222222",
+           |      "tradingName": "BBB",
+           |      "version": "2"
+           |    },
+           |    {
+           |      "subcontractorId": "30303",
+           |      "subbieResourceRef": "3",
+           |      "type": "soletrader",
+           |      "tradingName": "CCC",
+           |      "version": "3"
+           |    }
+           |  ]
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.getSubcontractorUTRs(cisId).futureValue
+      out mustBe Seq("1111111111", "2222222222")
+    }
+
+    "GET /formp-proxy/subcontractor/:cisId and return empty list from JSON when all subcontractors have no utr" in {
+
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "subcontractors":
+           |  [
+           |    {
+           |      "subcontractorId": "10101",
+           |      "subbieResourceRef": "1",
+           |      "type": "soletrader",
+           |      "tradingName": "AAA",
+           |      "version": "1"
+           |     },
+           |     {
+           |      "subcontractorId": "20202",
+           |      "subbieResourceRef": "2",
+           |      "type": "soletrader",
+           |      "tradingName": "BBB",
+           |      "version": "2"
+           |     }
+           |  ]
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.getSubcontractorUTRs(cisId).futureValue
+      out mustBe Seq.empty
+    }
+
+    "fail the future when upstream responds with non-2xx (e.g. 502) as failed Future" in {
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .willReturn(aResponse().withStatus(502).withBody("""{"message":"bad gateway"}"""))
+      )
+
+      val ex = connector.getSubcontractorUTRs(cisId).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 502
+    }
+  }
+
 }

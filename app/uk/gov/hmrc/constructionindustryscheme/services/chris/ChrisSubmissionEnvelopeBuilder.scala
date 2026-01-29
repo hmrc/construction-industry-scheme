@@ -25,7 +25,6 @@ import uk.gov.hmrc.constructionindustryscheme.utils.IrMarkProcessor.UpdatedPaylo
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, YearMonth, ZoneOffset}
 import scala.util.Try
-import scala.xml.{Elem, NodeSeq, PrettyPrinter}
 import scala.xml.*
 
 object ChrisSubmissionEnvelopeBuilder extends Logging {

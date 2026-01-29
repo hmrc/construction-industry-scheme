@@ -18,7 +18,8 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UnsubmittedMonthlyReturnStatus, UserMonthlyReturns}
 
 import scala.concurrent.Future
@@ -74,8 +75,16 @@ class MonthlyReturnService @Inject() (
       }
     }
 
+  def createMonthlyReturn(req: MonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    formp.createMonthlyReturn(req)
+
   def getSchemeEmail(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[String]] =
     formp.getSchemeEmail(instanceId)
+
+  def getMonthlyReturnForEdit(request: GetMonthlyReturnForEditRequest)(implicit
+    hc: HeaderCarrier
+  ): Future[GetMonthlyReturnForEditResponse] =
+    formp.getMonthlyReturnForEdit(request)
 
   private def mapType(nilReturnIndicator: Option[String]): String =
     if (nilReturnIndicator.exists(_.trim.equalsIgnoreCase("Y"))) "Nil"
