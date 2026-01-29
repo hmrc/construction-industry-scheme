@@ -40,7 +40,7 @@ class SendSuccessEmailRequestSpec extends AnyWordSpec with Matchers {
       val model = SendSuccessEmailRequest(
         email = "test@test.com",
         month = "September",
-        year  = "2025"
+        year = "2025"
       )
 
       Json.toJson(model) mustBe Json.obj(
