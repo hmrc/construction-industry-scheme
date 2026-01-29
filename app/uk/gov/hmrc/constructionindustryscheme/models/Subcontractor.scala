@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
-import play.api.libs.json.{Json, OFormat}
+import play.api.libs.json.{JsObject, JsString, Json, OFormat, Reads, Writes}
 
 import java.time.LocalDateTime
 
@@ -75,4 +75,8 @@ case class Subcontractor(
 }
 
 object Subcontractor:
-  given format: OFormat[Subcontractor] = Json.format[Subcontractor]
+  given reads: Reads[Subcontractor]   = Json.reads[Subcontractor]
+  given writes: Writes[Subcontractor] = s =>
+    Json
+      .writes[Subcontractor]
+      .writes(s) + ("displayName", JsString(s.displayName))
