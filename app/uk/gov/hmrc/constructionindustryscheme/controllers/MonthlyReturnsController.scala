@@ -21,8 +21,7 @@ import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
-import uk.gov.hmrc.constructionindustryscheme.models.response.GetAllMonthlyReturnDetailsResponse
-import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, EmployerReference, MonthlyReturn, MonthlyReturnItem, NilMonthlyReturnRequest, Subcontractor, Submission}
+import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, NilMonthlyReturnRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.MonthlyReturnRequest
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
@@ -33,7 +32,6 @@ import uk.gov.hmrc.play.http.HeaderCarrierConverter
 import scala.concurrent.{ExecutionContext, Future}
 import javax.inject.Inject
 import scala.util.control.NonFatal
-import java.time.{Instant, LocalDateTime}
 
 class MonthlyReturnsController @Inject() (
   authorise: AuthAction,
