@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
-import play.api.libs.json.{Json, OFormat}
+import play.api.libs.json.{JsObject, JsString, Json, OFormat, Reads, Writes}
 
 import java.time.LocalDateTime
 
@@ -56,7 +56,27 @@ case class Subcontractor(
   updatedTaxTreatment: Option[String],
   lastMonthlyReturnDate: Option[LocalDateTime],
   pendingVerifications: Option[Int]
-)
+) {
+  def displayName: String =
+    (
+      subcontractorType.map(_.toLowerCase),
+      firstName,
+      surname,
+      tradingName
+    ) match {
+      case (Some("soletrader"), Some(firstName), Some(surname), _)             => s"$firstName $surname"
+      case (Some("soletrader"), None, Some(surname), _)                        => surname
+      case (Some("soletrader" | "company" | "trust"), _, _, Some(tradingName)) => tradingName
+      case (Some("partnership"), _, _, Some(tradingName))                      =>
+        partnershipTradingName
+          .getOrElse(tradingName)
+      case _                                                                   => "No name provided"
+    }
+}
 
 object Subcontractor:
-  given format: OFormat[Subcontractor] = Json.format[Subcontractor]
+  given reads: Reads[Subcontractor]   = Json.reads[Subcontractor]
+  given writes: Writes[Subcontractor] = s =>
+    Json
+      .writes[Subcontractor]
+      .writes(s) + ("displayName", JsString(s.displayName))
