@@ -276,7 +276,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
   "getMonthlyReturnForEdit" - {
 
     "returns the response from formp" in {
-      val s = setup;
+      val s = setup
       import s._
 
       val request = GetMonthlyReturnForEditRequest(
@@ -304,7 +304,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
     }
 
     "propagates failure from formp" in {
-      val s = setup;
+      val s = setup
       import s._
 
       val request = GetMonthlyReturnForEditRequest(
