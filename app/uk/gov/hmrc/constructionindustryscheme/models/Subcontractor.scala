@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
-import play.api.libs.json.{JsObject, JsString, Json, OFormat, Reads, Writes}
+import play.api.libs.json.{JsObject, JsString, Json, Reads, Writes}
 
 import java.time.LocalDateTime
 

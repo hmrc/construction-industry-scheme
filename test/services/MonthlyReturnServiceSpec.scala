@@ -21,9 +21,9 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest, SyncMonthlyReturnItemsRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UnsubmittedMonthlyReturns, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, EmployerReference, MonthlyReturn, MonthlyReturnItem, NilMonthlyReturnRequest, Subcontractor, UnsubmittedMonthlyReturns, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
@@ -276,7 +276,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
   "getMonthlyReturnForEdit" - {
 
     "returns the response from formp" in {
-      val s = setup;
+      val s = setup
       import s._
 
       val request = GetMonthlyReturnForEditRequest(
@@ -304,7 +304,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
     }
 
     "propagates failure from formp" in {
-      val s = setup;
+      val s = setup
       import s._
 
       val request = GetMonthlyReturnForEditRequest(
@@ -326,6 +326,153 @@ class MonthlyReturnServiceSpec extends SpecBase {
     }
   }
 
+  "syncMonthlyReturnItems" - {
+
+    "computes create/delete diffs and calls formp sync endpoint" in {
+      val s = setup
+      import s._
+
+      val req = SelectedSubcontractorsRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        selectedSubcontractorIds = Seq(1L, 2L, 3L)
+      )
+
+      val subs = Seq(
+        mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L)),
+        mkSubcontractor(subcontractorId = 2L, subbieResourceRef = Some(20L)),
+        mkSubcontractor(subcontractorId = 3L, subbieResourceRef = Some(30L))
+      )
+
+      val items = Seq(
+        mkMonthlyReturnItem(itemResourceReference = Some(10L)),
+        mkMonthlyReturnItem(itemResourceReference = Some(99L)),
+        mkMonthlyReturnItem(itemResourceReference = Some(99L)) // include duplicate to prove distinct handling
+      )
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = subs,
+        monthlyReturnItems = items,
+        submission = Seq.empty
+      )
+
+      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(editResponse))
+
+      val expectedSyncReq = SyncMonthlyReturnItemsRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        createResourceReferences = Seq(20L, 30L),
+        deleteResourceReferences = Seq(99L)
+      )
+
+      when(formpProxy.syncMonthlyReturnItems(eqTo(expectedSyncReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val out = service.syncMonthlyReturnItems(req).futureValue
+      out mustBe ()
+
+      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verify(formpProxy).syncMonthlyReturnItems(eqTo(expectedSyncReq))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "fails with 400 when selectedSubcontractorIds contains an ID not present in edit.subcontractors" in {
+      val s = setup
+      import s._
+
+      val req = SelectedSubcontractorsRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        selectedSubcontractorIds = Seq(999L)
+      )
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq(
+          mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L))
+        ),
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(editResponse))
+
+      val ex = service.syncMonthlyReturnItems(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 400
+      ex.getMessage must include("Subcontractor IDs not found")
+
+      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verify(formpProxy, never()).syncMonthlyReturnItems(any[SyncMonthlyReturnItemsRequest])(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp sync endpoint" in {
+      val s = setup
+      import s._
+
+      val req = SelectedSubcontractorsRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        selectedSubcontractorIds = Seq(1L)
+      )
+
+      val subs = Seq(
+        mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L))
+      )
+
+      val items = Seq.empty
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = subs,
+        monthlyReturnItems = items,
+        submission = Seq.empty
+      )
+
+      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(editResponse))
+
+      val expectedSyncReq = SyncMonthlyReturnItemsRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        createResourceReferences = Seq(10L),
+        deleteResourceReferences = Seq.empty
+      )
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 502)
+
+      when(formpProxy.syncMonthlyReturnItems(eqTo(expectedSyncReq))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.syncMonthlyReturnItems(req).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verify(formpProxy).syncMonthlyReturnItems(eqTo(expectedSyncReq))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
   trait Setup {
     val datacacheProxy = mock[DatacacheProxyConnector]
     val formpProxy     = mock[FormpProxyConnector]
@@ -335,4 +482,57 @@ class MonthlyReturnServiceSpec extends SpecBase {
     val cisInstanceId  = "abc-123"
     val returnsFixture = UserMonthlyReturns(Seq(MonthlyReturn(66666L, 2025, 1)))
   }
+
+  private def mkSubcontractor(subcontractorId: Long, subbieResourceRef: Option[Long]): Subcontractor =
+    Subcontractor(
+      subcontractorId = subcontractorId,
+      utr = None,
+      pageVisited = None,
+      partnerUtr = None,
+      crn = None,
+      firstName = None,
+      nino = None,
+      secondName = None,
+      surname = None,
+      partnershipTradingName = None,
+      tradingName = None,
+      subcontractorType = None,
+      addressLine1 = None,
+      addressLine2 = None,
+      addressLine3 = None,
+      addressLine4 = None,
+      country = None,
+      postCode = None,
+      emailAddress = None,
+      phoneNumber = None,
+      mobilePhoneNumber = None,
+      worksReferenceNumber = None,
+      createDate = None,
+      lastUpdate = None,
+      subbieResourceRef = subbieResourceRef,
+      matched = None,
+      autoVerified = None,
+      verified = None,
+      verificationNumber = None,
+      taxTreatment = None,
+      verificationDate = None,
+      version = None,
+      updatedTaxTreatment = None,
+      lastMonthlyReturnDate = None,
+      pendingVerifications = None
+    )
+
+  private def mkMonthlyReturnItem(itemResourceReference: Option[Long]): MonthlyReturnItem =
+    MonthlyReturnItem(
+      monthlyReturnId = 1L,
+      monthlyReturnItemId = 1L,
+      totalPayments = None,
+      costOfMaterials = None,
+      totalDeducted = None,
+      unmatchedTaxRateIndicator = None,
+      subcontractorId = None,
+      subcontractorName = None,
+      verificationNumber = None,
+      itemResourceReference = itemResourceReference
+    )
 }
