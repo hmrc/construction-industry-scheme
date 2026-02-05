@@ -800,4 +800,48 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector syncMonthlyReturnItems" should {
+
+    "POST /formp-proxy/cis/monthly-return-item/sync and return Unit on 204" in {
+      val req = SyncMonthlyReturnItemsRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        createResourceReferences = Seq(5L, 6L),
+        deleteResourceReferences = Seq(1L, 2L)
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-item/sync"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(204))
+      )
+
+      connector.syncMonthlyReturnItems(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-204 (e.g. 500)" in {
+      val req = SyncMonthlyReturnItemsRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        createResourceReferences = Seq(5L),
+        deleteResourceReferences = Seq.empty
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-item/sync"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = connector.syncMonthlyReturnItems(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
 }

@@ -28,7 +28,7 @@ import play.api.test.Helpers.*
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController
 import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, GetMonthlyReturnForEditResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
@@ -646,6 +646,78 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         contentAsJson(result) mustBe Json.obj("message" -> "Unexpected error")
       }
     }
+
+    "POST /monthly-return-item/sync (syncSelectedSubcontractors)" - {
+
+      "return 204 NoContent when service succeeds" in new SetupAuthOnly {
+        val reqBody = SelectedSubcontractorsRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          selectedSubcontractorIds = Seq(1L, 2L, 3L)
+        )
+
+        when(mockMonthlyReturnService.syncMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(()))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.syncSelectedSubcontractors, request)
+
+        status(result) mustBe NO_CONTENT
+        verify(mockMonthlyReturnService).syncMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier])
+      }
+
+      "return upstream status + message when service fails with UpstreamErrorResponse" in new SetupAuthOnly {
+        val reqBody = SelectedSubcontractorsRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          selectedSubcontractorIds = Seq(1L)
+        )
+
+        val boom = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
+
+        when(mockMonthlyReturnService.syncMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(boom))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.syncSelectedSubcontractors, request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
+      }
+
+      "return 502 BadGateway with fixed message when service fails with NonFatal" in new SetupAuthOnly {
+        val reqBody = SelectedSubcontractorsRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          selectedSubcontractorIds = Seq(1L)
+        )
+
+        when(mockMonthlyReturnService.syncMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("boom")))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.syncSelectedSubcontractors, request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "sync-selected-subcontractors-failed")
+      }
+    }
+
   }
 
   private lazy val sampleWrapper: UserMonthlyReturns = UserMonthlyReturns(
