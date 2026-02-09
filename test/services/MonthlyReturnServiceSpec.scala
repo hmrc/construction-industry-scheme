@@ -208,7 +208,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
         decInformationCorrect = "Y",
         decNilReturnNoPayments = "Y"
       )
-      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+      val boom    = UpstreamErrorResponse("formp proxy failure", 500)
 
       when(formpProxy.updateNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
         .thenReturn(Future.failed(boom))
