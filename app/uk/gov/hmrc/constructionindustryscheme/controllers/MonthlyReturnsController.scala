@@ -153,6 +153,7 @@ class MonthlyReturnsController @Inject() (
   }
 
   def createNil(): Action[JsValue] = authorise.async(parse.json) { implicit request =>
+    given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
     request.body
       .validate[NilMonthlyReturnRequest]
       .fold(
@@ -166,6 +167,7 @@ class MonthlyReturnsController @Inject() (
   }
 
   def updateNil(): Action[JsValue] = authorise.async(parse.json) { implicit request =>
+    given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
     request.body
       .validate[NilMonthlyReturnRequest]
       .fold(
