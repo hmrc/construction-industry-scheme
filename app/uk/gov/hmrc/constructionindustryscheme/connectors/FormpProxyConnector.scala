@@ -82,15 +82,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/monthly-return/nil/update")
-      .withBody(
-        Json.obj(
-          "instanceId"             -> req.instanceId,
-          "taxYear"                -> req.taxYear,
-          "taxMonth"               -> req.taxMonth,
-          "decInformationCorrect"  -> req.decInformationCorrect,
-          "decNilReturnNoPayments" -> req.decNilReturnNoPayments
-        )
-      )
+      .withBody(req)
       .execute[HttpResponse]
       .flatMap { resp =>
         if (resp.status / 100 == 2) Future.unit
