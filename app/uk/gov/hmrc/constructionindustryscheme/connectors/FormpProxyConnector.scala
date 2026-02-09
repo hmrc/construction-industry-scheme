@@ -77,6 +77,26 @@ class FormpProxyConnector @Inject() (
       )
       .execute[CreateNilMonthlyReturnResponse]
 
+  def updateNilMonthlyReturn(
+    req: NilMonthlyReturnRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/monthly-return/nil/update")
+      .withBody(
+        Json.obj(
+          "instanceId"             -> req.instanceId,
+          "taxYear"                -> req.taxYear,
+          "taxMonth"               -> req.taxMonth,
+          "decInformationCorrect"  -> req.decInformationCorrect,
+          "decNilReturnNoPayments" -> req.decNilReturnNoPayments
+        )
+      )
+      .execute[HttpResponse]
+      .flatMap { resp =>
+        if (resp.status / 100 == 2) Future.unit
+        else Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
+      }
+
   def createMonthlyReturn(req: MonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/monthly-return/standard/create")
