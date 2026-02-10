@@ -103,7 +103,7 @@ class FormpProxyConnectorIntegrationSpec
       val respJson = Json.obj("status" -> "STARTED")
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/monthly-return/nil/create"))
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/create"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(200).withBody(respJson.toString()))
@@ -117,7 +117,7 @@ class FormpProxyConnectorIntegrationSpec
       val req = NilMonthlyReturnRequest(instanceId, 2025, 2, "Y", "Y")
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/monthly-return/nil/create"))
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/create"))
           .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(500).withBody("""{ "message": "boom" }"""))
       )
@@ -139,7 +139,7 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/monthly-return/nil/update"))
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/update"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(204))
@@ -152,7 +152,7 @@ class FormpProxyConnectorIntegrationSpec
       val req = NilMonthlyReturnRequest(instanceId, 2025, 2, "Y", "Y")
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/monthly-return/nil/update"))
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/update"))
           .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
       )

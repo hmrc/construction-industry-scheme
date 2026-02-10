@@ -65,7 +65,7 @@ class FormpProxyConnector @Inject() (
     req: NilMonthlyReturnRequest
   )(implicit hc: HeaderCarrier): Future[CreateNilMonthlyReturnResponse] =
     http
-      .post(url"$base/monthly-return/nil/create")
+      .post(url"$base/cis/monthly-return/nil/create")
       .withBody(
         Json.obj(
           "instanceId"             -> req.instanceId,
@@ -81,7 +81,7 @@ class FormpProxyConnector @Inject() (
     req: NilMonthlyReturnRequest
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
-      .post(url"$base/monthly-return/nil/update")
+      .post(url"$base/cis/monthly-return/nil/update")
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
       .flatMap { resp =>

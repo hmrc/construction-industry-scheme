@@ -195,7 +195,7 @@ class MonthlyReturnsControllerIntegrationSpec
       )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/monthly-return/nil/create"))
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/create"))
           .withRequestBody(equalToJson(
             """{
               |  "instanceId": "123",
@@ -227,7 +227,7 @@ class MonthlyReturnsControllerIntegrationSpec
       resp.status mustBe CREATED
       (resp.json \ "status").as[String] mustBe "STARTED"
 
-      verify(postRequestedFor(urlPathEqualTo("/formp-proxy/monthly-return/nil/create")))
+      verify(postRequestedFor(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/create")))
     }
 
     "bubble up error when FormP fails" in {
@@ -240,7 +240,7 @@ class MonthlyReturnsControllerIntegrationSpec
       )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/monthly-return/nil/create"))
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/create"))
           .willReturn(aResponse().withStatus(502).withBody("bad gateway"))
       )
 
