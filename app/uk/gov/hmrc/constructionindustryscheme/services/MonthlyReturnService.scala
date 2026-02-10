@@ -16,9 +16,9 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services
 
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest, SyncMonthlyReturnItemsRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UnsubmittedMonthlyReturnStatus, UserMonthlyReturns}
 
@@ -85,6 +85,53 @@ class MonthlyReturnService @Inject() (
     hc: HeaderCarrier
   ): Future[GetMonthlyReturnForEditResponse] =
     formp.getMonthlyReturnForEdit(request)
+
+  def syncMonthlyReturnItems(request: SelectedSubcontractorsRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    for {
+      edit                    <- formp.getMonthlyReturnForEdit(
+                                   GetMonthlyReturnForEditRequest(
+                                     instanceId = request.instanceId,
+                                     taxYear = request.taxYear,
+                                     taxMonth = request.taxMonth
+                                   )
+                                 )
+
+      idToRef: Map[Long, Long] =
+        edit.subcontractors
+          .flatMap(subcontractor => subcontractor.subbieResourceRef.map(ref => subcontractor.subcontractorId -> ref))
+          .toMap
+
+      selectedIds: Seq[Long]   = request.selectedSubcontractorIds.distinct
+      missingIds: Seq[Long]    = selectedIds.filterNot(idToRef.contains)
+
+      _ <- if (missingIds.nonEmpty) {
+             Future.failed(
+               UpstreamErrorResponse(
+                 message = s"Subcontractor IDs not found: ${missingIds.mkString(",")}",
+                 statusCode = 400,
+                 reportAs = 400
+               )
+             )
+           } else Future.successful(())
+
+      selectedResourceRefs = selectedIds.map(idToRef)
+
+      existingResourceRefs = edit.monthlyReturnItems.flatMap(_.itemResourceReference).distinct
+
+      toCreate = selectedResourceRefs.toSet.diff(existingResourceRefs.toSet).toSeq.sorted
+      toDelete = existingResourceRefs.toSet.diff(selectedResourceRefs.toSet).toSeq.sorted
+
+      _ <- formp.syncMonthlyReturnItems(
+             SyncMonthlyReturnItemsRequest(
+               instanceId = request.instanceId,
+               taxYear = request.taxYear,
+               taxMonth = request.taxMonth,
+               amendment = "N",
+               createResourceReferences = toCreate,
+               deleteResourceReferences = toDelete
+             )
+           )
+    } yield ()
 
   private def mapType(nilReturnIndicator: Option[String]): String =
     if (nilReturnIndicator.exists(_.trim.equalsIgnoreCase("Y"))) "Nil"
