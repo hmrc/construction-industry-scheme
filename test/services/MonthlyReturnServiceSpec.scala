@@ -175,6 +175,52 @@ class MonthlyReturnServiceSpec extends SpecBase {
     }
   }
 
+  "updateNilMonthlyReturn" - {
+
+    "delegates to formp connector and returns Unit" in {
+      val s = setup; import s._
+
+      val payload = NilMonthlyReturnRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        decInformationCorrect = "Y",
+        decNilReturnNoPayments = "Y"
+      )
+
+      when(formpProxy.updateNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val result = service.updateNilMonthlyReturn(payload).futureValue
+      result mustBe ()
+
+      verify(formpProxy).updateNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp connector" in {
+      val s = setup; import s._
+
+      val payload = NilMonthlyReturnRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        decInformationCorrect = "Y",
+        decNilReturnNoPayments = "Y"
+      )
+      val boom    = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.updateNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.updateNilMonthlyReturn(payload).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).updateNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
   "createMonthlyReturn" - {
 
     "delegates to formp connector and returns Unit" in {

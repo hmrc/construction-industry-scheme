@@ -75,6 +75,11 @@ class MonthlyReturnService @Inject() (
       }
     }
 
+  def updateNilMonthlyReturn(
+    req: NilMonthlyReturnRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    formp.updateNilMonthlyReturn(req)
+
   def createMonthlyReturn(req: MonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formp.createMonthlyReturn(req)
 

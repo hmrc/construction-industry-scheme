@@ -153,6 +153,7 @@ class MonthlyReturnsController @Inject() (
   }
 
   def createNil(): Action[JsValue] = authorise.async(parse.json) { implicit request =>
+    given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
     request.body
       .validate[NilMonthlyReturnRequest]
       .fold(
@@ -161,6 +162,20 @@ class MonthlyReturnsController @Inject() (
           service
             .createNilMonthlyReturn(payload)
             .map(monthlyReturn => Created(Json.toJson(monthlyReturn)))
+            .recover { case u: UpstreamErrorResponse => Status(u.statusCode)(Json.obj("message" -> u.message)) }
+      )
+  }
+
+  def updateNil(): Action[JsValue] = authorise.async(parse.json) { implicit request =>
+    given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
+    request.body
+      .validate[NilMonthlyReturnRequest]
+      .fold(
+        _ => Future.successful(BadRequest(Json.obj("message" -> "Invalid payload"))),
+        payload =>
+          service
+            .updateNilMonthlyReturn(payload)
+            .map(_ => NoContent)
             .recover { case u: UpstreamErrorResponse => Status(u.statusCode)(Json.obj("message" -> u.message)) }
       )
   }

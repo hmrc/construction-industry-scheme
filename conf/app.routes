@@ -4,6 +4,7 @@ GET        /taxpayer                                                     uk.gov.
 GET        /monthly-returns                                              uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getAllMonthlyReturns(cisId: Option[String])
 GET        /monthly-returns/unsubmitted/:instanceId                      uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getUnsubmittedMonthlyReturns(instanceId: String)
 POST       /monthly-returns/nil/create                                   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createNil()
+POST       /monthly-returns/nil/update                                   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.updateNil()
 POST       /monthly-returns/standard/create                              uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createMonthlyReturn
 POST       /monthly-returns-edit                                         uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getMonthlyReturnForEdit
 POST       /monthly-return-item/sync                                     uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.syncSelectedSubcontractors
