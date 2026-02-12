@@ -501,46 +501,6 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
-  "FormpProxyConnector createSubcontractor" should {
-
-    "POST /formp-proxy/subcontractor/create and return subbieResourceRef from JSON" in {
-      val req = CreateSubcontractorRequest(
-        schemeId = 999,
-        subcontractorType = SoleTrader,
-        version = 1
-      )
-
-      val responseJson = Json.obj("subbieResourceRef" -> 1234)
-
-      stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create"))
-          .withHeader("Content-Type", equalTo("application/json"))
-          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
-          .willReturn(
-            aResponse()
-              .withStatus(200)
-              .withBody(responseJson.toString())
-          )
-      )
-
-      val out = connector.createSubcontractor(req).futureValue
-      out mustBe 1234
-    }
-
-    "fail the future when upstream responds with non-2xx (e.g. 502) as failed Future" in {
-      val req = CreateSubcontractorRequest(schemeId = 999, subcontractorType = SoleTrader, version = 1)
-
-      stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create"))
-          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
-          .willReturn(aResponse().withStatus(502).withBody("""{"message":"bad gateway"}"""))
-      )
-
-      val ex = connector.createSubcontractor(req).failed.futureValue
-      ex mustBe a[play.api.libs.json.JsResultException]
-    }
-  }
-
   "FormpProxyConnector applyPrepopulation" should {
 
     "POST /formp-proxy/scheme/prepopulate and return version from JSON" in {
@@ -649,34 +609,34 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
-  "FormpProxyConnector updateSubcontractor" should {
+  "FormpProxyConnector createAndUpdateSubcontractor" should {
 
-    "POSTs request and returns response model (201)" in {
+    "POSTs request and returns response model (204)" in {
       val request =
-        UpdateSubcontractorRequest(schemeId = 10, subbieResourceRef = 10, tradingName = Some("trading Name"))
+        CreateAndUpdateSubcontractorRequest(cisId = "10", subcontractorType = SoleTrader)
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(NO_CONTENT))
       )
 
-      val result: Unit = connector.updateSubcontractor(request).futureValue
+      val result: Unit = connector.createAndUpdateSubcontractor(request).futureValue
       result mustBe ()
     }
 
     "propagates upstream error for non-2xx" in {
       val request =
-        UpdateSubcontractorRequest(schemeId = 10, subbieResourceRef = 10, tradingName = Some("trading Name"))
+        CreateAndUpdateSubcontractorRequest(cisId = "10", subcontractorType = SoleTrader)
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
           .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(500).withBody("""{ "message": "boom" }"""))
       )
 
-      val ex = intercept[Throwable](connector.updateSubcontractor(request).futureValue)
+      val ex = intercept[Throwable](connector.createAndUpdateSubcontractor(request).futureValue)
       ex.getMessage.toLowerCase must include("500")
     }
   }
