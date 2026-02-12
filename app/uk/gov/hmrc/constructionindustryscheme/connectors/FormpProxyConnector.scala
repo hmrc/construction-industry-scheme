@@ -65,7 +65,7 @@ class FormpProxyConnector @Inject() (
     req: NilMonthlyReturnRequest
   )(implicit hc: HeaderCarrier): Future[CreateNilMonthlyReturnResponse] =
     http
-      .post(url"$base/monthly-return/nil/create")
+      .post(url"$base/cis/monthly-return/nil/create")
       .withBody(
         Json.obj(
           "instanceId"             -> req.instanceId,
@@ -76,6 +76,18 @@ class FormpProxyConnector @Inject() (
         )
       )
       .execute[CreateNilMonthlyReturnResponse]
+
+  def updateNilMonthlyReturn(
+    req: NilMonthlyReturnRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/monthly-return/nil/update")
+      .withBody(Json.toJson(req))
+      .execute[HttpResponse]
+      .flatMap { resp =>
+        if (resp.status / 100 == 2) Future.unit
+        else Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
+      }
 
   def createMonthlyReturn(req: MonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
@@ -159,6 +171,14 @@ class FormpProxyConnector @Inject() (
         }
       }
 
+  def getMonthlyReturnForEdit(
+    request: GetMonthlyReturnForEditRequest
+  )(implicit hc: HeaderCarrier): Future[GetMonthlyReturnForEditResponse] =
+    http
+      .post(url"$base/cis/monthly-return-edit")
+      .withBody(Json.toJson(request))
+      .execute[GetMonthlyReturnForEditResponse]
+
   def getSubcontractorUTRs(cisId: String)(implicit hc: HeaderCarrier): Future[Seq[String]] = {
 
     implicit val readsSubcontractorUTRsOnly: Reads[Seq[String]] =
@@ -172,5 +192,15 @@ class FormpProxyConnector @Inject() (
       .get(url"$base/cis/subcontractors/$cisId")
       .execute[Seq[String]]
   }
+
+  def syncMonthlyReturnItems(request: SyncMonthlyReturnItemsRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/monthly-return-item/sync")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == 204) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+      }
 
 }

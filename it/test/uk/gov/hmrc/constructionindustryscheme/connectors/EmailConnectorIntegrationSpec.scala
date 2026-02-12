@@ -23,7 +23,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{NilMonthlyReturnOrgSuccessEmail, SendEmailRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.NilMonthlyReturnOrgSuccessEmail
 
 class EmailConnectorIntegrationSpec
   extends ApplicationWithWiremock
@@ -34,14 +34,14 @@ class EmailConnectorIntegrationSpec
   private val connector = app.injector.instanceOf[EmailConnector]
   private val emailPath = "/hmrc/email"
 
-  private def mkRequest(to: String = "test@test.com"): SendEmailRequest =
+  private def mkRequest(email: String = "test@test.com"): NilMonthlyReturnOrgSuccessEmail =
     NilMonthlyReturnOrgSuccessEmail(
-      to = List(to),
+      to = List(email),
       templateId = "cis_nil_monthly_return_org_success",
       parameters = Map("month" -> "September", "year" -> "2025")
     )
 
-  "EmailConnector.send" should {
+  "EmailConnector.sendSuccessfulEmail" should {
 
     "POST JSON to /hmrc/email and return Done on 202 ACCEPTED" in {
       val req      = mkRequest()
@@ -58,11 +58,10 @@ class EmailConnectorIntegrationSpec
           )
       )
 
-      val out = connector.send(req).futureValue
-      out mustBe Done
+      connector.sendSuccessfulEmail(req).futureValue mustBe Done
     }
 
-    "return Done when upstream returns non-2xx (e.g. 500)" in {
+    "fail the Future when upstream returns non-202 (e.g. 500)" in {
       val req      = mkRequest()
       val bodyJson = Json.toJson(req).toString()
 
@@ -77,23 +76,25 @@ class EmailConnectorIntegrationSpec
           )
       )
 
-      connector.send(req).futureValue mustBe Done
+      val ex = connector.sendSuccessfulEmail(req).failed.futureValue
+      ex.getMessage must include("Send email failed: status: 500")
+      ex.getMessage must include("""{"error":"boom"}""")
     }
 
-    "return Done when the HTTP call fails (e.g. connection reset)" in {
+    "fail the Future when the HTTP call fails (e.g. connection reset)" in {
       val req      = mkRequest()
       val bodyJson = Json.toJson(req).toString()
 
       stubFor(
         post(urlPathEqualTo(emailPath))
+          .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(bodyJson, true, true))
           .willReturn(
-            aResponse()
-              .withFault(Fault.CONNECTION_RESET_BY_PEER)
+            aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)
           )
       )
 
-      connector.send(req).futureValue mustBe Done
+      connector.sendSuccessfulEmail(req).failed.futureValue
     }
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,17 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models
+package uk.gov.hmrc.constructionindustryscheme.models.requests
 
-final case class SuccessEmailParams(to: String, monthYear: String)
+import play.api.libs.json.{Json, OFormat}
+
+case class SelectedSubcontractorsRequest(
+  instanceId: String,
+  taxYear: Int,
+  taxMonth: Int,
+  selectedSubcontractorIds: Seq[Long]
+)
+
+object SelectedSubcontractorsRequest {
+  given format: OFormat[SelectedSubcontractorsRequest] = Json.format[SelectedSubcontractorsRequest]
+}

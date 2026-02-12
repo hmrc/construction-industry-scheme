@@ -21,16 +21,15 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
-import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, FORBIDDEN, INTERNAL_SERVER_ERROR, NOT_FOUND, OK}
 import play.api.libs.json.Json
 import play.api.mvc.Result
-import play.api.test.Helpers.{contentAsJson, status}
+import play.api.test.FakeRequest
+import play.api.test.Helpers.*
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController
-import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.MonthlyReturnRequest
+import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, GetMonthlyReturnForEditResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
@@ -551,74 +550,174 @@ class MonthlyReturnsControllerSpec extends SpecBase {
       }
     }
 
-    "POST /cis/monthly-returns/edit (getMonthlyReturnForEdit)" - {
+    "POST /cis/monthly-returns/nil (createNil)" - {
 
-      "return 200 with all monthly return details" in new SetupAuthOnly {
-        val payload = GetMonthlyReturnForEditRequest(instanceId = "INSTANCE-123", taxYear = 2025, taxMonth = 1)
+      "return 200 with monthly return when service succeeds" in new SetupAuthOnly {
+        val expectedResponse = CreateNilMonthlyReturnResponse("STARTED")
+        when(mockMonthlyReturnService.createNilMonthlyReturn(any[NilMonthlyReturnRequest])(any[HeaderCarrier]))
+          .thenReturn(Future.successful(expectedResponse))
 
-        val result = controller.getMonthlyReturnForEdit()(fakeRequest.withBody(Json.toJson(payload)))
+        val payload                = NilMonthlyReturnRequest("CIS-123", 2024, 3, "Y", "Y")
+        val result: Future[Result] = controller.createNil()(fakeRequest.withBody(Json.toJson(payload)))
 
-        status(result) mustBe OK
-        val json = contentAsJson(result)
-        (json \ "scheme").as[Seq[play.api.libs.json.JsValue]]             must not be empty
-        (json \ "monthlyReturn").as[Seq[play.api.libs.json.JsValue]]      must not be empty
-        (json \ "subcontractors").as[Seq[play.api.libs.json.JsValue]]     must not be empty
-        (json \ "monthlyReturnItems").as[Seq[play.api.libs.json.JsValue]] must not be empty
-        (json \ "submission").as[Seq[play.api.libs.json.JsValue]]         must not be empty
+        status(result) mustBe CREATED
+        contentAsJson(result) mustBe Json.toJson(expectedResponse)
+        verify(mockMonthlyReturnService).createNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
       }
 
-      "return 200 with empty subcontractors, monthlyReturnItems and submission when instanceId is 0" in new SetupAuthOnly {
-        val payload = GetMonthlyReturnForEditRequest(instanceId = "0", taxYear = 2025, taxMonth = 1)
-
-        val result = controller.getMonthlyReturnForEdit()(fakeRequest.withBody(Json.toJson(payload)))
-
-        status(result) mustBe OK
-        val json = contentAsJson(result)
-        (json \ "scheme").as[Seq[play.api.libs.json.JsValue]]        must not be empty
-        (json \ "monthlyReturn").as[Seq[play.api.libs.json.JsValue]] must not be empty
-        (json \ "subcontractors").as[Seq[play.api.libs.json.JsValue]] mustBe empty
-        (json \ "monthlyReturnItems").as[Seq[play.api.libs.json.JsValue]] mustBe empty
-        (json \ "submission").as[Seq[play.api.libs.json.JsValue]] mustBe empty
-      }
-
-      "return 400 on invalid json payload" in new SetupAuthOnly {
-        val result = controller.getMonthlyReturnForEdit()(fakeRequest.withBody(Json.obj("bad" -> "json")))
-
+      "return 400 on invalid json" in new SetupAuthOnly {
+        val result: Future[Result] = controller.createNil()(fakeRequest.withBody(Json.obj("bad" -> "json")))
         status(result) mustBe BAD_REQUEST
-        (contentAsJson(result) \ "message").as[String] mustBe "Invalid payload"
+      }
+
+      "propagate UpstreamErrorResponse status" in new SetupAuthOnly {
+        when(mockMonthlyReturnService.createNilMonthlyReturn(any[NilMonthlyReturnRequest])(any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("boom", BAD_GATEWAY)))
+
+        val payload                = NilMonthlyReturnRequest("CIS-123", 2024, 3, "Y", "Y")
+        val result: Future[Result] = controller.createNil()(fakeRequest.withBody(Json.toJson(payload)))
+
+        status(result) mustBe BAD_GATEWAY
       }
     }
-  }
 
-  "POST /cis/monthly-returns/nil (createNil)" - {
+    "getMonthlyReturnForEdit" - {
 
-    "return 200 with monthly return when service succeeds" in new SetupAuthOnly {
-      val expectedResponse = CreateNilMonthlyReturnResponse("STARTED")
-      when(mockMonthlyReturnService.createNilMonthlyReturn(any[NilMonthlyReturnRequest])(any[HeaderCarrier]))
-        .thenReturn(Future.successful(expectedResponse))
+      "returns 200 with json payload when service succeeds" in new SetupWithEnrolmentReference {
 
-      val payload                = NilMonthlyReturnRequest("CIS-123", 2024, 3, "Y", "Y")
-      val result: Future[Result] = controller.createNil()(fakeRequest.withBody(Json.toJson(payload)))
+        val reqBody = GetMonthlyReturnForEditRequest("abc-123", 2025, 1)
 
-      status(result) mustBe CREATED
-      contentAsJson(result) mustBe Json.toJson(expectedResponse)
-      verify(mockMonthlyReturnService).createNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+        val payload = GetMonthlyReturnForEditResponse(
+          scheme = Seq.empty,
+          monthlyReturn = Seq.empty,
+          subcontractors = Seq.empty,
+          monthlyReturnItems = Seq.empty,
+          submission = Seq.empty
+        )
+
+        when(mockMonthlyReturnService.getMonthlyReturnForEdit(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(payload))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.getMonthlyReturnForEdit, request)
+
+        status(result) mustBe OK
+        contentAsJson(result) mustBe Json.toJson(payload)
+      }
+
+      "returns upstream status + message when service fails with UpstreamErrorResponse" in new SetupWithEnrolmentReference {
+
+        val reqBody = GetMonthlyReturnForEditRequest("abc-123", 2025, 1)
+        val boom    = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
+
+        when(mockMonthlyReturnService.getMonthlyReturnForEdit(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(boom))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.getMonthlyReturnForEdit, request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
+      }
+
+      "returns 500 with Unexpected error when service fails with NonFatal" in new SetupWithEnrolmentReference {
+
+        val reqBody = GetMonthlyReturnForEditRequest("abc-123", 2025, 1)
+
+        when(mockMonthlyReturnService.getMonthlyReturnForEdit(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("boom")))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.getMonthlyReturnForEdit, request)
+
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        contentAsJson(result) mustBe Json.obj("message" -> "Unexpected error")
+      }
     }
 
-    "return 400 on invalid json" in new SetupAuthOnly {
-      val result: Future[Result] = controller.createNil()(fakeRequest.withBody(Json.obj("bad" -> "json")))
-      status(result) mustBe BAD_REQUEST
+    "POST /monthly-return-item/sync (syncSelectedSubcontractors)" - {
+
+      "return 204 NoContent when service succeeds" in new SetupAuthOnly {
+        val reqBody = SelectedSubcontractorsRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          selectedSubcontractorIds = Seq(1L, 2L, 3L)
+        )
+
+        when(mockMonthlyReturnService.syncMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(()))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.syncSelectedSubcontractors, request)
+
+        status(result) mustBe NO_CONTENT
+        verify(mockMonthlyReturnService).syncMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier])
+      }
+
+      "return upstream status + message when service fails with UpstreamErrorResponse" in new SetupAuthOnly {
+        val reqBody = SelectedSubcontractorsRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          selectedSubcontractorIds = Seq(1L)
+        )
+
+        val boom = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
+
+        when(mockMonthlyReturnService.syncMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(boom))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.syncSelectedSubcontractors, request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
+      }
+
+      "return 502 BadGateway with fixed message when service fails with NonFatal" in new SetupAuthOnly {
+        val reqBody = SelectedSubcontractorsRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          selectedSubcontractorIds = Seq(1L)
+        )
+
+        when(mockMonthlyReturnService.syncMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("boom")))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.syncSelectedSubcontractors, request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "sync-selected-subcontractors-failed")
+      }
     }
 
-    "propagate UpstreamErrorResponse status" in new SetupAuthOnly {
-      when(mockMonthlyReturnService.createNilMonthlyReturn(any[NilMonthlyReturnRequest])(any[HeaderCarrier]))
-        .thenReturn(Future.failed(UpstreamErrorResponse("boom", BAD_GATEWAY)))
-
-      val payload                = NilMonthlyReturnRequest("CIS-123", 2024, 3, "Y", "Y")
-      val result: Future[Result] = controller.createNil()(fakeRequest.withBody(Json.toJson(payload)))
-
-      status(result) mustBe BAD_GATEWAY
-    }
   }
 
   private lazy val sampleWrapper: UserMonthlyReturns = UserMonthlyReturns(

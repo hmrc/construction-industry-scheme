@@ -103,7 +103,7 @@ class FormpProxyConnectorIntegrationSpec
       val respJson = Json.obj("status" -> "STARTED")
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/monthly-return/nil/create"))
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/create"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(200).withBody(respJson.toString()))
@@ -117,13 +117,49 @@ class FormpProxyConnectorIntegrationSpec
       val req = NilMonthlyReturnRequest(instanceId, 2025, 2, "Y", "Y")
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/monthly-return/nil/create"))
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/create"))
           .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(500).withBody("""{ "message": "boom" }"""))
       )
 
       val ex = intercept[Throwable](connector.createNilMonthlyReturn(req).futureValue)
       ex.getMessage.toLowerCase must include("500")
+    }
+  }
+
+  "FormpProxyConnector updateNilMonthlyReturn" should {
+
+    "POST request and return Unit on 2xx" in {
+      val req = NilMonthlyReturnRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 2,
+        decInformationCorrect = "Y",
+        decNilReturnNoPayments = "Y"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/update"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
+          .willReturn(aResponse().withStatus(204))
+      )
+
+      connector.updateNilMonthlyReturn(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-2xx" in {
+      val req = NilMonthlyReturnRequest(instanceId, 2025, 2, "Y", "Y")
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/update"))
+          .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.updateNilMonthlyReturn(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
 
@@ -605,6 +641,57 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector getMonthlyReturnForEdit" should {
+
+    "POST request to /formp-proxy/cis/monthly-return-edit and return payload (200)" in {
+      val req = GetMonthlyReturnForEditRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 7
+      )
+
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "scheme": [],
+           |  "monthlyReturn": [],
+           |  "monthlyReturnItems": [],
+           |  "subcontractors": [],
+           |  "submission": []
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-edit"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.getMonthlyReturnForEdit(req).futureValue
+      Json.toJson(out) mustBe responseJson
+    }
+
+    "fail the future when upstream returns non-2xx (e.g. 500)" in {
+      val req = GetMonthlyReturnForEditRequest(instanceId = instanceId, taxYear = 2025, taxMonth = 7)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-edit"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.getMonthlyReturnForEdit(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
   "FormpProxyConnector getSubcontractorUTRs" should {
 
     val cisId = "cis-123"
@@ -706,6 +793,50 @@ class FormpProxyConnectorIntegrationSpec
       val ex = connector.getSubcontractorUTRs(cisId).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 502
+    }
+  }
+
+  "FormpProxyConnector syncMonthlyReturnItems" should {
+
+    "POST /formp-proxy/cis/monthly-return-item/sync and return Unit on 204" in {
+      val req = SyncMonthlyReturnItemsRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        createResourceReferences = Seq(5L, 6L),
+        deleteResourceReferences = Seq(1L, 2L)
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-item/sync"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(204))
+      )
+
+      connector.syncMonthlyReturnItems(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-204 (e.g. 500)" in {
+      val req = SyncMonthlyReturnItemsRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        createResourceReferences = Seq(5L),
+        deleteResourceReferences = Seq.empty
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-item/sync"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = connector.syncMonthlyReturnItems(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
 

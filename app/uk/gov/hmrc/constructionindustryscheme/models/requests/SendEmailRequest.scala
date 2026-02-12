@@ -24,9 +24,7 @@ sealed trait SendEmailRequest {
   def parameters: Map[String, String]
 }
 
-object SendEmailRequest {
-  implicit val format: OFormat[SendEmailRequest] = Json.format[SendEmailRequest]
-}
+object SendEmailRequest {}
 
 final case class NilMonthlyReturnOrgSuccessEmail(
   to: List[String],

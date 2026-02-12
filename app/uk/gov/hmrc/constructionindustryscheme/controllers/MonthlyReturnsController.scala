@@ -20,9 +20,8 @@ import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
-import uk.gov.hmrc.constructionindustryscheme.models.response.GetAllMonthlyReturnDetailsResponse
-import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, EmployerReference, MonthlyReturn, MonthlyReturnItem, NilMonthlyReturnRequest, Subcontractor, Submission}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, SelectedSubcontractorsRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, NilMonthlyReturnRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.MonthlyReturnRequest
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
@@ -33,7 +32,6 @@ import uk.gov.hmrc.play.http.HeaderCarrierConverter
 import scala.concurrent.{ExecutionContext, Future}
 import javax.inject.Inject
 import scala.util.control.NonFatal
-import java.time.{Instant, LocalDateTime}
 
 class MonthlyReturnsController @Inject() (
   authorise: AuthAction,
@@ -155,6 +153,7 @@ class MonthlyReturnsController @Inject() (
   }
 
   def createNil(): Action[JsValue] = authorise.async(parse.json) { implicit request =>
+    given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
     request.body
       .validate[NilMonthlyReturnRequest]
       .fold(
@@ -163,6 +162,20 @@ class MonthlyReturnsController @Inject() (
           service
             .createNilMonthlyReturn(payload)
             .map(monthlyReturn => Created(Json.toJson(monthlyReturn)))
+            .recover { case u: UpstreamErrorResponse => Status(u.statusCode)(Json.obj("message" -> u.message)) }
+      )
+  }
+
+  def updateNil(): Action[JsValue] = authorise.async(parse.json) { implicit request =>
+    given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
+    request.body
+      .validate[NilMonthlyReturnRequest]
+      .fold(
+        _ => Future.successful(BadRequest(Json.obj("message" -> "Invalid payload"))),
+        payload =>
+          service
+            .updateNilMonthlyReturn(payload)
+            .map(_ => NoContent)
             .recover { case u: UpstreamErrorResponse => Status(u.statusCode)(Json.obj("message" -> u.message)) }
       )
   }
@@ -194,148 +207,32 @@ class MonthlyReturnsController @Inject() (
       }
   }
 
-  def getMonthlyReturnForEdit: Action[JsValue] = authorise.async(parse.json) { implicit request =>
-    request.body
-      .validate[GetMonthlyReturnForEditRequest]
-      .fold(
-        _ => Future.successful(BadRequest(Json.obj("message" -> "Invalid payload"))),
-        editRequest => {
-
-          val subcontractor = Subcontractor(
-            subcontractorId = 1L,
-            utr = Some("9876543210"),
-            pageVisited = Some(1),
-            partnerUtr = None,
-            crn = None,
-            firstName = Some("John"),
-            nino = Some("AB123456C"),
-            secondName = None,
-            surname = Some("Smith"),
-            partnershipTradingName = None,
-            tradingName = Some("Smith Construction"),
-            subcontractorType = Some("SOLE_TRADER"),
-            addressLine1 = Some("123 Main Street"),
-            addressLine2 = Some("Business Park"),
-            addressLine3 = None,
-            addressLine4 = None,
-            country = Some("GB"),
-            postCode = Some("AB12 3CD"),
-            emailAddress = Some("john.smith@example.com"),
-            phoneNumber = Some("01onal234567890"),
-            mobilePhoneNumber = None,
-            worksReferenceNumber = Some("WRN001"),
-            createDate = Some(LocalDateTime.now()),
-            lastUpdate = Some(LocalDateTime.now()),
-            subbieResourceRef = Some(1L),
-            matched = Some("Y"),
-            autoVerified = Some("N"),
-            verified = Some("Y"),
-            verificationNumber = Some("V1234567890"),
-            taxTreatment = Some("GROSS"),
-            verificationDate = Some(LocalDateTime.now()),
-            version = Some(1),
-            updatedTaxTreatment = None,
-            lastMonthlyReturnDate = None,
-            pendingVerifications = Some(0)
-          )
-
-          Future.successful(
-            Ok(
-              Json.toJson(
-                GetAllMonthlyReturnDetailsResponse(
-                  scheme = Seq(
-                    ContractorScheme(
-                      schemeId = 1,
-                      instanceId = editRequest.instanceId,
-                      accountsOfficeReference = "123PX00123456",
-                      taxOfficeNumber = "123",
-                      taxOfficeReference = "PX00123456",
-                      utr = Some("1234567890"),
-                      name = Some("Test Contractor Ltd"),
-                      emailAddress = Some("test@example.com"),
-                      displayWelcomePage = Some("N"),
-                      prePopCount = Some(0),
-                      prePopSuccessful = Some("N"),
-                      subcontractorCounter = Some(1),
-                      verificationBatchCounter = Some(1),
-                      lastUpdate = Some(Instant.now()),
-                      version = Some(1)
-                    )
-                  ),
-                  monthlyReturn = Seq(
-                    MonthlyReturn(
-                      monthlyReturnId = 1L,
-                      taxYear = editRequest.taxYear,
-                      taxMonth = editRequest.taxMonth,
-                      nilReturnIndicator = Some("N"),
-                      decEmpStatusConsidered = Some("Y"),
-                      decAllSubsVerified = Some("Y"),
-                      decInformationCorrect = Some("Y"),
-                      decNoMoreSubPayments = Some("Y"),
-                      decNilReturnNoPayments = Some("N"),
-                      status = Some("Draft"),
-                      lastUpdate = Some(LocalDateTime.now()),
-                      amendment = Some("N"),
-                      supersededBy = None
-                    )
-                  ),
-                  subcontractors =
-                    if (editRequest.instanceId == "0") Nil
-                    else
-                      Seq(
-                        subcontractor.copy(tradingName = Some("Alice, A")),
-                        subcontractor.copy(tradingName = Some("Bob, B")),
-                        subcontractor.copy(tradingName = Some("Charles, C")),
-                        subcontractor.copy(tradingName = Some("Dave, D")),
-                        subcontractor.copy(tradingName = Some("Elise, E")),
-                        subcontractor.copy(tradingName = Some("Frank, F"))
-                      ),
-                  monthlyReturnItems =
-                    if (editRequest.instanceId == "0") Nil
-                    else
-                      Seq(
-                        MonthlyReturnItem(
-                          monthlyReturnId = 1L,
-                          monthlyReturnItemId = 1L,
-                          totalPayments = Some("5000.00"),
-                          costOfMaterials = Some("1000.00"),
-                          totalDeducted = Some("800.00"),
-                          unmatchedTaxRateIndicator = None,
-                          subcontractorId = Some(1L),
-                          subcontractorName = Some("John Smith"),
-                          verificationNumber = Some("V1234567890"),
-                          itemResourceReference = Some(1L)
-                        )
-                      ),
-                  submission =
-                    if (editRequest.instanceId == "0") Nil
-                    else
-                      Seq(
-                        Submission(
-                          submissionId = 1L,
-                          submissionType = "MONTHLY_RETURN",
-                          activeObjectId = Some(1L),
-                          status = Some("DRAFT"),
-                          hmrcMarkGenerated = None,
-                          hmrcMarkGgis = None,
-                          emailRecipient = Some("test@example.com"),
-                          acceptedTime = None,
-                          createDate = Some(LocalDateTime.now()),
-                          lastUpdate = Some(LocalDateTime.now()),
-                          schemeId = 1L,
-                          agentId = None,
-                          l_Migrated = None,
-                          submissionRequestDate = None,
-                          govTalkErrorCode = None,
-                          govTalkErrorType = None,
-                          govTalkErrorMessage = None
-                        )
-                      )
-                )
-              )
-            )
-          )
+  def getMonthlyReturnForEdit: Action[GetMonthlyReturnForEditRequest] =
+    authorise.async(parse.json[GetMonthlyReturnForEditRequest]) { implicit request =>
+      service
+        .getMonthlyReturnForEdit(request.body)
+        .map(payload => Ok(Json.toJson(payload)))
+        .recover {
+          case u: UpstreamErrorResponse =>
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t)              =>
+            logger.error("[getMonthlyReturnForEdit] failed", t)
+            InternalServerError(Json.obj("message" -> "Unexpected error"))
         }
-      )
-  }
+    }
+
+  def syncSelectedSubcontractors: Action[SelectedSubcontractorsRequest] =
+    authorise.async(parse.json[SelectedSubcontractorsRequest]) { implicit request =>
+      service
+        .syncMonthlyReturnItems(request.body)
+        .map(_ => NoContent)
+        .recover {
+          case u: UpstreamErrorResponse =>
+            logger.error("[syncSelectedSubcontractors] formp-proxy sync failed", u)
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t)              =>
+            logger.error("[syncSelectedSubcontractors] formp-proxy sync failed", t)
+            BadGateway(Json.obj("message" -> "sync-selected-subcontractors-failed"))
+        }
+    }
 }
