@@ -42,7 +42,10 @@ class SubmissionControllerIntegrationSpec
     "informationCorrect" -> "yes",
     "inactivity" -> "yes",
     "monthYear" -> "2025-09",
-    "email" -> "test@test.com"
+    "email" -> "test@test.com",
+    "isAgent"               -> false,
+    "clientTaxOfficeNumber" -> "",
+    "clientTaxOfficeRef"    -> ""
   )
 
   private val createUrl = s"$base/submissions/create"

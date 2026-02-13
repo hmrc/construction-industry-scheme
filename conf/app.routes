@@ -28,3 +28,8 @@ POST       /scheme/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId 
 POST       /subcontractor/create                                         uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.createSubcontractor()
 POST       /subcontractor/update                                         uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.updateSubcontractor()
 GET        /subcontractors/utr/:cisId                                    uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractorUTRs(cisId: String)
+
+# user answers caching in mongo
+GET           /user-cache/agent-client/:id                            uk.gov.hmrc.constructionindustryscheme.controllers.AgentClientController.get(id: String)
+POST          /user-cache/agent-client/:id                            uk.gov.hmrc.constructionindustryscheme.controllers.AgentClientController.save(id: String)
+DELETE        /user-cache/agent-client/:id                            uk.gov.hmrc.constructionindustryscheme.controllers.AgentClientController.remove(id: String)

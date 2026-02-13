@@ -41,12 +41,16 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
     val gatewayTimestamp = LocalDateTime.now(ZoneOffset.UTC).format(gatewayTimestampFormatter)
 
     val (taxOfficeNumber, taxOfficeReference) =
-      extractTaxOfficeFromCisEnrolment(authRequest.enrolments)
-        .getOrElse(
-          throw new IllegalStateException(
-            "Missing CIS enrolment identifiers (TaxOfficeNumber/TaxOfficeReference) in HMRC-CIS-ORG"
+      if (!request.isAgent) {
+        extractTaxOfficeFromCisEnrolment(authRequest.enrolments)
+          .getOrElse(
+            throw new IllegalStateException(
+              "Missing CIS enrolment identifiers (TaxOfficeNumber/TaxOfficeReference) in HMRC-CIS-ORG"
+            )
           )
-        )
+      } else {
+        (request.clientTaxOfficeNumber, request.clientTaxOfficeRef)
+      }
 
     val periodEnd = parsePeriodEnd(request.monthYear)
 
