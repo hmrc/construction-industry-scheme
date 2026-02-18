@@ -39,48 +39,59 @@ class SubcontractorControllerIntegrationSpec
     "return 204 when FormP succeeds" in {
       AuthStub.authorisedWithCisEnrolment()
 
+      val payload =
+        Json.parse(
+          """{
+            |  "cisId": "1234567890",
+            |  "subcontractorType": "soletrader",
+            |  "utr": "1234567890",
+            |  "nino": "AA123456A",
+            |  "tradingName": "ACME",
+            |  "addressLine1": "1 Main Street",
+            |  "city": "London",
+            |  "county": "Greater London",
+            |  "postcode": "AA1 1AA"
+            |}""".stripMargin
+        )
+
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
-          .withRequestBody(
-            equalToJson(
-              """{
-                |  "cisId": "1234567890",
-                |  "subcontractorType": "soletrader",
-                |  "firstName": "John",
-                |  "surname": "Smith",
-                |  "nino": "AA123456A",
-                |  "utr": "1234567890"
-                |}""".stripMargin,
-              true,
-              true
-            )
-          )
+          .withRequestBody(equalToJson(payload.toString(), true, true))
           .willReturn(aResponse().withStatus(NO_CONTENT))
       )
 
       val resp = postJson(
         createAndUpdateSubcontractorUrl,
-        Json.parse(
-          """{
-            |  "cisId": "1234567890",
-            |  "subcontractorType": "soletrader",
-            |  "firstName": "John",
-            |  "surname": "Smith",
-            |  "nino": "AA123456A",
-            |  "utr": "1234567890"
-            |}""".stripMargin
-        ),
+        payload,
         "X-Session-Id"  -> "Session-123",
         "Authorization" -> "Bearer it-token"
       )
 
       resp.status mustBe NO_CONTENT
 
-      verify(postRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update")))
+      verify(
+        postRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
+          .withRequestBody(equalToJson(payload.toString(), true, true))
+      )
     }
 
     "bubble up error when FormP fails" in {
       AuthStub.authorisedWithCisEnrolment()
+
+      val payload =
+        Json.parse(
+          """{
+            |  "cisId": "1234567890",
+            |  "subcontractorType": "soletrader",
+            |  "utr": "1234567890",
+            |  "nino": "AA123456A",
+            |  "tradingName": "ACME",
+            |  "addressLine1": "1 Main Street",
+            |  "city": "London",
+            |  "county": "Greater London",
+            |  "postcode": "AA1 1AA"
+            |}""".stripMargin
+        )
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
@@ -89,16 +100,7 @@ class SubcontractorControllerIntegrationSpec
 
       val resp = postJson(
         createAndUpdateSubcontractorUrl,
-        Json.parse(
-          """{
-            |  "cisId": "1234567890",
-            |  "subcontractorType": "soletrader",
-            |  "firstName": "John",
-            |  "surname": "Smith",
-            |  "nino": "AA123456A",
-            |  "utr": "1234567890"
-            |}""".stripMargin
-        ),
+        payload,
         "X-Session-Id"  -> "Session-123",
         "Authorization" -> "Bearer it-token"
       )

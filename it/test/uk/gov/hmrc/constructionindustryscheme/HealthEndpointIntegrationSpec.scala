@@ -26,12 +26,12 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.ws.WSClient
 
 class HealthEndpointIntegrationSpec
-  extends AnyWordSpec
-     with Matchers
-     with ScalaFutures
-     with IntegrationPatience
-     with GuiceOneServerPerSuite
-     with ApplicationWithWiremock:
+    extends AnyWordSpec
+    with Matchers
+    with ScalaFutures
+    with IntegrationPatience
+    with GuiceOneServerPerSuite
+    with ApplicationWithWiremock:
 
   private val wsClient = app.injector.instanceOf[WSClient]
   private val baseUrl  = s"http://localhost:$port"
@@ -40,12 +40,11 @@ class HealthEndpointIntegrationSpec
     GuiceApplicationBuilder()
       .build()
 
-  "service health endpoint" should:
-    "respond with 200 status" in:
-      val response =
-        wsClient
-          .url(s"$baseUrl/ping/ping")
-          .get()
-          .futureValue
+  "service health endpoint" should: "respond with 200 status" in:
+  val response =
+    wsClient
+      .url(s"$baseUrl/ping/ping")
+      .get()
+      .futureValue
 
-      response.status shouldBe 200
+  response.status shouldBe 200
