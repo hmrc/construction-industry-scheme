@@ -24,21 +24,15 @@ import play.api.libs.json.*
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-case class AgentClientData(id: String, data: String, lastUpdated: Instant)
-object AgentClientDataFormats {
-  given dateFormat: Format[Instant]     = uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats.instantFormat
-  given format: Format[AgentClientData] = Json.format[AgentClientData]
-}
-
 class AgentClientDataFormatsSpec extends SpecBase {
   import AgentClientDataFormats.given
 
   "AgentClientData serializes to JSON" in {
     val now = Instant.parse("2024-10-01T12:34:56.789Z")
-    val agentClientData = AgentClientData("abc123", "xyz-data", now)
+    val agentClientData = AgentClientData("123", "xyz-data", now)
 
     val json = Json.toJson(agentClientData)
-    (json \ "id").as[String] shouldBe "abc123"
+    (json \ "id").as[String] shouldBe "123"
     (json \ "data").as[String] shouldBe "xyz-data"
     (json \ "lastUpdated").as[Instant] shouldBe now
   }

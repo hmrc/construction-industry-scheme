@@ -30,7 +30,6 @@ import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 
 import java.time.Instant
-import scala.concurrent.ExecutionContext.Implicits.global
 
 class AgentClientRepositorySpec
   extends SpecBase

@@ -128,7 +128,7 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
     (updatedXML, irEnvelope)
   }
 
-  private def extractTaxOfficeFromCisEnrolment(enrolments: Enrolments): Option[(String, String)] =
+  def extractTaxOfficeFromCisEnrolment(enrolments: Enrolments): Option[(String, String)] =
     enrolments
       .getEnrolment("HMRC-CIS-ORG")
       .flatMap { e =>
@@ -138,7 +138,7 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
         } yield (ton.value, tor.value)
       }
 
-  private def parsePeriodEnd(monthYear: String): String = {
+  def parsePeriodEnd(monthYear: String): String = {
     val ymTry =
       Try(YearMonth.parse(monthYear))
         .orElse(Try(YearMonth.parse(monthYear.replace('/', '-'))))

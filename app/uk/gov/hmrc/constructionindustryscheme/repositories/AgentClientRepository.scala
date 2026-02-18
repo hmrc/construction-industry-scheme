@@ -51,7 +51,7 @@ class AgentClientRepository @Inject() (
           Indexes.ascending(lastUpdatedKey),
           IndexOptions()
             .name("lastUpdatedIndex")
-            .expireAfter(900, TimeUnit.SECONDS)
+            .expireAfter(config.cacheTtl, TimeUnit.SECONDS)
         ),
         IndexModel(
           Indexes.ascending("id"),

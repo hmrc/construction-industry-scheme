@@ -47,8 +47,8 @@ class AppConfig @Inject() (val config: Configuration, val environment: Environme
 
   lazy val schema: Schema = SchemaLoader.loadSchemas(schemaNames, environment)
 
-  val defaultDataExpireInSeconds: Long = config.get[Long]("defaultDataExpireInSeconds")
-  val agentClientCryptoKey: String     = config.get[String]("agentClientCrypto.key")
-  val cryptoToggle: Boolean            = config.get[Boolean]("encryptionToggle")
+  lazy val cacheTtl: Long          = config.get[Int]("mongodb.timeToLiveInSeconds")
+  val agentClientCryptoKey: String = config.get[String]("agentClientCrypto.key")
+  val cryptoToggle: Boolean        = config.get[Boolean]("encryptionToggle")
 
 }
