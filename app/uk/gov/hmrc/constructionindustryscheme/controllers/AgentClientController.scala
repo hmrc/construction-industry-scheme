@@ -37,7 +37,7 @@ class AgentClientController @Inject() (
   def save(id: String): Action[AnyContent] = authenticate.async { request =>
     request.body.asJson.map { jsValue =>
       repository.upsert(id, jsValue).map(_ => Ok)
-    } getOrElse Future.successful(EntityTooLarge)
+    } getOrElse Future.successful(BadRequest("Cannot parse json"))
   }
 
   def get(id: String): Action[AnyContent] = authenticate.async { _ =>

@@ -76,7 +76,7 @@ class AgentClientControllerSpec extends SpecBase {
         FakeRequest(POST, routes.AgentClientController.save("id").url).withRawBody(ByteString(nextBytes(512001)))
       val result: Future[Result]                = route(application, request).value
 
-      status(result) mustBe REQUEST_ENTITY_TOO_LARGE
+      status(result) mustBe BAD_REQUEST
 
     }
   }
