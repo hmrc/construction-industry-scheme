@@ -20,7 +20,7 @@ import play.api.Logging
 import play.api.libs.json.{JsError, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubcontractorRequest, UpdateSubcontractorRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -35,36 +35,19 @@ class SubcontractorController @Inject() (
     extends BackendController(cc)
     with Logging {
 
-  def createSubcontractor(): Action[JsValue] =
+  def createAndUpdateSubcontractor(): Action[JsValue] =
     authorise(parse.json).async { implicit request =>
       request.body
-        .validate[CreateSubcontractorRequest]
+        .validate[CreateAndUpdateSubcontractorRequest]
         .fold(
           errs => Future.successful(BadRequest(JsError.toJson(errs))),
           request =>
             subcontractorService
-              .createSubcontractor(request)
-              .map(subbieResourceRef => Created(Json.obj("subbieResourceRef" -> subbieResourceRef)))
-              .recover { case ex =>
-                logger.error("[create] formp-proxy create failed", ex)
-                BadGateway(Json.obj("message" -> "create-subcontractor-failed"))
-              }
-        )
-    }
-
-  def updateSubcontractor(): Action[JsValue] =
-    authorise(parse.json).async { implicit request =>
-      request.body
-        .validate[UpdateSubcontractorRequest]
-        .fold(
-          errs => Future.successful(BadRequest(JsError.toJson(errs))),
-          request =>
-            subcontractorService
-              .updateSubcontractor(request)
+              .createAndUpdateSubcontractor(request)
               .map(resp => NoContent)
               .recover { case ex =>
-                logger.error("[update] formp-proxy create failed", ex)
-                BadGateway(Json.obj("message" -> "update-subcontractor-failed"))
+                logger.error("[createAndUpdateSubcontractor] formp-proxy create failed", ex)
+                BadGateway(Json.obj("message" -> "create-and-update-subcontractor-failed"))
               }
         )
     }

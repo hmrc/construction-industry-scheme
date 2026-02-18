@@ -17,9 +17,6 @@
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
 import play.api.http.Status.{NOT_FOUND, NO_CONTENT}
-
-import javax.inject.*
-import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
@@ -28,6 +25,9 @@ import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
+
+import javax.inject.*
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class FormpProxyConnector @Inject() (
@@ -139,13 +139,6 @@ class FormpProxyConnector @Inject() (
       .execute[JsValue]
       .map(json => (json \ "version").as[Int])
 
-  def createSubcontractor(req: CreateSubcontractorRequest)(implicit hc: HeaderCarrier): Future[Int] =
-    http
-      .post(url"$base/cis/subcontractor/create")
-      .withBody(Json.toJson(req))
-      .execute[JsValue]
-      .map(json => (json \ "subbieResourceRef").as[Int])
-
   def applyPrepopulation(req: ApplyPrepopulationRequest)(implicit hc: HeaderCarrier): Future[Int] =
     http
       .post(url"$base/scheme/prepopulate")
@@ -159,9 +152,11 @@ class FormpProxyConnector @Inject() (
       .withBody(Json.obj("instanceId" -> instanceId))
       .execute[UnsubmittedMonthlyReturns]
 
-  def updateSubcontractor(request: UpdateSubcontractorRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+  def createAndUpdateSubcontractor(
+    request: CreateAndUpdateSubcontractorRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
     http
-      .post(url"$base/cis/subcontractor/update")
+      .post(url"$base/cis/subcontractor/create-and-update")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>

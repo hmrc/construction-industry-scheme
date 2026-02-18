@@ -24,6 +24,6 @@ import java.time.Instant
 case class JsonDataEntry(id: String, data: JsValue, lastUpdated: Instant)
 
 object JsonDataEntry {
-  given dateFormat: Format[Instant]       = MongoJavatimeFormats.instantFormat
-  given format:     Format[JsonDataEntry] = Json.format[JsonDataEntry]
+  given dateFormat: Format[Instant]   = MongoJavatimeFormats.instantFormat
+  given format: Format[JsonDataEntry] = Json.format[JsonDataEntry]
 }

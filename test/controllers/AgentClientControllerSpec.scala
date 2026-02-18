@@ -39,8 +39,8 @@ import scala.util.Random.nextBytes
 class AgentClientControllerSpec extends SpecBase {
   val credId = "cred-123"
 
-  private val mockedCache = mock[AgentClientRepository]
-  val mockAuthAction: AuthAction = FakeAuthAction.withEnrolments(Set.empty, bodyParsers, Some(credId))
+  private val mockedCache              = mock[AgentClientRepository]
+  val mockAuthAction: AuthAction       = FakeAuthAction.withEnrolments(Set.empty, bodyParsers, Some(credId))
   val mockAuthConnector: AuthConnector = mock[AuthConnector]
 
   trait Setup {
@@ -62,10 +62,11 @@ class AgentClientControllerSpec extends SpecBase {
 
   "save" - {
     "return 200 when request is saved successfully" in new Setup {
-      when(mockedCache.upsert(any[String](), any[JsValue]())(using any[ExecutionContext]())).thenReturn(Future.successful((): Unit))
+      when(mockedCache.upsert(any[String](), any[JsValue]())(using any[ExecutionContext]()))
+        .thenReturn(Future.successful((): Unit))
       val request: FakeRequest[AnyContentAsJson] =
         FakeRequest(POST, routes.AgentClientController.save("id").url).withJsonBody(Json.obj("abc" -> "def"))
-      val result: Future[Result] = route(application, request).value
+      val result: Future[Result]                 = route(application, request).value
       status(result) mustBe OK
     }
 
@@ -73,7 +74,7 @@ class AgentClientControllerSpec extends SpecBase {
 
       val request: FakeRequest[AnyContentAsRaw] =
         FakeRequest(POST, routes.AgentClientController.save("id").url).withRawBody(ByteString(nextBytes(512001)))
-      val result: Future[Result] = route(application, request).value
+      val result: Future[Result]                = route(application, request).value
 
       status(result) mustBe REQUEST_ENTITY_TOO_LARGE
 
@@ -82,10 +83,11 @@ class AgentClientControllerSpec extends SpecBase {
 
   "get" - {
     "return 200 when data exists" in new Setup {
-      val jsonObject: JsObject = Json.obj("hello" -> "goodbye")
-      when(mockedCache.get(any[String]())(using any[ExecutionContext]())).thenReturn(Future.successful(Some(jsonObject)))
+      val jsonObject: JsObject                         = Json.obj("hello" -> "goodbye")
+      when(mockedCache.get(any[String]())(using any[ExecutionContext]()))
+        .thenReturn(Future.successful(Some(jsonObject)))
       val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, routes.AgentClientController.get("id").url)
-      val result:  Future[Result]                      = route(application, request).value
+      val result: Future[Result]                       = route(application, request).value
 
       status(result) mustBe OK
       contentAsJson(result) mustBe jsonObject
@@ -94,7 +96,7 @@ class AgentClientControllerSpec extends SpecBase {
     "return NOT_FOUND when data exists" in new Setup {
       when(mockedCache.get(any[String]())(using any[ExecutionContext]())).thenReturn(Future.successful(None))
       val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, routes.AgentClientController.get("id").url)
-      val result:  Future[Result]                      = route(application, request).value
+      val result: Future[Result]                       = route(application, request).value
 
       status(result) mustBe NOT_FOUND
 
@@ -104,15 +106,17 @@ class AgentClientControllerSpec extends SpecBase {
   "remove" - {
     "return 200 when the record is removed successfully" in new Setup {
       when(mockedCache.remove(eqTo("id"))(using any[ExecutionContext]())) thenReturn Future.successful(true)
-      val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(DELETE, routes.AgentClientController.remove("id").url)
-      val result:  Future[Result]                      = route(application, request).value
+      val request: FakeRequest[AnyContentAsEmpty.type] =
+        FakeRequest(DELETE, routes.AgentClientController.remove("id").url)
+      val result: Future[Result]                       = route(application, request).value
       status(result) mustBe OK
     }
 
     "return InternalServerError if the record is not removed" in new Setup {
       when(mockedCache.remove(eqTo("id"))(using any[ExecutionContext]())) thenReturn Future.successful(false)
-      val request: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(DELETE, routes.AgentClientController.remove("id").url)
-      val result:  Future[Result]                      = route(application, request).value
+      val request: FakeRequest[AnyContentAsEmpty.type] =
+        FakeRequest(DELETE, routes.AgentClientController.remove("id").url)
+      val result: Future[Result]                       = route(application, request).value
       status(result) mustBe INTERNAL_SERVER_ERROR
     }
 

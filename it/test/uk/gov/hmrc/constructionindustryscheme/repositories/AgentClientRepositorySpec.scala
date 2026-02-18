@@ -16,14 +16,15 @@
 
 package uk.gov.hmrc.constructionindustryscheme.repositories
 
+import base.SpecBase
 import org.mongodb.scala.bson.BsonDocument
 import org.scalatest.OptionValues
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers.mustBe
-import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers.should
 import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.Json
+import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.crypto.{Crypted, Decrypter, Encrypter, SymmetricCryptoFactory}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
@@ -32,64 +33,126 @@ import java.time.Instant
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class AgentClientRepositorySpec
-    extends AnyWordSpec
+  extends SpecBase
     with DefaultPlayMongoRepositorySupport[AgentClientData]
     with ScalaFutures
     with IntegrationPatience
     with OptionValues {
 
-  private val app = GuiceApplicationBuilder()
-    .configure(
-      "encryptionToggle" -> "true"
-    )
-    .overrides(
-      bind[MongoComponent].toInstance(mongoComponent)
-    )
-    .build()
+  override protected val repository: AgentClientRepository = newRepository(false)
 
-  override protected val repository: AgentClientRepository =
+  private def newRepository(toggle: Boolean): AgentClientRepository = {
+    val app = GuiceApplicationBuilder()
+      .configure(
+        "encryptionToggle" -> toggle,
+        "agentClientCrypto.key" -> "Bk/WzqlUJk4/M279rO+BJYVtLkRq4lxH9Wn2A0k9lqo="
+      )
+      .overrides(
+        bind[MongoComponent].toInstance(mongoComponent)
+      )
+      .build()
     app.injector.instanceOf[AgentClientRepository]
+  }
 
-  private val cryptoKey = app.configuration.get[String]("agentClientCrypto.key")
-
+  private val userAnswersJson: JsValue =
+    Json.obj("uniqueId" -> 123, "taxOfficeNumber" -> 345, "taxOfficeReference" -> "AB123")
   private val userAnswersCache =
     AgentClientData(
       "id",
-      Json.toJson(("foo" -> "bar", "name" -> "steve", "address" -> "address1")).toString(),
+      userAnswersJson.toString(),
       Instant.now()
     )
 
-  "save" should {
-    "successfully save data" in {
-      repository.upsert(userAnswersCache.id, Json.parse(userAnswersCache.data)).futureValue
-      val result = repository.get(userAnswersCache.id).futureValue.value
-      result.toString mustBe userAnswersCache.data
+  "with crypto" - {
+    val repository = newRepository(true)
+    val cryptoKey = "Bk/WzqlUJk4/M279rO+BJYVtLkRq4lxH9Wn2A0k9lqo="
+    val crypto: Encrypter with Decrypter = SymmetricCryptoFactory.aesGcmCrypto(cryptoKey)
+
+    "upsert" - {
+      "successfully save and retrieve data" in {
+        repository.upsert(userAnswersCache.id, userAnswersJson).futureValue
+        val result = repository.get(userAnswersCache.id).futureValue.value
+        result mustBe userAnswersJson
+      }
+
+      "encrypt the payload in db" in {
+        repository.upsert(userAnswersCache.id, userAnswersJson).futureValue
+        val raw = mongoComponent.database
+          .getCollection[BsonDocument]("agent-client-records")
+          .find()
+          .headOption()
+          .futureValue
+          .value
+        val decrypted = crypto.decrypt(Crypted(raw.get("data").asString.getValue)).value
+        Json.parse(decrypted) mustBe userAnswersJson
+      }
     }
 
-    "encrypt the json payload in the database" in {
-      val crypto: Encrypter with Decrypter = SymmetricCryptoFactory.aesGcmCrypto(cryptoKey)
-
-      repository.upsert(userAnswersCache.id, Json.parse(userAnswersCache.data)).futureValue
-      val raw = mongoComponent.database.getCollection[BsonDocument]("agent-client-records").find().headOption().map(_.value).futureValue
-      crypto.decrypt(Crypted(raw.get("data").asString.getValue)).value mustBe userAnswersCache.data
+    "get" - {
+      "returns None if record does not exist" in {
+        repository.get("does-not-exist").futureValue mustBe None
+      }
     }
   }
 
-  "get" should {
-    "successfully get the record" in {
-      repository.upsert(userAnswersCache.id, Json.parse(userAnswersCache.data)).futureValue
-      val result = repository.get(userAnswersCache.id).futureValue.value
-      result.toString mustBe userAnswersCache.data
+  "without crypto" - {
+    val repository = newRepository(false)
+    val userAnswersCache = AgentClientData("id2", userAnswersJson.toString, Instant.now)
+
+    "upsert" - {
+      "successfully saves and retrieves unencrypted data" in {
+        repository.upsert(userAnswersCache.id, userAnswersJson).futureValue
+        val result = repository.get(userAnswersCache.id).futureValue.value
+        result mustBe userAnswersJson
+      }
+
+      "stores plain JSON in db" in {
+        repository.upsert(userAnswersCache.id, userAnswersJson).futureValue
+        val raw = mongoComponent.database
+          .getCollection[BsonDocument]("agent-client-records")
+          .find()
+          .headOption()
+          .futureValue
+          .value
+        val bsonDoc = raw.get("data").asDocument()
+        val jsValue = Json.parse(bsonDoc.toJson())
+        jsValue mustBe userAnswersJson
+
+      }
+    }
+
+    "get" - {
+      "returns None if record does not exist" in {
+        repository.get("missing-id").futureValue mustBe None
+      }
     }
   }
 
-  "remove" should {
-    "successfully remove the record" in {
-      repository.upsert(userAnswersCache.id, Json.parse(userAnswersCache.data)).futureValue
+  "remove" - {
+    val repository = newRepository(false)
+    "removes record and get returns None" in {
+      repository.upsert(userAnswersCache.id, userAnswersJson).futureValue
       repository.remove(userAnswersCache.id).futureValue
       repository.get(userAnswersCache.id).futureValue mustBe None
+    }
 
+    "removing non-existent record returns true (idempotent)" in {
+      repository.remove("unknown-id").futureValue mustBe true
     }
   }
 
+  "lastUpdated field" - {
+    val repository = newRepository(false)
+    "persists and updates lastUpdated timestamp" in {
+      repository.upsert(userAnswersCache.id, userAnswersJson).futureValue
+      val raw = mongoComponent.database
+        .getCollection[BsonDocument]("agent-client-records")
+        .find()
+        .headOption()
+        .futureValue
+        .value
+      val dbMillis = raw.get("lastUpdated").asDateTime().getValue
+      Instant.ofEpochMilli(dbMillis).isBefore(Instant.now.plusSeconds(5)) mustBe true
+    }
+  }
 }

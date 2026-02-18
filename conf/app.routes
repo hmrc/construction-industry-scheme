@@ -25,8 +25,7 @@ GET        /agent/client-taxpayer/:taxOfficeNumber/:taxOfficeReference   uk.gov.
 POST       /contractor-known-facts/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId                     uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorKnownFacts(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
 POST       /scheme/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId                                     uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorAndSubcontractors(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
 
-POST       /subcontractor/create                                         uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.createSubcontractor()
-POST       /subcontractor/update                                         uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.updateSubcontractor()
+POST       /subcontractor/create-and-update                               uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.createAndUpdateSubcontractor()
 GET        /subcontractors/utr/:cisId                                    uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractorUTRs(cisId: String)
 
 # user answers caching in mongo

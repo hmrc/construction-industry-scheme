@@ -24,12 +24,12 @@ import java.time.Instant
 case class AgentClientData(id: String, data: String, lastUpdated: Instant)
 
 object AgentClientDataFormats {
-  given dateFormat: Format[Instant]               = MongoJavatimeFormats.instantFormat
-  given format:     Format[AgentClientData] = Json.format[AgentClientData]
+  given dateFormat: Format[Instant]     = MongoJavatimeFormats.instantFormat
+  given format: Format[AgentClientData] = Json.format[AgentClientData]
 }
 
 object AgentClientDataKeys {
-  val dataKey:        String = "data"
-  val idField:        String = "id"
+  val dataKey: String        = "data"
+  val idField: String        = "id"
   val lastUpdatedKey: String = "lastUpdated"
 }

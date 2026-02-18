@@ -34,9 +34,9 @@ import javax.inject.Singleton
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class AgentClientRepository @Inject()(
+class AgentClientRepository @Inject() (
   mongoComponent: MongoComponent,
-  config:         AppConfig
+  config: AppConfig
 )(using
   ec: ExecutionContext
 ) extends PlayMongoRepository[AgentClientData](
@@ -64,15 +64,15 @@ class AgentClientRepository @Inject()(
 
   private def updatedAt: Instant = Instant.now
 
-  private lazy val crypto:  Encrypter with Decrypter = SymmetricCryptoFactory.aesGcmCrypto(config.agentClientCryptoKey)
-  private val cryptoToggle: Boolean                  = config.cryptoToggle
+  private lazy val crypto: Encrypter with Decrypter = SymmetricCryptoFactory.aesGcmCrypto(config.agentClientCryptoKey)
+  private val cryptoToggle: Boolean                 = config.cryptoToggle
 
   def upsert(id: String, data: JsValue)(using ec: ExecutionContext): Future[Unit] =
     if cryptoToggle then
-      val encryptedRecord = AgentClientData(id, data.toString(), updatedAt)
-      val encrypter:     Writes[String] = JsonEncryption.stringEncrypter(crypto)
-      val encryptedData: String         = encrypter.writes(data.toString()).as[String]
-      val encryptedUpdate = Updates.combine(
+      val encryptedRecord           = AgentClientData(id, data.toString(), updatedAt)
+      val encrypter: Writes[String] = JsonEncryption.stringEncrypter(crypto)
+      val encryptedData: String     = encrypter.writes(data.toString()).as[String]
+      val encryptedUpdate           = Updates.combine(
         Updates.set(idField, encryptedRecord.id),
         Updates.set(dataKey, Codecs.toBson(encryptedData)),
         Updates.set(lastUpdatedKey, Codecs.toBson(encryptedRecord.lastUpdated)(using AgentClientDataFormats.dateFormat))
@@ -85,7 +85,7 @@ class AgentClientRepository @Inject()(
         .map(_ => ())
     else
       val nonEncryptedRecord = JsonDataEntry(id, data, updatedAt)
-      val update = Updates.combine(
+      val update             = Updates.combine(
         Updates.set(idField, nonEncryptedRecord.id),
         Updates.set(dataKey, Codecs.toBson(nonEncryptedRecord.data)),
         Updates.set(lastUpdatedKey, Codecs.toBson(nonEncryptedRecord.lastUpdated)(using JsonDataEntry.dateFormat))

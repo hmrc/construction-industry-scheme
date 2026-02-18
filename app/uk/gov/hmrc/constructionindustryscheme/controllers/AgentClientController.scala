@@ -26,10 +26,10 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class AgentClientController @Inject()(
-                                                 repository:             AgentClientRepository,
-                                                 authenticate:           AuthAction,
-                                                 cc:                     ControllerComponents
+class AgentClientController @Inject() (
+  repository: AgentClientRepository,
+  authenticate: AuthAction,
+  cc: ControllerComponents
 )(using executionContext: ExecutionContext)
     extends BackendController(cc)
     with Logging {

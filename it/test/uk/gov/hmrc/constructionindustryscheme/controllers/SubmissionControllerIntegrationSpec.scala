@@ -28,17 +28,17 @@ import play.api.libs.json.{JsObject, JsValue, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, AuthStub}
 
 class SubmissionControllerIntegrationSpec
-  extends ApplicationWithWiremock
+    extends ApplicationWithWiremock
     with Matchers
     with ScalaFutures
     with IntegrationPatience
     with OptionValues {
 
-  private val chrisPath = "/submission/ChRIS/CISR/Filing/sync/CIS300MR"
-  private val submissionId = "sub-123"
+  private val chrisPath                 = "/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+  private val submissionId              = "sub-123"
   private val validRequestJson: JsValue = Json.obj(
-    "utr" -> "1234567890",
-    "aoReference" -> "754PT00002240",
+    "utr"                -> "1234567890",
+    "aoReference"        -> "754PT00002240",
     "informationCorrect" -> "yes",
     "inactivity" -> "yes",
     "monthYear" -> "2025-09",
@@ -48,10 +48,9 @@ class SubmissionControllerIntegrationSpec
     "clientTaxOfficeRef"    -> ""
   )
 
-  private val createUrl = s"$base/submissions/create"
+  private val createUrl                    = s"$base/submissions/create"
   private def submitToChrisUrl(id: String) = s"$base/submissions/$id/submit-to-chris"
-  private def updateUrl(id: String) = s"$base/submissions/$id/update"
-
+  private def updateUrl(id: String)        = s"$base/submissions/$id/update"
 
   "POST /cis/submissions/create" should {
 
@@ -79,10 +78,7 @@ class SubmissionControllerIntegrationSpec
           )
       )
 
-      val res = postJson(createUrl, body,
-        "X-Session-Id" -> "Session-123",
-        "Authorization" -> "Bearer it-token"
-      )
+      val res = postJson(createUrl, body, "X-Session-Id" -> "Session-123", "Authorization" -> "Bearer it-token")
 
       res.status mustBe CREATED
       (res.json \ "submissionId").asOpt[String].value.length must be > 0
@@ -94,7 +90,7 @@ class SubmissionControllerIntegrationSpec
       val response = postJsonEither(
         createUrl,
         Json.obj("taxYear" -> 2024),
-        "X-Session-Id" -> "Session-123",
+        "X-Session-Id"  -> "Session-123",
         "Authorization" -> "Bearer it-token"
       )
 
@@ -113,7 +109,7 @@ class SubmissionControllerIntegrationSpec
       response.swap.value.statusCode mustBe UNAUTHORIZED
     }
   }
-  
+
   "POST /cis/chris (submitNilMonthlyReturn)" should {
 
     "return 200 with success json when authorised and ChRIS returns 200" in {
@@ -122,36 +118,42 @@ class SubmissionControllerIntegrationSpec
       stubFor(
         post(urlPathEqualTo(chrisPath))
           .withHeader("Content-Type", equalTo("application/xml"))
-          .withHeader("Accept",       equalTo("application/xml"))
+          .withHeader("Accept", equalTo("application/xml"))
           .withHeader("CorrelationId", matching("[A-F0-9]{32}"))
           .withRequestBody(matchingXPath("/*[local-name()='GovTalkMessage']"))
-          .withRequestBody(matchingXPath("//*[local-name()='Contractor']/*[local-name()='UTR' and text()='1234567890']"))
+          .withRequestBody(
+            matchingXPath("//*[local-name()='Contractor']/*[local-name()='UTR' and text()='1234567890']")
+          )
           .willReturn(aResponse().withStatus(500).withBody("boom from chris"))
       )
 
-      val resp = postJson(submitToChrisUrl(submissionId), validRequestJson,
-        "X-Session-Id" -> "Session-123", "Authorization" -> "Bearer it-token")
+      val resp = postJson(
+        submitToChrisUrl(submissionId),
+        validRequestJson,
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
 
       resp.status mustBe OK
       (resp.json \ "submissionId").as[String] mustBe submissionId
       (resp.json \ "status").as[String] mustBe "FATAL_ERROR"
       (resp.json \ "hmrcMarkGenerated").as[String].nonEmpty mustBe true
       val err = (resp.json \ "error").as[JsObject]
-      (err \ "type").as[String].toLowerCase must include ("fatal")
+      (err \ "type").as[String].toLowerCase must include("fatal")
     }
 
     "return 400 when request JSON is invalid" in {
       AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "123", taxOfficeReference = "AB456")
 
       val invalidJson = Json.obj(
-        "utr" -> 123,
+        "utr"       -> 123,
         "monthYear" -> "2025-09"
       )
 
       val response = postJsonEither(
         submitToChrisUrl(submissionId),
         invalidJson,
-        "X-Session-Id" -> "Session-123",
+        "X-Session-Id"  -> "Session-123",
         "Authorization" -> "Bearer it-token"
       )
 
@@ -169,7 +171,6 @@ class SubmissionControllerIntegrationSpec
       response.swap.value.statusCode mustBe UNAUTHORIZED
     }
   }
-
 
   "POST /cis/submissions/:id/update" should {
 
@@ -190,7 +191,7 @@ class SubmissionControllerIntegrationSpec
         "instanceId"        -> "123",
         "taxYear"           -> 2024,
         "taxMonth"          -> 4,
-        "submittableStatus" -> "ACCEPTED",
+        "submittableStatus" -> "ACCEPTED"
       )
 
       val res = postJson(
