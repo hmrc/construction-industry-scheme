@@ -33,6 +33,10 @@ class CreateAndUpdateSubcontractorRequestSpec extends AnyWordSpec with Matchers 
         utr = Some("1234567890"),
         partnerUtr = Some("9999999999"),
         crn = Some("CRN123"),
+        firstName = Some("Jane"),
+        secondName = Some("Q"),
+        surname = Some("Doe"),
+        country = Some("GB"),
         nino = Some("AB123456C"),
         partnershipTradingName = Some("My Partnership"),
         tradingName = Some("ABC Ltd"),
@@ -52,12 +56,15 @@ class CreateAndUpdateSubcontractorRequestSpec extends AnyWordSpec with Matchers 
 
       back mustEqual model
 
-      // spot checks
       (json \ "cisId").as[String] mustBe "CIS-123"
       (json \ "subcontractorType").as[String] mustBe "soletrader"
       (json \ "postcode").as[String] mustBe "SW1A 2AA"
       (json \ "county").as[String] mustBe "Greater London"
       (json \ "mobilePhoneNumber").as[String] mustBe "07123456789"
+      (json \ "firstName").as[String] mustBe "Jane"
+      (json \ "secondName").as[String] mustBe "Q"
+      (json \ "surname").as[String] mustBe "Doe"
+      (json \ "country").as[String] mustBe "GB"
     }
 
     "read minimal valid JSON with only required fields" in {
@@ -133,6 +140,10 @@ class CreateAndUpdateSubcontractorRequestSpec extends AnyWordSpec with Matchers 
       json.keys must not contain "mobilePhoneNumber"
       json.keys must not contain "city"
       json.keys must not contain "county"
+      json.keys must not contain "firstName"
+      json.keys must not contain "secondName"
+      json.keys must not contain "surname"
+      json.keys must not contain "country"
     }
 
     "ignore unknown fields when reading JSON (forward compatibility)" in {

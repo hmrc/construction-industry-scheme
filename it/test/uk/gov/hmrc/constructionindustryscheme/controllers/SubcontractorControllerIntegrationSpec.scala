@@ -44,6 +44,10 @@ class SubcontractorControllerIntegrationSpec
           """{
             |  "cisId": "1234567890",
             |  "subcontractorType": "soletrader",
+            |  "firstName": "John",
+            |  "secondName": "Q",
+            |  "surname": "Smith",
+            |  "country": "GB",
             |  "utr": "1234567890",
             |  "nino": "AA123456A",
             |  "tradingName": "ACME",
@@ -83,6 +87,10 @@ class SubcontractorControllerIntegrationSpec
           """{
             |  "cisId": "1234567890",
             |  "subcontractorType": "soletrader",
+            |  "firstName": "John",
+            |  "secondName": "Q",
+            |  "surname": "Smith",
+            |  "country": "GB",
             |  "utr": "1234567890",
             |  "nino": "AA123456A",
             |  "tradingName": "ACME",
