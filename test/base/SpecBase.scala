@@ -19,7 +19,7 @@ package base
 import actions.FakeAuthAction
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.{Materializer, SystemMaterializer}
-import org.scalatest.BeforeAndAfterEach
+import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
@@ -43,6 +43,7 @@ trait SpecBase
     with Matchers
     with DefaultAwaitTimeout
     with ScalaFutures
+    with OptionValues
     with FakeApplicationFactory
     with BaseOneAppPerSuite
     with MockitoSugar
@@ -146,6 +147,9 @@ trait SpecBase
       informationCorrect = infoCorrect,
       inactivity = inactivity,
       monthYear = monthYear,
-      email = email
+      email = email,
+      isAgent = false,
+      clientTaxOfficeNumber = "",
+      clientTaxOfficeRef = ""
     )
 }

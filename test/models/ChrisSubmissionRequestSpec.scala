@@ -29,16 +29,22 @@ class ChrisSubmissionRequestSpec extends AnyWordSpec with Matchers {
     informationCorrect = "yes",
     inactivity = "no",
     monthYear = "2025-05",
-    email = "test@test.com"
+    email = "test@test.com",
+    isAgent = false,
+    clientTaxOfficeNumber = "",
+    clientTaxOfficeRef = ""
   )
 
   private val json: JsValue = Json.obj(
-    "utr"                -> "1234567890",
-    "aoReference"        -> "123/AB456",
-    "informationCorrect" -> "yes",
-    "inactivity"         -> "no",
-    "monthYear"          -> "2025-05",
-    "email"              -> "test@test.com"
+    "utr"                   -> "1234567890",
+    "aoReference"           -> "123/AB456",
+    "informationCorrect"    -> "yes",
+    "inactivity"            -> "no",
+    "monthYear"             -> "2025-05",
+    "email"                 -> "test@test.com",
+    "isAgent"               -> false,
+    "clientTaxOfficeNumber" -> "",
+    "clientTaxOfficeRef"    -> ""
   )
 
   "ChrisSubmissionRequest JSON format" should {

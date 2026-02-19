@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,16 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.repositories
 
-import play.api.libs.json.{Json, OFormat}
+import play.api.libs.json.{Format, JsValue, Json}
+import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 
-case class ChrisSubmissionRequest(
-  utr: String,
-  aoReference: String,
-  informationCorrect: String,
-  inactivity: String,
-  monthYear: String,
-  email: String,
-  isAgent: Boolean,
-  clientTaxOfficeNumber: String,
-  clientTaxOfficeRef: String
-)
+import java.time.Instant
 
-object ChrisSubmissionRequest {
-  implicit val format: OFormat[ChrisSubmissionRequest] = Json.format[ChrisSubmissionRequest]
+case class JsonDataEntry(id: String, data: JsValue, lastUpdated: Instant)
+
+object JsonDataEntry {
+  given dateFormat: Format[Instant]   = MongoJavatimeFormats.instantFormat
+  given format: Format[JsonDataEntry] = Json.format[JsonDataEntry]
 }
