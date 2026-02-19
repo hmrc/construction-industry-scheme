@@ -31,7 +31,7 @@ class HealthEndpointIntegrationSpec
     with ScalaFutures
     with IntegrationPatience
     with GuiceOneServerPerSuite
-    with ApplicationWithWiremock:
+    with ApplicationWithWiremock {
 
   private val wsClient = app.injector.instanceOf[WSClient]
   private val baseUrl  = s"http://localhost:$port"
@@ -40,11 +40,14 @@ class HealthEndpointIntegrationSpec
     GuiceApplicationBuilder()
       .build()
 
-  "service health endpoint" should: "respond with 200 status" in:
-  val response =
-    wsClient
-      .url(s"$baseUrl/ping/ping")
-      .get()
-      .futureValue
+  "service health endpoint" should {
+    "respond with 200 status" in {
+      val response = wsClient
+        .url(s"$baseUrl/ping/ping")
+        .get()
+        .futureValue
 
-  response.status shouldBe 200
+      response.status shouldBe 200
+    }
+  }
+}
