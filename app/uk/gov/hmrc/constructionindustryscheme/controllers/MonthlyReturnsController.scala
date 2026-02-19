@@ -20,9 +20,8 @@ import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, SelectedSubcontractorsRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{DeleteMonthlyReturnItemRequest, GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, NilMonthlyReturnRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.MonthlyReturnRequest
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
@@ -235,4 +234,20 @@ class MonthlyReturnsController @Inject() (
             BadGateway(Json.obj("message" -> "sync-selected-subcontractors-failed"))
         }
     }
+
+  def deleteMonthlyReturnItem: Action[DeleteMonthlyReturnItemRequest] =
+    authorise.async(parse.json[DeleteMonthlyReturnItemRequest]) { implicit request =>
+      service
+        .deleteMonthlyReturnItem(request.body)
+        .map(_ => NoContent)
+        .recover {
+          case u: UpstreamErrorResponse =>
+            logger.error("[deleteMonthlyReturnItem] formp-proxy delete failed", u)
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t)              =>
+            logger.error("[deleteMonthlyReturnItem] formp-proxy delete failed", t)
+            BadGateway(Json.obj("message" -> "delete-monthly-return-item-failed"))
+        }
+    }
+
 }
