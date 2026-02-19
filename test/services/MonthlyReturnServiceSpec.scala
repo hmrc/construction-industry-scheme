@@ -21,7 +21,7 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest, SyncMonthlyReturnItemsRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{DeleteMonthlyReturnItemProxyRequest, DeleteMonthlyReturnItemRequest, GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest, SyncMonthlyReturnItemsRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, EmployerReference, MonthlyReturn, MonthlyReturnItem, NilMonthlyReturnRequest, Subcontractor, UnsubmittedMonthlyReturns, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
@@ -515,6 +515,178 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
       verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
       verify(formpProxy).syncMonthlyReturnItems(eqTo(expectedSyncReq))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
+  "deleteMonthlyReturnItem" - {
+
+    "looks up subbieResourceRef via getMonthlyReturnForEdit and calls formp delete endpoint" in {
+      val s = setup
+      import s._
+
+      val req = DeleteMonthlyReturnItemRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        subcontractorId = 2L
+      )
+
+      val subs = Seq(
+        mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L)),
+        mkSubcontractor(subcontractorId = 2L, subbieResourceRef = Some(20L))
+      )
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = subs,
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(editResponse))
+
+      val expectedDeleteReq = DeleteMonthlyReturnItemProxyRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        resourceReference = 20L
+      )
+
+      when(formpProxy.deleteMonthlyReturnItem(eqTo(expectedDeleteReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val out = service.deleteMonthlyReturnItem(req).futureValue
+      out mustBe()
+
+      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verify(formpProxy).deleteMonthlyReturnItem(eqTo(expectedDeleteReq))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "fails with 400 when subcontractorId is not present in edit.subcontractors" in {
+      val s = setup
+      import s._
+
+      val req = DeleteMonthlyReturnItemRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        subcontractorId = 999L
+      )
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq(
+          mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L))
+        ),
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(editResponse))
+
+      val ex = service.deleteMonthlyReturnItem(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 400
+      ex.getMessage must include("Subcontractor ID not found")
+
+      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verify(formpProxy, never()).deleteMonthlyReturnItem(any[DeleteMonthlyReturnItemProxyRequest])(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "fails with 400 when subcontractorId exists but has no subbieResourceRef" in {
+      val s = setup
+      import s._
+
+      val req = DeleteMonthlyReturnItemRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        subcontractorId = 2L
+      )
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq(
+          mkSubcontractor(subcontractorId = 2L, subbieResourceRef = None)
+        ),
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(editResponse))
+
+      val ex = service.deleteMonthlyReturnItem(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 400
+      ex.getMessage must include("Subcontractor ID not found")
+
+      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verify(formpProxy, never()).deleteMonthlyReturnItem(any[DeleteMonthlyReturnItemProxyRequest])(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp delete endpoint" in {
+      val s = setup
+      import s._
+
+      val req = DeleteMonthlyReturnItemRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        subcontractorId = 2L
+      )
+
+      val subs = Seq(
+        mkSubcontractor(subcontractorId = 2L, subbieResourceRef = Some(20L))
+      )
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = subs,
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(editResponse))
+
+      val expectedDeleteReq = DeleteMonthlyReturnItemProxyRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        resourceReference = 20L
+      )
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 502)
+
+      when(formpProxy.deleteMonthlyReturnItem(eqTo(expectedDeleteReq))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.deleteMonthlyReturnItem(req).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verify(formpProxy).deleteMonthlyReturnItem(eqTo(expectedDeleteReq))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
   }
