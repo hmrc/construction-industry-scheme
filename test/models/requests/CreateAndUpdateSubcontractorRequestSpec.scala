@@ -20,7 +20,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.must.Matchers
 import play.api.libs.json.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
-import uk.gov.hmrc.constructionindustryscheme.models.{SoleTrader, SubcontractorType}
+import uk.gov.hmrc.constructionindustryscheme.models.SoleTrader
 
 class CreateAndUpdateSubcontractorRequestSpec extends AnyWordSpec with Matchers {
 
@@ -30,20 +30,25 @@ class CreateAndUpdateSubcontractorRequestSpec extends AnyWordSpec with Matchers 
       val model = CreateAndUpdateSubcontractorRequest(
         cisId = "CIS-123",
         subcontractorType = SoleTrader,
+        utr = Some("1234567890"),
+        partnerUtr = Some("9999999999"),
+        crn = Some("CRN123"),
         firstName = Some("Jane"),
         secondName = Some("Q"),
         surname = Some("Doe"),
+        country = Some("United Kingdom"),
+        nino = Some("AB123456C"),
+        partnershipTradingName = Some("My Partnership"),
         tradingName = Some("ABC Ltd"),
         addressLine1 = Some("10 Downing Street"),
         addressLine2 = Some("Westminster"),
-        addressLine3 = Some("London"),
-        addressLine4 = Some("UK"),
+        city = Some("London"),
+        county = Some("Greater London"),
         postcode = Some("SW1A 2AA"),
-        nino = Some("AB123456C"),
-        utr = Some("1234567890"),
-        worksReferenceNumber = Some("WRN-001"),
         emailAddress = Some("jane.doe@example.com"),
-        phoneNumber = Some("0123456789")
+        phoneNumber = Some("0123456789"),
+        mobilePhoneNumber = Some("07123456789"),
+        worksReferenceNumber = Some("WRN-001")
       )
 
       val json = Json.toJson(model)
@@ -51,10 +56,15 @@ class CreateAndUpdateSubcontractorRequestSpec extends AnyWordSpec with Matchers 
 
       back mustEqual model
 
-      // spot checks
       (json \ "cisId").as[String] mustBe "CIS-123"
-      (json \ "subcontractorType").isDefined mustBe true
+      (json \ "subcontractorType").as[String] mustBe "soletrader"
       (json \ "postcode").as[String] mustBe "SW1A 2AA"
+      (json \ "county").as[String] mustBe "Greater London"
+      (json \ "mobilePhoneNumber").as[String] mustBe "07123456789"
+      (json \ "firstName").as[String] mustBe "Jane"
+      (json \ "secondName").as[String] mustBe "Q"
+      (json \ "surname").as[String] mustBe "Doe"
+      (json \ "country").as[String] mustBe "United Kingdom"
     }
 
     "read minimal valid JSON with only required fields" in {
@@ -74,9 +84,10 @@ class CreateAndUpdateSubcontractorRequestSpec extends AnyWordSpec with Matchers 
       val model = result.get
       model.cisId mustBe "CIS-999"
       model.subcontractorType mustBe SoleTrader
-      model.firstName mustBe None
+      model.utr mustBe None
       model.tradingName mustBe None
       model.postcode mustBe None
+      model.mobilePhoneNumber mustBe None
     }
 
     "fail to read when 'cisId' is missing" in {
@@ -92,10 +103,7 @@ class CreateAndUpdateSubcontractorRequestSpec extends AnyWordSpec with Matchers 
       val result = json.validate[CreateAndUpdateSubcontractorRequest]
       result.isError mustBe true
 
-      val errors = result.asEither.swap.getOrElse {
-        fail("Expected validation errors but got success")
-      }
-
+      val errors = result.asEither.swap.getOrElse(fail("Expected validation errors but got success"))
       errors.map(_._1.toString()) must contain("/cisId")
     }
 
@@ -112,10 +120,7 @@ class CreateAndUpdateSubcontractorRequestSpec extends AnyWordSpec with Matchers 
       val result = json.validate[CreateAndUpdateSubcontractorRequest]
       result.isError mustBe true
 
-      val errors = result.asEither.swap.getOrElse {
-        fail("Expected validation errors but got success")
-      }
-
+      val errors = result.asEither.swap.getOrElse(fail("Expected validation errors but got success"))
       errors.map(_._1.toString()) must contain("/subcontractorType")
     }
 
@@ -129,9 +134,16 @@ class CreateAndUpdateSubcontractorRequestSpec extends AnyWordSpec with Matchers 
 
       json.keys must contain allOf ("cisId", "subcontractorType")
 
-      json.keys must not contain "firstName"
+      json.keys must not contain "partnerUtr"
       json.keys must not contain "emailAddress"
       json.keys must not contain "postcode"
+      json.keys must not contain "mobilePhoneNumber"
+      json.keys must not contain "city"
+      json.keys must not contain "county"
+      json.keys must not contain "firstName"
+      json.keys must not contain "secondName"
+      json.keys must not contain "surname"
+      json.keys must not contain "country"
     }
 
     "ignore unknown fields when reading JSON (forward compatibility)" in {

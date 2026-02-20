@@ -31,7 +31,7 @@ import uk.gov.hmrc.http.HttpReads.Implicits.*
 import scala.concurrent.ExecutionContext
 
 trait ApplicationWithWiremock
-  extends AnyWordSpec
+    extends AnyWordSpec
     with GuiceOneServerPerSuite
     with BeforeAndAfterAll
     with BeforeAndAfterEach
@@ -39,23 +39,22 @@ trait ApplicationWithWiremock
 
   lazy val wireMock = new WireMock
 
-  val extraConfig: Map[String, Any] = {
+  val extraConfig: Map[String, Any] =
     Map[String, Any](
-      "microservice.services.auth.host" -> WireMockConstants.stubHost,
-      "microservice.services.auth.port" -> WireMockConstants.stubPort,
-      "microservice.services.chris.host" -> WireMockConstants.stubHost,
-      "microservice.services.chris.port" -> WireMockConstants.stubPort,
-      "microservice.services.chris.affix-url" -> "/submission/ChRIS/CISR/Filing/sync/CIS300MR",
-      "microservice.services.rds-datacache-proxy.host" -> WireMockConstants.stubHost,
-      "microservice.services.rds-datacache-proxy.port" -> WireMockConstants.stubPort,
-      "microservice.services.formp-proxy.host"      -> WireMockConstants.stubHost,
-      "microservice.services.formp-proxy.port"      -> WireMockConstants.stubPort,
-      "microservice.services.email.host" -> WireMockConstants.stubHost,
-      "microservice.services.email.port" -> WireMockConstants.stubPort,
+      "microservice.services.auth.host"                  -> WireMockConstants.stubHost,
+      "microservice.services.auth.port"                  -> WireMockConstants.stubPort,
+      "microservice.services.chris.host"                 -> WireMockConstants.stubHost,
+      "microservice.services.chris.port"                 -> WireMockConstants.stubPort,
+      "microservice.services.chris.affix-url"            -> "/submission/ChRIS/CISR/Filing/sync/CIS300MR",
+      "microservice.services.rds-datacache-proxy.host"   -> WireMockConstants.stubHost,
+      "microservice.services.rds-datacache-proxy.port"   -> WireMockConstants.stubPort,
+      "microservice.services.formp-proxy.host"           -> WireMockConstants.stubHost,
+      "microservice.services.formp-proxy.port"           -> WireMockConstants.stubPort,
+      "microservice.services.email.host"                 -> WireMockConstants.stubHost,
+      "microservice.services.email.port"                 -> WireMockConstants.stubPort,
       "microservice.services.client-exchange-proxy.host" -> WireMockConstants.stubHost,
       "microservice.services.client-exchange-proxy.port" -> WireMockConstants.stubPort
     )
-  }
 
   override lazy val app: Application = new GuiceApplicationBuilder()
     .configure(extraConfig)
@@ -63,7 +62,7 @@ trait ApplicationWithWiremock
 
   protected lazy val httpClient: HttpClientV2 = app.injector.instanceOf[HttpClientV2]
   implicit protected val ec: ExecutionContext = app.injector.instanceOf[ExecutionContext]
-  implicit protected val hc: HeaderCarrier = HeaderCarrier()
+  implicit protected val hc: HeaderCarrier    = HeaderCarrier()
 
   protected val base: String = s"http://localhost:$port/cis"
 
@@ -77,12 +76,13 @@ trait ApplicationWithWiremock
   def getJsonWithQuery(url: String, qsKey: String, qsValue: String, headers: (String, String)*): HttpResponse =
     httpClient
       .get(url"$url?$qsKey=$qsValue")
-      .setHeader(headers *)
+      .setHeader(headers*)
       .execute[HttpResponse]
       .futureValue
 
   protected def postJson(url: String, body: JsValue, headers: (String, String)*): HttpResponse =
-    httpClient.post(url"$url")
+    httpClient
+      .post(url"$url")
       .setHeader(("Content-Type" -> "application/json") +: headers: _*)
       .withBody(body)
       .execute[HttpResponse]

@@ -22,7 +22,7 @@ object ItResources {
   def read(path: String): String = {
     val stream = getClass.getClassLoader.getResourceAsStream(path)
     require(stream != null, s"Resource not found on classpath: $path")
-    val src = Source.fromInputStream(stream, "UTF-8")
+    val src    = Source.fromInputStream(stream, "UTF-8")
     try src.mkString
     finally src.close()
   }

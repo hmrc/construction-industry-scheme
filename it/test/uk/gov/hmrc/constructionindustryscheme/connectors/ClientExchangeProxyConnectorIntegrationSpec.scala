@@ -25,7 +25,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.AsynchronousProcessWaitTime
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
 class ClientExchangeProxyConnectorIntegrationSpec
-  extends ApplicationWithWiremock
+    extends ApplicationWithWiremock
     with Matchers
     with IntegrationPatience {
 
@@ -63,7 +63,7 @@ class ClientExchangeProxyConnectorIntegrationSpec
       val result = connector.initiate(service, credentialId, agentId).futureValue
 
       result mustBe AsynchronousProcessWaitTime(
-        browserIntervalMs   = 1000L,
+        browserIntervalMs = 1000L,
         businessIntervalsMs = List(100L, 200L)
       )
     }
@@ -86,7 +86,7 @@ class ClientExchangeProxyConnectorIntegrationSpec
 
       val result = connector.initiate(service, credentialId, agentId).futureValue
 
-      result.browserIntervalMs   mustBe 500L
+      result.browserIntervalMs mustBe 500L
       result.businessIntervalsMs mustBe Nil
     }
 
@@ -112,7 +112,7 @@ class ClientExchangeProxyConnectorIntegrationSpec
       ex mustBe a[UpstreamErrorResponse]
       val upstream = ex.asInstanceOf[UpstreamErrorResponse]
       upstream.statusCode mustBe 502
-      upstream.message    must include("client-exchange-proxy parse error")
+      upstream.message must include("client-exchange-proxy parse error")
     }
 
     "fail with UpstreamErrorResponse(502) when XML is not well-formed" in {
@@ -133,7 +133,7 @@ class ClientExchangeProxyConnectorIntegrationSpec
       ex mustBe a[UpstreamErrorResponse]
       val upstream = ex.asInstanceOf[UpstreamErrorResponse]
       upstream.statusCode mustBe 502
-      upstream.message    must include("client-exchange-proxy parse error")
+      upstream.message must include("client-exchange-proxy parse error")
     }
 
     "fail with UpstreamErrorResponse using upstream status when response is non-2xx (e.g. 500)" in {
@@ -151,7 +151,7 @@ class ClientExchangeProxyConnectorIntegrationSpec
       ex mustBe a[UpstreamErrorResponse]
       val upstream = ex.asInstanceOf[UpstreamErrorResponse]
       upstream.statusCode mustBe 500
-      upstream.message    must include("client-exchange-proxy HTTP 500")
+      upstream.message must include("client-exchange-proxy HTTP 500")
     }
   }
 }

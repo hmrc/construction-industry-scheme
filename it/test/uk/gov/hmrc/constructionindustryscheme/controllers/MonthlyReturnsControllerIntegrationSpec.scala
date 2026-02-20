@@ -208,16 +208,19 @@ class MonthlyReturnsControllerIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/create"))
-          .withRequestBody(equalToJson(
-            """{
+          .withRequestBody(
+            equalToJson(
+              """{
               |  "instanceId": "123",
               |  "taxYear": 2024,
               |  "taxMonth": 10,
               |  "decNilReturnNoPayments": "Y",
               |  "decInformationCorrect": "Y"
               |}""".stripMargin,
-            true, true
-          ))
+              true,
+              true
+            )
+          )
           .willReturn(aResponse().withStatus(200).withBody("""{ "status": "STARTED" }"""))
       )
 
