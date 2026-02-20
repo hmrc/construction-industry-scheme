@@ -36,7 +36,7 @@ class CreateAndUpdateSubcontractorRequestSpec extends AnyWordSpec with Matchers 
         firstName = Some("Jane"),
         secondName = Some("Q"),
         surname = Some("Doe"),
-        country = Some("GB"),
+        country = Some("United Kingdom"),
         nino = Some("AB123456C"),
         partnershipTradingName = Some("My Partnership"),
         tradingName = Some("ABC Ltd"),
@@ -64,7 +64,7 @@ class CreateAndUpdateSubcontractorRequestSpec extends AnyWordSpec with Matchers 
       (json \ "firstName").as[String] mustBe "Jane"
       (json \ "secondName").as[String] mustBe "Q"
       (json \ "surname").as[String] mustBe "Doe"
-      (json \ "country").as[String] mustBe "GB"
+      (json \ "country").as[String] mustBe "United Kingdom"
     }
 
     "read minimal valid JSON with only required fields" in {
