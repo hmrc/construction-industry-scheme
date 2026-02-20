@@ -149,7 +149,7 @@ class MonthlyReturnService @Inject() (
               )
 
       subcontractor <- edit.subcontractors
-                         .find(_.subcontractorId == (request.subcontractorId))
+                         .find(_.subcontractorId == request.subcontractorId)
                          .fold[Future[Subcontractor]](
                            Future.failed(
                              UpstreamErrorResponse(
