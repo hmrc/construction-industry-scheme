@@ -20,9 +20,8 @@ import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, SelectedSubcontractorsRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest, UpdateMonthlyReturnItemRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, NilMonthlyReturnRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.MonthlyReturnRequest
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
@@ -233,6 +232,20 @@ class MonthlyReturnsController @Inject() (
           case NonFatal(t)              =>
             logger.error("[syncSelectedSubcontractors] formp-proxy sync failed", t)
             BadGateway(Json.obj("message" -> "sync-selected-subcontractors-failed"))
+        }
+    }
+
+  def updateMonthlyReturnItem: Action[UpdateMonthlyReturnItemRequest] =
+    authorise.async(parse.json[UpdateMonthlyReturnItemRequest]) { implicit request =>
+      service
+        .updateMonthlyReturnItem(request.body)
+        .map(_ => NoContent)
+        .recover {
+          case u: UpstreamErrorResponse =>
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t)              =>
+            logger.error("[updateMonthlyReturnItem] failed", t)
+            InternalServerError(Json.obj("message" -> "Unexpected error"))
         }
     }
 }
