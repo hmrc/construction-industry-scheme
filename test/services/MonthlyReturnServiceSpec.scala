@@ -568,7 +568,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       when(formpProxy.updateMonthlyReturnItem(eqTo(expectedProxyReq))(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
 
-      service.updateMonthlyReturnItem(req).futureValue mustBe()
+      service.updateMonthlyReturnItem(req).futureValue mustBe ()
 
       verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
       verify(formpProxy).updateMonthlyReturnItem(eqTo(expectedProxyReq))(any[HeaderCarrier])
@@ -594,7 +594,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         scheme = Seq.empty,
         monthlyReturn = Seq.empty,
         subcontractors = Seq(
-          mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L)).copy(verificationNumber = Some("V123456"))
+          mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L))
+            .copy(verificationNumber = Some("V123456"))
         ),
         monthlyReturnItems = Seq.empty,
         submission = Seq.empty
