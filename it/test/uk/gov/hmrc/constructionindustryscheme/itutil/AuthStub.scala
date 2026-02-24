@@ -23,10 +23,10 @@ import play.api.http.Status.{OK, UNAUTHORIZED}
 object AuthStub:
 
   def authorisedWithCisEnrolment(
-                                  internalId: String = "test-internal-id",
-                                  taxOfficeNumber: String = "111",
-                                  taxOfficeReference: String = "test111"
-                                ): StubMapping =
+    internalId: String = "test-internal-id",
+    taxOfficeNumber: String = "111",
+    taxOfficeReference: String = "test111"
+  ): StubMapping =
     stubFor(
       post(urlPathEqualTo("/auth/authorise"))
         .willReturn(
@@ -54,8 +54,8 @@ object AuthStub:
     )
 
   def authorisedWithoutCisEnrolment(
-                                     internalId: String = "test-internal-id"
-                                   ): StubMapping =
+    internalId: String = "test-internal-id"
+  ): StubMapping =
     stubFor(
       post(urlPathEqualTo("/auth/authorise"))
         .willReturn(

@@ -26,16 +26,16 @@ import uk.gov.hmrc.constructionindustryscheme.models.{ClientListStatus, Employer
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
 class DatacacheProxyConnectorIntegrationSpec
-  extends ApplicationWithWiremock
+    extends ApplicationWithWiremock
     with Matchers
     with ScalaFutures
     with IntegrationPatience {
-  
+
   private val connector = app.injector.instanceOf[DatacacheProxyConnector]
 
-  private val er = EmployerReference("111", "test111")
-  private val erJson = Json.toJson(er)
-  private val knownFacts = PrepopKnownFacts(
+  private val er             = EmployerReference("111", "test111")
+  private val erJson         = Json.toJson(er)
+  private val knownFacts     = PrepopKnownFacts(
     taxOfficeNumber = "111",
     taxOfficeReference = "test111",
     accountOfficeReference = "agent-ref-123"
@@ -50,14 +50,16 @@ class DatacacheProxyConnectorIntegrationSpec
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(erJson.toString(), true, true))
           .willReturn(
-            aResponse().withStatus(200).withBody(
-              """{
+            aResponse()
+              .withStatus(200)
+              .withBody(
+                """{
                 |  "uniqueId": "abc-123",
                 |  "taxOfficeNumber": "111",
                 |  "taxOfficeRef": "test111",
                 |  "employerName1": "TEST LTD"
                 |}""".stripMargin
-            )
+              )
           )
       )
 
@@ -76,9 +78,9 @@ class DatacacheProxyConnectorIntegrationSpec
       )
 
       val ex = intercept[Throwable](connector.getCisTaxpayer(er).futureValue)
-      ex.getMessage must include ("500")
+      ex.getMessage must include("500")
     }
-    
+
     "propagate 404 not found when taxpayer does not exist" in {
       stubFor(
         post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer"))
@@ -87,16 +89,16 @@ class DatacacheProxyConnectorIntegrationSpec
       )
 
       val ex = connector.getCisTaxpayer(er).failed.futureValue
-      ex.getMessage must include ("404")
+      ex.getMessage must include("404")
     }
   }
 
   "DatacacheProxyConnector getClientListDownloadStatus" should {
 
     val basePath = "/rds-datacache-proxy/cis/client-list-status"
-    val credId = "cred-123"
-    val service = "CIS"
-    val grace = 14400
+    val credId   = "cred-123"
+    val service  = "CIS"
+    val grace    = 14400
 
     def statusUrl = urlPathEqualTo(basePath)
 
@@ -181,7 +183,7 @@ class DatacacheProxyConnectorIntegrationSpec
           )
       )
 
-      val ex = connector.getClientListDownloadStatus(credId, service, grace).failed.futureValue
+      val ex       = connector.getClientListDownloadStatus(credId, service, grace).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       val upstream = ex.asInstanceOf[UpstreamErrorResponse]
       upstream.statusCode mustBe 502
@@ -227,9 +229,9 @@ class DatacacheProxyConnectorIntegrationSpec
 
   "DatacacheProxyConnector getClientList" should {
 
-    val basePath = "/rds-datacache-proxy/cis/client-list"
+    val basePath  = "/rds-datacache-proxy/cis/client-list"
     val irAgentId = "SA123456"
-    val credId = "cred-123"
+    val credId    = "cred-123"
 
     def clientListUrl = urlPathEqualTo(basePath)
 
@@ -262,8 +264,7 @@ class DatacacheProxyConnectorIntegrationSpec
                 |  ],
                 |  "totalCount": 1,
                 |  "clientNameStartingCharacters": ["T"]
-                |}""".stripMargin
-              )
+                |}""".stripMargin)
           )
       )
 
@@ -336,8 +337,7 @@ class DatacacheProxyConnectorIntegrationSpec
                 |  "clients": [],
                 |  "totalCount": 0,
                 |  "clientNameStartingCharacters": []
-                |}""".stripMargin
-              )
+                |}""".stripMargin)
           )
       )
 
@@ -350,10 +350,10 @@ class DatacacheProxyConnectorIntegrationSpec
 
   "DatacacheProxyConnector hasClient" should {
 
-    val basePath = "/rds-datacache-proxy/cis/has-client"
-    val credId = "cred-123"
-    val agentId = "agent-456"
-    val taxOfficeNumber = "123"
+    val basePath           = "/rds-datacache-proxy/cis/has-client"
+    val credId             = "cred-123"
+    val agentId            = "agent-456"
+    val taxOfficeNumber    = "123"
     val taxOfficeReference = "AB456"
 
     def hasClientUrl = urlPathEqualTo(basePath)
@@ -408,7 +408,7 @@ class DatacacheProxyConnectorIntegrationSpec
           )
       )
 
-      val ex = connector.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId).failed.futureValue
+      val ex       = connector.hasClient(taxOfficeNumber, taxOfficeReference, agentId, credId).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       val upstream = ex.asInstanceOf[UpstreamErrorResponse]
       upstream.statusCode mustBe 502
