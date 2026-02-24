@@ -615,6 +615,76 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verify(formpProxy, never()).updateMonthlyReturnItem(any[UpdateMonthlyReturnItemProxyRequest])(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
+
+    "fail when subcontractor resource reference is missing" in {
+      val s = setup
+      import s._
+
+      val req = UpdateMonthlyReturnItemRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        subcontractorId = 1L,
+        subcontractorName = "Tyne Test Ltd",
+        totalPayments = "1200",
+        costOfMaterials = "500",
+        totalDeducted = "240"
+      )
+
+      val subcontractor =
+        mkSubcontractor(subcontractorId = 1L, subbieResourceRef = None)
+          .copy(verificationNumber = Some("V123"))
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq(subcontractor),
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      when(formpProxy.getMonthlyReturnForEdit(any())(any()))
+        .thenReturn(Future.successful(editResponse))
+
+      service.updateMonthlyReturnItem(req).failed.futureValue
+
+      verify(formpProxy, never()).updateMonthlyReturnItem(any())(any())
+    }
+
+    "fail when verification number is missing" in {
+      val s = setup
+      import s._
+
+      val req = UpdateMonthlyReturnItemRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        subcontractorId = 1L,
+        subcontractorName = "Tyne Test Ltd",
+        totalPayments = "1200",
+        costOfMaterials = "500",
+        totalDeducted = "240"
+      )
+
+      val subcontractor =
+        mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L))
+          .copy(verificationNumber = None)
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq(subcontractor),
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      when(formpProxy.getMonthlyReturnForEdit(any())(any()))
+        .thenReturn(Future.successful(editResponse))
+
+      service.updateMonthlyReturnItem(req).failed.futureValue
+
+      verify(formpProxy, never()).updateMonthlyReturnItem(any())(any())
+    }
   }
 
   trait Setup {
