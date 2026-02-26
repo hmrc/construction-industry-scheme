@@ -562,7 +562,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
         .thenReturn(Future.successful(()))
 
       val out = service.deleteMonthlyReturnItem(req).futureValue
-      out mustBe()
+      out mustBe ()
 
       verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
       verify(formpProxy).deleteMonthlyReturnItem(eqTo(expectedDeleteReq))(any[HeaderCarrier])

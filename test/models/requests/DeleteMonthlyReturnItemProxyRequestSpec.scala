@@ -22,4 +22,3 @@ class DeleteMonthlyReturnItemProxyRequestSpec extends AnyWordSpec with Matchers 
     }
   }
 }
-
