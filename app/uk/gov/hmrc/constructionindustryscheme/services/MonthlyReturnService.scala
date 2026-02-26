@@ -18,9 +18,9 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest, SyncMonthlyReturnItemsRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest, SyncMonthlyReturnItemsRequest, UpdateMonthlyReturnItemProxyRequest, UpdateMonthlyReturnItemRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UnsubmittedMonthlyReturnStatus, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, Subcontractor, UnsubmittedMonthlyReturnStatus, UserMonthlyReturns}
 
 import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}
@@ -138,10 +138,72 @@ class MonthlyReturnService @Inject() (
            )
     } yield ()
 
+  def updateMonthlyReturnItem(request: UpdateMonthlyReturnItemRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    for {
+      edit <- formp.getMonthlyReturnForEdit(
+                GetMonthlyReturnForEditRequest(
+                  instanceId = request.instanceId,
+                  taxYear = request.taxYear,
+                  taxMonth = request.taxMonth
+                )
+              )
+
+      subcontractor <- edit.subcontractors
+                         .find(_.subcontractorId == request.subcontractorId)
+                         .fold[Future[Subcontractor]](
+                           Future.failed(
+                             UpstreamErrorResponse(
+                               message = s"Subcontractor ID not found: ${request.subcontractorId}",
+                               statusCode = 400,
+                               reportAs = 400
+                             )
+                           )
+                         )(Future.successful)
+
+      resourceRef <- subcontractor.subbieResourceRef
+                       .fold[Future[Long]](
+                         Future.failed(
+                           UpstreamErrorResponse(
+                             message = s"Subcontractor resource reference not found for ID: ${request.subcontractorId}",
+                             statusCode = 400,
+                             reportAs = 400
+                           )
+                         )
+                       )(Future.successful)
+
+      verificationNumber <- subcontractor.verificationNumber
+                              .fold[Future[String]](
+                                Future.failed(
+                                  UpstreamErrorResponse(
+                                    message =
+                                      s"Verification number not found for subcontractor ID: ${request.subcontractorId}",
+                                    statusCode = 400,
+                                    reportAs = 400
+                                  )
+                                )
+                              )(Future.successful)
+
+      proxyRequest = UpdateMonthlyReturnItemProxyRequest(
+                       instanceId = request.instanceId,
+                       taxYear = request.taxYear,
+                       taxMonth = request.taxMonth,
+                       amendment = "N",
+                       itemResourceReference = resourceRef,
+                       totalPayments = request.totalPayments,
+                       costOfMaterials = request.costOfMaterials,
+                       totalDeducted = request.totalDeducted,
+                       subcontractorName = request.subcontractorName,
+                       verificationNumber = verificationNumber
+                     )
+
+      _ <- formp.updateMonthlyReturnItem(proxyRequest)
+    } yield ()
+
   private def mapType(nilReturnIndicator: Option[String]): String =
     if (nilReturnIndicator.exists(_.trim.equalsIgnoreCase("Y"))) "Nil"
     else "Standard"
 
   private def mapStatus(raw: Option[String]): String =
     UnsubmittedMonthlyReturnStatus.fromRaw(raw).asText
+
 }

@@ -840,4 +840,56 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector updateMonthlyReturnItem" should {
+
+    "POST /formp-proxy/cis/monthly-return-item/update and return Unit on 204" in {
+      val req = UpdateMonthlyReturnItemProxyRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        itemResourceReference = 123L,
+        totalPayments = "1200",
+        costOfMaterials = "500",
+        totalDeducted = "240",
+        subcontractorName = "Tyne Test Ltd",
+        verificationNumber = "V123456"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-item/update"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(204))
+      )
+
+      connector.updateMonthlyReturnItem(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-204 (e.g. 500)" in {
+      val req = UpdateMonthlyReturnItemProxyRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        itemResourceReference = 123L,
+        totalPayments = "1200",
+        costOfMaterials = "500",
+        totalDeducted = "240",
+        subcontractorName = "Tyne Test Ltd",
+        verificationNumber = "V123456"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-item/update"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.updateMonthlyReturnItem(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
 }

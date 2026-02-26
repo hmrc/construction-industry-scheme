@@ -21,9 +21,9 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest, SyncMonthlyReturnItemsRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, EmployerReference, MonthlyReturn, MonthlyReturnItem, NilMonthlyReturnRequest, Subcontractor, UnsubmittedMonthlyReturns, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
@@ -516,6 +516,174 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
       verify(formpProxy).syncMonthlyReturnItems(eqTo(expectedSyncReq))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
+    }
+  }
+
+  "updateMonthlyReturnItem" - {
+
+    "builds proxy request using resource ref + verification number and calls formp.updateMonthlyReturnItem" in {
+      val s = setup
+      import s._
+
+      val req = UpdateMonthlyReturnItemRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        subcontractorId = 1L,
+        subcontractorName = "Tyne Test Ltd",
+        totalPayments = "1200",
+        costOfMaterials = "500",
+        totalDeducted = "240"
+      )
+
+      val subcontractor = mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L))
+        .copy(verificationNumber = Some("V123456"))
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq(subcontractor),
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(editResponse))
+
+      val expectedProxyReq = UpdateMonthlyReturnItemProxyRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        itemResourceReference = 10L,
+        totalPayments = "1200",
+        costOfMaterials = "500",
+        totalDeducted = "240",
+        subcontractorName = "Tyne Test Ltd",
+        verificationNumber = "V123456"
+      )
+
+      when(formpProxy.updateMonthlyReturnItem(eqTo(expectedProxyReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.updateMonthlyReturnItem(req).futureValue mustBe ()
+
+      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verify(formpProxy).updateMonthlyReturnItem(eqTo(expectedProxyReq))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "fail with 400 when subcontractorId is not found in edit response" in {
+      val s = setup
+      import s._
+
+      val req = UpdateMonthlyReturnItemRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        subcontractorId = 999L,
+        subcontractorName = "Tyne Test Ltd",
+        totalPayments = "1200",
+        costOfMaterials = "500",
+        totalDeducted = "240"
+      )
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq(
+          mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L))
+            .copy(verificationNumber = Some("V123456"))
+        ),
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(editResponse))
+
+      val ex = service.updateMonthlyReturnItem(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 400
+      ex.getMessage must include("Subcontractor ID not found")
+
+      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verify(formpProxy, never()).updateMonthlyReturnItem(any[UpdateMonthlyReturnItemProxyRequest])(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "fail when subcontractor resource reference is missing" in {
+      val s = setup
+      import s._
+
+      val req = UpdateMonthlyReturnItemRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        subcontractorId = 1L,
+        subcontractorName = "Tyne Test Ltd",
+        totalPayments = "1200",
+        costOfMaterials = "500",
+        totalDeducted = "240"
+      )
+
+      val subcontractor =
+        mkSubcontractor(subcontractorId = 1L, subbieResourceRef = None)
+          .copy(verificationNumber = Some("V123"))
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq(subcontractor),
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      when(formpProxy.getMonthlyReturnForEdit(any())(any()))
+        .thenReturn(Future.successful(editResponse))
+
+      service.updateMonthlyReturnItem(req).failed.futureValue
+
+      verify(formpProxy, never()).updateMonthlyReturnItem(any())(any())
+    }
+
+    "fail when verification number is missing" in {
+      val s = setup
+      import s._
+
+      val req = UpdateMonthlyReturnItemRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        subcontractorId = 1L,
+        subcontractorName = "Tyne Test Ltd",
+        totalPayments = "1200",
+        costOfMaterials = "500",
+        totalDeducted = "240"
+      )
+
+      val subcontractor =
+        mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L))
+          .copy(verificationNumber = None)
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq(subcontractor),
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      when(formpProxy.getMonthlyReturnForEdit(any())(any()))
+        .thenReturn(Future.successful(editResponse))
+
+      service.updateMonthlyReturnItem(req).failed.futureValue
+
+      verify(formpProxy, never()).updateMonthlyReturnItem(any())(any())
     }
   }
 
