@@ -18,7 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest, SyncMonthlyReturnItemsRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{DeleteMonthlyReturnItemProxyRequest, DeleteMonthlyReturnItemRequest, GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest, SyncMonthlyReturnItemsRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UnsubmittedMonthlyReturnStatus, UserMonthlyReturns}
 
@@ -134,6 +134,42 @@ class MonthlyReturnService @Inject() (
                amendment = "N",
                createResourceReferences = toCreate,
                deleteResourceReferences = toDelete
+             )
+           )
+    } yield ()
+
+  def deleteMonthlyReturnItem(request: DeleteMonthlyReturnItemRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    for {
+
+      edit <- formp.getMonthlyReturnForEdit(
+                GetMonthlyReturnForEditRequest(
+                  instanceId = request.instanceId,
+                  taxYear = request.taxYear,
+                  taxMonth = request.taxMonth
+                )
+              )
+
+      resourceRefToDelete <- edit.subcontractors
+                               .flatMap(s => s.subbieResourceRef.map(ref => s.subcontractorId -> ref))
+                               .toMap
+                               .get(request.subcontractorId)
+                               .fold[Future[Long]](
+                                 Future.failed(
+                                   UpstreamErrorResponse(
+                                     message = s"Subcontractor ID not found: ${request.subcontractorId}",
+                                     statusCode = 400,
+                                     reportAs = 400
+                                   )
+                                 )
+                               )(Future.successful)
+
+      _ <- formp.deleteMonthlyReturnItem(
+             DeleteMonthlyReturnItemProxyRequest(
+               instanceId = request.instanceId,
+               taxYear = request.taxYear,
+               taxMonth = request.taxMonth,
+               amendment = "N",
+               resourceReference = resourceRefToDelete
              )
            )
     } yield ()

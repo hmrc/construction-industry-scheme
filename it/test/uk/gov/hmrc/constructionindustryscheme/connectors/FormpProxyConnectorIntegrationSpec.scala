@@ -840,4 +840,67 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+
+  "FormpProxyConnector deleteMonthlyReturnItem" should {
+
+    "POST /formp-proxy/cis/monthly-return-item/delete and return Unit on 204" in {
+      val req = DeleteMonthlyReturnItemProxyRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        resourceReference = 12345L
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-item/delete"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(204))
+      )
+
+      connector.deleteMonthlyReturnItem(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-204 (e.g. 500)" in {
+      val req = DeleteMonthlyReturnItemProxyRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        resourceReference = 12345L
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-item/delete"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = connector.deleteMonthlyReturnItem(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-204 (e.g. 400)" in {
+      val req = DeleteMonthlyReturnItemProxyRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        resourceReference = 12345L
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-item/delete"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(400).withBody("bad request"))
+      )
+
+      val ex = connector.deleteMonthlyReturnItem(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 400
+    }
+  }
+
 }

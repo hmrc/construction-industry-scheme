@@ -28,7 +28,7 @@ import play.api.test.Helpers.*
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController
 import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, GetMonthlyReturnForEditResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{DeleteMonthlyReturnItemRequest, GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
@@ -715,6 +715,77 @@ class MonthlyReturnsControllerSpec extends SpecBase {
 
         status(result) mustBe BAD_GATEWAY
         contentAsJson(result) mustBe Json.obj("message" -> "sync-selected-subcontractors-failed")
+      }
+    }
+
+    "POST /monthly-return-item/delete (deleteMonthlyReturnItem)" - {
+
+      "return 204 NoContent when service succeeds" in new SetupAuthOnly {
+        val reqBody = DeleteMonthlyReturnItemRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          subcontractorId = 123L
+        )
+
+        when(mockMonthlyReturnService.deleteMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(()))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.deleteMonthlyReturnItem, request)
+
+        status(result) mustBe NO_CONTENT
+        verify(mockMonthlyReturnService).deleteMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier])
+      }
+
+      "return upstream status + message when service fails with UpstreamErrorResponse" in new SetupAuthOnly {
+        val reqBody = DeleteMonthlyReturnItemRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          subcontractorId = 123L
+        )
+
+        val boom = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
+
+        when(mockMonthlyReturnService.deleteMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(boom))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.deleteMonthlyReturnItem, request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
+      }
+
+      "return 502 BadGateway with fixed message when service fails with NonFatal" in new SetupAuthOnly {
+        val reqBody = DeleteMonthlyReturnItemRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          subcontractorId = 123L
+        )
+
+        when(mockMonthlyReturnService.deleteMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("boom")))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.deleteMonthlyReturnItem, request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "delete-monthly-return-item-failed")
       }
     }
 
