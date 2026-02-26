@@ -48,12 +48,15 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
   private val submissionId = "sub-123"
 
   private val validJson: JsValue = Json.obj(
-    "utr"                -> "1234567890",
-    "aoReference"        -> "123/AB456",
-    "informationCorrect" -> "yes",
-    "inactivity"         -> "yes",
-    "monthYear"          -> "2025-09",
-    "email"              -> "test@test.com"
+    "utr"                   -> "1234567890",
+    "aoReference"           -> "123/AB456",
+    "informationCorrect"    -> "yes",
+    "inactivity"            -> "yes",
+    "monthYear"             -> "2025-09",
+    "email"                 -> "test@test.com",
+    "isAgent"               -> false,
+    "clientTaxOfficeNumber" -> "",
+    "clientTaxOfficeRef"    -> ""
   )
 
   val mockAuditService: AuditService = mock[AuditService]

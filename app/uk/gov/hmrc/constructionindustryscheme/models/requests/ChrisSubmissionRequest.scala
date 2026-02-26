@@ -24,7 +24,10 @@ case class ChrisSubmissionRequest(
   informationCorrect: String,
   inactivity: String,
   monthYear: String,
-  email: String
+  email: String,
+  isAgent: Boolean,
+  clientTaxOfficeNumber: String,
+  clientTaxOfficeRef: String
 )
 
 object ChrisSubmissionRequest {

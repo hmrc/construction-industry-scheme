@@ -41,12 +41,16 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
     val gatewayTimestamp = LocalDateTime.now(ZoneOffset.UTC).format(gatewayTimestampFormatter)
 
     val (taxOfficeNumber, taxOfficeReference) =
-      extractTaxOfficeFromCisEnrolment(authRequest.enrolments)
-        .getOrElse(
-          throw new IllegalStateException(
-            "Missing CIS enrolment identifiers (TaxOfficeNumber/TaxOfficeReference) in HMRC-CIS-ORG"
+      if (!request.isAgent) {
+        extractTaxOfficeFromCisEnrolment(authRequest.enrolments)
+          .getOrElse(
+            throw new IllegalStateException(
+              "Missing CIS enrolment identifiers (TaxOfficeNumber/TaxOfficeReference) in HMRC-CIS-ORG"
+            )
           )
-        )
+      } else {
+        (request.clientTaxOfficeNumber, request.clientTaxOfficeRef)
+      }
 
     val periodEnd = parsePeriodEnd(request.monthYear)
 
@@ -124,7 +128,7 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
     (updatedXML, irEnvelope)
   }
 
-  private def extractTaxOfficeFromCisEnrolment(enrolments: Enrolments): Option[(String, String)] =
+  def extractTaxOfficeFromCisEnrolment(enrolments: Enrolments): Option[(String, String)] =
     enrolments
       .getEnrolment("HMRC-CIS-ORG")
       .flatMap { e =>
@@ -134,7 +138,7 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
         } yield (ton.value, tor.value)
       }
 
-  private def parsePeriodEnd(monthYear: String): String = {
+  def parsePeriodEnd(monthYear: String): String = {
     val ymTry =
       Try(YearMonth.parse(monthYear))
         .orElse(Try(YearMonth.parse(monthYear.replace('/', '-'))))

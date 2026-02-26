@@ -22,20 +22,25 @@ import uk.gov.hmrc.constructionindustryscheme.models.SubcontractorType
 final case class CreateAndUpdateSubcontractorRequest(
   cisId: String,
   subcontractorType: SubcontractorType,
+  utr: Option[String] = None,
+  partnerUtr: Option[String] = None,
+  crn: Option[String] = None,
   firstName: Option[String] = None,
   secondName: Option[String] = None,
   surname: Option[String] = None,
+  nino: Option[String] = None,
+  partnershipTradingName: Option[String] = None,
   tradingName: Option[String] = None,
   addressLine1: Option[String] = None,
   addressLine2: Option[String] = None,
-  addressLine3: Option[String] = None,
-  addressLine4: Option[String] = None,
+  city: Option[String] = None,
+  county: Option[String] = None,
+  country: Option[String] = None,
   postcode: Option[String] = None,
-  nino: Option[String] = None,
-  utr: Option[String] = None,
-  worksReferenceNumber: Option[String] = None,
   emailAddress: Option[String] = None,
-  phoneNumber: Option[String] = None
+  phoneNumber: Option[String] = None,
+  mobilePhoneNumber: Option[String] = None,
+  worksReferenceNumber: Option[String] = None
 )
 
 object CreateAndUpdateSubcontractorRequest {

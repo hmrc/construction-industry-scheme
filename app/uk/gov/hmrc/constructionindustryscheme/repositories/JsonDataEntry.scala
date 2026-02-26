@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.itutil
+package uk.gov.hmrc.constructionindustryscheme.repositories
 
-import scala.io.Source
+import play.api.libs.json.{Format, JsValue, Json}
+import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 
-object ItResources {
-  def read(path: String): String = {
-    val stream = getClass.getClassLoader.getResourceAsStream(path)
-    require(stream != null, s"Resource not found on classpath: $path")
-    val src    = Source.fromInputStream(stream, "UTF-8")
-    try src.mkString
-    finally src.close()
-  }
+import java.time.Instant
+
+case class JsonDataEntry(id: String, data: JsValue, lastUpdated: Instant)
+
+object JsonDataEntry {
+  given dateFormat: Format[Instant]   = MongoJavatimeFormats.instantFormat
+  given format: Format[JsonDataEntry] = Json.format[JsonDataEntry]
 }
