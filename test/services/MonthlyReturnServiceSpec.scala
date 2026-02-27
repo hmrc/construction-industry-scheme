@@ -562,7 +562,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
         costOfMaterials = "500",
         totalDeducted = "240",
         subcontractorName = "Tyne Test Ltd",
-        verificationNumber = "V123456"
+        verificationNumber = Some("V123456")
       )
 
       when(formpProxy.updateMonthlyReturnItem(eqTo(expectedProxyReq))(any[HeaderCarrier]))
@@ -651,7 +651,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verify(formpProxy, never()).updateMonthlyReturnItem(any())(any())
     }
 
-    "fail when verification number is missing" in {
+    "succeed when verification number is missing" in {
       val s = setup
       import s._
 
@@ -681,9 +681,12 @@ class MonthlyReturnServiceSpec extends SpecBase {
       when(formpProxy.getMonthlyReturnForEdit(any())(any()))
         .thenReturn(Future.successful(editResponse))
 
-      service.updateMonthlyReturnItem(req).failed.futureValue
+      when(formpProxy.updateMonthlyReturnItem(any())(any()))
+        .thenReturn(Future.successful(()))
 
-      verify(formpProxy, never()).updateMonthlyReturnItem(any())(any())
+      service.updateMonthlyReturnItem(req).futureValue
+
+      verify(formpProxy).updateMonthlyReturnItem(any())(any())
     }
   }
 
