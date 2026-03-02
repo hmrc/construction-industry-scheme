@@ -31,8 +31,8 @@ class ChrisSubmissionEnvelopeBuilderSpec extends SpecBase with Matchers with Moc
 
   private def fakeEnrolments(taxOfficeNumber: String, taxOfficeReference: String): Enrolments = {
     val identifiers = Seq(
-      new EnrolmentIdentifier("TaxOfficeNumber", taxOfficeNumber),
-      new EnrolmentIdentifier("TaxOfficeReference", taxOfficeReference)
+      EnrolmentIdentifier("TaxOfficeNumber", taxOfficeNumber),
+      EnrolmentIdentifier("TaxOfficeReference", taxOfficeReference)
     )
     val enrolment   = new Enrolment("HMRC-CIS-ORG", identifiers, "activated", None)
     Enrolments(Set(enrolment))

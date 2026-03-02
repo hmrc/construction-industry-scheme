@@ -40,7 +40,7 @@ class ChrisEnvelopeXmlBuilderSpec extends AnyWordSpec with Matchers {
 
       (xml \\ "CorrelationID").text mustBe "corr-id"
 
-      val keys = (xml \\ "Key")
+      val keys = xml \\ "Key"
       keys.find(_ \@ "Type" == "TaxOfficeNumber").map(_.text).getOrElse("") mustBe "123"
       keys.find(_ \@ "Type" == "TaxOfficeReference").map(_.text).getOrElse("") mustBe "ABC456"
 
