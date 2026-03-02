@@ -23,12 +23,13 @@ import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.should.Matchers.{should, shouldBe}
 import uk.gov.hmrc.auth.core.*
 import uk.gov.hmrc.auth.core.Enrolment
+import uk.gov.hmrc.constructionindustryscheme.models.MonthlyReturnType
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionEnvelopeBuilder
 
 class ChrisSubmissionEnvelopeBuilderSpec extends SpecBase with Matchers with MockitoSugar {
 
-  def fakeEnrolments(taxOfficeNumber: String, taxOfficeReference: String): Enrolments = {
+  private def fakeEnrolments(taxOfficeNumber: String, taxOfficeReference: String): Enrolments = {
     val identifiers = Seq(
       new EnrolmentIdentifier("TaxOfficeNumber", taxOfficeNumber),
       new EnrolmentIdentifier("TaxOfficeReference", taxOfficeReference)
@@ -39,19 +40,20 @@ class ChrisSubmissionEnvelopeBuilderSpec extends SpecBase with Matchers with Moc
 
   "buildPayload creates correct payload for non-agent request" in {
     val authRequest = mock[AuthenticatedRequest[_]]
-    val enrolments  = fakeEnrolments("123", "ABC456")
-    when(authRequest.enrolments).thenReturn(enrolments)
+    when(authRequest.enrolments).thenReturn(fakeEnrolments("123", "ABC456"))
 
     val submissionRequest = ChrisSubmissionRequest(
       utr = "1234567890",
       aoReference = "123/AB456",
-      informationCorrect = "yes",
-      inactivity = "no",
       monthYear = "2025-05",
-      email = "test@test.com",
+      email = Some("test@test.com"),
       isAgent = false,
-      clientTaxOfficeNumber = "",
-      clientTaxOfficeRef = ""
+      clientTaxOfficeNumber = "999",
+      clientTaxOfficeRef = "XYZ123",
+      returnType = MonthlyReturnType.Nil,
+      informationCorrect = "yes",
+      inactivity = "yes",
+      standard = None
     )
 
     val correlationId = "test-corr-id"
@@ -70,32 +72,60 @@ class ChrisSubmissionEnvelopeBuilderSpec extends SpecBase with Matchers with Moc
 
   "buildPayload creates correct payload for agent request" in {
     val authRequest = mock[AuthenticatedRequest[_]]
-    // Irrelevant enrolments for agent flow, but still default empty
-    when(authRequest.enrolments).thenReturn(Enrolments(Set.empty))
+    when(authRequest.enrolments).thenReturn(Enrolments(Set.empty)) // ignored for agent
 
     val submissionRequest = ChrisSubmissionRequest(
       utr = "1234567890",
       aoReference = "123/AB456",
-      informationCorrect = "yes",
-      inactivity = "yes",
       monthYear = "2025-05",
-      email = "test@test.com",
+      email = Some("test@test.com"),
       isAgent = true,
       clientTaxOfficeNumber = "999",
-      clientTaxOfficeRef = "XYZ123"
+      clientTaxOfficeRef = "XYZ123",
+      returnType = MonthlyReturnType.Nil,
+      informationCorrect = "yes",
+      inactivity = "yes",
+      standard = None
     )
 
     val correlationId = "agent-corr-id"
 
     val payload = ChrisSubmissionEnvelopeBuilder.buildPayload(submissionRequest, authRequest, correlationId)
 
-    payload.correlationId                                                                           shouldBe correlationId
+    payload.correlationId shouldBe correlationId
+    payload.irMark.length   should be > 0
+
     (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeNumber").map(_.text).getOrElse("")    shouldBe "999"
     (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeReference").map(_.text).getOrElse("") shouldBe "XYZ123"
     (payload.envelope \\ "PeriodEnd").text                                                          shouldBe "2025-05-05"
     (payload.envelope \\ "UTR").text                                                                shouldBe "1234567890"
     (payload.envelope \\ "AOref").text                                                              shouldBe "123/AB456"
     (payload.envelope \\ "Inactivity").text                                                         shouldBe "yes"
+  }
+
+  "buildPayload throws for non-agent request when CIS enrolment identifiers are missing" in {
+    val authRequest = mock[AuthenticatedRequest[_]]
+    when(authRequest.enrolments).thenReturn(Enrolments(Set.empty))
+
+    val submissionRequest = ChrisSubmissionRequest(
+      utr = "1234567890",
+      aoReference = "123/AB456",
+      monthYear = "2025-05",
+      email = Some("test@test.com"),
+      isAgent = false,
+      clientTaxOfficeNumber = "",
+      clientTaxOfficeRef = "",
+      returnType = MonthlyReturnType.Nil,
+      informationCorrect = "yes",
+      inactivity = "no",
+      standard = None
+    )
+
+    val thrown = intercept[IllegalStateException] {
+      ChrisSubmissionEnvelopeBuilder.buildPayload(submissionRequest, authRequest, "corr-id")
+    }
+
+    thrown.getMessage should include("Missing CIS enrolment identifiers")
   }
 
   "parsePeriodEnd throws for invalid date" in {
@@ -109,5 +139,4 @@ class ChrisSubmissionEnvelopeBuilderSpec extends SpecBase with Matchers with Moc
     val enrolments = Enrolments(Set.empty)
     ChrisSubmissionEnvelopeBuilder.extractTaxOfficeFromCisEnrolment(enrolments) shouldBe None
   }
-
 }

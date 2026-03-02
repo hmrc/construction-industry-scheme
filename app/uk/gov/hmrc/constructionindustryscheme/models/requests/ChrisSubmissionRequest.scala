@@ -16,18 +16,21 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
-import play.api.libs.json.{Json, OFormat}
+import play.api.libs.json.*
+import uk.gov.hmrc.constructionindustryscheme.models.{ChrisStandardMonthlyReturn, MonthlyReturnType}
 
 case class ChrisSubmissionRequest(
   utr: String,
   aoReference: String,
-  informationCorrect: String,
-  inactivity: String,
   monthYear: String,
-  email: String,
+  email: Option[String],
   isAgent: Boolean,
   clientTaxOfficeNumber: String,
-  clientTaxOfficeRef: String
+  clientTaxOfficeRef: String,
+  returnType: MonthlyReturnType,
+  informationCorrect: String,
+  inactivity: String,
+  standard: Option[ChrisStandardMonthlyReturn] = None
 )
 
 object ChrisSubmissionRequest {
