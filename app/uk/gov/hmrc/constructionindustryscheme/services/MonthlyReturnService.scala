@@ -171,18 +171,6 @@ class MonthlyReturnService @Inject() (
                          )
                        )(Future.successful)
 
-      verificationNumber <- subcontractor.verificationNumber
-                              .fold[Future[String]](
-                                Future.failed(
-                                  UpstreamErrorResponse(
-                                    message =
-                                      s"Verification number not found for subcontractor ID: ${request.subcontractorId}",
-                                    statusCode = 400,
-                                    reportAs = 400
-                                  )
-                                )
-                              )(Future.successful)
-
       proxyRequest = UpdateMonthlyReturnItemProxyRequest(
                        instanceId = request.instanceId,
                        taxYear = request.taxYear,
@@ -193,7 +181,7 @@ class MonthlyReturnService @Inject() (
                        costOfMaterials = request.costOfMaterials,
                        totalDeducted = request.totalDeducted,
                        subcontractorName = request.subcontractorName,
-                       verificationNumber = verificationNumber
+                       verificationNumber = subcontractor.verificationNumber
                      )
 
       _ <- formp.updateMonthlyReturnItem(proxyRequest)
