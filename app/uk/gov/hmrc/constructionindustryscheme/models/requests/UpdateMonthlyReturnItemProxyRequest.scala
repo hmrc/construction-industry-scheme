@@ -28,7 +28,7 @@ case class UpdateMonthlyReturnItemProxyRequest(
   costOfMaterials: String,
   totalDeducted: String,
   subcontractorName: String,
-  verificationNumber: String
+  verificationNumber: Option[String]
 )
 
 object UpdateMonthlyReturnItemProxyRequest:

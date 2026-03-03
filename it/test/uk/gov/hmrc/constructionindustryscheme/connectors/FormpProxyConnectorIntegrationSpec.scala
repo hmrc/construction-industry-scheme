@@ -916,7 +916,7 @@ class FormpProxyConnectorIntegrationSpec
         costOfMaterials = "500",
         totalDeducted = "240",
         subcontractorName = "Tyne Test Ltd",
-        verificationNumber = "V123456"
+        verificationNumber = Some("V123456")
       )
 
       stubFor(
@@ -940,7 +940,7 @@ class FormpProxyConnectorIntegrationSpec
         costOfMaterials = "500",
         totalDeducted = "240",
         subcontractorName = "Tyne Test Ltd",
-        verificationNumber = "V123456"
+        verificationNumber = Some("V123456")
       )
 
       stubFor(
