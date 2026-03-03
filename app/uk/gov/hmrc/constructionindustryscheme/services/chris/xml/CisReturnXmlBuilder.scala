@@ -45,15 +45,15 @@ object CisReturnXmlBuilder {
   }
 
   private def buildStandard(request: ChrisSubmissionRequest): Elem = {
-    val contractor = contractorNode(request)
+    val contractor                           = contractorNode(request)
     val standard: ChrisStandardMonthlyReturn = request.standard.getOrElse(
       throw new IllegalArgumentException("standard payload is required when returnType=standard")
     )
-    
+
     if (standard.subcontractors.isEmpty) {
       throw new IllegalArgumentException("At least one subcontractor is required for standard monthly return")
     }
-    
+
     val declarations = standard.declarations
 
     <CISreturn>
@@ -67,42 +67,42 @@ object CisReturnXmlBuilder {
       </Declarations>
     </CISreturn>
   }
-  
+
   private def contractorNode(request: ChrisSubmissionRequest): Elem =
     <Contractor>
       <UTR>{request.utr}</UTR>
       <AOref>{request.aoReference}</AOref>
     </Contractor>
-    
+
   private def buildStandardSubcontractor(sub: ChrisStandardSubcontractor): NodeSeq = {
     val nameNode: NodeSeq =
       if (sub.subcontractorType == SoleTrader && isBlank(sub.tradingName)) {
         sub.name.map(buildName).getOrElse(NodeSeq.Empty)
       } else NodeSeq.Empty
-      
+
     val tradingNameNode: NodeSeq =
       buildTradingName(sub.subcontractorType, sub.tradingName, sub.partnershipTradingName)
-      
+
     val utrOrUnmatched: NodeSeq =
       nonBlank(sub.utr)
         .map(utr => <UTR>{utr}</UTR>)
         .getOrElse(<Unmatched>yes</Unmatched>)
-      
+
     val crnNode: NodeSeq =
       if (sub.subcontractorType == Partnership) sub.crn.map(crn => <CRN>{crn}</CRN>).getOrElse(NodeSeq.Empty)
       else NodeSeq.Empty
-      
+
     val ninoNode: NodeSeq =
       if (sub.subcontractorType == Partnership) sub.nino.map(nino => <NINO>{nino}</NINO>).getOrElse(NodeSeq.Empty)
       else NodeSeq.Empty
-      
+
     val verificationNode: NodeSeq =
       sub.verificationNumber.map(vn => <VerificationNumber>{vn}</VerificationNumber>).getOrElse(NodeSeq.Empty)
-      
-    val totalPayments = amountOrZero(sub.totalPayments)
+
+    val totalPayments   = amountOrZero(sub.totalPayments)
     val costOfMaterials = amountOrZero(sub.costOfMaterials)
-    val totalDeducted = amountOrZero(sub.totalDeducted)
-      
+    val totalDeducted   = amountOrZero(sub.totalDeducted)
+
     <Subcontractor>
       {nameNode}
       {tradingNameNode}
@@ -113,9 +113,9 @@ object CisReturnXmlBuilder {
       <TotalPayments>{totalPayments}</TotalPayments>
       <CostOfMaterials>{costOfMaterials}</CostOfMaterials>
       <TotalDeducted>{totalDeducted}</TotalDeducted>
-    </Subcontractor>  
+    </Subcontractor>
   }
-  
+
   private def buildName(name: ChrisPersonName): Elem = {
     val middleFore: NodeSeq = nonBlank(name.middle).map(middle => <Fore>{middle}</Fore>).getOrElse(NodeSeq.Empty)
 
@@ -127,19 +127,19 @@ object CisReturnXmlBuilder {
   }
 
   private def buildTradingName(
-    subcontractorType: SubcontractorType, 
-    tradingName: Option[String], 
+    subcontractorType: SubcontractorType,
+    tradingName: Option[String],
     partnershipTradingName: Option[String]
   ): NodeSeq = {
     val chosenTradingName: Option[String] = subcontractorType match {
       case Partnership => nonBlank(partnershipTradingName)
-      case _ => nonBlank(tradingName)
+      case _           => nonBlank(tradingName)
     }
-    
+
     chosenTradingName.map(name => <TradingName>{name}</TradingName>).getOrElse(NodeSeq.Empty)
   }
-    
+
   private def amountOrZero(maybe: Option[BigDecimal]): String =
     maybe.getOrElse(BigDecimal(0)).setScale(2, BigDecimal.RoundingMode.HALF_UP).toString()
-  
+
 }

@@ -22,7 +22,7 @@ object Normalise {
     value.map(_.trim).filter(_.nonEmpty)
 
   def isBlank(value: Option[String]): Boolean =
-    nonBlank(value).isEmpty  
+    nonBlank(value).isEmpty
 
   def isYes(s: String): Boolean =
     s != null && s.trim.equalsIgnoreCase("yes")

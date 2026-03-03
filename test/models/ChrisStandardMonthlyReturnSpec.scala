@@ -86,14 +86,14 @@ class ChrisStandardMonthlyReturnSpec extends AnyWordSpec with Matchers {
 
       val json = Json.obj(
         "subcontractorType" -> Json.toJson(model.subcontractorType),
-        "name" -> Json.obj(
+        "name"              -> Json.obj(
           "first" -> "Chris",
           "last"  -> "Smith"
         ),
-        "utr" -> "1234567890",
-        "nino" -> "AA123456A",
-        "totalPayments" -> BigDecimal("1000.50"),
-        "totalDeducted" -> BigDecimal("200.00")
+        "utr"               -> "1234567890",
+        "nino"              -> "AA123456A",
+        "totalPayments"     -> BigDecimal("1000.50"),
+        "totalDeducted"     -> BigDecimal("200.00")
       )
 
       Json.toJson(model) mustBe json
@@ -125,20 +125,20 @@ class ChrisStandardMonthlyReturnSpec extends AnyWordSpec with Matchers {
       val json = Json.obj(
         "subcontractors" -> Json.arr(
           Json.obj(
-            "subcontractorType" -> Json.toJson(subcontractor.subcontractorType),
-            "name" -> Json.obj(
+            "subcontractorType"  -> Json.toJson(subcontractor.subcontractorType),
+            "name"               -> Json.obj(
               "first"  -> "Chris",
               "middle" -> "J",
               "last"   -> "Smith"
             ),
-            "utr" -> "1234567890",
+            "utr"                -> "1234567890",
             "verificationNumber" -> "V123456",
-            "totalPayments" -> BigDecimal("500.00"),
-            "costOfMaterials" -> BigDecimal("50.00"),
-            "totalDeducted" -> BigDecimal("100.00")
+            "totalPayments"      -> BigDecimal("500.00"),
+            "costOfMaterials"    -> BigDecimal("50.00"),
+            "totalDeducted"      -> BigDecimal("100.00")
           )
         ),
-        "declarations" -> Json.obj(
+        "declarations"   -> Json.obj(
           "employmentStatus" -> "yes",
           "verification"     -> "yes"
         )
