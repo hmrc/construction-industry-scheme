@@ -27,8 +27,8 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.*
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController
-import uk.gov.hmrc.constructionindustryscheme.models.response.{CreateNilMonthlyReturnResponse, GetMonthlyReturnForEditResponse, UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
@@ -715,6 +715,89 @@ class MonthlyReturnsControllerSpec extends SpecBase {
 
         status(result) mustBe BAD_GATEWAY
         contentAsJson(result) mustBe Json.obj("message" -> "sync-selected-subcontractors-failed")
+      }
+    }
+
+    "POST /cis/monthly-return-item/update (updateMonthlyReturnItem)" - {
+
+      "return 204 NoContent when service succeeds" in new SetupAuthOnly {
+        val reqBody = UpdateMonthlyReturnItemRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          subcontractorId = 123,
+          subcontractorName = "Tyne Test Ltd",
+          totalPayments = "1200",
+          costOfMaterials = "500",
+          totalDeducted = "240"
+        )
+
+        when(mockMonthlyReturnService.updateMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(()))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.updateMonthlyReturnItem, request)
+
+        status(result) mustBe NO_CONTENT
+        verify(mockMonthlyReturnService).updateMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier])
+      }
+
+      "return upstream status + message when service fails with UpstreamErrorResponse" in new SetupAuthOnly {
+        val reqBody = UpdateMonthlyReturnItemRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          subcontractorId = 123,
+          subcontractorName = "Tyne Test Ltd",
+          totalPayments = "1200",
+          costOfMaterials = "500",
+          totalDeducted = "240"
+        )
+
+        val boom = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
+
+        when(mockMonthlyReturnService.updateMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(boom))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.updateMonthlyReturnItem, request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
+      }
+
+      "return 500 with 'Unexpected error' when service fails with NonFatal" in new SetupAuthOnly {
+        val reqBody = UpdateMonthlyReturnItemRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          subcontractorId = 123,
+          subcontractorName = "Tyne Test Ltd",
+          totalPayments = "1200",
+          costOfMaterials = "500",
+          totalDeducted = "240"
+        )
+
+        when(mockMonthlyReturnService.updateMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("boom")))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.updateMonthlyReturnItem, request)
+
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        contentAsJson(result) mustBe Json.obj("message" -> "Unexpected error")
       }
     }
 
