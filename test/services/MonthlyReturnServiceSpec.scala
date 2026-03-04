@@ -175,48 +175,56 @@ class MonthlyReturnServiceSpec extends SpecBase {
     }
   }
 
-  "updateNilMonthlyReturn" - {
+  "updateMonthlyReturn" - {
 
     "delegates to formp connector and returns Unit" in {
       val s = setup; import s._
 
-      val payload = NilMonthlyReturnRequest(
+      val payload = UpdateMonthlyReturnRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
         taxMonth = 1,
-        decInformationCorrect = "Y",
-        decNilReturnNoPayments = "Y"
+        amendment = "N",
+        decInformationCorrect = Some("Y"),
+        decNilReturnNoPayments = Some("Y"),
+        nilReturnIndicator = "Y",
+        status = "STARTED",
+        version = Some(1L)
       )
 
-      when(formpProxy.updateNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+      when(formpProxy.updateMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
 
-      val result = service.updateNilMonthlyReturn(payload).futureValue
+      val result = service.updateMonthlyReturn(payload).futureValue
       result mustBe ()
 
-      verify(formpProxy).updateNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      verify(formpProxy).updateMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
 
     "propagates failure from formp connector" in {
       val s = setup; import s._
 
-      val payload = NilMonthlyReturnRequest(
+      val payload = UpdateMonthlyReturnRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
         taxMonth = 1,
-        decInformationCorrect = "Y",
-        decNilReturnNoPayments = "Y"
+        amendment = "N",
+        decInformationCorrect = Some("Y"),
+        decNilReturnNoPayments = Some("Y"),
+        nilReturnIndicator = "Y",
+        status = "STARTED",
+        version = Some(1L)
       )
       val boom    = UpstreamErrorResponse("formp proxy failure", 500)
 
-      when(formpProxy.updateNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+      when(formpProxy.updateMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
         .thenReturn(Future.failed(boom))
 
-      val ex = service.updateNilMonthlyReturn(payload).failed.futureValue
+      val ex = service.updateMonthlyReturn(payload).failed.futureValue
       ex mustBe boom
 
-      verify(formpProxy).updateNilMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      verify(formpProxy).updateMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
   }

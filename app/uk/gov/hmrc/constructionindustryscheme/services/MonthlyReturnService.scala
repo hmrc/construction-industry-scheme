@@ -18,7 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest, SyncMonthlyReturnItemsRequest, UpdateMonthlyReturnItemProxyRequest, UpdateMonthlyReturnItemRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, MonthlyReturnRequest, SelectedSubcontractorsRequest, SyncMonthlyReturnItemsRequest, UpdateMonthlyReturnItemProxyRequest, UpdateMonthlyReturnItemRequest, UpdateMonthlyReturnRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, Subcontractor, UnsubmittedMonthlyReturnStatus, UserMonthlyReturns}
 
@@ -75,10 +75,10 @@ class MonthlyReturnService @Inject() (
       }
     }
 
-  def updateNilMonthlyReturn(
-    req: NilMonthlyReturnRequest
+  def updateMonthlyReturn(
+    req: UpdateMonthlyReturnRequest
   )(implicit hc: HeaderCarrier): Future[Unit] =
-    formp.updateNilMonthlyReturn(req)
+    formp.updateMonthlyReturn(req)
 
   def createMonthlyReturn(req: MonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formp.createMonthlyReturn(req)
