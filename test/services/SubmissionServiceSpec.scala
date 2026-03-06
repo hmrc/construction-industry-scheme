@@ -270,7 +270,7 @@ final class SubmissionServiceSpec extends SpecBase {
   "getGovTalkStatus" - {
 
     "delegates to FormpProxyConnector and returns the response when present" in {
-      val s = setup;
+      val s = setup
       import s._
 
       val req = GetGovTalkStatusRequest(
@@ -293,7 +293,7 @@ final class SubmissionServiceSpec extends SpecBase {
     }
 
     "delegates to FormpProxyConnector and returns None when no record exists" in {
-      val s = setup;
+      val s = setup
       import s._
 
       val req = GetGovTalkStatusRequest(
@@ -315,7 +315,7 @@ final class SubmissionServiceSpec extends SpecBase {
   "createGovTalkStatusRecord" - {
 
     "delegates to FormpProxyConnector and completes" in {
-      val s = setup;
+      val s = setup
       import s._
 
       val req = CreateGovTalkStatusRecordRequest(
@@ -336,7 +336,7 @@ final class SubmissionServiceSpec extends SpecBase {
     }
 
     "propagates failures from FormpProxyConnector" in {
-      val s = setup;
+      val s = setup
       import s._
 
       val req = CreateGovTalkStatusRecordRequest(
