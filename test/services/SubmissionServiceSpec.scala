@@ -24,8 +24,8 @@ import org.mockito.ArgumentMatchers.eq as eqTo
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, NilMonthlyReturnOrgSuccessEmail, SendSuccessEmailRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateGovTalkStatusRecordRequest, CreateSubmissionRequest, GetGovTalkStatusRequest, NilMonthlyReturnOrgSuccessEmail, SendSuccessEmailRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, GetGovTalkStatusResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -264,6 +264,94 @@ final class SubmissionServiceSpec extends SpecBase {
       service.sendSuccessfulEmail(submissionId, req).failed.futureValue.getMessage must include("boom")
 
       verify(emailConnector).sendSuccessfulEmail(eqTo(expectedPayload))(any[HeaderCarrier])
+    }
+  }
+
+  "getGovTalkStatus" - {
+
+    "delegates to FormpProxyConnector and returns the response when present" in {
+      val s = setup;
+      import s._
+
+      val req = GetGovTalkStatusRequest(
+        userIdentifier = "123",
+        formResultID = "1234567890"
+      )
+
+      val resp = GetGovTalkStatusResponse(
+        govtalk_status = Seq.empty
+      )
+
+      when(formpProxyConnector.getGovTalkStatus(eqTo(req))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Some(resp)))
+
+      service.getGovTalkStatus(req).futureValue mustBe Some(resp)
+
+      verify(formpProxyConnector).getGovTalkStatus(eqTo(req))(any[HeaderCarrier])
+      verifyNoInteractions(chrisConnector)
+      verifyNoInteractions(emailConnector)
+    }
+
+    "delegates to FormpProxyConnector and returns None when no record exists" in {
+      val s = setup;
+      import s._
+
+      val req = GetGovTalkStatusRequest(
+        userIdentifier = "123",
+        formResultID = "1234567890"
+      )
+
+      when(formpProxyConnector.getGovTalkStatus(eqTo(req))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(None))
+
+      service.getGovTalkStatus(req).futureValue mustBe None
+
+      verify(formpProxyConnector).getGovTalkStatus(eqTo(req))(any[HeaderCarrier])
+      verifyNoInteractions(chrisConnector)
+      verifyNoInteractions(emailConnector)
+    }
+  }
+
+  "createGovTalkStatusRecord" - {
+
+    "delegates to FormpProxyConnector and completes" in {
+      val s = setup;
+      import s._
+
+      val req = CreateGovTalkStatusRecordRequest(
+        userIdentifier = "123",
+        formResultID = "1234567890",
+        correlationID = "CORR-123",
+        gatewayURL = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      )
+
+      when(formpProxyConnector.createGovTalkStatusRecord(eqTo(req))(any[HeaderCarrier]))
+        .thenReturn(Future.unit)
+
+      service.createGovTalkStatusRecord(req).futureValue
+
+      verify(formpProxyConnector).createGovTalkStatusRecord(eqTo(req))(any[HeaderCarrier])
+      verifyNoInteractions(chrisConnector)
+      verifyNoInteractions(emailConnector)
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val s = setup;
+      import s._
+
+      val req = CreateGovTalkStatusRecordRequest(
+        userIdentifier = "123",
+        formResultID = "1234567890",
+        correlationID = "CORR-123",
+        gatewayURL = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      )
+
+      when(formpProxyConnector.createGovTalkStatusRecord(eqTo(req))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.createGovTalkStatusRecord(req).failed.futureValue.getMessage must include("boom")
+
+      verify(formpProxyConnector).createGovTalkStatusRecord(eqTo(req))(any[HeaderCarrier])
     }
   }
 

@@ -20,15 +20,16 @@ import javax.inject.Inject
 import play.api.mvc.*
 import play.api.libs.json.*
 import play.api.mvc.Results.*
+
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Logging
 import play.api.http.Status.BAD_GATEWAY
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, BuiltSubmissionPayload, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, BuiltSubmissionPayload, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateSubmissionRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateGovTalkStatusRecordRequest, CreateSubmissionRequest, GetGovTalkStatusRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, MonthlyReturnService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionEnvelopeBuilder
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
@@ -44,6 +45,7 @@ import scala.util.{Failure, Success}
 class SubmissionController @Inject() (
   authorise: AuthAction,
   submissionService: SubmissionService,
+  monthlyReturnService: MonthlyReturnService,
   auditService: AuditService,
   xmlValidator: XmlValidator,
   cc: ControllerComponents,
@@ -94,7 +96,44 @@ class SubmissionController @Inject() (
                 )
                 submissionService
                   .submitToChris(payload)
-                  .map(renderSubmissionResponse(submissionId, payload))
+                  .flatMap { res =>
+                    validateCorrelationId(correlationId, res.meta.correlationId) match {
+                      case Left(reason) =>
+                        logger.error(s"Correlation ID validation failed: $reason")
+                        Future.successful(
+                          BadGateway(
+                            Json.obj("submissionId" -> submissionId, "status" -> "FATAL_ERROR", "error" -> reason)
+                          )
+                        )
+                      case Right(_)     =>
+                        monthlyReturnService
+                          .getCisTaxpayer(EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef))
+                          .flatMap { taxpayer =>
+                            val getReq = GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)
+                            submissionService.getGovTalkStatus(getReq).flatMap {
+                              case Some(_) =>
+                                logger.error(
+                                  s"[submitToChris] GovTalkStatus already exists for instanceId = ${taxpayer.uniqueId}"
+                                )
+                                Future.successful(
+                                  InternalServerError(
+                                    Json.obj("submissionId" -> submissionId, "error" -> "govtalk-status-already-exists")
+                                  )
+                                )
+                              case None    =>
+                                val createReq = CreateGovTalkStatusRecordRequest(
+                                  userIdentifier = taxpayer.uniqueId,
+                                  formResultID = submissionId,
+                                  correlationID = correlationId,
+                                  gatewayURL = appConfig.chrisGatewayUrl
+                                )
+                                submissionService
+                                  .createGovTalkStatusRecord(createReq)
+                                  .map(_ => renderSubmissionResponse(submissionId, payload)(res))
+                            }
+                          }
+                    }
+                  }
                   .recover { case ex =>
                     logger.error("[submitToChris] upstream failure", ex)
                     val fatalErrorJson           = Json.obj(
@@ -249,5 +288,14 @@ class SubmissionController @Inject() (
       case XmlConversionResult(true, Some(json), _) => json
       case _                                        => Json.toJson(res.rawXml)
     }
+
+  private def validateCorrelationId(sentRaw: String, ackRaw: String): Either[String, Unit] = {
+    val sent = sentRaw.trim
+    val ack  = ackRaw.trim
+
+    if (sent.isEmpty || ack.isEmpty) Left("empty correlationId")
+    else if (sent != ack) Left(s"correlationId mismatch: sent '$sent' but got '$ack'")
+    else Right(())
+  }
 
 }

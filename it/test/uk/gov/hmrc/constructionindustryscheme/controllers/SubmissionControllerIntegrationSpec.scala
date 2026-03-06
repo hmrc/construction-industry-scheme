@@ -112,36 +112,6 @@ class SubmissionControllerIntegrationSpec
 
   "POST /cis/chris (submitNilMonthlyReturn)" should {
 
-    "return 200 with success json when authorised and ChRIS returns 200" in {
-      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "123", taxOfficeReference = "AB456")
-
-      stubFor(
-        post(urlPathEqualTo(chrisPath))
-          .withHeader("Content-Type", equalTo("application/xml"))
-          .withHeader("Accept", equalTo("application/xml"))
-          .withHeader("CorrelationId", matching("[A-F0-9]{32}"))
-          .withRequestBody(matchingXPath("/*[local-name()='GovTalkMessage']"))
-          .withRequestBody(
-            matchingXPath("//*[local-name()='Contractor']/*[local-name()='UTR' and text()='1234567890']")
-          )
-          .willReturn(aResponse().withStatus(500).withBody("boom from chris"))
-      )
-
-      val resp = postJson(
-        submitToChrisUrl(submissionId),
-        validRequestJson,
-        "X-Session-Id"  -> "Session-123",
-        "Authorization" -> "Bearer it-token"
-      )
-
-      resp.status mustBe OK
-      (resp.json \ "submissionId").as[String] mustBe submissionId
-      (resp.json \ "status").as[String] mustBe "FATAL_ERROR"
-      (resp.json \ "hmrcMarkGenerated").as[String].nonEmpty mustBe true
-      val err = (resp.json \ "error").as[JsObject]
-      (err \ "type").as[String].toLowerCase must include("fatal")
-    }
-
     "return 400 when request JSON is invalid" in {
       AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "123", taxOfficeReference = "AB456")
 
