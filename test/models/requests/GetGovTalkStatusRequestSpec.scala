@@ -18,22 +18,22 @@ package models.requests
 
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.must.Matchers
-import play.api.libs.json.Json
-import uk.gov.hmrc.constructionindustryscheme.models.requests.DeleteMonthlyReturnItemRequest
+import play.api.libs.json.{JsSuccess, Json}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.GetGovTalkStatusRequest
 
-class DeleteMonthlyReturnItemRequestSpec extends AnyWordSpec with Matchers {
+class GetGovTalkStatusRequestSpec extends AnyWordSpec with Matchers {
 
-  "DeleteMonthlyReturnItemRequest JSON format" should {
+  "GetGovTalkStatusRequest.format" should {
 
-    "round-trip serialize and deserialize" in {
-      val model = DeleteMonthlyReturnItemRequest(
-        instanceId = "inst-123",
-        taxYear = 2025,
-        taxMonth = 1,
-        subcontractorId = 1001L
+    "serialize and deserialize correctly" in {
+      val model = GetGovTalkStatusRequest(
+        userIdentifier = "123",
+        formResultID = "123456"
       )
 
-      Json.fromJson[DeleteMonthlyReturnItemRequest](Json.toJson(model)).get mustBe model
+      val json = Json.toJson(model)
+
+      json.validate[GetGovTalkStatusRequest] mustBe JsSuccess(model)
     }
   }
 }

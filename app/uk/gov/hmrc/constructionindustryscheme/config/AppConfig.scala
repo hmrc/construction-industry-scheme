@@ -19,11 +19,16 @@ package uk.gov.hmrc.constructionindustryscheme.config
 import javax.inject.{Inject, Singleton}
 import play.api.{Configuration, Environment}
 import uk.gov.hmrc.constructionindustryscheme.utils.SchemaLoader
+import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import javax.xml.validation.Schema
 
 @Singleton
-class AppConfig @Inject() (val config: Configuration, val environment: Environment) {
+class AppConfig @Inject() (
+  val config: Configuration,
+  val environment: Environment,
+  val servicesConfig: ServicesConfig
+) {
   val appName: String = config.get[String]("appName")
 
   val chrisHost: Seq[String] = config.get[Seq[String]]("submissionPollUrlKnownHosts")
@@ -51,4 +56,6 @@ class AppConfig @Inject() (val config: Configuration, val environment: Environme
   val agentClientCryptoKey: String = config.get[String]("agentClientCrypto.key")
   val cryptoToggle: Boolean        = config.get[Boolean]("encryptionToggle")
 
+  lazy val chrisGatewayUrl: String =
+    servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.submit-url")
 }
