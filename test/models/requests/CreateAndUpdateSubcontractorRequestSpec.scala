@@ -153,6 +153,20 @@ class CreateAndUpdateSubcontractorRequestSpec extends AnyWordSpec with Matchers 
       result.get mustBe CompanyRequest(cisId = "CIS-888")
     }
 
+    "should fail to read when subcontractorType is unsupported" in {
+      val json = Json.parse("""{ "cisId": "CIS-123", "subcontractorType": "banana" }""")
+
+      val result = json.validate[CreateAndUpdateSubcontractorRequest]
+      result.isError mustBe true
+
+      val msg = result match {
+        case JsError(errs) => errs.flatMap(_._2).flatMap(_.messages).mkString(" | ")
+        case _             => fail("Expected JsError")
+      }
+
+      msg must include("Unsupported subcontractorType: banana")
+    }
+
     "read minimal valid JSON for partnership (only required fields)" in {
       val json = Json.parse(
         s"""
