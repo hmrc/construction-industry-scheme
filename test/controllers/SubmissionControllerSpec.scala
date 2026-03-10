@@ -21,7 +21,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
 import org.mockito.{ArgumentMatchers, Mockito}
 import org.scalatest.EitherValues
-import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, NO_CONTENT, OK, UNAUTHORIZED}
+import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, INTERNAL_SERVER_ERROR, NO_CONTENT, OK, UNAUTHORIZED}
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, await, contentAsJson, status}
@@ -370,6 +370,163 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         await(result)
       }
       thrown.getMessage must include("XML validation failed: invalid!")
+    }
+
+    "returns 500 InternalServerError when GovTalk initialisation/update fails in recoverable ChRIS failure flow" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+
+      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(xmlValidator.validate(any[NodeSeq]))
+        .thenReturn(Success(()))
+
+      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      when(
+        submissionService.initialiseGovTalkStatus(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.failed(new RuntimeException("govtalk failure")))
+
+      val req =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(req)
+
+      status(result) mustBe INTERNAL_SERVER_ERROR
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "FATAL_ERROR"
+      (js \ "error" \ "text").as[String] mustBe "GovTalk status already exists"
+    }
+
+    "returns 502 BadGateway when sent or ack correlation id is empty" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(xmlValidator.validate(any[NodeSeq]))
+        .thenReturn(Success(()))
+
+      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+        .thenAnswer { _ =>
+          Future.successful(
+            mkSubmissionResult(SUBMITTED).copy(meta = mkMeta(corrId = ""))
+          )
+        }
+
+      val req =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(req)
+
+      status(result) mustBe BAD_GATEWAY
+      val js = contentAsJson(result)
+      (js \ "status").as[String] mustBe "FATAL_ERROR"
+      (js \ "error" \ "text").as[String] mustBe "empty correlationId"
+    }
+
+    "returns 502 BadGateway with FATAL_ERROR when correlation id validation fails" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(xmlValidator.validate(any[NodeSeq]))
+        .thenReturn(Success(()))
+
+      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val result = mkSubmissionResult(SUBMITTED).copy(
+            meta = mkMeta(corrId = "DIFFERENT-CORRELATION-ID")
+          )
+          Future.successful(result)
+        }
+
+      val request =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(request)
+
+      status(result) mustBe BAD_GATEWAY
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "FATAL_ERROR"
+      (js \ "error" \ "text").as[String] must include("correlationId mismatch")
+
+      verify(submissionService, never())
+        .initialiseGovTalkStatus(any[EmployerReference], any[String], any[String], any[String])(any[HeaderCarrier])
+    }
+
+    "returns 502 BadGateway when ack correlation id is empty" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(xmlValidator.validate(any[NodeSeq]))
+        .thenReturn(Success(()))
+
+      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+
+          val result = mkSubmissionResult(SUBMITTED).copy(
+            meta = mkMeta(corrId = "")
+          )
+
+          Future.successful(result)
+        }
+
+      val request =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(request)
+
+      status(result) mustBe BAD_GATEWAY
+
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "FATAL_ERROR"
+      (js \ "error" \ "text").as[String] mustBe "empty correlationId"
+
+      verify(submissionService).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
     }
   }
 
