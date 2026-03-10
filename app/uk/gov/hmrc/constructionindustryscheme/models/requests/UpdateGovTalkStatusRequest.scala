@@ -29,4 +29,3 @@ case class UpdateGovTalkStatusRequest(
 object UpdateGovTalkStatusRequest {
   given format: OFormat[UpdateGovTalkStatusRequest] = Json.format[UpdateGovTalkStatusRequest]
 }
-

@@ -113,10 +113,15 @@ class ChrisConnector @Inject() (
     if (s.length <= maxCharacters) s else s.take(maxCharacters) + "…"
 
   private def parseError(correlationId: String, rawXml: String, err: String): SubmissionResult =
-    errorResult(correlationId, rawXml, "parse", err)
+    errorResult(correlationId = correlationId, rawXml = rawXml, errorNumber = "parse", errorText = err)
 
   private def httpError(correlationId: String, rawXml: String, status: Int): SubmissionResult =
-    errorResult(correlationId, rawXml, s"http$status", truncate(rawXml))
+    errorResult(
+      correlationId = correlationId,
+      rawXml = rawXml,
+      errorNumber = s"http$status",
+      errorText = truncate(rawXml)
+    )
 
   private def errorResult(
     correlationId: String,
