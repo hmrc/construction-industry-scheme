@@ -23,13 +23,12 @@ import play.api.mvc.Results.*
 
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Logging
-import play.api.http.Status.BAD_GATEWAY
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, BuiltSubmissionPayload, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, CreateGovTalkStatusRecordRequest, CreateSubmissionRequest, GetGovTalkStatusRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, MonthlyReturnService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
+import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionEnvelopeBuilder
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
@@ -41,11 +40,11 @@ import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
 import java.time.{Clock, Instant}
 import java.util.UUID
 import scala.util.{Failure, Success}
+import scala.util.control.NonFatal
 
 class SubmissionController @Inject() (
   authorise: AuthAction,
   submissionService: SubmissionService,
-  monthlyReturnService: MonthlyReturnService,
   auditService: AuditService,
   xmlValidator: XmlValidator,
   cc: ControllerComponents,
@@ -80,77 +79,7 @@ class SubmissionController @Inject() (
         .validate[ChrisSubmissionRequest]
         .fold(
           errs => Future.successful(BadRequest(Json.obj("message" -> JsError.toJson(errs)))),
-          csr => {
-            logger.info(s"Submitting Nil Monthly Return to ChRIS for UTR=${csr.utr}")
-
-            val correlationId = UUID.randomUUID().toString.replace("-", "").toUpperCase
-            val payload       = ChrisSubmissionEnvelopeBuilder.buildPayload(csr, req, correlationId)
-
-            val monthlyNilReturnRequestJson: JsValue = createMonthlyNilReturnRequestJson(payload)
-            auditService.monthlyNilReturnRequestEvent(monthlyNilReturnRequestJson)
-
-            xmlValidator.validate(payload.irEnvelope) match {
-              case Success(_) =>
-                logger.info(
-                  s"ChRIS XML validation successful. Sending ChRIS submission for a correlationId = $correlationId."
-                )
-                submissionService
-                  .submitToChris(payload)
-                  .flatMap { res =>
-                    validateCorrelationId(correlationId, res.meta.correlationId) match {
-                      case Left(reason) =>
-                        logger.error(s"Correlation ID validation failed: $reason")
-                        Future.successful(
-                          BadGateway(
-                            Json.obj("submissionId" -> submissionId, "status" -> "FATAL_ERROR", "error" -> reason)
-                          )
-                        )
-                      case Right(_)     =>
-                        monthlyReturnService
-                          .getCisTaxpayer(EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef))
-                          .flatMap { taxpayer =>
-                            val getReq = GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)
-                            submissionService.getGovTalkStatus(getReq).flatMap {
-                              case Some(_) =>
-                                logger.error(
-                                  s"[submitToChris] GovTalkStatus already exists for instanceId = ${taxpayer.uniqueId}"
-                                )
-                                Future.successful(
-                                  InternalServerError(
-                                    Json.obj("submissionId" -> submissionId, "error" -> "govtalk-status-already-exists")
-                                  )
-                                )
-                              case None    =>
-                                val createReq = CreateGovTalkStatusRecordRequest(
-                                  userIdentifier = taxpayer.uniqueId,
-                                  formResultID = submissionId,
-                                  correlationID = correlationId,
-                                  gatewayURL = appConfig.chrisGatewayUrl
-                                )
-                                submissionService
-                                  .createGovTalkStatusRecord(createReq)
-                                  .map(_ => renderSubmissionResponse(submissionId, payload)(res))
-                            }
-                          }
-                    }
-                  }
-                  .recover { case ex =>
-                    logger.error("[submitToChris] upstream failure", ex)
-                    val fatalErrorJson           = Json.obj(
-                      "submissionId"      -> submissionId,
-                      "status"            -> "FATAL_ERROR",
-                      "hmrcMarkGenerated" -> payload.irMark,
-                      "error"             -> "upstream-failure"
-                    )
-                    val monthlyNilReturnResponse = AuditResponseReceivedModel(BAD_GATEWAY.toString, fatalErrorJson)
-                    auditService.monthlyNilReturnResponseEvent(monthlyNilReturnResponse)
-                    BadGateway(fatalErrorJson)
-                  }
-              case Failure(e) =>
-                logger.error(s"ChRIS XML validation failed: ${e.getMessage}", e)
-                Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
-            }
-          }
+          csr => handleSubmitToChris(submissionId, csr)
         )
     }
 
@@ -224,6 +153,19 @@ class SubmissionController @Inject() (
         )
     }
 
+  def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue =
+    XmlToJsonConvertor.convertXmlToJson(payload.envelope.toString) match {
+      case XmlConversionResult(true, Some(json), _)   => json
+      case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
+      case _                                          => Json.obj("error" -> "unexpected conversion failure")
+    }
+
+  def createMonthlyNilReturnResponseJson(res: SubmissionResult): JsValue =
+    XmlToJsonConvertor.convertXmlToJson(res.rawXml) match {
+      case XmlConversionResult(true, Some(json), _) => json
+      case _                                        => Json.toJson(res.rawXml)
+    }
+
   private def renderSubmissionResponse(submissionId: String, payload: BuiltSubmissionPayload)(
     res: SubmissionResult
   ): Result = {
@@ -276,18 +218,114 @@ class SubmissionController @Inject() (
     }
   }
 
-  def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue =
-    XmlToJsonConvertor.convertXmlToJson(payload.envelope.toString) match {
-      case XmlConversionResult(true, Some(json), _)   => json
-      case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
-      case _                                          => Json.obj("error" -> "unexpected conversion failure")
+  private def handleSubmitToChris(submissionId: String, csr: ChrisSubmissionRequest)(implicit
+    req: AuthenticatedRequest[JsValue]
+  ): Future[Result] = {
+    val correlationId = UUID.randomUUID().toString.replace("-", "").toUpperCase
+    val payload       = ChrisSubmissionEnvelopeBuilder.buildPayload(csr, req, correlationId)
+
+    auditService.monthlyNilReturnRequestEvent(createMonthlyNilReturnRequestJson(payload))
+
+    xmlValidator.validate(payload.irEnvelope) match {
+      case Failure(e) =>
+        logger.error(s"ChRIS XML validation failed: ${e.getMessage}", e)
+        Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
+
+      case Success(_) =>
+        logger.info(s"ChRIS XML validation successful. Sending ChRIS submission for a correlationId = $correlationId.")
+        submissionService
+          .submitToChris(payload)
+          .flatMap(res => handleChrisResponse(submissionId, csr, correlationId, payload, res))
+          .recoverWith { case NonFatal(ex) =>
+            handleChrisFailure(submissionId, csr, correlationId, payload, ex)
+          }
+    }
+  }
+
+  private def handleChrisResponse(
+    submissionId: String,
+    csr: ChrisSubmissionRequest,
+    correlationId: String,
+    payload: BuiltSubmissionPayload,
+    res: SubmissionResult
+  )(implicit hc: HeaderCarrier): Future[Result] =
+    validateCorrelationId(correlationId, res.meta.correlationId) match {
+      case Left(reason) =>
+        logger.error(s"Correlation ID validation failed: $reason")
+        Future.successful(
+          BadGateway(withError(baseSubmissionResponseJson(submissionId, payload, correlationId, "FATAL_ERROR"), reason))
+        )
+
+      case Right(_) =>
+        submissionService
+          .initialiseGovTalkStatus(
+            EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef),
+            submissionId,
+            correlationId,
+            appConfig.chrisGatewayUrl
+          )
+          .map(_ => renderSubmissionResponse(submissionId, payload)(res))
     }
 
-  def createMonthlyNilReturnResponseJson(res: SubmissionResult): JsValue =
-    XmlToJsonConvertor.convertXmlToJson(res.rawXml) match {
-      case XmlConversionResult(true, Some(json), _) => json
-      case _                                        => Json.toJson(res.rawXml)
-    }
+  private def handleChrisFailure(
+    submissionId: String,
+    csr: ChrisSubmissionRequest,
+    correlationId: String,
+    payload: BuiltSubmissionPayload,
+    ex: Throwable
+  )(implicit hc: HeaderCarrier): Future[Result] = {
+    logger.error(s"Received 5xx/Exception from ChRIS, treating as RESUBMIT for submissionId=$submissionId", ex)
+
+    submissionService
+      .initialiseGovTalkStatus(
+        EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef),
+        submissionId,
+        correlationId,
+        appConfig.chrisGatewayUrl
+      )
+      .flatMap { instanceId =>
+        submissionService
+          .updateGovTalkStatus(
+            UpdateGovTalkStatusRequest(
+              userIdentifier = instanceId,
+              formResultID = submissionId,
+              protocolStatus = "dataRequest"
+            )
+          )
+          .map { _ =>
+            Ok(
+              withError(baseSubmissionResponseJson(submissionId, payload, correlationId, "STARTED"), "Chris failure")
+            )
+          }
+      }
+      .recover { case ex =>
+        logger.error(s"Failed to initialise/update GovTalk status after 5xx", ex)
+        InternalServerError(
+          withError(
+            baseSubmissionResponseJson(submissionId, payload, correlationId, "FATAL_ERROR"),
+            "GovTalk status already exists"
+          )
+        )
+      }
+  }
+
+  private def baseSubmissionResponseJson(
+    submissionId: String,
+    payload: BuiltSubmissionPayload,
+    correlationId: String,
+    status: String,
+    gatewayTimestamp: String = Instant.now(clock).toString
+  ): JsObject =
+    Json.obj(
+      "submissionId"      -> submissionId,
+      "hmrcMarkGenerated" -> payload.irMark,
+      "correlationId"     -> correlationId,
+      "gatewayTimestamp"  -> gatewayTimestamp,
+      "status"            -> status
+    )
+
+  private def withError(json: JsObject, text: String): JsObject =
+    json ++ Json.obj("error" -> Json.obj("text" -> text))
 
   private def validateCorrelationId(sentRaw: String, ackRaw: String): Either[String, Unit] = {
     val sent = sentRaw.trim
@@ -297,5 +335,4 @@ class SubmissionController @Inject() (
     else if (sent != ack) Left(s"correlationId mismatch: sent '$sent' but got '$ack'")
     else Right(())
   }
-
 }

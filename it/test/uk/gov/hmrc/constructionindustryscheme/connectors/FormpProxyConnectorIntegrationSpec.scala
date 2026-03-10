@@ -1083,4 +1083,42 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
+
+  "FormpProxyConnector updateGovTalkStatus" should {
+
+    "POST /formp-proxy/cis/govtalkstatus/update-status and return Unit on 204" in {
+      val req = UpdateGovTalkStatusRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-123",
+        protocolStatus = "dataRequest"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/update-status"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(204))
+      )
+
+      connector.updateGovTalkStatus(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-204 (e.g. 500)" in {
+      val req = UpdateGovTalkStatusRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-123",
+        protocolStatus = "dataRequest"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/update-status"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = connector.updateGovTalkStatus(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
 }
