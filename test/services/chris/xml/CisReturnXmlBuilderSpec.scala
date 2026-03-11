@@ -39,6 +39,21 @@ class CisReturnXmlBuilderSpec extends AnyWordSpec with Matchers {
       standard = None
     )
 
+  private def baseSub =
+    ChrisStandardSubcontractor(
+      subcontractorType = SoleTrader,
+      name = Some(ChrisPersonName("Chris", None, "Smith")),
+      tradingName = None,
+      partnershipTradingName = None,
+      utr = Some("1234567890"),
+      crn = None,
+      nino = None,
+      verificationNumber = None,
+      totalPayments = None,
+      costOfMaterials = None,
+      totalDeducted = None
+    )
+
   "CisReturnXmlBuilder.build" should {
 
     "build nil return with contractor + declarations (+ inactivity when yes)" in {
@@ -107,6 +122,163 @@ class CisReturnXmlBuilderSpec extends AnyWordSpec with Matchers {
       (xml \\ "Declarations" \\ "Verification").text mustBe "yes"
       (xml \\ "Declarations" \\ "InformationCorrect").text mustBe "yes"
       (xml \\ "Declarations" \\ "Inactivity").isEmpty mustBe true
+    }
+
+    "include Inactivity node when inactivity is yes" in {
+      val xml = CisReturnXmlBuilder.build(baseRequest(MonthlyReturnType.Nil, inactivity = "yes"))
+
+      (xml \\ "Inactivity").text mustBe "yes"
+    }
+
+    "not include Name node when tradingName exists for sole trader" in {
+      val sub = baseSub.copy(tradingName = Some("ABC Ltd"))
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      (xml \\ "Name").isEmpty mustBe true
+    }
+
+    "include Unmatched when subcontractor UTR missing" in {
+      val sub = baseSub.copy(utr = None)
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      (xml \\ "Unmatched").text mustBe "yes"
+    }
+
+    "include CRN when subcontractorType is Partnership" in {
+      val sub = baseSub.copy(
+        subcontractorType = Partnership,
+        crn = Some("CRN123")
+      )
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      (xml \\ "CRN").text mustBe "CRN123"
+    }
+
+    "include NINO when subcontractorType is Partnership" in {
+      val sub = baseSub.copy(
+        subcontractorType = Partnership,
+        nino = Some("AA123456A")
+      )
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      (xml \\ "NINO").text mustBe "AA123456A"
+    }
+
+    "include VerificationNumber when present" in {
+      val sub = baseSub.copy(
+        verificationNumber = Some("V123")
+      )
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      (xml \\ "VerificationNumber").text mustBe "V123"
+    }
+
+    "include middle name when present" in {
+      val sub = baseSub.copy(
+        name = Some(ChrisPersonName("Chris", Some("James"), "Smith"))
+      )
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      (xml \\ "Name" \\ "Fore").map(_.text) must contain("James")
+    }
+
+    "include TradingName for partnership when partnershipTradingName exists" in {
+      val sub = baseSub.copy(
+        subcontractorType = Partnership,
+        partnershipTradingName = Some("PARTNERS LTD")
+      )
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      (xml \\ "TradingName").text mustBe "PARTNERS LTD"
+    }
+
+    "include TradingName when tradingName exists" in {
+      val sub = baseSub.copy(
+        tradingName = Some("ABC TRADING")
+      )
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      (xml \\ "TradingName").text mustBe "ABC TRADING"
     }
   }
 }
