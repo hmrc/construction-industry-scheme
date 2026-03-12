@@ -280,5 +280,20 @@ class CisReturnXmlBuilderSpec extends AnyWordSpec with Matchers {
 
       (xml \\ "TradingName").text mustBe "ABC TRADING"
     }
+
+    "include Inactivity node in standard return when inactivity is yes" in {
+      val req = baseRequest(MonthlyReturnType.Standard, inactivity = "yes").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(baseSub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      (xml \\ "Declarations" \\ "Inactivity").text mustBe "yes"
+    }
   }
 }
