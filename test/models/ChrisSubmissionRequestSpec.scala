@@ -19,50 +19,67 @@ package models
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.must.Matchers
 import play.api.libs.json.*
+import uk.gov.hmrc.constructionindustryscheme.models.MonthlyReturnType
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisSubmissionRequest
 
 class ChrisSubmissionRequestSpec extends AnyWordSpec with Matchers {
 
-  private val model = ChrisSubmissionRequest(
+  private val nilModel = ChrisSubmissionRequest(
     utr = "1234567890",
     aoReference = "123/AB456",
-    informationCorrect = "yes",
-    inactivity = "no",
     monthYear = "2025-05",
-    email = "test@test.com",
+    email = Some("test@test.com"),
     isAgent = false,
     clientTaxOfficeNumber = "",
-    clientTaxOfficeRef = ""
+    clientTaxOfficeRef = "",
+    returnType = MonthlyReturnType.Nil,
+    informationCorrect = "yes",
+    inactivity = "no",
+    standard = None
   )
 
-  private val json: JsValue = Json.obj(
+  private val writeJson: JsValue = Json.obj(
     "utr"                   -> "1234567890",
     "aoReference"           -> "123/AB456",
-    "informationCorrect"    -> "yes",
-    "inactivity"            -> "no",
     "monthYear"             -> "2025-05",
     "email"                 -> "test@test.com",
     "isAgent"               -> false,
     "clientTaxOfficeNumber" -> "",
-    "clientTaxOfficeRef"    -> ""
+    "clientTaxOfficeRef"    -> "",
+    "returnType"            -> "nil",
+    "informationCorrect"    -> "yes",
+    "inactivity"            -> "no"
+  )
+
+  private val readJson: JsValue = Json.obj(
+    "utr"                   -> "1234567890",
+    "aoReference"           -> "123/AB456",
+    "monthYear"             -> "2025-05",
+    "email"                 -> "test@test.com",
+    "isAgent"               -> false,
+    "clientTaxOfficeNumber" -> "",
+    "clientTaxOfficeRef"    -> "",
+    "returnType"            -> "monthlyNilReturn",
+    "informationCorrect"    -> "yes",
+    "inactivity"            -> "no"
   )
 
   "ChrisSubmissionRequest JSON format" should {
 
     "write a model to JSON" in {
-      Json.toJson(model) mustEqual json
+      Json.toJson(nilModel) mustEqual writeJson
     }
 
     "read JSON into a model" in {
-      json.validate[ChrisSubmissionRequest] mustEqual JsSuccess(model)
+      readJson.validate[ChrisSubmissionRequest] mustEqual JsSuccess(nilModel)
     }
 
-    "round-trip (model -> json -> model)" in {
-      Json.toJson(model).validate[ChrisSubmissionRequest].get mustEqual model
+    "round-trip (model -> json -> model) is not supported because returnType Reads/Writes differ" in {
+      Json.toJson(nilModel).validate[ChrisSubmissionRequest].isError mustBe true
     }
 
     "fail to read when a required field is missing" in {
-      val missing = json.as[JsObject] - "utr"
+      val missing = readJson.as[JsObject] - "utr"
       val result  = missing.validate[ChrisSubmissionRequest]
       result.isError mustBe true
       val errors  = result.fold(identity, _ => fail("expected JsError"))
@@ -70,11 +87,10 @@ class ChrisSubmissionRequestSpec extends AnyWordSpec with Matchers {
     }
 
     "fail to read when a field has the wrong type" in {
-      val wrongType = json.as[JsObject] + ("inactivity" -> JsNumber(1))
+      val wrongType = readJson.as[JsObject] + ("inactivity" -> JsNumber(1))
       val result    = wrongType.validate[ChrisSubmissionRequest]
       result.isError mustBe true
-
-      val errors = result.fold(identity, _ => fail("expected JsError"))
+      val errors    = result.fold(identity, _ => fail("expected JsError"))
       errors.exists { case (path, _) => path == (JsPath \ "inactivity") } mustBe true
     }
   }
