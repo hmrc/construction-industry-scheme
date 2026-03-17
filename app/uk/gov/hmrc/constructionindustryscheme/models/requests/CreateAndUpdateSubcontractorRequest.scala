@@ -73,6 +73,8 @@ object CreateAndUpdateSubcontractorRequest {
     subcontractorType: SubcontractorType = Partnership,
     utr: Option[String] = None,
     partnerUtr: Option[String] = None,
+    crn: Option[String] = None,
+    nino: Option[String] = None,
     partnershipTradingName: Option[String] = None,
     tradingName: Option[String] = None,
     addressLine1: Option[String] = None,
