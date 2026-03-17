@@ -20,6 +20,7 @@ import play.api.Logging
 import uk.gov.hmrc.auth.core.Enrolments
 import uk.gov.hmrc.constructionindustryscheme.models.BuiltSubmissionPayload
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.services.chris.xml.{ChrisEnvelopeXmlBuilder, CisReturnXmlBuilder}
 import uk.gov.hmrc.constructionindustryscheme.utils.IrMarkProcessor.UpdatedPayloadWithIrMark
 
 import java.time.format.DateTimeFormatter
@@ -28,7 +29,7 @@ import scala.util.Try
 import scala.xml.*
 
 object ChrisSubmissionEnvelopeBuilder extends Logging {
-  private val gatewayTimestampFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
+  private val gatewayTimestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
   private val isoDateFmt                = DateTimeFormatter.ISO_LOCAL_DATE
   private val prettyPrinter             = new PrettyPrinter(120, 4)
 
@@ -53,72 +54,20 @@ object ChrisSubmissionEnvelopeBuilder extends Logging {
       }
 
     val periodEnd = parsePeriodEnd(request.monthYear)
+    val sender    = if (request.isAgent) "Agent" else "Company"
+
+    val cisReturn: Elem = CisReturnXmlBuilder.build(request)
 
     val envelopeXml: Elem =
-      <GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
-        <EnvelopeVersion>2.0</EnvelopeVersion>
-        <Header>
-          <MessageDetails>
-            <Class>{ChrisEnvelopeConstants.MessageDetailsClass}</Class>
-            <Qualifier>{ChrisEnvelopeConstants.Qualifier}</Qualifier>
-            <Function>{ChrisEnvelopeConstants.Function}</Function>
-            <CorrelationID>{correlationId}</CorrelationID>
-            <Transformation>{ChrisEnvelopeConstants.Transformation}</Transformation>
-            <GatewayTimestamp>{gatewayTimestamp}</GatewayTimestamp>
-          </MessageDetails>
-          <SenderDetails/>
-        </Header>
-        <GovTalkDetails>
-          <Keys>
-            <Key Type="TaxOfficeNumber">{taxOfficeNumber}</Key>
-            <Key Type="TaxOfficeReference">{taxOfficeReference}</Key>
-          </Keys>
-          <TargetDetails>
-            <Organisation>{ChrisEnvelopeConstants.Organisation}</Organisation>
-          </TargetDetails>
-          <ChannelRouting>
-            <Channel>
-              <URI>{ChrisEnvelopeConstants.ChannelUri}</URI>
-              <Product>{ChrisEnvelopeConstants.ChannelProduct}</Product>
-              <Version>{ChrisEnvelopeConstants.ChannelVersion}</Version>
-            </Channel>
-          </ChannelRouting>
-        </GovTalkDetails>
-        <Body>
-          <IRenvelope xmlns={ChrisEnvelopeConstants.Namespace}>
-            <IRheader>
-              <Keys>
-                <Key Type="TaxOfficeNumber">{taxOfficeNumber}</Key>
-                <Key Type="TaxOfficeReference">{taxOfficeReference}</Key>
-              </Keys>
-              <PeriodEnd>{periodEnd}</PeriodEnd>
-              <DefaultCurrency>{ChrisEnvelopeConstants.DefaultCurrency}</DefaultCurrency>
-              <Manifest>
-                <Contains>
-                  <Reference>
-                    <Namespace>{ChrisEnvelopeConstants.Namespace}</Namespace>
-                    <SchemaVersion>{ChrisEnvelopeConstants.SchemaVersion}</SchemaVersion>
-                    <TopElementName>{ChrisEnvelopeConstants.TopElementName}</TopElementName>
-                  </Reference>
-                </Contains>
-              </Manifest>
-              <IRmark Type="generic">TBC</IRmark>
-              <Sender>{ChrisEnvelopeConstants.Sender}</Sender>
-            </IRheader>
-            <CISreturn>
-              <Contractor>
-                <UTR>{request.utr}</UTR>
-                <AOref>{request.aoReference}</AOref>
-              </Contractor>
-              <NilReturn>{ChrisEnvelopeConstants.NilReturn}</NilReturn>
-              <Declarations>
-                <InformationCorrect>{request.informationCorrect}</InformationCorrect>
-                {if (request.inactivity.equalsIgnoreCase("yes")) <Inactivity>yes</Inactivity> else NodeSeq.Empty}
-              </Declarations>
-            </CISreturn>
-          </IRenvelope>
-        </Body>
-      </GovTalkMessage>
+      ChrisEnvelopeXmlBuilder.buildEnvelope(
+        taxOfficeNumber = taxOfficeNumber,
+        taxOfficeReference = taxOfficeReference,
+        correlationId = correlationId,
+        gatewayTimestamp = gatewayTimestamp,
+        periodEnd = periodEnd,
+        sender = sender,
+        cisReturn = cisReturn
+      )
 
     val (updatedXML, irMarkBase64, irMarkBase32, irEnvelope) = UpdatedPayloadWithIrMark(envelopeXml.toString)
 
