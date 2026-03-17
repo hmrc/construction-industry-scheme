@@ -34,7 +34,6 @@ case class ChrisSubmissionSessionData(
 )
 
 object ChrisSubmissionSessionData {
-  // TODO: not sure if we need to add localDateTime formatter
   given dateFormat: Format[Instant]     = MongoJavatimeFormats.instantFormat
   given format: Format[ChrisSubmissionSessionData] = Json.format[ChrisSubmissionSessionData]
 }
