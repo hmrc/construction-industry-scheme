@@ -79,7 +79,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
         utr = Some("1111111111"),
         partnerUtr = Some("2222222222"),
         partnershipTradingName = Some("My Partnership"),
-        tradingName = Some("Nominated Partner"),
+        partnerTradingName = Some("Nominated Partner"),
         country = Some("United Kingdom")
       )
     )

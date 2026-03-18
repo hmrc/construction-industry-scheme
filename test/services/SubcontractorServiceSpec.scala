@@ -54,7 +54,7 @@ final class SubcontractorServiceSpec extends SpecBase {
         cisId = cisId,
         partnershipTradingName = Some("My Partnership"),
         partnerUtr = Some("9999999999"),
-        tradingName = Some("Nominated Partner"),
+        partnerTradingName = Some("Nominated Partner"),
         country = Some("United Kingdom")
       )
 
