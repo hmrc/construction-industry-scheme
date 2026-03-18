@@ -130,37 +130,51 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
-  "FormpProxyConnector updateNilMonthlyReturn" should {
+  "FormpProxyConnector updateMonthlyReturn" should {
 
     "POST request and return Unit on 2xx" in {
-      val req = NilMonthlyReturnRequest(
+      val req = UpdateMonthlyReturnRequest(
         instanceId = instanceId,
         taxYear = 2025,
-        taxMonth = 2,
-        decInformationCorrect = "Y",
-        decNilReturnNoPayments = "Y"
+        taxMonth = 1,
+        amendment = "N",
+        decInformationCorrect = Some("Y"),
+        decNilReturnNoPayments = Some("Y"),
+        nilReturnIndicator = "Y",
+        status = "STARTED",
+        version = Some(1L)
       )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/update"))
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/update"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
 
-      connector.updateNilMonthlyReturn(req).futureValue mustBe ((): Unit)
+      connector.updateMonthlyReturn(req).futureValue mustBe ((): Unit)
     }
 
     "fail with UpstreamErrorResponse when upstream returns non-2xx" in {
-      val req = NilMonthlyReturnRequest(instanceId, 2025, 2, "Y", "Y")
+      val req = UpdateMonthlyReturnRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        decInformationCorrect = Some("Y"),
+        decNilReturnNoPayments = Some("Y"),
+        nilReturnIndicator = "Y",
+        status = "STARTED",
+        version = Some(1L)
+      )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/update"))
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/update"))
           .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
       )
 
-      val ex = connector.updateNilMonthlyReturn(req).failed.futureValue
+      val ex = connector.updateMonthlyReturn(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
@@ -614,9 +628,17 @@ class FormpProxyConnectorIntegrationSpec
 
   "FormpProxyConnector createAndUpdateSubcontractor" should {
 
-    "POSTs request and returns response model (204)" in {
-      val request =
-        CreateAndUpdateSubcontractorRequest(cisId = "10", subcontractorType = SoleTrader)
+    "POSTs sole trader request and returns Unit (204)" in {
+      val request: CreateAndUpdateSubcontractorRequest =
+        CreateAndUpdateSubcontractorRequest.SoleTraderRequest(
+          cisId = "10",
+          utr = Some("1234567890"),
+          nino = Some("AA123456A"),
+          firstName = Some("John"),
+          surname = Some("Smith"),
+          country = Some("United Kingdom"),
+          tradingName = Some("ACME")
+        )
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
@@ -625,13 +647,56 @@ class FormpProxyConnectorIntegrationSpec
           .willReturn(aResponse().withStatus(NO_CONTENT))
       )
 
-      val result: Unit = connector.createAndUpdateSubcontractor(request).futureValue
-      result mustBe ()
+      connector.createAndUpdateSubcontractor(request).futureValue mustBe ((): Unit)
     }
 
-    "propagates upstream error for non-2xx" in {
-      val request =
-        CreateAndUpdateSubcontractorRequest(cisId = "10", subcontractorType = SoleTrader)
+    "POSTs company request and returns Unit (204)" in {
+      val request: CreateAndUpdateSubcontractorRequest =
+        CreateAndUpdateSubcontractorRequest.CompanyRequest(
+          cisId = "10",
+          utr = Some("1234567890"),
+          crn = Some("CRN123"),
+          tradingName = Some("ACME LTD"),
+          country = Some("United Kingdom")
+        )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
+          .willReturn(aResponse().withStatus(NO_CONTENT))
+      )
+
+      connector.createAndUpdateSubcontractor(request).futureValue mustBe ((): Unit)
+    }
+
+    "POSTs partnership request and returns Unit (204)" in {
+      val request: CreateAndUpdateSubcontractorRequest =
+        CreateAndUpdateSubcontractorRequest.PartnershipRequest(
+          cisId = "10",
+          utr = Some("1234567890"),
+          partnerUtr = Some("9999999999"),
+          partnershipTradingName = Some("My Partnership"),
+          tradingName = Some("Nominated Partner"),
+          country = Some("United Kingdom")
+        )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
+          .willReturn(aResponse().withStatus(NO_CONTENT))
+      )
+
+      connector.createAndUpdateSubcontractor(request).futureValue mustBe ((): Unit)
+    }
+
+    "fails the future for non-204 response" in {
+      val request: CreateAndUpdateSubcontractorRequest =
+        CreateAndUpdateSubcontractorRequest.SoleTraderRequest(
+          cisId = "10",
+          tradingName = Some("ACME")
+        )
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))

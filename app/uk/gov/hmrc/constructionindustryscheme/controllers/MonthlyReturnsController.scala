@@ -165,17 +165,23 @@ class MonthlyReturnsController @Inject() (
       )
   }
 
-  def updateNil(): Action[JsValue] = authorise.async(parse.json) { implicit request =>
+  def updateMonthlyReturn(): Action[JsValue] = authorise.async(parse.json) { implicit request =>
     given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
     request.body
-      .validate[NilMonthlyReturnRequest]
+      .validate[UpdateMonthlyReturnRequest]
       .fold(
         _ => Future.successful(BadRequest(Json.obj("message" -> "Invalid payload"))),
         payload =>
           service
-            .updateNilMonthlyReturn(payload)
+            .updateMonthlyReturn(payload)
             .map(_ => NoContent)
-            .recover { case u: UpstreamErrorResponse => Status(u.statusCode)(Json.obj("message" -> u.message)) }
+            .recover {
+              case u: UpstreamErrorResponse =>
+                Status(u.statusCode)(Json.obj("message" -> u.message))
+              case NonFatal(t)              =>
+                logger.error("[updateMonthlyReturn] failed", t)
+                InternalServerError(Json.obj("message" -> "Unexpected error"))
+            }
       )
   }
 
