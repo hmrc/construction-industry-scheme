@@ -872,6 +872,100 @@ class MonthlyReturnsControllerSpec extends SpecBase {
       }
     }
 
+    "POST /cis/monthly-return/update (updateMonthlyReturn)" - {
+
+      "return 204 NoContent when service succeeds" in new SetupAuthOnly {
+        val payload = UpdateMonthlyReturnRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          amendment = "N",
+          decInformationCorrect = Some("Y"),
+          nilReturnIndicator = "N",
+          status = "STARTED",
+          version = None
+        )
+
+        when(mockMonthlyReturnService.updateMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(()))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(payload))
+
+        val result = call(controller.updateMonthlyReturn(), request)
+
+        status(result) mustBe NO_CONTENT
+        verify(mockMonthlyReturnService).updateMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      }
+
+      "return 400 BadRequest when payload is invalid" in new SetupAuthOnly {
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.obj("bad" -> "json"))
+
+        val result = call(controller.updateMonthlyReturn(), request)
+
+        status(result) mustBe BAD_REQUEST
+        contentAsJson(result) mustBe Json.obj("message" -> "Invalid payload")
+        verifyNoInteractions(mockMonthlyReturnService)
+      }
+
+      "return upstream status and message when service fails with UpstreamErrorResponse" in new SetupAuthOnly {
+        val payload = UpdateMonthlyReturnRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          amendment = "N",
+          decInformationCorrect = Some("Y"),
+          nilReturnIndicator = "N",
+          status = "STARTED",
+          version = None
+        )
+
+        when(mockMonthlyReturnService.updateMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(payload))
+
+        val result = call(controller.updateMonthlyReturn(), request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
+      }
+
+      "return 500 InternalServerError when service fails with NonFatal" in new SetupAuthOnly {
+        val payload = UpdateMonthlyReturnRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          amendment = "N",
+          decInformationCorrect = Some("Y"),
+          nilReturnIndicator = "N",
+          status = "STARTED",
+          version = None
+        )
+
+        when(mockMonthlyReturnService.updateMonthlyReturn(eqTo(payload))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("boom")))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(payload))
+
+        val result = call(controller.updateMonthlyReturn(), request)
+
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        contentAsJson(result) mustBe Json.obj("message" -> "Unexpected error")
+      }
+    }
+
   }
 
   private lazy val sampleWrapper: UserMonthlyReturns = UserMonthlyReturns(

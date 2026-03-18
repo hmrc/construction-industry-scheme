@@ -37,15 +37,16 @@ class SubmissionControllerIntegrationSpec
   private val chrisPath                 = "/submission/ChRIS/CISR/Filing/sync/CIS300MR"
   private val submissionId              = "sub-123"
   private val validRequestJson: JsValue = Json.obj(
-    "utr"                -> "1234567890",
-    "aoReference"        -> "754PT00002240",
+    "utr" -> "1234567890",
+    "aoReference" -> "754PT00002240",
     "informationCorrect" -> "yes",
     "inactivity" -> "yes",
     "monthYear" -> "2025-09",
     "email" -> "test@test.com",
-    "isAgent"               -> false,
+    "isAgent" -> false,
     "clientTaxOfficeNumber" -> "",
-    "clientTaxOfficeRef"    -> ""
+    "clientTaxOfficeRef" -> "",
+    "returnType" -> "monthlyNilReturn"
   )
 
   private val createUrl                    = s"$base/submissions/create"
