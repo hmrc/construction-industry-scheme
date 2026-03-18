@@ -127,37 +127,51 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
-  "FormpProxyConnector updateNilMonthlyReturn" should {
+  "FormpProxyConnector updateMonthlyReturn" should {
 
     "POST request and return Unit on 2xx" in {
-      val req = NilMonthlyReturnRequest(
+      val req = UpdateMonthlyReturnRequest(
         instanceId = instanceId,
         taxYear = 2025,
-        taxMonth = 2,
-        decInformationCorrect = "Y",
-        decNilReturnNoPayments = "Y"
+        taxMonth = 1,
+        amendment = "N",
+        decInformationCorrect = Some("Y"),
+        decNilReturnNoPayments = Some("Y"),
+        nilReturnIndicator = "Y",
+        status = "STARTED",
+        version = Some(1L)
       )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/update"))
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/update"))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
 
-      connector.updateNilMonthlyReturn(req).futureValue mustBe ((): Unit)
+      connector.updateMonthlyReturn(req).futureValue mustBe ((): Unit)
     }
 
     "fail with UpstreamErrorResponse when upstream returns non-2xx" in {
-      val req = NilMonthlyReturnRequest(instanceId, 2025, 2, "Y", "Y")
+      val req = UpdateMonthlyReturnRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        decInformationCorrect = Some("Y"),
+        decNilReturnNoPayments = Some("Y"),
+        nilReturnIndicator = "Y",
+        status = "STARTED",
+        version = Some(1L)
+      )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/update"))
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return/update"))
           .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
       )
 
-      val ex = connector.updateNilMonthlyReturn(req).failed.futureValue
+      val ex = connector.updateMonthlyReturn(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
