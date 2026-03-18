@@ -27,7 +27,6 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController
-import uk.gov.hmrc.constructionindustryscheme.models.SoleTrader
 import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -80,7 +79,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
         utr = Some("1111111111"),
         partnerUtr = Some("2222222222"),
         partnershipTradingName = Some("My Partnership"),
-        tradingName = Some("Nominated Partner"),
+        partnerTradingName = Some("Nominated Partner"),
         country = Some("United Kingdom")
       )
     )
