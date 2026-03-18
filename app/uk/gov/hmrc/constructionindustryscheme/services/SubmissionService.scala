@@ -18,12 +18,14 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, DEPARTMENTAL_ERROR, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, NilMonthlyReturnOrgSuccessEmail, SendSuccessEmailRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.http.HeaderCarrier
+
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
 @Singleton
 class SubmissionService @Inject() (
@@ -42,7 +44,12 @@ class SubmissionService @Inject() (
     chrisConnector.submitEnvelope(payload.envelope, payload.correlationId)
 
   def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] =
-    chrisConnector.pollSubmission(correlationId, pollUrl)
+    chrisConnector
+      .pollSubmission(correlationId, pollUrl)
+      .flatMap { response =>
+        deleteChrisReourcesIfNeeded(response.status, correlationId, pollUrl)
+          .map(_ => response)
+      }
 
   def sendSuccessfulEmail(submissionId: String, request: SendSuccessEmailRequest)(implicit
     hc: HeaderCarrier
@@ -50,4 +57,24 @@ class SubmissionService @Inject() (
     val emailPayload = NilMonthlyReturnOrgSuccessEmail(request.email, request.month, request.year)
     emailConnector.sendSuccessfulEmail(emailPayload).map(_ => ())
   }
+
+  private def deleteChrisReourcesIfNeeded(
+    status: SubmissionStatus,
+    correlationId: String,
+    pollUrl: String
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    status match {
+      case SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR =>
+        chrisConnector
+          .deleteSubmission(correlationId, pollUrl)
+          .recover { case NonFatal(ex) =>
+            logger.warn(
+              s"[SubmissionService] Failed to delete Chris resources for corrId=$correlationId url=$pollUrl",
+              ex
+            )
+          }
+
+      case _ =>
+        Future.unit
+    }
 }

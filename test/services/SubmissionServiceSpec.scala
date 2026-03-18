@@ -23,7 +23,7 @@ import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers.eq as eqTo
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, NilMonthlyReturnOrgSuccessEmail, SendSuccessEmailRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService
@@ -138,60 +138,69 @@ final class SubmissionServiceSpec extends SpecBase {
 
   "pollSubmission" - {
 
-    "delegates to ChrisConnector and returns ChrisPollResponse with SUBMITTED status" in {
-      val s = setup; import s._
+    "returns response and deletes Chris resources for SUBMITTED" in {
+      val s = setup
+      import s._
 
       val correlationId = "CORR-123"
-      val pollUrl       = "http://example.com/poll"
-      val expected      = ChrisPollResponse(SUBMITTED, None, None)
+      val pollUrl = "http://example.com/poll"
+      val expected = ChrisPollResponse(SUBMITTED, None, None)
 
       when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(expected))
+      when(chrisConnector.deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.unit)
 
       service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
 
       verify(chrisConnector).pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
+      verify(chrisConnector).deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
       verifyNoInteractions(formpProxyConnector)
     }
 
-    "delegates to ChrisConnector and returns ChrisPollResponse with ACCEPTED status and pollUrl" in {
-      val s = setup; import s._
+    "returns response and deletes Chris resources for SUBMITTED_NO_RECEIPT" in {
+      val s = setup
+      import s._
 
-      val correlationId = "CORR-456"
-      val pollUrl       = "http://example.com/poll"
-      val expected      = ChrisPollResponse(ACCEPTED, Some(pollUrl), Some(10))
+      val correlationId = "CORR-124"
+      val pollUrl = "http://example.com/poll"
+      val expected = ChrisPollResponse(SUBMITTED_NO_RECEIPT, None, None)
 
       when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(expected))
+      when(chrisConnector.deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.unit)
 
       service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
 
-      verify(chrisConnector).pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
-      verifyNoInteractions(formpProxyConnector)
+      verify(chrisConnector).deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
     }
 
-    "delegates to ChrisConnector and returns ChrisPollResponse with FATAL_ERROR status" in {
-      val s = setup; import s._
-
-      val correlationId = "CORR-789"
-      val pollUrl       = "http://example.com/poll"
-      val expected      = ChrisPollResponse(FATAL_ERROR, None, None)
-
-      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(expected))
-
-      service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
-
-      verify(chrisConnector).pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
-      verifyNoInteractions(formpProxyConnector)
-    }
-
-    "delegates to ChrisConnector and returns ChrisPollResponse with DEPARTMENTAL_ERROR status" in {
-      val s = setup; import s._
+    "returns response and deletes Chris resources for DEPARTMENTAL_ERROR" in {
+      val s = setup
+      import s._
 
       val correlationId = "CORR-ABC"
-      val pollUrl       = "http://example.com/poll"
-      val expected      = ChrisPollResponse(DEPARTMENTAL_ERROR, None, None)
+      val pollUrl = "http://example.com/poll"
+      val expected = ChrisPollResponse(DEPARTMENTAL_ERROR, None, None)
+
+      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(expected))
+      when(chrisConnector.deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.unit)
+
+      service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
+
+      verify(chrisConnector).deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
+    }
+
+    "returns response and does not delete Chris resources for ACCEPTED" in {
+      val s = setup
+      import s._
+
+      val correlationId = "CORR-456"
+      val pollUrl = "http://example.com/poll"
+      val expected = ChrisPollResponse(ACCEPTED, Some(pollUrl), Some(10))
 
       when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(expected))
@@ -199,19 +208,59 @@ final class SubmissionServiceSpec extends SpecBase {
       service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
 
       verify(chrisConnector).pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
+      verify(chrisConnector, never()).deleteSubmission(any[String], any[String])(using any[HeaderCarrier])
       verifyNoInteractions(formpProxyConnector)
     }
 
-    "propagates failures from ChrisConnector" in {
-      val s = setup; import s._
+    "returns response and does not delete Chris resources for FATAL_ERROR" in {
+      val s = setup
+      import s._
+
+      val correlationId = "CORR-789"
+      val pollUrl = "http://example.com/poll"
+      val expected = ChrisPollResponse(FATAL_ERROR, None, None)
+
+      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(expected))
+
+      service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
+
+      verify(chrisConnector).pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
+      verify(chrisConnector, never()).deleteSubmission(any[String], any[String])(using any[HeaderCarrier])
+      verifyNoInteractions(formpProxyConnector)
+    }
+
+    "returns response even when deleteSubmission fails" in {
+      val s = setup
+      import s._
+
+      val correlationId = "CORR-DEL-FAIL"
+      val pollUrl = "http://example.com/poll"
+      val expected = ChrisPollResponse(SUBMITTED, None, None)
+
+      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(expected))
+      when(chrisConnector.deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("delete failed")))
+
+      service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
+
+      verify(chrisConnector).deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
+    }
+
+    "propagates failures from pollSubmission" in {
+      val s = setup
+      import s._
 
       val correlationId = "CORR-FAIL"
-      val pollUrl       = "http://example.com/poll"
+      val pollUrl = "http://example.com/poll"
 
       when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("polling failed")))
 
       service.pollSubmission(correlationId, pollUrl).failed.futureValue.getMessage must include("polling failed")
+
+      verify(chrisConnector, never()).deleteSubmission(any[String], any[String])(using any[HeaderCarrier])
     }
   }
 
