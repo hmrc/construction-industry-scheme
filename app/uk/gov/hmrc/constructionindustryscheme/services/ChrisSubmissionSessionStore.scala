@@ -49,13 +49,13 @@ class ChrisSubmissionSessionStore @Inject() (
     }
 
   def saveInitialAck(
-                      submissionId: String,
-                      instanceId: String,
-                      correlationId: String,
-                      pollInterval: Int,
-                      pollUrl: String,
-                      lastMessageDate: Instant = Instant.now
-                    ): Future[Unit] =
+    submissionId: String,
+    instanceId: String,
+    correlationId: String,
+    pollInterval: Int,
+    pollUrl: String,
+    lastMessageDate: Instant = Instant.now
+  ): Future[Unit] =
     repo.upsert(
       ChrisSubmissionSessionData(
         submissionId = submissionId,

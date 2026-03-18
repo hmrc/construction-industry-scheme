@@ -29,6 +29,8 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.GetGovTalkStatusResponse
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
+import java.time.LocalDateTime
+
 class FormpProxyConnectorIntegrationSpec
     extends ApplicationWithWiremock
     with Matchers
@@ -1117,6 +1119,92 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = connector.updateGovTalkStatus(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector updateGovTalkStatusCorrelationId" should {
+
+    "POST /formp-proxy/cis/govtalkstatus/update-correlationID and return Unit on 204" in {
+      val req = UpdateGovTalkStatusCorrelationIdRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-123",
+        correlationID = "corr-123",
+        pollInterval = 10,
+        gatewayURL = "/poll/123"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/update-correlationID"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(204))
+      )
+
+      connector.updateGovTalkStatusCorrelationId(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-204 (e.g. 500)" in {
+      val req = UpdateGovTalkStatusCorrelationIdRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-123",
+        correlationID = "corr-123",
+        pollInterval = 10,
+        gatewayURL = "/poll/123"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/update-correlationID"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = connector.updateGovTalkStatusCorrelationId(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector updateGovTalkStatusStatistics" should {
+
+    "POST /formp-proxy/cis/govtalkstatus/update-statistics and return Unit on 204" in {
+      val req = UpdateGovTalkStatusStatisticsRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-123",
+        lastMessageDate = LocalDateTime.of(2025, 1, 1, 0, 0),
+        numPolls = 3,
+        pollInterval = 10,
+        gatewayURL = "/poll/123"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/update-statistics"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(204))
+      )
+
+      connector.updateGovTalkStatusStatistics(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-204 (e.g. 500)" in {
+      val req = UpdateGovTalkStatusStatisticsRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-123",
+        lastMessageDate = LocalDateTime.of(2025, 1, 1, 0, 0),
+        numPolls = 3,
+        pollInterval = 10,
+        gatewayURL = "/poll/123"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/update-statistics"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = connector.updateGovTalkStatusStatistics(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }

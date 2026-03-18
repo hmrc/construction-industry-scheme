@@ -194,7 +194,9 @@ class SubmissionService @Inject() (
         chrisSubmissionSessionStore.saveGovTalkStatus(submissionId, status)
 
       case None =>
-        Future.failed(new RuntimeException(s"No GovTalk status found for instanceId: $instanceId, submissionId: $submissionId"))
+        Future.failed(
+          new RuntimeException(s"No GovTalk status found for instanceId: $instanceId, submissionId: $submissionId")
+        )
     }
 
   private def validateCorrelationId(expectedRaw: String, actualRaw: String): Either[String, Unit] = {

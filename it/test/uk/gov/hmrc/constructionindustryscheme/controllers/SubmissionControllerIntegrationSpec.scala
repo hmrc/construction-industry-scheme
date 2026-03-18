@@ -23,8 +23,8 @@ import org.scalatest.matchers.must.Matchers.mustBe
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.OptionValues
 import org.scalatest.EitherValues.*
-import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, NO_CONTENT, OK, UNAUTHORIZED}
-import play.api.libs.json.{JsObject, JsValue, Json}
+import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, NO_CONTENT, UNAUTHORIZED}
+import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, AuthStub}
 
 class SubmissionControllerIntegrationSpec
@@ -34,7 +34,6 @@ class SubmissionControllerIntegrationSpec
     with IntegrationPatience
     with OptionValues {
 
-  private val chrisPath                 = "/submission/ChRIS/CISR/Filing/sync/CIS300MR"
   private val submissionId              = "sub-123"
   private val validRequestJson: JsValue = Json.obj(
     "utr"                -> "1234567890",

@@ -31,7 +31,8 @@ import scala.concurrent.{ExecutionContext, Future}
 class ChrisSubmissionSessionRepository @Inject() (
   mongoComponent: MongoComponent,
   config: AppConfig
-)(using ec: ExecutionContext) extends PlayMongoRepository[ChrisSubmissionSessionData](
+)(using ec: ExecutionContext)
+    extends PlayMongoRepository[ChrisSubmissionSessionData](
       collectionName = "chris-submission-session-records",
       mongoComponent = mongoComponent,
       domainFormat = ChrisSubmissionSessionData.format,
@@ -65,7 +66,7 @@ class ChrisSubmissionSessionRepository @Inject() (
       .toFuture()
       .map(_ => ())
 
-  def delete(submissionId: String): Future[Boolean]=
+  def delete(submissionId: String): Future[Boolean] =
     collection
       .deleteOne(Filters.equal("submissionId", submissionId))
       .toFuture()

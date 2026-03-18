@@ -34,6 +34,6 @@ case class ChrisSubmissionSessionData(
 )
 
 object ChrisSubmissionSessionData {
-  given dateFormat: Format[Instant]     = MongoJavatimeFormats.instantFormat
+  given dateFormat: Format[Instant]                = MongoJavatimeFormats.instantFormat
   given format: Format[ChrisSubmissionSessionData] = Json.format[ChrisSubmissionSessionData]
 }
