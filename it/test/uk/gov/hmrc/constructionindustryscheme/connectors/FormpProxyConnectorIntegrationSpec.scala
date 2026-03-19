@@ -26,6 +26,7 @@ import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.response.GetGovTalkStatusResponse
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
 class FormpProxyConnectorIntegrationSpec
@@ -1020,4 +1021,169 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector getGovTalkStatus" should {
+
+    "POST /formp-proxy/cis/govtalkstatus/get and return Some(response) on 200" in {
+      val req = GetGovTalkStatusRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-123"
+      )
+
+      val responseJson = Json.parse(
+        """
+          |{
+          |  "govtalk_status": [
+          |    {
+          |      "userIdentifier": "123",
+          |      "formResultID": "sub-123",
+          |      "correlationID": "ABC123",
+          |      "formLock": "N",
+          |      "createDate": "2025-01-01T10:00:00",
+          |      "endStateDate": null,
+          |      "lastMessageDate": "2025-01-01T10:00:00",
+          |      "numPolls": 0,
+          |      "pollInterval": 0,
+          |      "protocolStatus": "initial",
+          |      "gatewayURL": "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+          |    }
+          |  ]
+          |}
+          |""".stripMargin
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/get"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.getGovTalkStatus(req).futureValue
+      out mustBe Some(responseJson.as[GetGovTalkStatusResponse])
+    }
+
+    "return None when upstream responds with 404" in {
+      val req = GetGovTalkStatusRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-404"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/get"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(404)
+              .withBody("""{"message":"not found"}""")
+          )
+      )
+
+      val out = connector.getGovTalkStatus(req).futureValue
+      out mustBe None
+    }
+
+    "fail the future when upstream responds with non-404 error (e.g. 500)" in {
+      val req = GetGovTalkStatusRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-500"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/get"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("""{"message":"boom"}""")
+          )
+      )
+
+      val ex = connector.getGovTalkStatus(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector createGovTalkStatusRecord" should {
+
+    "POST /formp-proxy/cis/govtalkstatus/create and return Unit on 201" in {
+      val req = CreateGovTalkStatusRecordRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-123",
+        correlationID = "ABC123",
+        gatewayURL = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/create"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(201))
+      )
+
+      connector.createGovTalkStatusRecord(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-201 (e.g. 500)" in {
+      val req = CreateGovTalkStatusRecordRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-123",
+        correlationID = "ABC123",
+        gatewayURL = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/create"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = connector.createGovTalkStatusRecord(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector updateGovTalkStatus" should {
+
+    "POST /formp-proxy/cis/govtalkstatus/update-status and return Unit on 204" in {
+      val req = UpdateGovTalkStatusRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-123",
+        protocolStatus = "dataRequest"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/update-status"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(204))
+      )
+
+      connector.updateGovTalkStatus(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-204 (e.g. 500)" in {
+      val req = UpdateGovTalkStatusRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-123",
+        protocolStatus = "dataRequest"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/update-status"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = connector.updateGovTalkStatus(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
 }

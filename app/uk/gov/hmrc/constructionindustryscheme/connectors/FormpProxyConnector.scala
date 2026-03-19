@@ -223,4 +223,36 @@ class FormpProxyConnector @Inject() (
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
 
+  def getGovTalkStatus(
+    request: GetGovTalkStatusRequest
+  )(implicit hc: HeaderCarrier): Future[Option[GetGovTalkStatusResponse]] =
+    http
+      .post(url"$base/cis/govtalkstatus/get")
+      .withBody(Json.toJson(request))
+      .execute[GetGovTalkStatusResponse]
+      .map(Some(_))
+      .recover {
+        case e: UpstreamErrorResponse if e.statusCode == NOT_FOUND =>
+          None
+      }
+
+  def createGovTalkStatusRecord(request: CreateGovTalkStatusRecordRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/govtalkstatus/create")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == 201) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+      }
+
+  def updateGovTalkStatus(request: UpdateGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/govtalkstatus/update-status")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == 204) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+      }
 }
