@@ -744,7 +744,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             using any[HeaderCarrier]
           )
         )
-          .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, Some(overridePollUrl), Some(10))))
+          .thenReturn(
+            Future.successful(ChrisPollResponse(ACCEPTED, correlationId, Some(overridePollUrl), Some(10), None))
+          )
 
         val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
@@ -784,7 +786,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[HeaderCarrier]
         )
       )
-        .thenReturn(Future.successful(ChrisPollResponse(SUBMITTED, None, None)))
+        .thenReturn(Future.successful(ChrisPollResponse(SUBMITTED, correlationId, None, None, None)))
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
@@ -822,7 +824,15 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         )
       )
         .thenReturn(
-          Future.successful(ChrisPollResponse(uk.gov.hmrc.constructionindustryscheme.models.FATAL_ERROR, None, None))
+          Future.successful(
+            ChrisPollResponse(
+              uk.gov.hmrc.constructionindustryscheme.models.FATAL_ERROR,
+              correlationId,
+              None,
+              None,
+              None
+            )
+          )
         )
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
@@ -860,7 +870,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[HeaderCarrier]
         )
       )
-        .thenReturn(Future.successful(ChrisPollResponse(DEPARTMENTAL_ERROR, None, None)))
+        .thenReturn(Future.successful(ChrisPollResponse(DEPARTMENTAL_ERROR, correlationId, None, None, None)))
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
@@ -897,7 +907,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[HeaderCarrier]
         )
       )
-        .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, Some(pollUrl), Some(10))))
+        .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, correlationId, Some(pollUrl), Some(10), None)))
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
