@@ -7,6 +7,8 @@ ThisBuild / majorVersion := 0
 ThisBuild / scalaVersion := "3.3.6"
 ThisBuild / scalacOptions += "-Wconf:msg=Flag.*repeatedly:s"
 
+onLoad in Global ~= (_ andThen ("git config core.hooksPath hooks" :: _))
+
 lazy val microservice = Project("construction-industry-scheme", file("."))
   .enablePlugins(play.sbt.PlayScala, SbtDistributablesPlugin)
   .disablePlugins(JUnitXmlReportPlugin) //Required to prevent https://github.com/scalatest/scalatest/issues/1427
