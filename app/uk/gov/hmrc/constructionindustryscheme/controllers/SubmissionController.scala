@@ -16,33 +16,30 @@
 
 package uk.gov.hmrc.constructionindustryscheme.controllers
 
-import javax.inject.Inject
-import play.api.mvc.*
-import play.api.libs.json.*
-import play.api.mvc.Results.*
-
-import scala.concurrent.{ExecutionContext, Future}
 import play.api.Logging
+import play.api.libs.json.*
+import play.api.mvc.*
+import play.api.mvc.Results.*
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, BuiltSubmissionPayload, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
-import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.*
-import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionEnvelopeBuilder
-import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
-import uk.gov.hmrc.constructionindustryscheme.utils.{UriHelper, XmlToJsonConvertor, XmlValidator}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, BuiltSubmissionPayload, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionEnvelopeBuilder
+import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.utils.{DateTimeHelper, UriHelper, XmlToJsonConvertor, XmlValidator}
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
+import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
 
-import java.time.format.DateTimeFormatter
-import java.time.{Clock, Instant, YearMonth}
-import java.util.{Locale, UUID}
-import scala.util.{Failure, Success}
+import java.time.{Clock, Instant}
+import java.util.UUID
+import javax.inject.Inject
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
-import scala.util.Try
+import scala.util.{Failure, Success}
 
 class SubmissionController @Inject() (
   authorise: AuthAction,
@@ -282,9 +279,9 @@ class SubmissionController @Inject() (
           case Some(email) =>
             logger.info(s"[email] ${res.status} → sending email to=$email")
 
-            val ym    = parseYearMonthFlexible(csr.monthYear)
-            val month = ym.format(monthFmt)
-            val year  = ym.format(yearFmt)
+            val ym    = DateTimeHelper.parseYearMonthFlexible(csr.monthYear)
+            val month = ym.format(DateTimeHelper.monthFormatter)
+            val year  = ym.format(DateTimeHelper.yearFormatter)
 
             submissionService
               .sendSuccessfulEmail("", SendSuccessEmailRequest(email, month, year))
@@ -300,14 +297,6 @@ class SubmissionController @Inject() (
       case _                                                                    =>
         Future.successful(res)
     }
-
-  private def parseYearMonthFlexible(s: String): YearMonth =
-    Try(YearMonth.parse(s))
-      .orElse(Try(YearMonth.parse(s.replace('/', '-'))))
-      .getOrElse(throw new IllegalArgumentException(s"Invalid monthYear: $s (expected YYYY-MM or YYYY/MM)"))
-
-  private val monthFmt = DateTimeFormatter.ofPattern("MMMM", Locale.UK)
-  private val yearFmt  = DateTimeFormatter.ofPattern("uuuu", Locale.UK)
 
   private def handleChrisFailure(
     submissionId: String,
