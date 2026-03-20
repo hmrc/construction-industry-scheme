@@ -30,12 +30,14 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
 
     for {
       qualifier                     <- textRequired(messageDetails, "Qualifier", "Qualifier")
+      correlationId                 <- textRequired(messageDetails, "CorrelationID", "CorrelationID")
       endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
       pollIntervalOpt: Option[Int]   = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
+      lastMessageDateOpt             = textOptional(messageDetails, "GatewayTimestamp")
       errOpt                        <- parseError(qualifier, doc)
     } yield {
       val status: SubmissionStatus = derivePollStatus(qualifier, errOpt, doc)
-      ChrisPollResponse(status, endpointUrlOpt, pollIntervalOpt)
+      ChrisPollResponse(status, correlationId, endpointUrlOpt, pollIntervalOpt, lastMessageDateOpt)
     }
   }
 

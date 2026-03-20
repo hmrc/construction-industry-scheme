@@ -120,12 +120,13 @@ class SubmissionController @Inject() (
 
           submissionService
             .pollSubmission(correlationId, overridePollUrl)
-            .map { case ChrisPollResponse(status, overridePollUrl, interval) =>
+            .map { case ChrisPollResponse(status, correlationId, overridePollUrl, interval, lastMessageDate) =>
               Ok(
                 Json.obj(
                   "status"          -> status.toString,
                   "pollUrl"         -> overridePollUrl,
-                  "intervalSeconds" -> interval
+                  "intervalSeconds" -> interval,
+                  "lastMessageDate" -> lastMessageDate
                 )
               )
             }
