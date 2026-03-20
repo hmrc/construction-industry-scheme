@@ -20,7 +20,6 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.SoleTrader
 import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -55,7 +54,7 @@ final class SubcontractorServiceSpec extends SpecBase {
         cisId = cisId,
         partnershipTradingName = Some("My Partnership"),
         partnerUtr = Some("9999999999"),
-        tradingName = Some("Nominated Partner"),
+        partnerTradingName = Some("Nominated Partner"),
         country = Some("United Kingdom")
       )
 
