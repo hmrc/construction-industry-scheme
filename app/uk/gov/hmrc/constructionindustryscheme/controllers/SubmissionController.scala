@@ -266,13 +266,7 @@ class SubmissionController @Inject() (
             correlationId,
             appConfig.chrisGatewayUrl
           )
-          .flatMap { _ =>
-            handleEmailNotification(res, csr)
-              .recover { case ex =>
-                logger.error("Email sending failed", ex)
-                res
-              }
-          }
+          .flatMap(_ => handleEmailNotification(res, csr))
           .map { updatedRes =>
             renderSubmissionResponse(submissionId, payload)(updatedRes)
           }
