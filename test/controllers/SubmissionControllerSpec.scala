@@ -60,6 +60,18 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "inactivity"            -> "no"
   )
 
+  private val validJsonWithoutEmail: JsValue = Json.obj(
+    "utr"                   -> "1234567890",
+    "aoReference"           -> "123/AB456",
+    "monthYear"             -> "2025-05",
+    "isAgent"               -> true,
+    "clientTaxOfficeNumber" -> "123",
+    "clientTaxOfficeRef"    -> "ABC456",
+    "returnType"            -> "monthlyNilReturn",
+    "informationCorrect"    -> "yes",
+    "inactivity"            -> "no"
+  )
+
   val mockAuditService: AuditService = mock[AuditService]
 
   override def beforeEach(): Unit = {
@@ -120,6 +132,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
           )
         }
+      when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
 
       val request: FakeRequest[JsValue] =
         FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -162,6 +176,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
           )
         }
+      when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
 
       val request =
         FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -250,6 +266,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
           )
         }
+      when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
 
       val request =
         FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -267,6 +285,100 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (e \ "text").as[String].toLowerCase must include("boom")
 
       verify(submissionService).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
+    }
+
+    "returns 200 with SUBMITTED when service returns SubmittedStatus without email" in {
+      val submissionService = mock[SubmissionService]
+
+      val xmlValidator = mock[XmlValidator]
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+
+      when(xmlValidator.validate(any[NodeSeq]))
+        .thenReturn(Success(()))
+      when(
+        submissionService.initialiseGovTalkStatus(any[EmployerReference], any[String], any[String], any[String])(
+          any[HeaderCarrier]
+        )
+      )
+        .thenReturn(Future.successful("instance-123"))
+      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+          val result  = mkSubmissionResult(SUBMITTED)
+          Future.successful(
+            result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
+          )
+        }
+
+      val request: FakeRequest[JsValue] =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(validJsonWithoutEmail)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(request)
+
+      status(result) mustBe OK
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+
+      verify(submissionService, times(1)).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
+    }
+
+    "returns 200 with SUBMITTED when service returns SubmittedStatus but fail to send email" in {
+      val submissionService = mock[SubmissionService]
+
+      val xmlValidator = mock[XmlValidator]
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+
+      when(xmlValidator.validate(any[NodeSeq]))
+        .thenReturn(Success(()))
+      when(
+        submissionService.initialiseGovTalkStatus(any[EmployerReference], any[String], any[String], any[String])(
+          any[HeaderCarrier]
+        )
+      )
+        .thenReturn(Future.successful("instance-123"))
+      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+          val result  = mkSubmissionResult(SUBMITTED)
+          Future.successful(
+            result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
+          )
+        }
+      when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("failed to send email")))
+
+      val request: FakeRequest[JsValue] =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(request)
+
+      status(result) mustBe OK
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+
+      verify(submissionService, times(1)).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
     }
 
     "returns 400 when request JSON is invalid" in {
