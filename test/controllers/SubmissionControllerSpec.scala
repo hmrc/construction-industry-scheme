@@ -120,6 +120,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
           )
         }
+      when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
 
       val request: FakeRequest[JsValue] =
         FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -162,6 +164,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
           )
         }
+      when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
 
       val request =
         FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -250,6 +254,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
           )
         }
+      when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
 
       val request =
         FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
