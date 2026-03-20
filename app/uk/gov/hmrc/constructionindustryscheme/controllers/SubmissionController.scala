@@ -283,10 +283,8 @@ class SubmissionController @Inject() (
     csr: ChrisSubmissionRequest
   )(implicit hc: HeaderCarrier): Future[SubmissionResult] =
     res.status match {
-
       case SubmittedStatus | SubmittedNoReceiptStatus | DepartmentalErrorStatus =>
         csr.email match {
-
           case Some(email) =>
             logger.info(s"[email] ${res.status} → sending email to=$email")
 
@@ -295,17 +293,17 @@ class SubmissionController @Inject() (
             val year  = ym.format(yearFmt)
 
             submissionService
-              .sendSuccessfulEmail(
-                "",
-                uk.gov.hmrc.constructionindustryscheme.models.requests.SendSuccessEmailRequest(email, month, year)
-              )
-            Future.successful(res)
+              .sendSuccessfulEmail("", SendSuccessEmailRequest(email, month, year))
+              .map(_ => res)
+              .recover { case ex =>
+                logger.error(s"[email] failed to send to $email", ex)
+                res
+              }
           case None        =>
             logger.warn(s"[email] ${res.status} but no email params; skipping")
             Future.successful(res)
         }
-
-      case _ =>
+      case _                                                                    =>
         Future.successful(res)
     }
 
