@@ -28,12 +28,12 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
   private val gatewayTs = "2025-01-01T00:00:00Z"
 
   private def headerXml(
-                         qualifier: String,
-                         correlationId: String = corrId,
-                         gatewayTimestamp: Option[String] = Some(gatewayTs),
-                         endpointUrl: Option[String] = None,
-                         pollInterval: Option[Int] = None
-                       ): String = {
+    qualifier: String,
+    correlationId: String = corrId,
+    gatewayTimestamp: Option[String] = Some(gatewayTs),
+    endpointUrl: Option[String] = None,
+    pollInterval: Option[Int] = None
+  ): String = {
     val epText           = endpointUrl.getOrElse("")
     val pollIntervalAttr = pollInterval.map(pi => s""" PollInterval="$pi"""").getOrElse("")
     val gatewayTsXml     = gatewayTimestamp.map(ts => s"<GatewayTimestamp>$ts</GatewayTimestamp>").getOrElse("")
