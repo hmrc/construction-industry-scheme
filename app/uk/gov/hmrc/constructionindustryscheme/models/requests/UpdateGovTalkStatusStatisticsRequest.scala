@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,20 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.response
+package uk.gov.hmrc.constructionindustryscheme.models.requests
 
-import uk.gov.hmrc.constructionindustryscheme.models.SubmissionStatus
+import play.api.libs.json._
+import java.time.LocalDateTime
 
-case class ChrisPollResponse(
-  status: SubmissionStatus,
-  correlationId: String,
-  pollUrl: Option[String],
-  pollInterval: Option[Int],
-  lastMessageDate: Option[String]
+case class UpdateGovTalkStatusStatisticsRequest(
+  userIdentifier: String,
+  formResultID: String,
+  lastMessageDate: LocalDateTime,
+  numPolls: Int,
+  pollInterval: Int,
+  gatewayURL: String
 )
+
+object UpdateGovTalkStatusStatisticsRequest {
+  given format: OFormat[UpdateGovTalkStatusStatisticsRequest] = Json.format[UpdateGovTalkStatusStatisticsRequest]
+}
