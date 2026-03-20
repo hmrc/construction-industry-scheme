@@ -37,10 +37,12 @@ import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
 
-import java.time.{Clock, Instant}
-import java.util.UUID
+import java.time.format.DateTimeFormatter
+import java.time.{Clock, Instant, YearMonth}
+import java.util.{Locale, UUID}
 import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
+import scala.util.Try
 
 class SubmissionController @Inject() (
   authorise: AuthAction,
@@ -264,8 +266,56 @@ class SubmissionController @Inject() (
             correlationId,
             appConfig.chrisGatewayUrl
           )
-          .map(_ => renderSubmissionResponse(submissionId, payload)(res))
+          .flatMap { _ =>
+            handleEmailNotification(res, csr)
+              .recover { case ex =>
+                logger.error("Email sending failed", ex)
+                res
+              }
+          }
+          .map { updatedRes =>
+            renderSubmissionResponse(submissionId, payload)(updatedRes)
+          }
     }
+
+  private def handleEmailNotification(
+    res: SubmissionResult,
+    csr: ChrisSubmissionRequest
+  )(implicit hc: HeaderCarrier): Future[SubmissionResult] =
+    res.status match {
+
+      case SubmittedStatus | SubmittedNoReceiptStatus | DepartmentalErrorStatus =>
+        csr.email match {
+
+          case Some(email) =>
+            logger.info(s"[email] ${res.status} → sending email to=$email")
+
+            val ym    = parseYearMonthFlexible(csr.monthYear)
+            val month = ym.format(monthFmt)
+            val year  = ym.format(yearFmt)
+
+            submissionService
+              .sendSuccessfulEmail(
+                "",
+                uk.gov.hmrc.constructionindustryscheme.models.requests.SendSuccessEmailRequest(email, month, year)
+              )
+            Future.successful(res)
+          case None        =>
+            logger.warn(s"[email] ${res.status} but no email params; skipping")
+            Future.successful(res)
+        }
+
+      case _ =>
+        Future.successful(res)
+    }
+
+  private def parseYearMonthFlexible(s: String): YearMonth =
+    Try(YearMonth.parse(s))
+      .orElse(Try(YearMonth.parse(s.replace('/', '-'))))
+      .getOrElse(throw new IllegalArgumentException(s"Invalid monthYear: $s (expected YYYY-MM or YYYY/MM)"))
+
+  private val monthFmt = DateTimeFormatter.ofPattern("MMMM", Locale.UK)
+  private val yearFmt  = DateTimeFormatter.ofPattern("uuuu", Locale.UK)
 
   private def handleChrisFailure(
     submissionId: String,
