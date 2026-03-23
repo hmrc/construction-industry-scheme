@@ -21,7 +21,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
 import org.mockito.{ArgumentMatchers, Mockito}
 import org.scalatest.EitherValues
-import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, INTERNAL_SERVER_ERROR, NO_CONTENT, OK, UNAUTHORIZED}
+import play.api.http.Status.*
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, await, contentAsJson, status}
@@ -29,19 +29,19 @@ import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
 import uk.gov.hmrc.constructionindustryscheme.models.audit.XmlConversionResult
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateGovTalkStatusRecordRequest, CreateSubmissionRequest, GetGovTalkStatusRequest, SendSuccessEmailRequest, UpdateGovTalkStatusRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, EmployerReference, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, SendSuccessEmailRequest, UpdateGovTalkStatusRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, MonthlyReturnService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, *}
+import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlValidator
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl
 
-import scala.xml.NodeSeq
 import java.time.Clock
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
+import scala.xml.NodeSeq
 
 final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
@@ -132,7 +132,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
           )
         }
-      when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+      when(submissionService.sendSuccessfulEmail(any[SendSuccessEmailRequest])(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
 
       val request: FakeRequest[JsValue] =
@@ -176,7 +176,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
           )
         }
-      when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+      when(submissionService.sendSuccessfulEmail(any[SendSuccessEmailRequest])(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
 
       val request =
@@ -266,7 +266,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
           )
         }
-      when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+      when(submissionService.sendSuccessfulEmail(any[SendSuccessEmailRequest])(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
 
       val request =
@@ -364,7 +364,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
           )
         }
-      when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+      when(submissionService.sendSuccessfulEmail(any[SendSuccessEmailRequest])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("failed to send email")))
 
       val request: FakeRequest[JsValue] =
@@ -616,7 +616,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
-          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+          invocation.getArgument(0, classOf[BuiltSubmissionPayload])
 
           val result = mkSubmissionResult(SUBMITTED).copy(
             meta = mkMeta(corrId = "")
@@ -1169,7 +1169,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         "year"  -> "2025"
       )
 
-      when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+      when(submissionService.sendSuccessfulEmail(any[SendSuccessEmailRequest])(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
 
       val req =
@@ -1181,7 +1181,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       status(result) mustBe 202
 
-      verify(submissionService, times(1)).sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(
+      verify(submissionService, times(1)).sendSuccessfulEmail(any[SendSuccessEmailRequest])(
         any[HeaderCarrier]
       )
     }
@@ -1221,7 +1221,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         "year"  -> "2025"
       )
 
-      when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
+      when(submissionService.sendSuccessfulEmail(any[SendSuccessEmailRequest])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       val req =

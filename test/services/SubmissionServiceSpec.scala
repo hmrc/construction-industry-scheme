@@ -221,8 +221,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val s = setup
       import s._
 
-      val submissionId = "90001"
-      val req          = SendSuccessEmailRequest(
+      val req = SendSuccessEmailRequest(
         email = "test@test.com",
         month = "September",
         year = "2025"
@@ -238,7 +237,7 @@ final class SubmissionServiceSpec extends SpecBase {
       when(emailConnector.sendSuccessfulEmail(eqTo(expectedPayload))(any[HeaderCarrier]))
         .thenReturn(Future.successful(Done))
 
-      service.sendSuccessfulEmail(submissionId, req).futureValue mustBe ()
+      service.sendSuccessfulEmail(req).futureValue mustBe ()
 
       verify(emailConnector).sendSuccessfulEmail(eqTo(expectedPayload))(any[HeaderCarrier])
       verifyNoMoreInteractions(emailConnector)
@@ -248,8 +247,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val s = setup
       import s._
 
-      val submissionId = "90001"
-      val req          = SendSuccessEmailRequest("test@test.com", "September", "2025")
+      val req = SendSuccessEmailRequest("test@test.com", "September", "2025")
 
       val expectedPayload =
         NilMonthlyReturnOrgSuccessEmail(
@@ -261,7 +259,7 @@ final class SubmissionServiceSpec extends SpecBase {
       when(emailConnector.sendSuccessfulEmail(eqTo(expectedPayload))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
-      service.sendSuccessfulEmail(submissionId, req).failed.futureValue.getMessage must include("boom")
+      service.sendSuccessfulEmail(req).failed.futureValue.getMessage must include("boom")
 
       verify(emailConnector).sendSuccessfulEmail(eqTo(expectedPayload))(any[HeaderCarrier])
     }

@@ -17,12 +17,11 @@
 package services.chris
 
 import base.SpecBase
-import org.scalatestplus.mockito.MockitoSugar
 import org.mockito.Mockito.*
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.should.Matchers.{should, shouldBe}
+import org.scalatestplus.mockito.MockitoSugar
 import uk.gov.hmrc.auth.core.*
-import uk.gov.hmrc.auth.core.Enrolment
 import uk.gov.hmrc.constructionindustryscheme.models.MonthlyReturnType
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionEnvelopeBuilder

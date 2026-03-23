@@ -46,7 +46,7 @@ class SubmissionService @Inject() (
   def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] =
     chrisConnector.pollSubmission(correlationId, pollUrl)
 
-  def sendSuccessfulEmail(submissionId: String, request: SendSuccessEmailRequest)(implicit
+  def sendSuccessfulEmail(request: SendSuccessEmailRequest)(implicit
     hc: HeaderCarrier
   ): Future[Unit] = {
     val emailPayload = NilMonthlyReturnOrgSuccessEmail(request.email, request.month, request.year)

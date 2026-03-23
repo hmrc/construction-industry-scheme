@@ -143,7 +143,7 @@ class SubmissionController @Inject() (
           errs => Future.successful(BadRequest(JsError.toJson(errs))),
           params =>
             submissionService
-              .sendSuccessfulEmail(submissionId, params)
+              .sendSuccessfulEmail(params)
               .map(_ => Accepted)
               .recover { case ex =>
                 logger.error(s"[sendSuccessfulEmail] failed submissionId=$submissionId", ex)
@@ -284,7 +284,7 @@ class SubmissionController @Inject() (
             val year  = ym.format(DateTimeHelper.yearFormatter)
 
             submissionService
-              .sendSuccessfulEmail("", SendSuccessEmailRequest(email, month, year))
+              .sendSuccessfulEmail(SendSuccessEmailRequest(email, month, year))
               .map(_ => res)
               .recover { case ex =>
                 logger.error(s"[email] failed to send to $email", ex)
