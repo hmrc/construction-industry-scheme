@@ -29,10 +29,10 @@ import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
 import uk.gov.hmrc.constructionindustryscheme.models.audit.XmlConversionResult
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateGovTalkStatusRecordRequest, CreateSubmissionRequest, GetGovTalkStatusRequest, SendSuccessEmailRequest, UpdateGovTalkStatusRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, EmployerReference, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
+import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, MonthlyReturnService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlValidator
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
@@ -504,8 +504,6 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
-          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
-
           val result = mkSubmissionResult(SUBMITTED).copy(
             meta = mkMeta(corrId = "")
           )
