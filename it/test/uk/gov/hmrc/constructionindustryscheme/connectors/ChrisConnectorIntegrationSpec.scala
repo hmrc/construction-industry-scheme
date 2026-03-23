@@ -26,6 +26,7 @@ import org.scalatest.OptionValues
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, ItResources, WireMockConstants}
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, ChrisDeleteRequest, DEPARTMENTAL_ERROR, FATAL_ERROR, SUBMITTED}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
+import uk.gov.hmrc.http.UpstreamErrorResponse
 
 import scala.xml.{Elem, XML}
 
@@ -41,6 +42,7 @@ final class ChrisConnectorIntegrationSpec
 
   private lazy val xmlString: String = ItResources.read("chris/envelopes/nil_monthly_return.xml")
   private lazy val envelope: Elem    = XML.loadString(xmlString)
+
 
   "ChrisConnector.submitEnvelope" should {
 
@@ -76,9 +78,10 @@ final class ChrisConnectorIntegrationSpec
       )
     }
 
-    "on 500 -> returns FATAL_ERROR(http-500) with truncated body (255 chars)" in {
+    "on 500 -> fails with UpstreamErrorResponse" in {
       val correlationId = "cid-500"
       val longBody      = "boom" * 100
+
       stubFor(
         post(urlPathEqualTo(path))
           .withRequestBody(equalToXml(xmlString))
@@ -90,17 +93,13 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.submitEnvelope(envelope, correlationId).futureValue
+      val ex = connector.submitEnvelope(envelope, correlationId).failed.futureValue
 
-      result.status mustBe FATAL_ERROR
-      result.meta.error.value.errorNumber mustBe "http-500"
-
-      val errText = result.meta.error.value.errorText
-      errText.length must be <= 256
-      errText        must endWith("…")
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
 
-    "on 404 -> returns FATAL_ERROR(http-404)" in {
+    "on 404 -> returns FATAL_ERROR(http404)" in {
       val correlationId = "cid-404"
 
       stubFor(
@@ -112,23 +111,7 @@ final class ChrisConnectorIntegrationSpec
       val result = connector.submitEnvelope(envelope, correlationId).futureValue
 
       result.status mustBe FATAL_ERROR
-      result.meta.error.value.errorNumber mustBe "http-404"
-    }
-
-    "on connection fault -> returns FATAL_ERROR(conn)" in {
-      val correlationId = "cid-conn"
-
-      stubFor(
-        post(urlPathEqualTo(path))
-          .withRequestBody(equalToXml(xmlString))
-          .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER))
-      )
-
-      val result = connector.submitEnvelope(envelope, correlationId).futureValue
-
-      result.status mustBe FATAL_ERROR
-      result.meta.error.value.errorNumber mustBe "conn"
-      result.rawXml mustBe "<connection-error/>"
+      result.meta.error.value.errorNumber mustBe "http404"
     }
   }
 

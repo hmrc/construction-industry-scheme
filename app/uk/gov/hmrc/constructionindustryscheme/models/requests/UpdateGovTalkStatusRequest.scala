@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,23 +16,16 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
-import play.api.libs.json.*
-import uk.gov.hmrc.constructionindustryscheme.models.{ChrisStandardMonthlyReturn, MonthlyReturnType}
+import play.api.libs.json.{Json, OFormat}
+import java.time.LocalDateTime
 
-case class ChrisSubmissionRequest(
-  utr: String,
-  aoReference: String,
-  monthYear: String,
-  email: Option[String],
-  isAgent: Boolean,
-  clientTaxOfficeNumber: String,
-  clientTaxOfficeRef: String,
-  returnType: MonthlyReturnType,
-  informationCorrect: String,
-  inactivity: String,
-  standard: Option[ChrisStandardMonthlyReturn] = None
+case class UpdateGovTalkStatusRequest(
+  userIdentifier: String,
+  formResultID: String,
+  endStateDate: Option[LocalDateTime] = None,
+  protocolStatus: String
 )
 
-object ChrisSubmissionRequest {
-  implicit val format: OFormat[ChrisSubmissionRequest] = Json.format[ChrisSubmissionRequest]
+object UpdateGovTalkStatusRequest {
+  given format: OFormat[UpdateGovTalkStatusRequest] = Json.format[UpdateGovTalkStatusRequest]
 }

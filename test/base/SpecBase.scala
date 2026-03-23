@@ -33,7 +33,7 @@ import play.api.test.Helpers.stubControllerComponents
 import uk.gov.hmrc.auth.core.{Enrolment, EnrolmentIdentifier, Enrolments}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.CisTaxpayer
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.AuthenticatedRequest
 import uk.gov.hmrc.http.{HeaderCarrier, SessionId}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -131,25 +131,5 @@ trait SpecBase
       internalId = internalId,
       sessionId = session,
       enrolments = enrols
-    )
-
-  def createChrisRequest(
-    utr: String = "1234567890",
-    aoRef: String = "123/AB456",
-    infoCorrect: String = "yes",
-    inactivity: String = "yes",
-    monthYear: String = "2025-09",
-    email: String = "test@test.com"
-  ): ChrisSubmissionRequest =
-    ChrisSubmissionRequest(
-      utr = utr,
-      aoReference = aoRef,
-      informationCorrect = infoCorrect,
-      inactivity = inactivity,
-      monthYear = monthYear,
-      email = email,
-      isAgent = false,
-      clientTaxOfficeNumber = "",
-      clientTaxOfficeRef = ""
     )
 }

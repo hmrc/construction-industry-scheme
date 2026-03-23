@@ -18,9 +18,9 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, DEPARTMENTAL_ERROR, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionRequest, NilMonthlyReturnOrgSuccessEmail, SendSuccessEmailRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
+import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
@@ -31,7 +31,8 @@ import scala.util.control.NonFatal
 class SubmissionService @Inject() (
   chrisConnector: ChrisConnector,
   formpProxyConnector: FormpProxyConnector,
-  emailConnector: EmailConnector
+  emailConnector: EmailConnector,
+  monthlyReturnService: MonthlyReturnService
 )(implicit ec: ExecutionContext)
     extends Logging {
   def createSubmission(request: CreateSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
@@ -77,4 +78,42 @@ class SubmissionService @Inject() (
       case _ =>
         Future.unit
     }
+
+  def getGovTalkStatus(request: GetGovTalkStatusRequest)(implicit
+    hc: HeaderCarrier
+  ): Future[Option[GetGovTalkStatusResponse]] =
+    formpProxyConnector.getGovTalkStatus(request)
+
+  def createGovTalkStatusRecord(request: CreateGovTalkStatusRecordRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    formpProxyConnector.createGovTalkStatusRecord(request)
+
+  def updateGovTalkStatus(request: UpdateGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    formpProxyConnector.updateGovTalkStatus(request)
+
+  def initialiseGovTalkStatus(
+    employerReference: EmployerReference,
+    submissionId: String,
+    correlationId: String,
+    gatewayURL: String
+  )(implicit hc: HeaderCarrier): Future[String] =
+    monthlyReturnService.getCisTaxpayer(employerReference).flatMap { taxpayer =>
+      val instanceId = taxpayer.uniqueId
+      val getReq     = GetGovTalkStatusRequest(instanceId, submissionId)
+
+      getGovTalkStatus(getReq).flatMap {
+        case Some(_) =>
+          Future.failed(new RuntimeException("govtalk status already exists"))
+
+        case None =>
+          val createReq = CreateGovTalkStatusRecordRequest(
+            userIdentifier = instanceId,
+            formResultID = submissionId,
+            correlationID = correlationId,
+            gatewayURL = gatewayURL
+          )
+
+          createGovTalkStatusRecord(createReq).map(_ => instanceId)
+      }
+    }
+
 }

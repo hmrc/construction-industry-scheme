@@ -25,7 +25,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.{ChrisDeleteRequest, FATAL_
 import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisPollXmlMapper, ChrisSubmissionXmlMapper}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.HttpReads.Implicits.*
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -100,70 +100,50 @@ class ChrisConnector @Inject() (
       )
       .withBody(envelope.toString)
       .execute[HttpResponse]
-      .map { resp =>
+      .flatMap { resp =>
         if (is2xx(resp.status)) {
           logger.info(s"[ChrisConnector] corrId=$correlationId status=${resp.status} full-response-body:\n${resp.body}")
+          Future.successful(handle2xxResponse(resp, correlationId))
+        } else if (resp.status >= 500) {
+          Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
+        } else {
+          Future.successful(httpError(correlationId, resp.body, resp.status))
         }
-        handleResponse(resp, correlationId)
-      }
-      .recover { case NonFatal(e) =>
-        logger.error(
-          s"[ChrisConnector] Transport exception calling $chrisCisReturnUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${Option(e.getMessage)
-              .getOrElse("")}"
-        )
-        connectionError(correlationId, e)
       }
 
-  private def handleResponse(resp: HttpResponse, correlationId: String): SubmissionResult = {
+  private def handle2xxResponse(resp: HttpResponse, correlationId: String): SubmissionResult = {
     val body = resp.body
-    if (is2xx(resp.status)) {
-      ChrisSubmissionXmlMapper
-        .parse(body)
-        .fold(
-          err => parseError(correlationId, body, err),
-          ok => ok
-        )
-    } else {
-      httpError(correlationId, body, resp.status)
-    }
+    ChrisSubmissionXmlMapper
+      .parse(body)
+      .fold(
+        err => parseError(correlationId, body, err),
+        ok => ok
+      )
   }
 
   private def is2xx(status: Int): Boolean =
     status >= 200 && status < 300
 
+  private def truncate(s: String, maxCharacters: Int = 254): String =
+    if (s.length <= maxCharacters) s else s.take(maxCharacters) + "…"
+
   private def parseError(correlationId: String, rawXml: String, err: String): SubmissionResult =
-    errorResult(
-      correlationId = correlationId,
-      rawXml = rawXml,
-      errorNumber = "parse",
-      errorType = "fatal",
-      errorText = err
-    )
+    errorResult(correlationId = correlationId, rawXml = rawXml, errorNumber = "parse", errorText = err)
 
   private def httpError(correlationId: String, rawXml: String, status: Int): SubmissionResult =
     errorResult(
       correlationId = correlationId,
       rawXml = rawXml,
-      errorNumber = s"http-$status",
-      errorType = "fatal",
+      errorNumber = s"http$status",
       errorText = truncate(rawXml)
-    )
-
-  private def connectionError(correlationId: String, e: Throwable): SubmissionResult =
-    errorResult(
-      correlationId = correlationId,
-      rawXml = "<connection-error/>",
-      errorNumber = "conn",
-      errorType = "fatal",
-      errorText = s"Connection error: ${e.getClass.getSimpleName}"
     )
 
   private def errorResult(
     correlationId: String,
     rawXml: String,
     errorNumber: String,
-    errorType: String,
-    errorText: String
+    errorText: String,
+    errorType: String = "fatal"
   ): SubmissionResult =
     SubmissionResult(
       status = FATAL_ERROR,
@@ -178,7 +158,4 @@ class ChrisConnector @Inject() (
         error = Some(GovTalkError(errorNumber, errorType, errorText))
       )
     )
-
-  private def truncate(s: String, maxCharacters: Int = 254): String =
-    if (s.length <= maxCharacters) s else s.take(maxCharacters) + "…"
 }

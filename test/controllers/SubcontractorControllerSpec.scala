@@ -27,7 +27,6 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController
-import uk.gov.hmrc.constructionindustryscheme.models.SoleTrader
 import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -51,15 +50,41 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
 
     val updateSubcontractorUrl = "/subcontractor/update"
 
-    val validUpdateJson: JsValue = Json.toJson(
-      CreateAndUpdateSubcontractorRequest(
+    val validSoleTraderJson: JsValue = Json.toJson(
+      CreateAndUpdateSubcontractorRequest.SoleTraderRequest(
         cisId = cisId,
-        subcontractorType = SoleTrader,
+        utr = Some("1234567890"),
+        nino = Some("AA123456A"),
+        firstName = Some("John"),
+        secondName = Some("Q"),
+        surname = Some("Smith"),
+        country = Some("United Kingdom"),
         tradingName = Some("trading Name")
       )
     )
 
-    "returns 200 with update response when service returns data" in {
+    val validCompanyJson: JsValue = Json.toJson(
+      CreateAndUpdateSubcontractorRequest.CompanyRequest(
+        cisId = cisId,
+        utr = Some("1234567890"),
+        crn = Some("CRN123"),
+        tradingName = Some("ACME Ltd"),
+        country = Some("United Kingdom")
+      )
+    )
+
+    val validPartnershipJson: JsValue = Json.toJson(
+      CreateAndUpdateSubcontractorRequest.PartnershipRequest(
+        cisId = cisId,
+        utr = Some("1111111111"),
+        partnerUtr = Some("2222222222"),
+        partnershipTradingName = Some("My Partnership"),
+        partnerTradingName = Some("Nominated Partner"),
+        country = Some("United Kingdom")
+      )
+    )
+
+    "returns 204 when service succeeds (sole trader)" in {
       val service    = mock[SubcontractorService]
       val controller = mockController(service)
 
@@ -67,13 +92,46 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(()))
 
       val req = FakeRequest(POST, updateSubcontractorUrl)
-        .withBody(validUpdateJson)
+        .withBody(validSoleTraderJson)
         .withHeaders(CONTENT_TYPE -> JSON)
 
       val result = controller.createAndUpdateSubcontractor()(req)
 
       status(result) mustBe NO_CONTENT
+      verify(service).createAndUpdateSubcontractor(any[CreateAndUpdateSubcontractorRequest])(any[HeaderCarrier])
+    }
 
+    "returns 204 when service succeeds (company)" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      when(service.createAndUpdateSubcontractor(any[CreateAndUpdateSubcontractorRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val req = FakeRequest(POST, updateSubcontractorUrl)
+        .withBody(validCompanyJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.createAndUpdateSubcontractor()(req)
+
+      status(result) mustBe NO_CONTENT
+      verify(service).createAndUpdateSubcontractor(any[CreateAndUpdateSubcontractorRequest])(any[HeaderCarrier])
+    }
+
+    "returns 204 when service succeeds (partnership)" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      when(service.createAndUpdateSubcontractor(any[CreateAndUpdateSubcontractorRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val req = FakeRequest(POST, updateSubcontractorUrl)
+        .withBody(validPartnershipJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.createAndUpdateSubcontractor()(req)
+
+      status(result) mustBe NO_CONTENT
       verify(service).createAndUpdateSubcontractor(any[CreateAndUpdateSubcontractorRequest])(any[HeaderCarrier])
     }
 
@@ -101,7 +159,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.failed(new RuntimeException("formp down")))
 
       val req = FakeRequest(POST, updateSubcontractorUrl)
-        .withBody(validUpdateJson)
+        .withBody(validSoleTraderJson) // any valid payload is fine here
         .withHeaders(CONTENT_TYPE -> JSON)
 
       val result = controller.createAndUpdateSubcontractor()(req)
@@ -109,7 +167,6 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
       status(result) mustBe BAD_GATEWAY
       (contentAsJson(result) \ "message").as[String] mustBe "create-and-update-subcontractor-failed"
     }
-
   }
 
   "getSubcontractorUTRs" - {

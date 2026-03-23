@@ -20,7 +20,6 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.SoleTrader
 import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -33,34 +32,73 @@ final class SubcontractorServiceSpec extends SpecBase {
 
   "createAndUpdateSubcontractor" - {
 
-    val request =
-      CreateAndUpdateSubcontractorRequest(
+    val soleTraderRequest: CreateAndUpdateSubcontractorRequest =
+      CreateAndUpdateSubcontractorRequest.SoleTraderRequest(
         cisId = cisId,
-        subcontractorType = SoleTrader,
-        tradingName = Some("trading Name")
+        tradingName = Some("trading Name"),
+        firstName = Some("John"),
+        surname = Some("Smith"),
+        country = Some("United Kingdom")
       )
 
-    "delegates to FormpProxyConnector and returns response" in {
+    val companyRequest: CreateAndUpdateSubcontractorRequest =
+      CreateAndUpdateSubcontractorRequest.CompanyRequest(
+        cisId = cisId,
+        tradingName = Some("ACME Ltd"),
+        crn = Some("CRN123"),
+        country = Some("United Kingdom")
+      )
 
+    val partnershipRequest: CreateAndUpdateSubcontractorRequest =
+      CreateAndUpdateSubcontractorRequest.PartnershipRequest(
+        cisId = cisId,
+        partnershipTradingName = Some("My Partnership"),
+        partnerUtr = Some("9999999999"),
+        partnerTradingName = Some("Nominated Partner"),
+        country = Some("United Kingdom")
+      )
+
+    "delegates to FormpProxyConnector and returns Unit (sole trader)" in {
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
       val service                                  = new SubcontractorService(formpProxyConnector)
 
-      when(formpProxyConnector.createAndUpdateSubcontractor(eqTo(request))(any[HeaderCarrier]))
+      when(formpProxyConnector.createAndUpdateSubcontractor(eqTo(soleTraderRequest))(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
 
-      service.createAndUpdateSubcontractor(request).futureValue mustBe ()
-      verify(formpProxyConnector).createAndUpdateSubcontractor(eqTo(request))(any[HeaderCarrier])
+      service.createAndUpdateSubcontractor(soleTraderRequest).futureValue mustBe ((): Unit)
+      verify(formpProxyConnector).createAndUpdateSubcontractor(eqTo(soleTraderRequest))(any[HeaderCarrier])
+    }
+
+    "delegates to FormpProxyConnector and returns Unit (company)" in {
+      val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                                  = new SubcontractorService(formpProxyConnector)
+
+      when(formpProxyConnector.createAndUpdateSubcontractor(eqTo(companyRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.createAndUpdateSubcontractor(companyRequest).futureValue mustBe ((): Unit)
+      verify(formpProxyConnector).createAndUpdateSubcontractor(eqTo(companyRequest))(any[HeaderCarrier])
+    }
+
+    "delegates to FormpProxyConnector and returns Unit (partnership)" in {
+      val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                                  = new SubcontractorService(formpProxyConnector)
+
+      when(formpProxyConnector.createAndUpdateSubcontractor(eqTo(partnershipRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.createAndUpdateSubcontractor(partnershipRequest).futureValue mustBe ((): Unit)
+      verify(formpProxyConnector).createAndUpdateSubcontractor(eqTo(partnershipRequest))(any[HeaderCarrier])
     }
 
     "propagates failures from FormpProxyConnector" in {
-
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
       val service                                  = new SubcontractorService(formpProxyConnector)
 
-      when(formpProxyConnector.createAndUpdateSubcontractor(eqTo(request))(any[HeaderCarrier]))
+      when(formpProxyConnector.createAndUpdateSubcontractor(eqTo(soleTraderRequest))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
-      service.createAndUpdateSubcontractor(request).failed.futureValue.getMessage must include("boom")
+      service.createAndUpdateSubcontractor(soleTraderRequest).failed.futureValue.getMessage must include("boom")
     }
   }
 
