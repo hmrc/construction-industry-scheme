@@ -54,22 +54,19 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
           SUBMITTED_NO_RECEIPT
         } else {
           errOpt match {
-            // 3001 + business => departmental error
+            // 3001 + business => DEPARTMENTAL_ERROR
             case Some(err)
-                if err.errorNumber == "3001" &&
-                  err.errorType.equalsIgnoreCase("business") =>
-              DEPARTMENTAL_ERROR
+                if err.errorNumber == "3001" && err.errorType.equalsIgnoreCase("business") => DEPARTMENTAL_ERROR
 
-            // 3000 + fatal => fatal error
+            // recoverable errors (3000, 2005, 1000) => STARTED
             case Some(err)
-                if err.errorNumber == "3000" &&
-                  err.errorType.equalsIgnoreCase("fatal") =>
-              FATAL_ERROR
+                if Set("3000", "2005", "1000").contains(err.errorNumber) => STARTED
 
+            // all other errors => FATAL_ERROR
             case _ => FATAL_ERROR
           }
         }
-      case _                 => FATAL_ERROR
+      case _ => FATAL_ERROR
     }
 
   /** Detects IRMark mismatch error inside the <Body> ErrorResponse. */
