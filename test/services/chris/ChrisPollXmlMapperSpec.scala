@@ -22,6 +22,8 @@ import org.scalatest.EitherValues
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisPollXmlMapper
 
+import java.time.Instant
+
 final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValues {
 
   private val corrId    = "CORR-123"
@@ -530,7 +532,9 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
       res.pollUrl mustBe None
     }
 
-    "allows missing GatewayTimestamp" in {
+    "uses current time when GatewayTimestamp is missing" in {
+      val fixedNow = Instant.parse("2026-03-23T12:00:00Z")
+
       val xml = envelope(
         headerXml(
           qualifier = "response",
@@ -539,11 +543,41 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
         )
       )
 
+      val res = ChrisPollXmlMapper.parse(xml, fixedNow).value
+      res.status mustBe SUBMITTED
+      res.correlationId mustBe corrId
+      res.pollUrl mustBe Some("/poll")
+      res.lastMessageDate mustBe Some("2026-03-23T12:00:00Z")
+    }
+
+    "normalises GatewayTimestamp when it is a valid LocalDateTime without zone" in {
+      val xml = envelope(
+        headerXml(
+          qualifier = "response",
+          gatewayTimestamp = Some("2025-01-01T00:00:00"),
+          endpointUrl = Some("/poll")
+        )
+      )
+
       val res = ChrisPollXmlMapper.parse(xml).value
       res.status mustBe SUBMITTED
       res.correlationId mustBe corrId
       res.pollUrl mustBe Some("/poll")
-      res.lastMessageDate mustBe None
+      res.lastMessageDate mustBe Some("2025-01-01T00:00:00Z")
+    }
+
+    "returns Left when GatewayTimestamp cannot be parsed" in {
+      val xml = envelope(
+        headerXml(
+          qualifier = "response",
+          gatewayTimestamp = Some("not-a-timestamp"),
+          endpointUrl = Some("/poll")
+        )
+      )
+
+      val res = ChrisPollXmlMapper.parse(xml)
+      res.isLeft mustBe true
+      res.left.value must include("Failed to parse GatewayTimestamp 'not-a-timestamp'")
     }
   }
 }
