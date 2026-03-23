@@ -57,7 +57,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "clientTaxOfficeRef"    -> "ABC456",
     "returnType"            -> "monthlyNilReturn",
     "informationCorrect"    -> "yes",
-    "inactivity"            -> "no"
+    "inactivity"            -> "no",
+    "language"              -> "cy"
   )
 
   private val validJsonWithoutEmail: JsValue = Json.obj(
