@@ -31,7 +31,7 @@ case class ChrisSubmissionRequest(
   informationCorrect: String,
   inactivity: String,
   standard: Option[ChrisStandardMonthlyReturn] = None,
-  language: Option[String]
+  langCode: String
 )
 
 object ChrisSubmissionRequest {

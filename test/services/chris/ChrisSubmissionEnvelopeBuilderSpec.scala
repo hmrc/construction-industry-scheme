@@ -53,7 +53,7 @@ class ChrisSubmissionEnvelopeBuilderSpec extends SpecBase with Matchers with Moc
       informationCorrect = "yes",
       inactivity = "yes",
       standard = None,
-      language = None
+      langCode = "en"
     )
 
     val correlationId = "test-corr-id"
@@ -86,7 +86,7 @@ class ChrisSubmissionEnvelopeBuilderSpec extends SpecBase with Matchers with Moc
       informationCorrect = "yes",
       inactivity = "yes",
       standard = None,
-      language = None
+      langCode = "en"
     )
 
     val correlationId = "agent-corr-id"
@@ -120,7 +120,7 @@ class ChrisSubmissionEnvelopeBuilderSpec extends SpecBase with Matchers with Moc
       informationCorrect = "yes",
       inactivity = "no",
       standard = None,
-      language = None
+      langCode = "en"
     )
 
     val thrown = intercept[IllegalStateException] {

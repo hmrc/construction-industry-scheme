@@ -36,7 +36,7 @@ class ChrisSubmissionRequestSpec extends AnyWordSpec with Matchers {
     informationCorrect = "yes",
     inactivity = "no",
     standard = None,
-    language = None
+    langCode = "en"
   )
 
   private val writeJson: JsValue = Json.obj(
@@ -49,7 +49,8 @@ class ChrisSubmissionRequestSpec extends AnyWordSpec with Matchers {
     "clientTaxOfficeRef"    -> "",
     "returnType"            -> "nil",
     "informationCorrect"    -> "yes",
-    "inactivity"            -> "no"
+    "inactivity"            -> "no",
+    "langCode"              -> "en"
   )
 
   private val readJson: JsValue = Json.obj(
@@ -62,7 +63,8 @@ class ChrisSubmissionRequestSpec extends AnyWordSpec with Matchers {
     "clientTaxOfficeRef"    -> "",
     "returnType"            -> "monthlyNilReturn",
     "informationCorrect"    -> "yes",
-    "inactivity"            -> "no"
+    "inactivity"            -> "no",
+    "langCode"              -> "en"
   )
 
   "ChrisSubmissionRequest JSON format" should {

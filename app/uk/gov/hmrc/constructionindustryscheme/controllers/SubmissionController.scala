@@ -280,7 +280,7 @@ class SubmissionController @Inject() (
           case Some(email) =>
             logger.info(s"[email] ${res.status} → sending email to=$email")
 
-            val locale: Locale = csr.language.flatMap(code => Lang.get(code)).map(_.locale).getOrElse(Locale.UK)
+            val locale: Locale = Lang.get(csr.langCode).map(_.locale).getOrElse(Locale.UK)
 
             val ym    = DateTimeHelper.parseYearMonthFlexible(csr.monthYear)
             val month = ym.format(DateTimeHelper.monthFormatter(locale))
