@@ -30,7 +30,8 @@ case class ChrisSubmissionRequest(
   returnType: MonthlyReturnType,
   informationCorrect: String,
   inactivity: String,
-  standard: Option[ChrisStandardMonthlyReturn] = None
+  standard: Option[ChrisStandardMonthlyReturn] = None,
+  language: Option[String]
 )
 
 object ChrisSubmissionRequest {

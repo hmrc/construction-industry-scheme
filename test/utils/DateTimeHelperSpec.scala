@@ -20,9 +20,51 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 import uk.gov.hmrc.constructionindustryscheme.utils.DateTimeHelper
 
-import java.time.YearMonth
+import java.time.{LocalDate, YearMonth}
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class DateTimeHelperSpec extends AnyWordSpec with Matchers {
+
+  "monthFormatter" should {
+
+    "format month correctly in UK English locale" in {
+      val formatter: DateTimeFormatter = DateTimeHelper.monthFormatter(Locale.UK)
+      val date                         = LocalDate.of(2026, 3, 15) // March
+
+      val formatted = date.format(formatter)
+      formatted shouldBe "March"
+    }
+
+    "format month correctly in Welsh locale" in {
+      val welshLocale                  = new Locale("cy", "GB")
+      val formatter: DateTimeFormatter = DateTimeHelper.monthFormatter(welshLocale)
+      val date                         = LocalDate.of(2026, 3, 15)
+
+      val formatted = date.format(formatter)
+      formatted shouldBe "Mawrth"
+    }
+  }
+
+  "yearFormatter" should {
+
+    "format year correctly in UK English locale" in {
+      val formatter: DateTimeFormatter = DateTimeHelper.yearFormatter(Locale.UK)
+      val date                         = LocalDate.of(2026, 3, 15)
+
+      val formatted = date.format(formatter)
+      formatted shouldBe "2026"
+    }
+
+    "format year correctly in Welsh locale" in {
+      val welshLocale                  = new Locale("cy", "GB")
+      val formatter: DateTimeFormatter = DateTimeHelper.yearFormatter(welshLocale)
+      val date                         = LocalDate.of(2026, 3, 15)
+
+      val formatted = date.format(formatter)
+      formatted shouldBe "2026"
+    }
+  }
 
   "parseYearMonthFlexible" should {
 

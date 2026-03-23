@@ -36,7 +36,8 @@ class CisReturnXmlBuilderSpec extends AnyWordSpec with Matchers {
       returnType = returnType,
       informationCorrect = "yes",
       inactivity = inactivity,
-      standard = None
+      standard = None,
+      language = None
     )
 
   private def baseSub =

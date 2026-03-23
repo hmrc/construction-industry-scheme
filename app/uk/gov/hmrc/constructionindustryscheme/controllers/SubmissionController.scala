@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.controllers
 
 import play.api.Logging
+import play.api.i18n.Lang
 import play.api.libs.json.*
 import play.api.mvc.*
 import play.api.mvc.Results.*
@@ -35,7 +36,7 @@ import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
 import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
 
 import java.time.{Clock, Instant}
-import java.util.UUID
+import java.util.{Locale, UUID}
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -279,9 +280,11 @@ class SubmissionController @Inject() (
           case Some(email) =>
             logger.info(s"[email] ${res.status} → sending email to=$email")
 
+            val locale: Locale = csr.language.flatMap(code => Lang.get(code)).map(_.locale).getOrElse(Locale.UK)
+
             val ym    = DateTimeHelper.parseYearMonthFlexible(csr.monthYear)
-            val month = ym.format(DateTimeHelper.monthFormatter)
-            val year  = ym.format(DateTimeHelper.yearFormatter)
+            val month = ym.format(DateTimeHelper.monthFormatter(locale))
+            val year  = ym.format(DateTimeHelper.yearFormatter(locale))
 
             submissionService
               .sendSuccessfulEmail(SendSuccessEmailRequest(email, month, year))

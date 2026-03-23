@@ -22,8 +22,11 @@ import java.util.Locale
 import scala.util.Try
 
 object DateTimeHelper {
-  val monthFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM", Locale.UK)
-  val yearFormatter: DateTimeFormatter  = DateTimeFormatter.ofPattern("uuuu", Locale.UK)
+  def monthFormatter(locale: Locale): DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMMM").withLocale(locale)
+
+  def yearFormatter(locale: Locale): DateTimeFormatter =
+    DateTimeFormatter.ofPattern("uuuu").withLocale(locale)
 
   def parseYearMonthFlexible(monthYear: String): YearMonth =
     Try(YearMonth.parse(monthYear))

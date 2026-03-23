@@ -35,7 +35,8 @@ class ChrisSubmissionRequestSpec extends AnyWordSpec with Matchers {
     returnType = MonthlyReturnType.Nil,
     informationCorrect = "yes",
     inactivity = "no",
-    standard = None
+    standard = None,
+    language = None
   )
 
   private val writeJson: JsValue = Json.obj(
