@@ -436,6 +436,64 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "status").as[String] mustBe "FATAL_ERROR"
       (js \ "error" \ "text").as[String] mustBe "GovTalk status already exists"
     }
+
+    "returns 502 BadGateway when handling initial ChRIS response fails" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator = mock[XmlValidator]
+
+      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+
+      when(xmlValidator.validate(any[NodeSeq]))
+        .thenReturn(Success(()))
+
+      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+          val result = mkSubmissionResult(ACCEPTED)
+          Future.successful(
+            result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
+          )
+        }
+
+      when(
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.failed(new RuntimeException("ack persistence failed")))
+
+      val request =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(request)
+
+      status(result) mustBe BAD_GATEWAY
+
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "FATAL_ERROR"
+      (js \ "error" \ "text").as[String] must include("ack persistence failed")
+
+      verify(submissionService).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
+    }
   }
 
   "createSubmission" - {

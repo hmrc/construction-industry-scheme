@@ -316,6 +316,74 @@ final class SubmissionServiceSpec extends SpecBase {
         .futureValue
         .getMessage must include("CorrelationId mismatch")
     }
+
+    "fails when no GovTalk status is found after polling" in {
+      val s = setup
+      import s._
+
+      val submissionId = "sub-123"
+      val instanceId = "instance-123"
+      val correlation = "corr-123"
+      val pollUrl = "/poll/123"
+
+      val session = ChrisSubmissionSessionData(
+        submissionId = submissionId,
+        instanceId = instanceId,
+        correlationId = correlation,
+        lastMessageDate = Instant.parse("2025-01-01T00:00:00Z"),
+        numPolls = 0,
+        pollInterval = 10,
+        pollUrl = pollUrl,
+        govTalkStatus = None
+      )
+
+      val pollResponse = ChrisPollResponse(
+        status = SUBMITTED,
+        correlationId = correlation,
+        pollUrl = Some("/poll/999"),
+        pollInterval = Some(20),
+        lastMessageDate = Some("2025-01-02T00:00:00Z")
+      )
+
+      when(chrisSubmissionSessionStore.get(eqTo(submissionId)))
+        .thenReturn(Future.successful(Some(session)))
+
+      when(chrisConnector.pollSubmission(eqTo(correlation), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(pollResponse))
+
+      when(
+        chrisSubmissionSessionStore.updateAfterPoll(
+          eqTo(submissionId),
+          eqTo(correlation),
+          eqTo(Instant.parse("2025-01-02T00:00:00Z")),
+          eqTo(20),
+          eqTo("/poll/999")
+        )
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusCorrelationId(any[UpdateGovTalkStatusCorrelationIdRequest])(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusStatistics(any[UpdateGovTalkStatusStatisticsRequest])(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatus(any[UpdateGovTalkStatusRequest])(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.getGovTalkStatus(eqTo(GetGovTalkStatusRequest(instanceId, submissionId)))(any[HeaderCarrier])
+      ).thenReturn(Future.successful(None))
+
+      val ex =
+        service.pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl).failed.futureValue
+
+      ex.getMessage mustBe s"No GovTalk status found for instanceId: $instanceId, submissionId: $submissionId"
+
+      verify(chrisSubmissionSessionStore, never()).saveGovTalkStatus(any[String], any[GetGovTalkStatusResponse])
+    }
   }
 
   "sendSuccessfulEmail" - {

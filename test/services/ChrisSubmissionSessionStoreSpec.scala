@@ -28,7 +28,7 @@ import uk.gov.hmrc.constructionindustryscheme.services.ChrisSubmissionSessionSto
 
 class ChrisSubmissionSessionStoreSpec extends SpecBase with ScalaFutures {
 
-  var setup: Setup = new Setup {}
+  var setup: Setup                = new Setup {}
   override def beforeEach(): Unit =
     setup = new Setup {}
 
