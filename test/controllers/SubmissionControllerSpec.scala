@@ -29,10 +29,10 @@ import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
 import uk.gov.hmrc.constructionindustryscheme.models.audit.XmlConversionResult
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateGovTalkStatusRecordRequest, CreateSubmissionRequest, GetGovTalkStatusRequest, SendSuccessEmailRequest, UpdateGovTalkStatusRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BuiltSubmissionPayload, DEPARTMENTAL_ERROR, EmployerReference, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionResult, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
+import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, MonthlyReturnService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlValidator
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
@@ -504,8 +504,6 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
-          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
-
           val result = mkSubmissionResult(SUBMITTED).copy(
             meta = mkMeta(corrId = "")
           )
@@ -744,7 +742,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             using any[HeaderCarrier]
           )
         )
-          .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, Some(overridePollUrl), Some(10))))
+          .thenReturn(
+            Future.successful(ChrisPollResponse(ACCEPTED, correlationId, Some(overridePollUrl), Some(10), None))
+          )
 
         val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
@@ -784,7 +784,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[HeaderCarrier]
         )
       )
-        .thenReturn(Future.successful(ChrisPollResponse(SUBMITTED, None, None)))
+        .thenReturn(Future.successful(ChrisPollResponse(SUBMITTED, correlationId, None, None, None)))
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
@@ -822,7 +822,15 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         )
       )
         .thenReturn(
-          Future.successful(ChrisPollResponse(uk.gov.hmrc.constructionindustryscheme.models.FATAL_ERROR, None, None))
+          Future.successful(
+            ChrisPollResponse(
+              uk.gov.hmrc.constructionindustryscheme.models.FATAL_ERROR,
+              correlationId,
+              None,
+              None,
+              None
+            )
+          )
         )
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
@@ -860,7 +868,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[HeaderCarrier]
         )
       )
-        .thenReturn(Future.successful(ChrisPollResponse(DEPARTMENTAL_ERROR, None, None)))
+        .thenReturn(Future.successful(ChrisPollResponse(DEPARTMENTAL_ERROR, correlationId, None, None, None)))
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
@@ -897,7 +905,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[HeaderCarrier]
         )
       )
-        .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, Some(pollUrl), Some(10))))
+        .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, correlationId, Some(pollUrl), Some(10), None)))
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 

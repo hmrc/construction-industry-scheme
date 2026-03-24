@@ -22,19 +22,30 @@ import org.scalatest.EitherValues
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisPollXmlMapper
 
+import java.time.Instant
+
 final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValues {
 
+  private val corrId    = "CORR-123"
+  private val gatewayTs = "2025-01-01T00:00:00Z"
+
   private def headerXml(
-                         qualifier: String,
-                         endpointUrl: Option[String] = None,
-                         pollInterval: Option[Int] = None
-                       ): String = {
+    qualifier: String,
+    correlationId: String = corrId,
+    gatewayTimestamp: Option[String] = Some(gatewayTs),
+    endpointUrl: Option[String] = None,
+    pollInterval: Option[Int] = None
+  ): String = {
     val epText           = endpointUrl.getOrElse("")
     val pollIntervalAttr = pollInterval.map(pi => s""" PollInterval="$pi"""").getOrElse("")
+    val gatewayTsXml     = gatewayTimestamp.map(ts => s"<GatewayTimestamp>$ts</GatewayTimestamp>").getOrElse("")
+
     s"""
        |<Header>
        |  <MessageDetails>
        |    <Qualifier>$qualifier</Qualifier>
+       |    <CorrelationID>$correlationId</CorrelationID>
+       |    $gatewayTsXml
        |    <ResponseEndPoint$pollIntervalAttr>$epText</ResponseEndPoint>
        |  </MessageDetails>
        |</Header>
@@ -48,7 +59,7 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
        |</GovTalkMessage>
        |""".stripMargin
 
-  "ChrisXmlPollMapper parse" - {
+  "ChrisPollXmlMapper parse" - {
 
     "maps an acknowledgement to ACCEPTED" - {
       "with endpoint URL and poll interval" in {
@@ -62,8 +73,10 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
         val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe ACCEPTED
+        res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/poll/next")
         res.pollInterval mustBe Some(10)
+        res.lastMessageDate mustBe Some(gatewayTs)
       }
 
       "with endpoint URL but no poll interval" in {
@@ -76,8 +89,10 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
         val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe ACCEPTED
+        res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/poll/next")
         res.pollInterval mustBe None
+        res.lastMessageDate mustBe Some(gatewayTs)
       }
 
       "without endpoint URL" in {
@@ -87,7 +102,9 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
         val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe ACCEPTED
+        res.correlationId mustBe corrId
         res.pollUrl mustBe None
+        res.lastMessageDate mustBe Some(gatewayTs)
       }
 
       "case insensitive matching" in {
@@ -100,6 +117,7 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
         val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe ACCEPTED
+        res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/poll")
       }
     }
@@ -115,7 +133,9 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
         val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe SUBMITTED
+        res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/response/endpoint")
+        res.lastMessageDate mustBe Some(gatewayTs)
       }
 
       "without endpoint URL" in {
@@ -125,6 +145,7 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
         val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe SUBMITTED
+        res.correlationId mustBe corrId
         res.pollUrl mustBe None
       }
 
@@ -135,81 +156,90 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
         val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe SUBMITTED
+        res.correlationId mustBe corrId
       }
     }
 
     "maps error qualifier to error statuses" - {
       "fatal error type with non-special number maps to to FATAL_ERROR" in {
         val xml =
-          """<GovTalkMessage>
-            |  <Header>
-            |    <MessageDetails>
-            |      <Qualifier>error</Qualifier>
-            |      <ResponseEndPoint>/error/endpoint</ResponseEndPoint>
-            |    </MessageDetails>
-            |  </Header>
-            |  <GovTalkDetails>
-            |    <GovTalkErrors>
-            |      <Error>
-            |        <Number>9001</Number>
-            |        <Type>fatal</Type>
-            |        <Text>Catastrophic failure</Text>
-            |      </Error>
-            |    </GovTalkErrors>
-            |  </GovTalkDetails>
-            |</GovTalkMessage>
-            |""".stripMargin
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>error</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |      <GatewayTimestamp>$gatewayTs</GatewayTimestamp>
+             |      <ResponseEndPoint>/error/endpoint</ResponseEndPoint>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |        <Number>9001</Number>
+             |        <Type>fatal</Type>
+             |        <Text>Catastrophic failure</Text>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |</GovTalkMessage>
+             |""".stripMargin
 
         val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe FATAL_ERROR
+        res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/error/endpoint")
       }
 
       "3001 with business error type to DEPARTMENTAL_ERROR" in {
         val xml =
-          """<GovTalkMessage>
-            |  <Header>
-            |    <MessageDetails>
-            |      <Qualifier>error</Qualifier>
-            |      <ResponseEndPoint>/business/error</ResponseEndPoint>
-            |    </MessageDetails>
-            |  </Header>
-            |  <GovTalkDetails>
-            |    <GovTalkErrors>
-            |      <Error>
-            |        <Number>3001</Number>
-            |        <Type>business</Type>
-            |        <Text>Invalid data supplied</Text>
-            |      </Error>
-            |    </GovTalkErrors>
-            |  </GovTalkDetails>
-            |</GovTalkMessage>
-            |""".stripMargin
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>error</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |      <GatewayTimestamp>$gatewayTs</GatewayTimestamp>
+             |      <ResponseEndPoint>/business/error</ResponseEndPoint>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |        <Number>3001</Number>
+             |        <Type>business</Type>
+             |        <Text>Invalid data supplied</Text>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |</GovTalkMessage>
+             |""".stripMargin
 
         val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe DEPARTMENTAL_ERROR
+        res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/business/error")
       }
 
       "3001 with business type is case insensitive error type matching" in {
         val xml =
-          """<GovTalkMessage>
-            |  <Header>
-            |    <MessageDetails>
-            |      <Qualifier>ERROR</Qualifier>
-            |    </MessageDetails>
-            |  </Header>
-            |  <GovTalkDetails>
-            |    <GovTalkErrors>
-            |      <Error>
-            |        <Number>3001</Number>
-            |        <Type>BUSINESS</Type>
-            |        <Text>Error text</Text>
-            |      </Error>
-            |    </GovTalkErrors>
-            |  </GovTalkDetails>
-            |</GovTalkMessage>
-            |""".stripMargin
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>ERROR</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |      <GatewayTimestamp>$gatewayTs</GatewayTimestamp>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |        <Number>3001</Number>
+             |        <Type>BUSINESS</Type>
+             |        <Text>Error text</Text>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |</GovTalkMessage>
+             |""".stripMargin
 
         val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe DEPARTMENTAL_ERROR
@@ -217,63 +247,68 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
       "business error type & (body error Type=business & body error number=2021) to SUBMITTED_NO_RECEIPT" in {
         val xml =
-          """<GovTalkMessage>
-            |  <Header>
-            |    <MessageDetails>
-            |      <Qualifier>error</Qualifier>
-            |      <ResponseEndPoint>/business/error</ResponseEndPoint>
-            |    </MessageDetails>
-            |  </Header>
-            |  <GovTalkDetails>
-            |    <GovTalkErrors>
-            |      <Error>
-            |        <Number>3001</Number>
-            |        <Type>business</Type>
-            |        <Text>Your submission failed due to business validation errors. Please see below for details.</Text>
-            |      </Error>
-            |    </GovTalkErrors>
-            |  </GovTalkDetails>
-            |   <Body>
-            |     <ErrorResponse SchemaVersion="2.0">
-            |       <Application>
-            |         <MessageCount>1</MessageCount>
-            |       </Application>
-            |       <Error>
-            |         <RaisedBy>ChRIS</RaisedBy>
-            |         <Number>2021</Number>
-            |         <Type>business</Type>
-            |         <Text>The supplied IRmark is incorrect.</Text>
-            |         <Location>IRmark</Location>
-            |       </Error>
-            |     </ErrorResponse>
-            |   </Body>
-            |</GovTalkMessage>
-            |""".stripMargin
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>error</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |      <GatewayTimestamp>$gatewayTs</GatewayTimestamp>
+             |      <ResponseEndPoint>/business/error</ResponseEndPoint>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |        <Number>3001</Number>
+             |        <Type>business</Type>
+             |        <Text>Your submission failed due to business validation errors. Please see below for details.</Text>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |   <Body>
+             |     <ErrorResponse SchemaVersion="2.0">
+             |       <Application>
+             |         <MessageCount>1</MessageCount>
+             |       </Application>
+             |       <Error>
+             |         <RaisedBy>ChRIS</RaisedBy>
+             |         <Number>2021</Number>
+             |         <Type>business</Type>
+             |         <Text>The supplied IRmark is incorrect.</Text>
+             |         <Location>IRmark</Location>
+             |       </Error>
+             |     </ErrorResponse>
+             |   </Body>
+             |</GovTalkMessage>
+             |""".stripMargin
 
         val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe SUBMITTED_NO_RECEIPT
+        res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/business/error")
       }
 
       "unknown error type defaults to FATAL_ERROR" in {
         val xml =
-          """<GovTalkMessage>
-            |  <Header>
-            |    <MessageDetails>
-            |      <Qualifier>error</Qualifier>
-            |    </MessageDetails>
-            |  </Header>
-            |  <GovTalkDetails>
-            |    <GovTalkErrors>
-            |      <Error>
-            |        <Number>5001</Number>
-            |        <Type>unknown</Type>
-            |        <Text>Unknown error type</Text>
-            |      </Error>
-            |    </GovTalkErrors>
-            |  </GovTalkDetails>
-            |</GovTalkMessage>
-            |""".stripMargin
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>error</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |      <GatewayTimestamp>$gatewayTs</GatewayTimestamp>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |        <Number>5001</Number>
+             |        <Type>unknown</Type>
+             |        <Text>Unknown error type</Text>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |</GovTalkMessage>
+             |""".stripMargin
 
         val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe FATAL_ERROR
@@ -281,24 +316,26 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
       "error number 3000 with fatal type maps to STARTED" in {
         val xml =
-          """<GovTalkMessage>
-            |  <Header>
-            |    <MessageDetails>
-            |      <Qualifier>error</Qualifier>
-            |      <ResponseEndPoint>/fatal/3000</ResponseEndPoint>
-            |    </MessageDetails>
-            |  </Header>
-            |  <GovTalkDetails>
-            |    <GovTalkErrors>
-            |      <Error>
-            |        <Number>3000</Number>
-            |        <Type>fatal</Type>
-            |        <Text>Fatal processing error</Text>
-            |      </Error>
-            |    </GovTalkErrors>
-            |  </GovTalkDetails>
-            |</GovTalkMessage>
-            |""".stripMargin
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>error</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |      <GatewayTimestamp>$gatewayTs</GatewayTimestamp>
+             |      <ResponseEndPoint>/fatal/3000</ResponseEndPoint>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |        <Number>3000</Number>
+             |        <Type>fatal</Type>
+             |        <Text>Fatal processing error</Text>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |</GovTalkMessage>
+             |""".stripMargin
 
         val res = ChrisPollXmlMapper.parse(xml).value
         res.status mustBe STARTED
@@ -370,15 +407,34 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
       val res = ChrisPollXmlMapper.parse(xml).value
       res.status mustBe FATAL_ERROR
+      res.correlationId mustBe corrId
       res.pollUrl mustBe Some("/unknown")
     }
 
     "returns Left when mandatory fields are missing" - {
       "missing Qualifier field" in {
         val xml =
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |      <ResponseEndPoint>/poll</ResponseEndPoint>
+             |    </MessageDetails>
+             |  </Header>
+             |</GovTalkMessage>
+             |""".stripMargin
+
+        val res = ChrisPollXmlMapper.parse(xml)
+        res.isLeft mustBe true
+        res.left.value must include("Missing mandatory field: Qualifier")
+      }
+
+      "missing CorrelationID field" in {
+        val xml =
           """<GovTalkMessage>
             |  <Header>
             |    <MessageDetails>
+            |      <Qualifier>response</Qualifier>
             |      <ResponseEndPoint>/poll</ResponseEndPoint>
             |    </MessageDetails>
             |  </Header>
@@ -387,25 +443,26 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
         val res = ChrisPollXmlMapper.parse(xml)
         res.isLeft mustBe true
-        res.left.value must include("Missing mandatory field: Qualifier")
+        res.left.value must include("Missing mandatory field: CorrelationID")
       }
 
       "error qualifier missing error details" in {
         val xml =
-          """<GovTalkMessage>
-            |  <Header>
-            |    <MessageDetails>
-            |      <Qualifier>error</Qualifier>
-            |    </MessageDetails>
-            |  </Header>
-            |  <GovTalkDetails>
-            |    <GovTalkErrors>
-            |      <Error>
-            |      </Error>
-            |    </GovTalkErrors>
-            |  </GovTalkDetails>
-            |</GovTalkMessage>
-            |""".stripMargin
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>error</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |</GovTalkMessage>
+             |""".stripMargin
 
         val res = ChrisPollXmlMapper.parse(xml)
         res.isLeft mustBe true
@@ -414,22 +471,23 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
       "error qualifier missing error number" in {
         val xml =
-          """<GovTalkMessage>
-            |  <Header>
-            |    <MessageDetails>
-            |      <Qualifier>error</Qualifier>
-            |    </MessageDetails>
-            |  </Header>
-            |  <GovTalkDetails>
-            |    <GovTalkErrors>
-            |      <Error>
-            |        <Type>fatal</Type>
-            |        <Text>Error text</Text>
-            |      </Error>
-            |    </GovTalkErrors>
-            |  </GovTalkDetails>
-            |</GovTalkMessage>
-            |""".stripMargin
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>error</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |        <Type>fatal</Type>
+             |        <Text>Error text</Text>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |</GovTalkMessage>
+             |""".stripMargin
 
         val res = ChrisPollXmlMapper.parse(xml)
         res.isLeft mustBe true
@@ -438,22 +496,23 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
       "error qualifier missing error type" in {
         val xml =
-          """<GovTalkMessage>
-            |  <Header>
-            |    <MessageDetails>
-            |      <Qualifier>error</Qualifier>
-            |    </MessageDetails>
-            |  </Header>
-            |  <GovTalkDetails>
-            |    <GovTalkErrors>
-            |      <Error>
-            |        <Number>9001</Number>
-            |        <Text>Error text</Text>
-            |      </Error>
-            |    </GovTalkErrors>
-            |  </GovTalkDetails>
-            |</GovTalkMessage>
-            |""".stripMargin
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>error</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |        <Number>9001</Number>
+             |        <Text>Error text</Text>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |</GovTalkMessage>
+             |""".stripMargin
 
         val res = ChrisPollXmlMapper.parse(xml)
         res.isLeft mustBe true
@@ -462,22 +521,23 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
       "error qualifier missing error text" in {
         val xml =
-          """<GovTalkMessage>
-            |  <Header>
-            |    <MessageDetails>
-            |      <Qualifier>error</Qualifier>
-            |    </MessageDetails>
-            |  </Header>
-            |  <GovTalkDetails>
-            |    <GovTalkErrors>
-            |      <Error>
-            |        <Number>9001</Number>
-            |        <Type>fatal</Type>
-            |      </Error>
-            |    </GovTalkErrors>
-            |  </GovTalkDetails>
-            |</GovTalkMessage>
-            |""".stripMargin
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>error</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |        <Number>9001</Number>
+             |        <Type>fatal</Type>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |</GovTalkMessage>
+             |""".stripMargin
 
         val res = ChrisPollXmlMapper.parse(xml)
         res.isLeft mustBe true
@@ -487,36 +547,91 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
 
     "handles whitespace in XML elements" in {
       val xml =
-        """<GovTalkMessage>
-          |  <Header>
-          |    <MessageDetails>
-          |      <Qualifier>  acknowledgement  </Qualifier>
-          |      <ResponseEndPoint>  /poll/endpoint  </ResponseEndPoint>
-          |    </MessageDetails>
-          |  </Header>
-          |</GovTalkMessage>
-          |""".stripMargin
+        s"""<GovTalkMessage>
+           |  <Header>
+           |    <MessageDetails>
+           |      <Qualifier>  acknowledgement  </Qualifier>
+           |      <CorrelationID>  $corrId  </CorrelationID>
+           |      <GatewayTimestamp>  $gatewayTs  </GatewayTimestamp>
+           |      <ResponseEndPoint>  /poll/endpoint  </ResponseEndPoint>
+           |    </MessageDetails>
+           |  </Header>
+           |</GovTalkMessage>
+           |""".stripMargin
 
       val res = ChrisPollXmlMapper.parse(xml).value
       res.status mustBe ACCEPTED
+      res.correlationId mustBe corrId
       res.pollUrl mustBe Some("/poll/endpoint")
+      res.lastMessageDate mustBe Some(gatewayTs)
     }
 
     "handles empty ResponseEndPoint element" in {
       val xml =
-        """<GovTalkMessage>
-          |  <Header>
-          |    <MessageDetails>
-          |      <Qualifier>response</Qualifier>
-          |      <ResponseEndPoint></ResponseEndPoint>
-          |    </MessageDetails>
-          |  </Header>
-          |</GovTalkMessage>
-          |""".stripMargin
+        s"""<GovTalkMessage>
+           |  <Header>
+           |    <MessageDetails>
+           |      <Qualifier>response</Qualifier>
+           |      <CorrelationID>$corrId</CorrelationID>
+           |      <GatewayTimestamp>$gatewayTs</GatewayTimestamp>
+           |      <ResponseEndPoint></ResponseEndPoint>
+           |    </MessageDetails>
+           |  </Header>
+           |</GovTalkMessage>
+           |""".stripMargin
 
       val res = ChrisPollXmlMapper.parse(xml).value
       res.status mustBe SUBMITTED
+      res.correlationId mustBe corrId
       res.pollUrl mustBe None
+    }
+
+    "uses current time when GatewayTimestamp is missing" in {
+      val fixedNow = Instant.parse("2026-03-23T12:00:00Z")
+
+      val xml = envelope(
+        headerXml(
+          qualifier = "response",
+          gatewayTimestamp = None,
+          endpointUrl = Some("/poll")
+        )
+      )
+
+      val res = ChrisPollXmlMapper.parse(xml, fixedNow).value
+      res.status mustBe SUBMITTED
+      res.correlationId mustBe corrId
+      res.pollUrl mustBe Some("/poll")
+      res.lastMessageDate mustBe Some("2026-03-23T12:00:00Z")
+    }
+
+    "normalises GatewayTimestamp when it is a valid LocalDateTime without zone" in {
+      val xml = envelope(
+        headerXml(
+          qualifier = "response",
+          gatewayTimestamp = Some("2025-01-01T00:00:00"),
+          endpointUrl = Some("/poll")
+        )
+      )
+
+      val res = ChrisPollXmlMapper.parse(xml).value
+      res.status mustBe SUBMITTED
+      res.correlationId mustBe corrId
+      res.pollUrl mustBe Some("/poll")
+      res.lastMessageDate mustBe Some("2025-01-01T00:00:00Z")
+    }
+
+    "returns Left when GatewayTimestamp cannot be parsed" in {
+      val xml = envelope(
+        headerXml(
+          qualifier = "response",
+          gatewayTimestamp = Some("not-a-timestamp"),
+          endpointUrl = Some("/poll")
+        )
+      )
+
+      val res = ChrisPollXmlMapper.parse(xml)
+      res.isLeft mustBe true
+      res.left.value must include("Failed to parse GatewayTimestamp 'not-a-timestamp'")
     }
   }
 }
