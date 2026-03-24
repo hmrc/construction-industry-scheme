@@ -215,7 +215,7 @@ final class ChrisConnectorIntegrationSpec
            |  <GovTalkDetails>
            |    <GovTalkErrors>
            |      <Error>
-           |        <Number>3000</Number>
+           |        <Number>1001</Number>
            |        <Type>fatal</Type>
            |        <Text>Fatal processing error</Text>
            |      </Error>

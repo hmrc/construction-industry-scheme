@@ -346,12 +346,10 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
         val xml =
           envelope(
             s"""
-               |${
-              headerXml(
+               |${headerXml(
                 qualifier = "error",
                 endpointUrl = Some("/recoverable/2005")
-              )
-            }
+              )}
                |<GovTalkDetails>
                |  <GovTalkErrors>
                |    <Error>
@@ -373,12 +371,10 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
         val xml =
           envelope(
             s"""
-               |${
-              headerXml(
+               |${headerXml(
                 qualifier = "error",
                 endpointUrl = Some("/recoverable/1000")
-              )
-            }
+              )}
                |<GovTalkDetails>
                |  <GovTalkErrors>
                |    <Error>

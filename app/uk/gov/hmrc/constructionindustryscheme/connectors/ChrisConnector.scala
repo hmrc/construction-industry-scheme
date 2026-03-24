@@ -59,7 +59,7 @@ class ChrisConnector @Inject() (
               logger.error(
                 s"[ChrisConnector] Failed to parse 2xx polling response corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
               )
-              Future.successful(ChrisPollResponse(FATAL_ERROR, None, None))
+              Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None))
             case Right(parsed) =>
               Future.successful(parsed)
           }
@@ -72,7 +72,7 @@ class ChrisConnector @Inject() (
           logger.error(
             s"[ChrisConnector] Non-2xx/Non-5xx polling corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
           )
-          Future.successful(ChrisPollResponse(FATAL_ERROR, None, None))
+          Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None))
         }
       }
       .recover { case NonFatal(e) =>
