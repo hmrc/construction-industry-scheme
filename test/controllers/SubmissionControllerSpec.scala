@@ -58,7 +58,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "returnType"            -> "monthlyNilReturn",
     "informationCorrect"    -> "yes",
     "inactivity"            -> "no",
-    "language"              -> "cy"
+    "langCode"              -> "cy"
   )
 
   private val validJsonWithoutEmail: JsValue = Json.obj(
@@ -70,7 +70,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "clientTaxOfficeRef"    -> "ABC456",
     "returnType"            -> "monthlyNilReturn",
     "informationCorrect"    -> "yes",
-    "inactivity"            -> "no"
+    "inactivity"            -> "no",
+    "langCode"              -> "cy"
   )
 
   val mockAuditService: AuditService = mock[AuditService]
