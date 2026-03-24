@@ -259,7 +259,7 @@ final class ChrisConnectorIntegrationSpec
 
       val result = connector.pollSubmission(correlationId, pollUrl).futureValue
 
-      result.status mustBe FATAL_ERROR
+      result.status mustBe ACCEPTED
       result.pollUrl mustBe None
       result.pollInterval mustBe None
     }
@@ -297,7 +297,7 @@ final class ChrisConnectorIntegrationSpec
 
       val result = connector.pollSubmission(correlationId, pollUrl).futureValue
 
-      result.status mustBe FATAL_ERROR
+      result.status mustBe ACCEPTED
       result.pollUrl mustBe None
       result.pollInterval mustBe None
     }

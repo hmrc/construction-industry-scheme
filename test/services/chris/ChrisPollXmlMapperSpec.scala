@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,13 +22,13 @@ import org.scalatest.EitherValues
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisPollXmlMapper
 
-final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with EitherValues {
+final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValues {
 
   private def headerXml(
-    qualifier: String,
-    endpointUrl: Option[String] = None,
-    pollInterval: Option[Int] = None
-  ): String = {
+                         qualifier: String,
+                         endpointUrl: Option[String] = None,
+                         pollInterval: Option[Int] = None
+                       ): String = {
     val epText           = endpointUrl.getOrElse("")
     val pollIntervalAttr = pollInterval.map(pi => s""" PollInterval="$pi"""").getOrElse("")
     s"""
@@ -139,7 +139,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
     }
 
     "maps error qualifier to error statuses" - {
-      "fatal error type to FATAL_ERROR" in {
+      "fatal error type with non-special number maps to to FATAL_ERROR" in {
         val xml =
           """<GovTalkMessage>
             |  <Header>
@@ -165,7 +165,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
         res.pollUrl mustBe Some("/error/endpoint")
       }
 
-      "business error type to DEPARTMENTAL_ERROR" in {
+      "3001 with business error type to DEPARTMENTAL_ERROR" in {
         val xml =
           """<GovTalkMessage>
             |  <Header>
@@ -191,7 +191,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
         res.pollUrl mustBe Some("/business/error")
       }
 
-      "case insensitive error type matching" in {
+      "3001 with business type is case insensitive error type matching" in {
         val xml =
           """<GovTalkMessage>
             |  <Header>
@@ -279,7 +279,7 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
         res.status mustBe FATAL_ERROR
       }
 
-      "error number 3000 with fatal type maps to FATAL_ERROR" in {
+      "error number 3000 with fatal type maps to STARTED" in {
         val xml =
           """<GovTalkMessage>
             |  <Header>
@@ -301,8 +301,62 @@ final class ChrisXmlPollMapperSpec extends AnyFreeSpec with Matchers with Either
             |""".stripMargin
 
         val res = ChrisPollXmlMapper.parse(xml).value
-        res.status mustBe FATAL_ERROR
+        res.status mustBe STARTED
         res.pollUrl mustBe Some("/fatal/3000")
+      }
+
+      "2005 maps to STARTED" in {
+        val xml =
+          envelope(
+            s"""
+               |${
+              headerXml(
+                qualifier = "error",
+                endpointUrl = Some("/recoverable/2005")
+              )
+            }
+               |<GovTalkDetails>
+               |  <GovTalkErrors>
+               |    <Error>
+               |      <Number>2005</Number>
+               |      <Type>fatal</Type>
+               |      <Text>2005 recoverable error</Text>
+               |    </Error>
+               |  </GovTalkErrors>
+               |</GovTalkDetails>
+               |""".stripMargin
+          )
+
+        val res = ChrisPollXmlMapper.parse(xml).value
+        res.status mustBe STARTED
+        res.pollUrl mustBe Some("/recoverable/2005")
+      }
+
+      "1000 maps to STARTED" in {
+        val xml =
+          envelope(
+            s"""
+               |${
+              headerXml(
+                qualifier = "error",
+                endpointUrl = Some("/recoverable/1000")
+              )
+            }
+               |<GovTalkDetails>
+               |  <GovTalkErrors>
+               |    <Error>
+               |      <Number>1000</Number>
+               |      <Type>fatal</Type>
+               |      <Text>1000 recoverable error</Text>
+               |    </Error>
+               |  </GovTalkErrors>
+               |</GovTalkDetails>
+               |""".stripMargin
+          )
+
+        val res = ChrisPollXmlMapper.parse(xml).value
+        res.status mustBe STARTED
+        res.pollUrl mustBe Some("/recoverable/1000")
       }
     }
 
