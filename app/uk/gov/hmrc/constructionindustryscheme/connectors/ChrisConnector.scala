@@ -57,7 +57,7 @@ class ChrisConnector @Inject() (
           logger.error(
             s"[ChrisConnector] NON-2xx polling corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
           )
-          Future.successful(ChrisPollResponse(FATAL_ERROR, None, None))
+          Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None))
         } else {
           Future.fromTry(
             ChrisPollXmlMapper
@@ -72,7 +72,7 @@ class ChrisConnector @Inject() (
         logger.error(
           s"[ChrisConnector] Transport exception calling $pollUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${e.getMessage}"
         )
-        ChrisPollResponse(FATAL_ERROR, None, None)
+        ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None)
       }
 
   def submitEnvelope(envelope: Elem, correlationId: String)(implicit hc: HeaderCarrier): Future[SubmissionResult] =

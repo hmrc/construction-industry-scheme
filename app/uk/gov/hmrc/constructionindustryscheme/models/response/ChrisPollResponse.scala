@@ -20,6 +20,8 @@ import uk.gov.hmrc.constructionindustryscheme.models.SubmissionStatus
 
 case class ChrisPollResponse(
   status: SubmissionStatus,
+  correlationId: String,
   pollUrl: Option[String],
-  pollInterval: Option[Int]
+  pollInterval: Option[Int],
+  lastMessageDate: Option[String]
 )
