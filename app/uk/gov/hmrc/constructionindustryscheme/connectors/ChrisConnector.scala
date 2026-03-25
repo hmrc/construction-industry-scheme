@@ -82,6 +82,21 @@ class ChrisConnector @Inject() (
         ChrisPollResponse(ACCEPTED, correlationId, None, None, None)
       }
 
+  def deleteSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[Unit] =
+    httpClient
+      .post(url"$pollUrl")
+      .setHeader(
+        "Content-Type"  -> "application/xml",
+        "Accept"        -> "application/xml",
+        "CorrelationId" -> correlationId
+      )
+      .withBody(ChrisDeleteRequest(correlationId).payload.toString)
+      .execute[HttpResponse]
+      .map { resp =>
+        logger.info(s"[ChrisConnector] delete request sent url=$pollUrl corrId=$correlationId status=${resp.status}")
+        ()
+      }
+
   def submitEnvelope(envelope: Elem, correlationId: String)(implicit hc: HeaderCarrier): Future[SubmissionResult] =
     httpClient
       .post(url"$chrisCisReturnUrl")
