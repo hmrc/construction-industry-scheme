@@ -120,15 +120,26 @@ class SubmissionController @Inject() (
 
           submissionService
             .pollSubmission(correlationId, overridePollUrl)
-            .map { case ChrisPollResponse(status, correlationId, overridePollUrl, interval, lastMessageDate) =>
-              Ok(
-                Json.obj(
-                  "status"          -> status.toString,
-                  "pollUrl"         -> overridePollUrl,
-                  "intervalSeconds" -> interval,
-                  "lastMessageDate" -> lastMessageDate
+            .map {
+              case ChrisPollResponse(
+                    status,
+                    correlationId,
+                    overridePollUrl,
+                    interval,
+                    error,
+                    irMarkReceived,
+                    lastMessageDate
+                  ) =>
+                Ok(
+                  Json.obj(
+                    "status"          -> status.toString,
+                    "pollUrl"         -> overridePollUrl,
+                    "intervalSeconds" -> interval,
+                    "error"           -> error,
+                    "irMarkReceived"  -> irMarkReceived,
+                    "lastMessageDate" -> lastMessageDate
+                  )
                 )
-              )
             }
         case Left(value)    =>
           logger.warn(s"could not poll the pollUrl provided as the host is not recognised: $value ")

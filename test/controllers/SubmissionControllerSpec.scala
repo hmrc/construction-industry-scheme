@@ -743,7 +743,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           )
         )
           .thenReturn(
-            Future.successful(ChrisPollResponse(ACCEPTED, correlationId, Some(overridePollUrl), Some(10), None))
+            Future.successful(
+              ChrisPollResponse(ACCEPTED, correlationId, Some(overridePollUrl), Some(10), None, None, None)
+            )
           )
 
         val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
@@ -784,7 +786,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[HeaderCarrier]
         )
       )
-        .thenReturn(Future.successful(ChrisPollResponse(SUBMITTED, correlationId, None, None, None)))
+        .thenReturn(Future.successful(ChrisPollResponse(SUBMITTED, correlationId, None, None, None, None, None)))
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
@@ -828,6 +830,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
               correlationId,
               None,
               None,
+              None,
+              None,
               None
             )
           )
@@ -868,7 +872,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[HeaderCarrier]
         )
       )
-        .thenReturn(Future.successful(ChrisPollResponse(DEPARTMENTAL_ERROR, correlationId, None, None, None)))
+        .thenReturn(
+          Future.successful(ChrisPollResponse(DEPARTMENTAL_ERROR, correlationId, None, None, None, None, None))
+        )
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
@@ -905,7 +911,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[HeaderCarrier]
         )
       )
-        .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, correlationId, Some(pollUrl), Some(10), None)))
+        .thenReturn(
+          Future.successful(ChrisPollResponse(ACCEPTED, correlationId, Some(pollUrl), Some(10), None, None, None))
+        )
 
       val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
 
