@@ -39,8 +39,8 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
       lastMessageDateOpt            <- gatewayTimeStampOrNow(messageDetails, now)
       errOpt                        <- parseError(qualifier, doc)
       irMark                         = textOptional(
-                                         doc,
-                                         "Body/SuccessResponse/IRmarkReceipt/dsig:Signature/dsig:SignedInfo/dsig:Reference/dsig:DigestValue"
+                                         doc \\ "Body" \ "SuccessResponse" \ "IRmarkReceipt" \ "Signature" \ "SignedInfo" \ "Reference",
+                                         "DigestValue"
                                        )
     } yield {
       val status: SubmissionStatus = derivePollStatus(qualifier, errOpt, doc)
