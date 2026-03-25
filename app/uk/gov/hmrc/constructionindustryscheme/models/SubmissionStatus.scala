@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
+import play.api.libs.json.{Json, OFormat}
+
 sealed trait SubmissionStatus
 case object STARTED extends SubmissionStatus with WithName("STARTED")
 case object ACCEPTED extends SubmissionStatus with WithName("ACCEPTED")
@@ -31,6 +33,10 @@ final case class GovTalkError(
   errorType: String,
   errorText: String
 )
+
+object GovTalkError {
+  given OFormat[GovTalkError] = Json.format[GovTalkError]
+}
 
 final case class GovTalkMeta(
   qualifier: String,

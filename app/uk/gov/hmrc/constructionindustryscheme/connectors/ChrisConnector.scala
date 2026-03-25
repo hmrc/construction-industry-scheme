@@ -59,7 +59,7 @@ class ChrisConnector @Inject() (
               logger.error(
                 s"[ChrisConnector] Failed to parse 2xx polling response corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
               )
-              Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None))
+              Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None, None, None))
             case Right(parsed) =>
               Future.successful(parsed)
           }
@@ -79,7 +79,7 @@ class ChrisConnector @Inject() (
         logger.error(
           s"[ChrisConnector] Transport exception calling $pollUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${e.getMessage}"
         )
-        ChrisPollResponse(ACCEPTED, correlationId, None, None, None)
+        ChrisPollResponse(ACCEPTED, correlationId, None, None, None, None, None)
       }
 
   def deleteSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[Unit] =
