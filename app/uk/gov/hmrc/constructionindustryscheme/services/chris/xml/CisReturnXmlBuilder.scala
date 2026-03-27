@@ -86,7 +86,7 @@ object CisReturnXmlBuilder {
     val utrOrUnmatched: NodeSeq =
       nonBlank(sub.utr)
         .map(utr => <UTR>{utr}</UTR>)
-        .getOrElse(<Unmatched>yes</Unmatched>)
+        .getOrElse(<UnmatchedRate>yes</UnmatchedRate>)
 
     val crnNode: NodeSeq =
       if (sub.subcontractorType == Partnership) sub.crn.map(crn => <CRN>{crn}</CRN>).getOrElse(NodeSeq.Empty)
