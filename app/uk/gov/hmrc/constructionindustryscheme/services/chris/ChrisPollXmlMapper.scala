@@ -20,11 +20,13 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionXmlMapper.{intAttrOptional, textOptional}
 
+import java.time.{Instant, LocalDateTime, ZoneOffset}
+import scala.util.Try
 import scala.xml.*
 
 object ChrisPollXmlMapper extends ChrisXmlMapper {
 
-  def parse(xml: String): Either[String, ChrisPollResponse] = {
+  def parse(xml: String, now: Instant = Instant.now()): Either[String, ChrisPollResponse] = {
     val doc            = XML.loadString(xml)
     val messageDetails = doc \\ "Header" \\ "MessageDetails"
 
@@ -33,7 +35,7 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
       correlationId                 <- textRequired(messageDetails, "CorrelationID", "CorrelationID")
       endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
       pollIntervalOpt: Option[Int]   = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
-      lastMessageDateOpt             = textOptional(messageDetails, "GatewayTimestamp")
+      lastMessageDateOpt            <- gatewayTimeStampOrNow(messageDetails, now)
       errOpt                        <- parseError(qualifier, doc)
     } yield {
       val status: SubmissionStatus = derivePollStatus(qualifier, errOpt, doc)
@@ -87,6 +89,24 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
       errorType.equalsIgnoreCase("business") &&
       text.contains("irmark") &&
       text.contains("incorrect")
+    }
+  }
+
+  private def gatewayTimeStampOrNow(messageDetails: NodeSeq, now: Instant): Either[String, Option[String]] =
+    textOptional(messageDetails, "GatewayTimestamp") match {
+      case Some(raw) => normaliseGatewayTimestamp(raw).map(ts => Some(ts): Option[String])
+      case None      => Right(Some(now.toString): Option[String])
+    }
+
+  private def normaliseGatewayTimestamp(raw: String): Either[String, String] = {
+    val instant =
+      Try(Instant.parse(raw))
+        .orElse(Try(LocalDateTime.parse(raw).toInstant(ZoneOffset.UTC)))
+        .toEither
+
+    instant match {
+      case Right(value) => Right(value.toString)
+      case Left(err)    => Left(s"Failed to parse GatewayTimestamp '$raw': ${err.getMessage}")
     }
   }
 }

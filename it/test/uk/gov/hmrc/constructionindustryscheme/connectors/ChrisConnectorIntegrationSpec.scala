@@ -24,14 +24,14 @@ import org.scalatest.matchers.must.Matchers.mustBe
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.OptionValues
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, ItResources, WireMockConstants}
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, DEPARTMENTAL_ERROR, FATAL_ERROR, SUBMITTED}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, ChrisDeleteRequest, DEPARTMENTAL_ERROR, FATAL_ERROR, SUBMITTED}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
 import scala.xml.{Elem, XML}
 
 final class ChrisConnectorIntegrationSpec
-    extends Matchers
+  extends Matchers
     with ScalaFutures
     with IntegrationPatience
     with OptionValues
@@ -409,6 +409,44 @@ final class ChrisConnectorIntegrationSpec
       result.pollUrl mustBe None
       result.pollInterval mustBe None
       result.lastMessageDate mustBe Some("2025-01-05T00:00:00Z")
+      result.lastMessageDate mustBe Some("2025-01-05T00:00:00Z")
+    }
+  }
+
+  "ChrisConnector.deleteSubmission" should {
+
+    "send delete request to the same polling url and return Unit on 200" in {
+      val correlationId = "delete-cid-123"
+      val pollPath = "/submission/ChRIS/poll/IR-CIS-CIS300MR/2"
+      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}$pollPath?final=SUBMITTED"
+
+      val expectedRequestXml = ChrisDeleteRequest(correlationId).payload.toString
+
+      stubFor(
+        post(urlPathEqualTo(pollPath))
+          .withQueryParam("final", equalTo("SUBMITTED"))
+          .withHeader("Content-Type", equalTo("application/xml"))
+          .withHeader("Accept", equalTo("application/xml"))
+          .withHeader("CorrelationId", equalTo(correlationId))
+          .withRequestBody(equalToXml(expectedRequestXml))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withHeader("Content-Type", "application/xml")
+              .withBody("<GovTalkMessage/>")
+          )
+      )
+
+      connector.deleteSubmission(correlationId, pollUrl).futureValue mustBe ((): Unit)
+
+      verify(
+        postRequestedFor(urlPathEqualTo(pollPath))
+          .withQueryParam("final", equalTo("SUBMITTED"))
+          .withHeader("CorrelationId", equalTo(correlationId))
+          .withHeader("Content-Type", equalTo("application/xml"))
+          .withHeader("Accept", equalTo("application/xml"))
+          .withRequestBody(equalToXml(expectedRequestXml))
+      )
     }
   }
 }

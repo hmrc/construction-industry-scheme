@@ -18,15 +18,16 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{BuiltSubmissionPayload, EmployerReference, SubmissionResult}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateGovTalkStatusRecordRequest, CreateSubmissionRequest, GetGovTalkStatusRequest, NilMonthlyReturnOrgSuccessEmail, SendSuccessEmailRequest, UpdateGovTalkStatusCorrelationIdRequest, UpdateGovTalkStatusRequest, UpdateGovTalkStatusStatisticsRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, GetGovTalkStatusResponse}
+import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
 import uk.gov.hmrc.http.HeaderCarrier
 
 import java.time.{Instant, LocalDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 import scala.util.Try
 
 @Singleton
@@ -53,6 +54,26 @@ class SubmissionService @Inject() (
     val emailPayload = NilMonthlyReturnOrgSuccessEmail(request.email, request.month, request.year)
     emailConnector.sendSuccessfulEmail(emailPayload).map(_ => ())
   }
+
+  private def deleteChrisReourcesIfNeeded(
+    status: SubmissionStatus,
+    correlationId: String,
+    pollUrl: String
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    status match {
+      case SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR =>
+        chrisConnector
+          .deleteSubmission(correlationId, pollUrl)
+          .recover { case NonFatal(ex) =>
+            logger.warn(
+              s"[SubmissionService] Failed to delete Chris resources for corrId=$correlationId url=$pollUrl",
+              ex
+            )
+          }
+
+      case _ =>
+        Future.unit
+    }
 
   def getGovTalkStatus(request: GetGovTalkStatusRequest)(implicit
     hc: HeaderCarrier
@@ -161,6 +182,7 @@ class SubmissionService @Inject() (
                               case Right(_)     => Future.unit
                               case Left(reason) => Future.failed(new RuntimeException(reason))
                             }
+      _                  <- deleteChrisReourcesIfNeeded(response.status, correlationId, pollUrl)
       nextLastMessageDate = result.lastMessageDate
                               .flatMap(ts => Try(Instant.parse(ts)).toOption)
                               .getOrElse(session.lastMessageDate)

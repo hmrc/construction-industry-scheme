@@ -20,6 +20,7 @@ object ChrisEnvelopeConstants {
   val MessageDetailsClass = "IR-CIS-CIS300MR"
   val Qualifier           = "request"
   val Function            = "submit"
+  val DeleteFunction      = "delete"
   val Transformation      = "XML"
   val Organisation        = "IR"
   val ChannelUri          = "0126"

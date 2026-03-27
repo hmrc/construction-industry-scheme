@@ -21,7 +21,7 @@ import play.api.libs.ws.DefaultBodyWritables.writeableOf_String
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.constructionindustryscheme.models.{FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.models.{ChrisDeleteRequest, FATAL_ERROR, GovTalkError, GovTalkMeta, ResponseEndPoint, SubmissionResult}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisPollXmlMapper, ChrisSubmissionXmlMapper}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.HttpReads.Implicits.*
@@ -73,6 +73,21 @@ class ChrisConnector @Inject() (
           s"[ChrisConnector] Transport exception calling $pollUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${e.getMessage}"
         )
         ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None)
+      }
+
+  def deleteSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[Unit] =
+    httpClient
+      .post(url"$pollUrl")
+      .setHeader(
+        "Content-Type"  -> "application/xml",
+        "Accept"        -> "application/xml",
+        "CorrelationId" -> correlationId
+      )
+      .withBody(ChrisDeleteRequest(correlationId).payload.toString)
+      .execute[HttpResponse]
+      .map { resp =>
+        logger.info(s"[ChrisConnector] delete request sent url=$pollUrl corrId=$correlationId status=${resp.status}")
+        ()
       }
 
   def submitEnvelope(envelope: Elem, correlationId: String)(implicit hc: HeaderCarrier): Future[SubmissionResult] =

@@ -125,7 +125,8 @@ class SubmissionController @Inject() (
                 Json.obj(
                   "status"          -> status.toString,
                   "pollUrl"         -> overridePollUrl,
-                  "intervalSeconds" -> interval
+                  "intervalSeconds" -> interval,
+                  "lastMessageDate" -> lastMessageDate
                 )
               )
             }
