@@ -215,7 +215,7 @@ final class ChrisConnectorIntegrationSpec
            |  <GovTalkDetails>
            |    <GovTalkErrors>
            |      <Error>
-           |        <Number>3000</Number>
+           |        <Number>1001</Number>
            |        <Type>fatal</Type>
            |        <Text>Fatal processing error</Text>
            |      </Error>
@@ -327,7 +327,7 @@ final class ChrisConnectorIntegrationSpec
 
       val result = connector.pollSubmission(correlationId, pollUrl).futureValue
 
-      result.status mustBe FATAL_ERROR
+      result.status mustBe ACCEPTED
       result.correlationId mustBe correlationId
       result.pollUrl mustBe None
       result.pollInterval mustBe None
@@ -369,7 +369,7 @@ final class ChrisConnectorIntegrationSpec
 
       val result = connector.pollSubmission(correlationId, pollUrl).futureValue
 
-      result.status mustBe FATAL_ERROR
+      result.status mustBe ACCEPTED
       result.correlationId mustBe correlationId
       result.pollUrl mustBe None
       result.pollInterval mustBe None
