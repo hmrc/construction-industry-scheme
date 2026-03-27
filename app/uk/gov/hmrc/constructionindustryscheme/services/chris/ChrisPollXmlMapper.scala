@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services.chris
 
+import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionXmlMapper.{intAttrOptional, textOptional}
@@ -37,9 +38,21 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
       pollIntervalOpt: Option[Int]   = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
       lastMessageDateOpt            <- gatewayTimeStampOrNow(messageDetails, now)
       errOpt                        <- parseError(qualifier, doc)
+      irMark                         = textOptional(
+                                         doc \\ "Body" \ "SuccessResponse" \ "IRmarkReceipt" \ "Signature" \ "SignedInfo" \ "Reference",
+                                         "DigestValue"
+                                       )
     } yield {
       val status: SubmissionStatus = derivePollStatus(qualifier, errOpt, doc)
-      ChrisPollResponse(status, correlationId, endpointUrlOpt, pollIntervalOpt, lastMessageDateOpt)
+      ChrisPollResponse(
+        status,
+        correlationId,
+        endpointUrlOpt,
+        pollIntervalOpt,
+        errOpt.map(Json.toJson(_)),
+        irMark,
+        lastMessageDateOpt
+      )
     }
   }
 
