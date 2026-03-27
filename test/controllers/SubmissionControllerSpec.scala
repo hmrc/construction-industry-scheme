@@ -439,7 +439,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 502 BadGateway when handling initial ChRIS response fails" in {
       val submissionService = mock[SubmissionService]
-      val xmlValidator = mock[XmlValidator]
+      val xmlValidator      = mock[XmlValidator]
 
       when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
 
@@ -459,7 +459,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
           val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
-          val result = mkSubmissionResult(ACCEPTED)
+          val result  = mkSubmissionResult(ACCEPTED)
           Future.successful(
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
           )

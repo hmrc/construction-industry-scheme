@@ -182,7 +182,7 @@ class SubmissionService @Inject() (
                               case Right(_)     => Future.unit
                               case Left(reason) => Future.failed(new RuntimeException(reason))
                             }
-      _                  <- deleteChrisReourcesIfNeeded(response.status, correlationId, pollUrl)
+      _                  <- deleteChrisReourcesIfNeeded(result.status, session.correlationId, pollUrl)
       nextLastMessageDate = result.lastMessageDate
                               .flatMap(ts => Try(Instant.parse(ts)).toOption)
                               .getOrElse(session.lastMessageDate)

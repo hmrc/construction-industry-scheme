@@ -563,7 +563,6 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
       res.status mustBe SUBMITTED
       res.correlationId mustBe corrId
       res.pollUrl mustBe Some("/poll")
-      res.lastMessageDate mustBe None
       res.lastMessageDate mustBe Some("2025-01-01T00:00:00Z")
     }
 

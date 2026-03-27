@@ -197,6 +197,13 @@ final class SubmissionServiceSpec extends SpecBase {
         .thenReturn(Future.successful(pollResponse))
 
       when(
+        chrisConnector.deleteSubmission(
+          eqTo(correlation),
+          eqTo(pollUrl)
+        )(using any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
         chrisSubmissionSessionStore.updateAfterPoll(
           eqTo(submissionId),
           eqTo(correlation),
@@ -322,9 +329,9 @@ final class SubmissionServiceSpec extends SpecBase {
       import s._
 
       val submissionId = "sub-123"
-      val instanceId = "instance-123"
-      val correlation = "corr-123"
-      val pollUrl = "/poll/123"
+      val instanceId   = "instance-123"
+      val correlation  = "corr-123"
+      val pollUrl      = "/poll/123"
 
       val session = ChrisSubmissionSessionData(
         submissionId = submissionId,
@@ -362,7 +369,9 @@ final class SubmissionServiceSpec extends SpecBase {
       ).thenReturn(Future.unit)
 
       when(
-        formpProxyConnector.updateGovTalkStatusCorrelationId(any[UpdateGovTalkStatusCorrelationIdRequest])(any[HeaderCarrier])
+        formpProxyConnector.updateGovTalkStatusCorrelationId(any[UpdateGovTalkStatusCorrelationIdRequest])(
+          any[HeaderCarrier]
+        )
       ).thenReturn(Future.unit)
 
       when(
@@ -374,7 +383,9 @@ final class SubmissionServiceSpec extends SpecBase {
       ).thenReturn(Future.unit)
 
       when(
-        formpProxyConnector.getGovTalkStatus(eqTo(GetGovTalkStatusRequest(instanceId, submissionId)))(any[HeaderCarrier])
+        formpProxyConnector.getGovTalkStatus(eqTo(GetGovTalkStatusRequest(instanceId, submissionId)))(
+          any[HeaderCarrier]
+        )
       ).thenReturn(Future.successful(None))
 
       val ex =
