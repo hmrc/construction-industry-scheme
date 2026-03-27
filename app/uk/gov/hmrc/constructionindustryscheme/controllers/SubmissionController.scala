@@ -39,7 +39,7 @@ import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
 
 import java.time.{Clock, Instant}
 import java.util.UUID
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 class SubmissionController @Inject() (
@@ -104,7 +104,7 @@ class SubmissionController @Inject() (
 
   private lazy val redirectUrlPolicy = AbsoluteWithHostnameFromAllowlist(appConfig.chrisHost.toSet)
 
-  def pollSubmission(pollUrl: RedirectUrl, correlationId: String): Action[AnyContent] =
+  def pollSubmission(pollUrl: RedirectUrl, submissionId: String): Action[AnyContent] =
     authorise.async { implicit req =>
       pollUrl.getEither(redirectUrlPolicy) match {
         case Right(safeUrl) =>
@@ -119,7 +119,7 @@ class SubmissionController @Inject() (
           logger.info(s"overridePollUrl: $overridePollUrl")
 
           submissionService
-            .pollSubmission(correlationId, overridePollUrl)
+            .pollSubmissionAndUpdateGovTalkStatus(submissionId, overridePollUrl)
             .map { case ChrisPollResponse(status, correlationId, overridePollUrl, interval, lastMessageDate) =>
               Ok(
                 Json.obj(
@@ -250,23 +250,27 @@ class SubmissionController @Inject() (
     payload: BuiltSubmissionPayload,
     res: SubmissionResult
   )(implicit hc: HeaderCarrier): Future[Result] =
-    validateCorrelationId(correlationId, res.meta.correlationId) match {
-      case Left(reason) =>
-        logger.error(s"Correlation ID validation failed: $reason")
-        Future.successful(
-          BadGateway(withError(baseSubmissionResponseJson(submissionId, payload, correlationId, "FATAL_ERROR"), reason))
-        )
-
-      case Right(_) =>
-        submissionService
-          .initialiseGovTalkStatus(
-            EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef),
-            submissionId,
-            correlationId,
-            appConfig.chrisGatewayUrl
+    submissionService
+      .processInitialChrisAck(
+        EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef),
+        submissionId,
+        correlationId,
+        res.meta.correlationId,
+        res.meta.responseEndPoint.pollIntervalSeconds,
+        res.meta.responseEndPoint.url,
+        appConfig.chrisGatewayUrl,
+        chrisResponseTimestamp(res)
+      )
+      .map(_ => renderSubmissionResponse(submissionId, payload)(res))
+      .recover { case ex =>
+        logger.error(s"Failed to handle initial ChRIS response", ex)
+        BadGateway(
+          withError(
+            baseSubmissionResponseJson(submissionId, payload, correlationId, "FATAL_ERROR"),
+            ex.getMessage
           )
-          .map(_ => renderSubmissionResponse(submissionId, payload)(res))
-    }
+        )
+      }
 
   private def handleChrisFailure(
     submissionId: String,
@@ -278,26 +282,16 @@ class SubmissionController @Inject() (
     logger.error(s"Received 5xx/Exception from ChRIS, treating as RESUBMIT for submissionId=$submissionId", ex)
 
     submissionService
-      .initialiseGovTalkStatus(
+      .processInitialChrisFailure(
         EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef),
         submissionId,
         correlationId,
         appConfig.chrisGatewayUrl
       )
-      .flatMap { instanceId =>
-        submissionService
-          .updateGovTalkStatus(
-            UpdateGovTalkStatusRequest(
-              userIdentifier = instanceId,
-              formResultID = submissionId,
-              protocolStatus = "dataRequest"
-            )
-          )
-          .map { _ =>
-            Ok(
-              withError(baseSubmissionResponseJson(submissionId, payload, correlationId, "STARTED"), "Chris failure")
-            )
-          }
+      .map { _ =>
+        Ok(
+          withError(baseSubmissionResponseJson(submissionId, payload, correlationId, "STARTED"), "Chris failure")
+        )
       }
       .recover { case ex =>
         logger.error(s"Failed to initialise/update GovTalk status after 5xx", ex)
@@ -328,12 +322,9 @@ class SubmissionController @Inject() (
   private def withError(json: JsObject, text: String): JsObject =
     json ++ Json.obj("error" -> Json.obj("text" -> text))
 
-  private def validateCorrelationId(sentRaw: String, ackRaw: String): Either[String, Unit] = {
-    val sent = sentRaw.trim
-    val ack  = ackRaw.trim
+  private def chrisResponseTimestamp(res: SubmissionResult): Instant =
+    res.meta.gatewayTimestamp
+      .flatMap(ts => Try(Instant.parse(ts)).toOption)
+      .getOrElse(Instant.now(clock))
 
-    if (sent.isEmpty || ack.isEmpty) Left("empty correlationId")
-    else if (sent != ack) Left(s"correlationId mismatch: sent '$sent' but got '$ack'")
-    else Right(())
-  }
 }

@@ -255,4 +255,28 @@ class FormpProxyConnector @Inject() (
         if (response.status == 204) Future.unit
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
+
+  def updateGovTalkStatusCorrelationId(
+    request: UpdateGovTalkStatusCorrelationIdRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/govtalkstatus/update-correlationID")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == 204) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+      }
+
+  def updateGovTalkStatusStatistics(
+    request: UpdateGovTalkStatusStatisticsRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/govtalkstatus/update-statistics")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == 204) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+      }
 }

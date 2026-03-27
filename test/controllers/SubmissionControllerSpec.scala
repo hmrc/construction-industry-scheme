@@ -17,7 +17,7 @@
 package controllers
 
 import base.SpecBase
-import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.mockito.{ArgumentMatchers, Mockito}
 import org.scalatest.EitherValues
@@ -39,7 +39,7 @@ import uk.gov.hmrc.play.audit.http.connector.AuditResult
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl
 
 import scala.xml.NodeSeq
-import java.time.Clock
+import java.time.{Clock, Instant}
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
@@ -107,11 +107,17 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(xmlValidator.validate(any[NodeSeq]))
         .thenReturn(Success(()))
       when(
-        submissionService.initialiseGovTalkStatus(any[EmployerReference], any[String], any[String], any[String])(
-          any[HeaderCarrier]
-        )
-      )
-        .thenReturn(Future.successful("instance-123"))
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
       when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
           val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
@@ -149,11 +155,17 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(xmlValidator.validate(any[NodeSeq]))
         .thenReturn(Success(()))
       when(
-        submissionService.initialiseGovTalkStatus(any[EmployerReference], any[String], any[String], any[String])(
-          any[HeaderCarrier]
-        )
-      )
-        .thenReturn(Future.successful("instance-123"))
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
       when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
           val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
@@ -192,11 +204,17 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(xmlValidator.validate(any[NodeSeq]))
         .thenReturn(Success(()))
       when(
-        submissionService.initialiseGovTalkStatus(any[EmployerReference], any[String], any[String], any[String])(
-          any[HeaderCarrier]
-        )
-      )
-        .thenReturn(Future.successful("instance-123"))
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
       when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
           val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
@@ -237,11 +255,17 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(xmlValidator.validate(any[NodeSeq]))
         .thenReturn(Success(()))
       when(
-        submissionService.initialiseGovTalkStatus(any[EmployerReference], any[String], any[String], any[String])(
-          any[HeaderCarrier]
-        )
-      )
-        .thenReturn(Future.successful("instance-123"))
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
       when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
           val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
@@ -314,15 +338,13 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
       when(
-        submissionService.initialiseGovTalkStatus(
+        submissionService.processInitialChrisFailure(
           any[EmployerReference],
           any[String],
           any[String],
           any[String]
         )(any[HeaderCarrier])
-      ).thenReturn(Future.successful("instance-123"))
-      when(submissionService.updateGovTalkStatus(any[UpdateGovTalkStatusRequest])(any[HeaderCarrier]))
-        .thenReturn(Future.successful(()))
+      ).thenReturn(Future.successful(()))
 
       val req =
         FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -393,7 +415,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       when(
-        submissionService.initialiseGovTalkStatus(
+        submissionService.processInitialChrisFailure(
           any[EmployerReference],
           any[String],
           any[String],
@@ -415,9 +437,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "error" \ "text").as[String] mustBe "GovTalk status already exists"
     }
 
-    "returns 502 BadGateway when sent or ack correlation id is empty" in {
+    "returns 502 BadGateway when handling initial ChRIS response fails" in {
       val submissionService = mock[SubmissionService]
       val xmlValidator      = mock[XmlValidator]
+
+      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
 
       val controller = mkController(
         submissionService = submissionService,
@@ -426,90 +450,33 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+
       when(xmlValidator.validate(any[NodeSeq]))
         .thenReturn(Success(()))
 
       when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
-        .thenAnswer { _ =>
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+          val result  = mkSubmissionResult(ACCEPTED)
           Future.successful(
-            mkSubmissionResult(SUBMITTED).copy(meta = mkMeta(corrId = ""))
+            result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
           )
         }
 
-      val req =
-        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
-          .withBody(validJson)
-          .withHeaders(CONTENT_TYPE -> JSON)
-
-      val result = controller.submitToChris(submissionId)(req)
-
-      status(result) mustBe BAD_GATEWAY
-      val js = contentAsJson(result)
-      (js \ "status").as[String] mustBe "FATAL_ERROR"
-      (js \ "error" \ "text").as[String] mustBe "empty correlationId"
-    }
-
-    "returns 502 BadGateway with FATAL_ERROR when correlation id validation fails" in {
-      val submissionService = mock[SubmissionService]
-      val xmlValidator      = mock[XmlValidator]
-
-      val controller = mkController(
-        submissionService = submissionService,
-        xmlValidator = xmlValidator
-      )
-
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
-        .thenReturn(Future.successful(AuditResult.Success))
-      when(xmlValidator.validate(any[NodeSeq]))
-        .thenReturn(Success(()))
-
-      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
-        .thenAnswer { invocation =>
-          val result = mkSubmissionResult(SUBMITTED).copy(
-            meta = mkMeta(corrId = "DIFFERENT-CORRELATION-ID")
-          )
-          Future.successful(result)
-        }
-
-      val request =
-        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
-          .withBody(validJson)
-          .withHeaders(CONTENT_TYPE -> JSON)
-
-      val result = controller.submitToChris(submissionId)(request)
-
-      status(result) mustBe BAD_GATEWAY
-      val js = contentAsJson(result)
-      (js \ "submissionId").as[String] mustBe submissionId
-      (js \ "status").as[String] mustBe "FATAL_ERROR"
-      (js \ "error" \ "text").as[String] must include("correlationId mismatch")
-
-      verify(submissionService, never())
-        .initialiseGovTalkStatus(any[EmployerReference], any[String], any[String], any[String])(any[HeaderCarrier])
-    }
-
-    "returns 502 BadGateway when ack correlation id is empty" in {
-      val submissionService = mock[SubmissionService]
-      val xmlValidator      = mock[XmlValidator]
-
-      val controller = mkController(
-        submissionService = submissionService,
-        xmlValidator = xmlValidator
-      )
-
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
-        .thenReturn(Future.successful(AuditResult.Success))
-      when(xmlValidator.validate(any[NodeSeq]))
-        .thenReturn(Success(()))
-
-      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
-        .thenAnswer { invocation =>
-          val result = mkSubmissionResult(SUBMITTED).copy(
-            meta = mkMeta(corrId = "")
-          )
-
-          Future.successful(result)
-        }
+      when(
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.failed(new RuntimeException("ack persistence failed")))
 
       val request =
         FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -523,7 +490,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val js = contentAsJson(result)
       (js \ "submissionId").as[String] mustBe submissionId
       (js \ "status").as[String] mustBe "FATAL_ERROR"
-      (js \ "error" \ "text").as[String] mustBe "empty correlationId"
+      (js \ "error" \ "text").as[String] must include("ack persistence failed")
 
       verify(submissionService).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
     }
@@ -727,6 +694,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         when(config.chrisHost).thenReturn(Seq("chris.test"))
         when(config.useOverridePollResponseEndPoint).thenReturn(true)
         when(config.overridePollResponseEndPoint).thenReturn("override.chris.test")
+
         val controller = mkController(
           submissionService = submissionService,
           appConfig = config,
@@ -735,20 +703,27 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
         val pollUrl         = "http://chris.test/poll"
         val overridePollUrl = "https://override.chris.test/poll"
-        val correlationId   = "CORR999"
 
         when(
-          submissionService.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(overridePollUrl))(
-            using any[HeaderCarrier]
+          submissionService.pollSubmissionAndUpdateGovTalkStatus(
+            eqTo(submissionId),
+            eqTo(overridePollUrl)
+          )(any[HeaderCarrier])
+        ).thenReturn(
+          Future.successful(
+            ChrisPollResponse(
+              status = ACCEPTED,
+              correlationId = "corr-123",
+              pollUrl = Some(overridePollUrl),
+              pollInterval = Some(10),
+              lastMessageDate = None
+            )
           )
         )
-          .thenReturn(
-            Future.successful(ChrisPollResponse(ACCEPTED, correlationId, Some(overridePollUrl), Some(10), None))
-          )
 
-        val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
+        val req = FakeRequest(GET, s"/cis/submissions/$submissionId/poll?pollUrl=$pollUrl")
 
-        val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
+        val result = controller.pollSubmission(RedirectUrl(pollUrl), submissionId)(req)
 
         status(result) mustBe OK
         val js = contentAsJson(result)
@@ -757,11 +732,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         (js \ "intervalSeconds").as[Int] mustBe 10
 
         verify(submissionService)
-          .pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(overridePollUrl))(using
-            any[HeaderCarrier]
-          )
+          .pollSubmissionAndUpdateGovTalkStatus(eqTo(submissionId), eqTo(overridePollUrl))(any[HeaderCarrier])
       }
-
     }
 
     "returns 200 with SUBMITTED status when service returns SUBMITTED" in {
@@ -770,156 +742,62 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val xmlValidator      = mock[XmlValidator]
 
       when(config.chrisHost).thenReturn(Seq("chris.test"))
+      when(config.useOverridePollResponseEndPoint).thenReturn(false)
+
       val controller = mkController(
         submissionService = submissionService,
         appConfig = config,
         xmlValidator = xmlValidator
       )
 
-      val pollUrl       = "http://chris.test/poll"
-      val correlationId = "CORR123"
+      val pollUrl = "http://chris.test/poll"
 
       when(
-        submissionService.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
-          any[HeaderCarrier]
+        submissionService.pollSubmissionAndUpdateGovTalkStatus(eqTo(submissionId), eqTo(pollUrl))(any[HeaderCarrier])
+      ).thenReturn(
+        Future.successful(
+          ChrisPollResponse(
+            status = SUBMITTED,
+            correlationId = "corr-123",
+            pollUrl = None,
+            pollInterval = None,
+            lastMessageDate = None
+          )
         )
       )
-        .thenReturn(Future.successful(ChrisPollResponse(SUBMITTED, correlationId, None, None, None)))
 
-      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
+      val req = FakeRequest(GET, s"/cis/submissions/$submissionId/poll?pollUrl=$pollUrl")
 
-      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
+      val result = controller.pollSubmission(RedirectUrl(pollUrl), submissionId)(req)
 
       status(result) mustBe OK
       val js = contentAsJson(result)
       (js \ "status").as[String] mustBe "SUBMITTED"
       (js \ "pollUrl").asOpt[String] mustBe None
       (js \ "intervalSeconds").asOpt[Int] mustBe None
-
-      verify(submissionService).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
-        any[HeaderCarrier]
-      )
     }
 
-    "returns 200 with FATAL_ERROR status when service returns FATAL_ERROR" in {
+    "returns 400 when pollUrl host is not allowed" in {
       val submissionService = mock[SubmissionService]
       val config            = mock[AppConfig]
       val xmlValidator      = mock[XmlValidator]
 
       when(config.chrisHost).thenReturn(Seq("chris.test"))
+
       val controller = mkController(
         submissionService = submissionService,
         appConfig = config,
         xmlValidator = xmlValidator
       )
 
-      val pollUrl       = "http://chris.test/poll"
-      val correlationId = "CORR456"
+      val req = FakeRequest(GET, s"/cis/submissions/$submissionId/poll?pollUrl=http://bad.host/poll")
 
-      when(
-        submissionService.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
-          any[HeaderCarrier]
-        )
-      )
-        .thenReturn(
-          Future.successful(
-            ChrisPollResponse(
-              uk.gov.hmrc.constructionindustryscheme.models.FATAL_ERROR,
-              correlationId,
-              None,
-              None,
-              None
-            )
-          )
-        )
+      val result = controller.pollSubmission(RedirectUrl("http://bad.host/poll"), submissionId)(req)
 
-      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
+      status(result) mustBe BAD_REQUEST
+      (contentAsJson(result) \ "error").as[String] mustBe "pollUrl does not have the right host"
 
-      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
-
-      status(result) mustBe OK
-      val js = contentAsJson(result)
-      (js \ "status").as[String] mustBe "FATAL_ERROR"
-      (js \ "pollUrl").asOpt[String] mustBe None
-      (js \ "intervalSeconds").asOpt[Int] mustBe None
-
-      verify(submissionService).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
-        any[HeaderCarrier]
-      )
-    }
-
-    "returns 200 with DEPARTMENTAL_ERROR status when service returns DEPARTMENTAL_ERROR" in {
-      val submissionService = mock[SubmissionService]
-      val config            = mock[AppConfig]
-      val xmlValidator      = mock[XmlValidator]
-
-      when(config.chrisHost).thenReturn(Seq("chris.test"))
-      val controller = mkController(
-        submissionService = submissionService,
-        appConfig = config,
-        xmlValidator = xmlValidator
-      )
-
-      val pollUrl       = "http://chris.test/poll"
-      val correlationId = "CORR789"
-
-      when(
-        submissionService.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
-          any[HeaderCarrier]
-        )
-      )
-        .thenReturn(Future.successful(ChrisPollResponse(DEPARTMENTAL_ERROR, correlationId, None, None, None)))
-
-      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
-
-      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
-
-      status(result) mustBe OK
-      val js = contentAsJson(result)
-      (js \ "status").as[String] mustBe "DEPARTMENTAL_ERROR"
-      (js \ "pollUrl").asOpt[String] mustBe None
-      (js \ "intervalSeconds").asOpt[Int] mustBe None
-
-      verify(submissionService).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
-        any[HeaderCarrier]
-      )
-    }
-
-    "returns 200 with ACCEPTED status and pollUrl when service returns ACCEPTED with pollUrl" in {
-      val submissionService = mock[SubmissionService]
-      val config            = mock[AppConfig]
-      val xmlValidator      = mock[XmlValidator]
-
-      when(config.chrisHost).thenReturn(Seq("chris.test"))
-      val controller = mkController(
-        submissionService = submissionService,
-        appConfig = config,
-        xmlValidator = xmlValidator
-      )
-
-      val pollUrl       = "http://chris.test/poll"
-      val correlationId = "CORR999"
-
-      when(
-        submissionService.pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
-          any[HeaderCarrier]
-        )
-      )
-        .thenReturn(Future.successful(ChrisPollResponse(ACCEPTED, correlationId, Some(pollUrl), Some(10), None)))
-
-      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
-
-      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
-
-      status(result) mustBe OK
-      val js = contentAsJson(result)
-      (js \ "status").as[String] mustBe "ACCEPTED"
-      (js \ "pollUrl").as[String] mustBe pollUrl
-      (js \ "intervalSeconds").as[Int] mustBe 10
-
-      verify(submissionService).pollSubmission(ArgumentMatchers.eq(correlationId), ArgumentMatchers.eq(pollUrl))(using
-        any[HeaderCarrier]
-      )
+      verifyNoInteractions(submissionService)
     }
 
     "returns 401 when unauthorised" in {
@@ -931,12 +809,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      val pollUrl       = "http://chris.test/poll"
-      val correlationId = "CORR-UNAUTH"
+      val pollUrl = "http://chris.test/poll"
 
-      val req = FakeRequest(GET, s"/cis/submissions/poll?pollUrl=$pollUrl&correlationId=$correlationId")
+      val req = FakeRequest(GET, s"/cis/submissions/$submissionId/poll?pollUrl=$pollUrl")
 
-      val result = controller.pollSubmission(RedirectUrl(pollUrl), correlationId)(req)
+      val result = controller.pollSubmission(RedirectUrl(pollUrl), submissionId)(req)
 
       status(result) mustBe UNAUTHORIZED
       verifyNoInteractions(submissionService)

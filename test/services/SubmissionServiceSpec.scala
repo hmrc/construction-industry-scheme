@@ -26,9 +26,11 @@ import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailC
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
+import uk.gov.hmrc.constructionindustryscheme.services.*
 import uk.gov.hmrc.http.HeaderCarrier
 
+import java.time.{Instant, LocalDateTime}
 import scala.concurrent.Future
 import scala.xml.Elem
 
@@ -136,131 +138,262 @@ final class SubmissionServiceSpec extends SpecBase {
     }
   }
 
-  "pollSubmission" - {
+  "pollSubmissionAndUpdateGovTalkStatus" - {
 
-    "returns response and deletes Chris resources for SUBMITTED" in {
+    "polls Chris, updates session and GovTalk status, and returns poll response" in {
       val s = setup
       import s._
 
-      val correlationId = "CORR-123"
-      val pollUrl       = "http://example.com/poll"
-      val expected      = ChrisPollResponse(SUBMITTED, correlationId, None, None, None)
+      val submissionId = "sub-123"
+      val instanceId   = "instance-123"
+      val correlation  = "corr-123"
+      val pollUrl      = "/poll/123"
 
-      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(expected))
-      when(chrisConnector.deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
+      val session = ChrisSubmissionSessionData(
+        submissionId = submissionId,
+        instanceId = instanceId,
+        correlationId = correlation,
+        lastMessageDate = Instant.parse("2025-01-01T00:00:00Z"),
+        numPolls = 0,
+        pollInterval = 10,
+        pollUrl = pollUrl,
+        govTalkStatus = None
+      )
+
+      val updatedSession = session.copy(
+        lastMessageDate = Instant.parse("2025-01-02T00:00:00Z"),
+        numPolls = 1,
+        pollInterval = 20,
+        pollUrl = "/poll/999"
+      )
+
+      val govTalk = GetGovTalkStatusResponse(
+        govtalk_status = Seq.empty
+      )
+
+      val pollResponse = ChrisPollResponse(
+        status = SUBMITTED,
+        correlationId = correlation,
+        pollUrl = Some("/poll/999"),
+        pollInterval = Some(20),
+        lastMessageDate = Some("2025-01-02T00:00:00Z")
+      )
+
+      when(chrisSubmissionSessionStore.get(eqTo(submissionId)))
+        .thenReturn(Future.successful(Some(session)))
+        .thenReturn(Future.successful(Some(updatedSession)))
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId))
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(govTalk)))
+        .thenReturn(Future.successful(Some(govTalk)))
+
+      when(chrisSubmissionSessionStore.saveGovTalkStatus(eqTo(submissionId), eqTo(govTalk)))
         .thenReturn(Future.unit)
 
-      service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
+      when(chrisConnector.pollSubmission(eqTo(correlation), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(pollResponse))
 
-      verify(chrisConnector).pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
-      verify(chrisConnector).deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
-      verifyNoInteractions(formpProxyConnector)
+      when(
+        chrisConnector.deleteSubmission(
+          eqTo(correlation),
+          eqTo(pollUrl)
+        )(using any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        chrisSubmissionSessionStore.updateAfterPoll(
+          eqTo(submissionId),
+          eqTo(correlation),
+          eqTo(Instant.parse("2025-01-02T00:00:00Z")),
+          eqTo(20),
+          eqTo("/poll/999")
+        )
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusCorrelationId(
+          eqTo(
+            UpdateGovTalkStatusCorrelationIdRequest(
+              userIdentifier = instanceId,
+              formResultID = submissionId,
+              correlationID = correlation,
+              pollInterval = 20,
+              gatewayURL = "/poll/999"
+            )
+          )
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusStatistics(
+          eqTo(
+            UpdateGovTalkStatusStatisticsRequest(
+              userIdentifier = instanceId,
+              formResultID = submissionId,
+              lastMessageDate = LocalDateTime.of(2025, 1, 2, 0, 0),
+              numPolls = 1,
+              pollInterval = 20,
+              gatewayURL = "/poll/999"
+            )
+          )
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatus(
+          eqTo(
+            UpdateGovTalkStatusRequest(
+              userIdentifier = instanceId,
+              formResultID = submissionId,
+              protocolStatus = "dataPoll"
+            )
+          )
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      service.pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl).futureValue mustBe pollResponse
     }
 
-    "returns response and deletes Chris resources for SUBMITTED_NO_RECEIPT" in {
+    "fails when no session exists" in {
       val s = setup
       import s._
 
-      val correlationId = "CORR-124"
-      val pollUrl       = "http://example.com/poll"
-      val expected      = ChrisPollResponse(SUBMITTED_NO_RECEIPT, correlationId, None, None, None)
+      when(chrisSubmissionSessionStore.get(eqTo("sub-123")))
+        .thenReturn(Future.successful(None))
 
-      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(expected))
-      when(chrisConnector.deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
+      service
+        .pollSubmissionAndUpdateGovTalkStatus("sub-123", "/poll/123")
+        .failed
+        .futureValue
+        .getMessage mustBe "No session found for submissionId: sub-123"
+    }
+
+    "fails when polled correlationId does not match existing session correlationId" in {
+      val s = setup
+      import s._
+
+      val submissionId = "sub-123"
+      val instanceId   = "instance-123"
+      val pollUrl      = "/poll/123"
+
+      val session = ChrisSubmissionSessionData(
+        submissionId = submissionId,
+        instanceId = instanceId,
+        correlationId = "corr-expected",
+        lastMessageDate = Instant.parse("2025-01-01T00:00:00Z"),
+        numPolls = 0,
+        pollInterval = 10,
+        pollUrl = pollUrl,
+        govTalkStatus = None
+      )
+
+      val govTalk = GetGovTalkStatusResponse(
+        govtalk_status = Seq.empty
+      )
+
+      val pollResponse = ChrisPollResponse(
+        status = SUBMITTED,
+        correlationId = "corr-actual",
+        pollUrl = Some("/poll/999"),
+        pollInterval = Some(20),
+        lastMessageDate = Some("2025-01-02T00:00:00Z")
+      )
+
+      when(chrisSubmissionSessionStore.get(eqTo(submissionId)))
+        .thenReturn(Future.successful(Some(session)))
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId))
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(govTalk)))
+
+      when(chrisSubmissionSessionStore.saveGovTalkStatus(eqTo(submissionId), eqTo(govTalk)))
         .thenReturn(Future.unit)
 
-      service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
+      when(chrisConnector.pollSubmission(eqTo("corr-expected"), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(pollResponse))
 
-      verify(chrisConnector).deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
+      service
+        .pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl)
+        .failed
+        .futureValue
+        .getMessage must include("CorrelationId mismatch")
     }
 
-    "returns response and deletes Chris resources for DEPARTMENTAL_ERROR" in {
+    "fails when no GovTalk status is found after polling" in {
       val s = setup
       import s._
 
-      val correlationId = "CORR-ABC"
-      val pollUrl       = "http://example.com/poll"
-      val expected      = ChrisPollResponse(DEPARTMENTAL_ERROR, correlationId, None, None, None)
+      val submissionId = "sub-123"
+      val instanceId   = "instance-123"
+      val correlation  = "corr-123"
+      val pollUrl      = "/poll/123"
 
-      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(expected))
-      when(chrisConnector.deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.unit)
+      val session = ChrisSubmissionSessionData(
+        submissionId = submissionId,
+        instanceId = instanceId,
+        correlationId = correlation,
+        lastMessageDate = Instant.parse("2025-01-01T00:00:00Z"),
+        numPolls = 0,
+        pollInterval = 10,
+        pollUrl = pollUrl,
+        govTalkStatus = None
+      )
 
-      service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
+      val pollResponse = ChrisPollResponse(
+        status = SUBMITTED,
+        correlationId = correlation,
+        pollUrl = Some("/poll/999"),
+        pollInterval = Some(20),
+        lastMessageDate = Some("2025-01-02T00:00:00Z")
+      )
 
-      verify(chrisConnector).deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
-    }
+      when(chrisSubmissionSessionStore.get(eqTo(submissionId)))
+        .thenReturn(Future.successful(Some(session)))
 
-    "returns response and does not delete Chris resources for ACCEPTED" in {
-      val s = setup
-      import s._
+      when(chrisConnector.pollSubmission(eqTo(correlation), eqTo(pollUrl))(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(pollResponse))
 
-      val correlationId = "CORR-456"
-      val pollUrl       = "http://example.com/poll"
-      val expected      = ChrisPollResponse(ACCEPTED, correlationId, Some(pollUrl), Some(10), None)
+      when(
+        chrisSubmissionSessionStore.updateAfterPoll(
+          eqTo(submissionId),
+          eqTo(correlation),
+          eqTo(Instant.parse("2025-01-02T00:00:00Z")),
+          eqTo(20),
+          eqTo("/poll/999")
+        )
+      ).thenReturn(Future.unit)
 
-      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(expected))
+      when(
+        formpProxyConnector.updateGovTalkStatusCorrelationId(any[UpdateGovTalkStatusCorrelationIdRequest])(
+          any[HeaderCarrier]
+        )
+      ).thenReturn(Future.unit)
 
-      service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
+      when(
+        formpProxyConnector.updateGovTalkStatusStatistics(any[UpdateGovTalkStatusStatisticsRequest])(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
 
-      verify(chrisConnector).pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
-      verify(chrisConnector, never()).deleteSubmission(any[String], any[String])(using any[HeaderCarrier])
-      verifyNoInteractions(formpProxyConnector)
-    }
+      when(
+        formpProxyConnector.updateGovTalkStatus(any[UpdateGovTalkStatusRequest])(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
 
-    "returns response and does not delete Chris resources for FATAL_ERROR" in {
-      val s = setup
-      import s._
+      when(
+        formpProxyConnector.getGovTalkStatus(eqTo(GetGovTalkStatusRequest(instanceId, submissionId)))(
+          any[HeaderCarrier]
+        )
+      ).thenReturn(Future.successful(None))
 
-      val correlationId = "CORR-789"
-      val pollUrl       = "http://example.com/poll"
-      val expected      = ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None)
+      val ex =
+        service.pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl).failed.futureValue
 
-      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(expected))
+      ex.getMessage mustBe s"No GovTalk status found for instanceId: $instanceId, submissionId: $submissionId"
 
-      service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
-
-      verify(chrisConnector).pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
-      verify(chrisConnector, never()).deleteSubmission(any[String], any[String])(using any[HeaderCarrier])
-      verifyNoInteractions(formpProxyConnector)
-    }
-
-    "returns response even when deleteSubmission fails" in {
-      val s = setup
-      import s._
-
-      val correlationId = "CORR-DEL-FAIL"
-      val pollUrl       = "http://example.com/poll"
-      val expected      = ChrisPollResponse(SUBMITTED, correlationId, None, None, None)
-
-      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(expected))
-      when(chrisConnector.deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.failed(new RuntimeException("delete failed")))
-
-      service.pollSubmission(correlationId, pollUrl).futureValue mustBe expected
-
-      verify(chrisConnector).deleteSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier])
-    }
-
-    "propagates failures from pollSubmission" in {
-      val s = setup
-      import s._
-
-      val correlationId = "CORR-FAIL"
-      val pollUrl       = "http://example.com/poll"
-
-      when(chrisConnector.pollSubmission(eqTo(correlationId), eqTo(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.failed(new RuntimeException("polling failed")))
-
-      service.pollSubmission(correlationId, pollUrl).failed.futureValue.getMessage must include("polling failed")
-
-      verify(chrisConnector, never()).deleteSubmission(any[String], any[String])(using any[HeaderCarrier])
+      verify(chrisSubmissionSessionStore, never()).saveGovTalkStatus(any[String], any[GetGovTalkStatusResponse])
     }
   }
 
@@ -445,6 +578,244 @@ final class SubmissionServiceSpec extends SpecBase {
     }
   }
 
+  "updateGovTalkStatusCorrelationId" - {
+
+    "delegates to FormpProxyConnector and completes" in {
+      val s = setup
+      import s._
+
+      val req = UpdateGovTalkStatusCorrelationIdRequest(
+        userIdentifier = "instance-123",
+        formResultID = "sub-123",
+        correlationID = "corr-123",
+        pollInterval = 10,
+        gatewayURL = "/poll/123"
+      )
+
+      when(formpProxyConnector.updateGovTalkStatusCorrelationId(eqTo(req))(any[HeaderCarrier]))
+        .thenReturn(Future.unit)
+
+      service.updateGovTalkStatusCorrelationId(req).futureValue
+
+      verify(formpProxyConnector).updateGovTalkStatusCorrelationId(eqTo(req))(any[HeaderCarrier])
+      verifyNoInteractions(chrisConnector)
+      verifyNoInteractions(emailConnector)
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val s = setup
+      import s._
+
+      val req = UpdateGovTalkStatusCorrelationIdRequest(
+        userIdentifier = "instance-123",
+        formResultID = "sub-123",
+        correlationID = "corr-123",
+        pollInterval = 10,
+        gatewayURL = "/poll/123"
+      )
+
+      when(formpProxyConnector.updateGovTalkStatusCorrelationId(eqTo(req))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.updateGovTalkStatusCorrelationId(req).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "updateGovTalkStatusStatistics" - {
+
+    "delegates to FormpProxyConnector and completes" in {
+      val s = setup
+      import s._
+
+      val req = UpdateGovTalkStatusStatisticsRequest(
+        userIdentifier = "instance-123",
+        formResultID = "sub-123",
+        lastMessageDate = LocalDateTime.of(2025, 1, 1, 0, 0),
+        numPolls = 3,
+        pollInterval = 10,
+        gatewayURL = "/poll/123"
+      )
+
+      when(formpProxyConnector.updateGovTalkStatusStatistics(eqTo(req))(any[HeaderCarrier]))
+        .thenReturn(Future.unit)
+
+      service.updateGovTalkStatusStatistics(req).futureValue
+
+      verify(formpProxyConnector).updateGovTalkStatusStatistics(eqTo(req))(any[HeaderCarrier])
+      verifyNoInteractions(chrisConnector)
+      verifyNoInteractions(emailConnector)
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val s = setup
+      import s._
+
+      val req = UpdateGovTalkStatusStatisticsRequest(
+        userIdentifier = "instance-123",
+        formResultID = "sub-123",
+        lastMessageDate = LocalDateTime.of(2025, 1, 1, 0, 0),
+        numPolls = 3,
+        pollInterval = 10,
+        gatewayURL = "/poll/123"
+      )
+
+      when(formpProxyConnector.updateGovTalkStatusStatistics(eqTo(req))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.updateGovTalkStatusStatistics(req).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "processInitialChrisAck" - {
+
+    "initialises govtalk, saves session, and runs govtalk update steps" in {
+      val s = setup
+      import s._
+
+      val employerRef         = EmployerReference("123", "AB456")
+      val submissionId        = "sub-123"
+      val expectedCorrelation = "corr-123"
+      val actualCorrelation   = "corr-123"
+      val pollInterval        = 10
+      val pollUrl             = "/poll/123"
+      val gatewayUrl          = "/gateway"
+      val lastMessageDate     = Instant.parse("2025-01-01T00:00:00Z")
+      val taxpayer            = mkTaxpayer("instance-123")
+
+      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(taxpayer))
+
+      when(
+        formpProxyConnector.getGovTalkStatus(eqTo(GetGovTalkStatusRequest("instance-123", submissionId)))(
+          any[HeaderCarrier]
+        )
+      )
+        .thenReturn(Future.successful(None))
+
+      when(
+        formpProxyConnector.createGovTalkStatusRecord(
+          eqTo(CreateGovTalkStatusRecordRequest("instance-123", submissionId, expectedCorrelation, gatewayUrl))
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        chrisSubmissionSessionStore.saveInitialAck(
+          eqTo(submissionId),
+          eqTo("instance-123"),
+          eqTo(expectedCorrelation),
+          eqTo(pollInterval),
+          eqTo(pollUrl),
+          eqTo(lastMessageDate)
+        )
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusCorrelationId(
+          eqTo(
+            UpdateGovTalkStatusCorrelationIdRequest(
+              "instance-123",
+              submissionId,
+              expectedCorrelation,
+              pollInterval,
+              gatewayUrl
+            )
+          )
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusStatistics(
+          eqTo(
+            UpdateGovTalkStatusStatisticsRequest(
+              "instance-123",
+              submissionId,
+              LocalDateTime.of(2025, 1, 1, 0, 0),
+              0,
+              pollInterval,
+              gatewayUrl
+            )
+          )
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatus(
+          eqTo(UpdateGovTalkStatusRequest("instance-123", submissionId, None, "dataPoll"))
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      service
+        .processInitialChrisAck(
+          employerRef,
+          submissionId,
+          expectedCorrelation,
+          actualCorrelation,
+          pollInterval,
+          pollUrl,
+          gatewayUrl,
+          lastMessageDate
+        )
+        .futureValue mustBe ()
+    }
+
+    "fails when correlationId does not match" in {
+      val s = setup
+      import s._
+
+      service
+        .processInitialChrisAck(
+          EmployerReference("123", "AB456"),
+          "sub-123",
+          "corr-expected",
+          "corr-actual",
+          10,
+          "/poll/123",
+          "/gateway"
+        )
+        .failed
+        .futureValue
+        .getMessage must include("CorrelationId mismatch")
+    }
+  }
+
+  "processInitialChrisFailure" - {
+
+    "initialises govtalk and updates status to dataRequest" in {
+      val s = setup
+      import s._
+
+      val employerRef   = EmployerReference("123", "AB456")
+      val submissionId  = "sub-123"
+      val correlationId = "corr-123"
+      val gatewayUrl    = "/gateway"
+      val taxpayer      = mkTaxpayer("instance-123")
+
+      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(taxpayer))
+
+      when(
+        formpProxyConnector.getGovTalkStatus(eqTo(GetGovTalkStatusRequest("instance-123", submissionId)))(
+          any[HeaderCarrier]
+        )
+      )
+        .thenReturn(Future.successful(None))
+
+      when(
+        formpProxyConnector.createGovTalkStatusRecord(
+          eqTo(CreateGovTalkStatusRecordRequest("instance-123", submissionId, correlationId, gatewayUrl))
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatus(
+          eqTo(UpdateGovTalkStatusRequest("instance-123", submissionId, None, "dataRequest"))
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      service.processInitialChrisFailure(employerRef, submissionId, correlationId, gatewayUrl).futureValue mustBe ()
+    }
+  }
+
   "initialiseGovTalkStatus" - {
 
     "returns instanceId when taxpayer exists and no GovTalk status record exists" in {
@@ -519,12 +890,19 @@ final class SubmissionServiceSpec extends SpecBase {
   }
 
   trait Setup {
-    val chrisConnector: ChrisConnector             = mock[ChrisConnector]
-    val formpProxyConnector: FormpProxyConnector   = mock[FormpProxyConnector]
-    val emailConnector: EmailConnector             = mock[EmailConnector]
-    val monthlyReturnService: MonthlyReturnService = mock[MonthlyReturnService]
+    val chrisConnector: ChrisConnector                           = mock[ChrisConnector]
+    val formpProxyConnector: FormpProxyConnector                 = mock[FormpProxyConnector]
+    val emailConnector: EmailConnector                           = mock[EmailConnector]
+    val monthlyReturnService: MonthlyReturnService               = mock[MonthlyReturnService]
+    val chrisSubmissionSessionStore: ChrisSubmissionSessionStore = mock[ChrisSubmissionSessionStore]
 
-    val service = new SubmissionService(chrisConnector, formpProxyConnector, emailConnector, monthlyReturnService)
+    val service = new SubmissionService(
+      chrisConnector,
+      formpProxyConnector,
+      emailConnector,
+      monthlyReturnService,
+      chrisSubmissionSessionStore
+    )
 
     def mkPayload(
       corrId: String = "CID-123",
