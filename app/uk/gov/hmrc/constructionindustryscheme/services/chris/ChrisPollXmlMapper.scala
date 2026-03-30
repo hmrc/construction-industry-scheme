@@ -20,7 +20,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionXmlMapper.{intAttrOptional, textOptional}
 
-import java.time.{Instant, LocalDateTime, ZoneOffset}
+import java.time.{Instant, LocalDateTime, ZoneId, ZoneOffset}
 import scala.util.Try
 import scala.xml.*
 
@@ -98,11 +98,11 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
       case None      => Right(Some(now.toString): Option[String])
     }
 
+  private val UkZone = ZoneId.of("Europe/London")
+
   private def normaliseGatewayTimestamp(raw: String): Either[String, String] = {
     val instant =
-      Try(Instant.parse(raw))
-        .orElse(Try(LocalDateTime.parse(raw).toInstant(ZoneOffset.UTC)))
-        .toEither
+      Try(LocalDateTime.parse(raw).atZone(UkZone).toInstant).toEither
 
     instant match {
       case Right(value) => Right(value.toString)
