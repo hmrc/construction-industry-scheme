@@ -19,7 +19,7 @@ package models.requests
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.*
-import uk.gov.hmrc.constructionindustryscheme.models.{Company, Partnership, SoleTrader}
+import uk.gov.hmrc.constructionindustryscheme.models.{Company, Partnership, SoleTrader, Trust}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
 import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest.*
 
@@ -260,6 +260,49 @@ class CreateAndUpdateSubcontractorRequestSpec extends AnyWordSpec with Matchers 
       )
 
       json.validate[CreateAndUpdateSubcontractorRequest].isError mustBe true
+    }
+
+    "round-trip (write then read) TrustRequest with all fields populated" in {
+      val model: CreateAndUpdateSubcontractorRequest =
+        TrustRequest(
+          cisId = "CIS-999",
+          utr = Some("9999999999"),
+          trustTradingName = Some("The Big Trust"),
+          addressLine1 = Some("1 Trust Street"),
+          addressLine2 = Some("Suite 9"),
+          city = Some("London"),
+          county = Some("Greater London"),
+          country = Some("United Kingdom"),
+          postcode = Some("ZZ1 1ZZ"),
+          emailAddress = Some("trust@test.com"),
+          phoneNumber = Some("02000000000"),
+          mobilePhoneNumber = Some("07999999999"),
+          worksReferenceNumber = Some("WRN-TRUST-1")
+        )
+
+      val json = Json.toJson(model)
+      val back = json.as[CreateAndUpdateSubcontractorRequest]
+
+      back mustEqual model
+      (json \ "subcontractorType").as[String] mustBe "trust"
+      (json \ "trustTradingName").as[String] mustBe "The Big Trust"
+      (json \ "utr").as[String] mustBe "9999999999"
+    }
+
+    "read minimal valid JSON for trust (only required fields)" in {
+      val json = Json.parse(
+        s"""
+           |{
+           |  "cisId": "CIS-666",
+           |  "subcontractorType": "${Trust.toString}"
+           |}
+           |""".stripMargin
+      )
+
+      val result = json.validate[CreateAndUpdateSubcontractorRequest]
+      result.isSuccess mustBe true
+
+      result.get mustBe TrustRequest(cisId = "CIS-666")
     }
   }
 }

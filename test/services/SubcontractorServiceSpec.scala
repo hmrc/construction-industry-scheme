@@ -58,6 +58,14 @@ final class SubcontractorServiceSpec extends SpecBase {
         country = Some("United Kingdom")
       )
 
+    val trustRequest: CreateAndUpdateSubcontractorRequest =
+      CreateAndUpdateSubcontractorRequest.TrustRequest(
+        cisId = cisId,
+        trustTradingName = Some("The Big Trust"),
+        utr = Some("1234567890"),
+        country = Some("United Kingdom")
+      )
+
     "delegates to FormpProxyConnector and returns Unit (sole trader)" in {
       val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
       val service                                  = new SubcontractorService(formpProxyConnector)
@@ -89,6 +97,17 @@ final class SubcontractorServiceSpec extends SpecBase {
 
       service.createAndUpdateSubcontractor(partnershipRequest).futureValue mustBe ((): Unit)
       verify(formpProxyConnector).createAndUpdateSubcontractor(eqTo(partnershipRequest))(any[HeaderCarrier])
+    }
+
+    "delegates to FormpProxyConnector and returns Unit (trust)" in {
+      val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                                  = new SubcontractorService(formpProxyConnector)
+
+      when(formpProxyConnector.createAndUpdateSubcontractor(eqTo(trustRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.createAndUpdateSubcontractor(trustRequest).futureValue mustBe ((): Unit)
+      verify(formpProxyConnector).createAndUpdateSubcontractor(eqTo(trustRequest))(any[HeaderCarrier])
     }
 
     "propagates failures from FormpProxyConnector" in {
