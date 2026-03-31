@@ -1025,7 +1025,7 @@ class FormpProxyConnectorIntegrationSpec
 
   "FormpProxyConnector getGovTalkStatus" should {
 
-    "POST /formp-proxy/cis/govtalkstatus/get and return Some(response) on 200" in {
+    "POST /formp-proxy/cis/govtalkstatus/get?stage=polling and return Some(response) on 200" in {
       val req = GetGovTalkStatusRequest(
         userIdentifier = instanceId,
         formResultID = "sub-123"
@@ -1055,7 +1055,8 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/get"))
-          .withHeader("Content-Type", equalTo("application/json"))
+          .withQueryParam("stage", equalTo("polling"))
+          .withHeader("Content-Type", containing("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -1064,11 +1065,11 @@ class FormpProxyConnectorIntegrationSpec
           )
       )
 
-      val out = connector.getGovTalkStatus(req).futureValue
+      val out = connector.getGovTalkStatus(req, ChrisSubmissionPhase.Polling).futureValue
       out mustBe Some(responseJson.as[GetGovTalkStatusResponse])
     }
 
-    "return None when upstream responds with 404" in {
+    "POST /formp-proxy/cis/govtalkstatus/get?stage=initial and return None on 404" in {
       val req = GetGovTalkStatusRequest(
         userIdentifier = instanceId,
         formResultID = "sub-404"
@@ -1076,7 +1077,8 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/get"))
-          .withHeader("Content-Type", equalTo("application/json"))
+          .withQueryParam("stage", equalTo("initial"))
+          .withHeader("Content-Type", containing("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -1085,7 +1087,7 @@ class FormpProxyConnectorIntegrationSpec
           )
       )
 
-      val out = connector.getGovTalkStatus(req).futureValue
+      val out = connector.getGovTalkStatus(req, ChrisSubmissionPhase.Initial).futureValue
       out mustBe None
     }
 
@@ -1097,6 +1099,8 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/get"))
+          .withQueryParam("stage", equalTo("polling"))
+          .withHeader("Content-Type", containing("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -1105,7 +1109,7 @@ class FormpProxyConnectorIntegrationSpec
           )
       )
 
-      val ex = connector.getGovTalkStatus(req).failed.futureValue
+      val ex = connector.getGovTalkStatus(req, ChrisSubmissionPhase.Polling).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }

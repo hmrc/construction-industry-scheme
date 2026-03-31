@@ -26,6 +26,7 @@ import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailC
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
+import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
 import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
 import uk.gov.hmrc.constructionindustryscheme.services.*
 import uk.gov.hmrc.http.HeaderCarrier
@@ -185,7 +186,8 @@ final class SubmissionServiceSpec extends SpecBase {
 
       when(
         formpProxyConnector.getGovTalkStatus(
-          eqTo(GetGovTalkStatusRequest(instanceId, submissionId))
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+          eqTo(Polling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Some(govTalk)))
         .thenReturn(Future.successful(Some(govTalk)))
@@ -307,7 +309,8 @@ final class SubmissionServiceSpec extends SpecBase {
 
       when(
         formpProxyConnector.getGovTalkStatus(
-          eqTo(GetGovTalkStatusRequest(instanceId, submissionId))
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+          eqTo(Polling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Some(govTalk)))
 
@@ -344,48 +347,14 @@ final class SubmissionServiceSpec extends SpecBase {
         govTalkStatus = None
       )
 
-      val pollResponse = ChrisPollResponse(
-        status = SUBMITTED,
-        correlationId = correlation,
-        pollUrl = Some("/poll/999"),
-        pollInterval = Some(20),
-        lastMessageDate = Some("2025-01-02T00:00:00Z")
-      )
-
       when(chrisSubmissionSessionStore.get(eqTo(submissionId)))
         .thenReturn(Future.successful(Some(session)))
 
-      when(chrisConnector.pollSubmission(eqTo(correlation), eqTo(pollUrl))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(pollResponse))
-
       when(
-        chrisSubmissionSessionStore.updateAfterPoll(
-          eqTo(submissionId),
-          eqTo(correlation),
-          eqTo(Instant.parse("2025-01-02T00:00:00Z")),
-          eqTo(20),
-          eqTo("/poll/999")
-        )
-      ).thenReturn(Future.unit)
-
-      when(
-        formpProxyConnector.updateGovTalkStatusCorrelationId(any[UpdateGovTalkStatusCorrelationIdRequest])(
-          any[HeaderCarrier]
-        )
-      ).thenReturn(Future.unit)
-
-      when(
-        formpProxyConnector.updateGovTalkStatusStatistics(any[UpdateGovTalkStatusStatisticsRequest])(any[HeaderCarrier])
-      ).thenReturn(Future.unit)
-
-      when(
-        formpProxyConnector.updateGovTalkStatus(any[UpdateGovTalkStatusRequest])(any[HeaderCarrier])
-      ).thenReturn(Future.unit)
-
-      when(
-        formpProxyConnector.getGovTalkStatus(eqTo(GetGovTalkStatusRequest(instanceId, submissionId)))(
-          any[HeaderCarrier]
-        )
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
       ).thenReturn(Future.successful(None))
 
       val ex =
@@ -394,6 +363,7 @@ final class SubmissionServiceSpec extends SpecBase {
       ex.getMessage mustBe s"No GovTalk status found for instanceId: $instanceId, submissionId: $submissionId"
 
       verify(chrisSubmissionSessionStore, never()).saveGovTalkStatus(any[String], any[GetGovTalkStatusResponse])
+      verifyNoInteractions(chrisConnector)
     }
   }
 
@@ -446,51 +416,6 @@ final class SubmissionServiceSpec extends SpecBase {
       service.sendSuccessfulEmail(submissionId, req).failed.futureValue.getMessage must include("boom")
 
       verify(emailConnector).sendSuccessfulEmail(eqTo(expectedPayload))(any[HeaderCarrier])
-    }
-  }
-
-  "getGovTalkStatus" - {
-
-    "delegates to FormpProxyConnector and returns the response when present" in {
-      val s = setup
-      import s._
-
-      val req = GetGovTalkStatusRequest(
-        userIdentifier = "123",
-        formResultID = "1234567890"
-      )
-
-      val resp = GetGovTalkStatusResponse(
-        govtalk_status = Seq.empty
-      )
-
-      when(formpProxyConnector.getGovTalkStatus(eqTo(req))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(resp)))
-
-      service.getGovTalkStatus(req).futureValue mustBe Some(resp)
-
-      verify(formpProxyConnector).getGovTalkStatus(eqTo(req))(any[HeaderCarrier])
-      verifyNoInteractions(chrisConnector)
-      verifyNoInteractions(emailConnector)
-    }
-
-    "delegates to FormpProxyConnector and returns None when no record exists" in {
-      val s = setup
-      import s._
-
-      val req = GetGovTalkStatusRequest(
-        userIdentifier = "123",
-        formResultID = "1234567890"
-      )
-
-      when(formpProxyConnector.getGovTalkStatus(eqTo(req))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(None))
-
-      service.getGovTalkStatus(req).futureValue mustBe None
-
-      verify(formpProxyConnector).getGovTalkStatus(eqTo(req))(any[HeaderCarrier])
-      verifyNoInteractions(chrisConnector)
-      verifyNoInteractions(emailConnector)
     }
   }
 
@@ -686,11 +611,11 @@ final class SubmissionServiceSpec extends SpecBase {
         .thenReturn(Future.successful(taxpayer))
 
       when(
-        formpProxyConnector.getGovTalkStatus(eqTo(GetGovTalkStatusRequest("instance-123", submissionId)))(
-          any[HeaderCarrier]
-        )
-      )
-        .thenReturn(Future.successful(None))
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest("instance-123", submissionId)),
+          eqTo(Initial)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(None))
 
       when(
         formpProxyConnector.createGovTalkStatusRecord(
@@ -794,11 +719,11 @@ final class SubmissionServiceSpec extends SpecBase {
         .thenReturn(Future.successful(taxpayer))
 
       when(
-        formpProxyConnector.getGovTalkStatus(eqTo(GetGovTalkStatusRequest("instance-123", submissionId)))(
-          any[HeaderCarrier]
-        )
-      )
-        .thenReturn(Future.successful(None))
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest("instance-123", submissionId)),
+          eqTo(Initial)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(None))
 
       when(
         formpProxyConnector.createGovTalkStatusRecord(
@@ -837,11 +762,14 @@ final class SubmissionServiceSpec extends SpecBase {
 
       when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
         .thenReturn(Future.successful(taxpayer))
+
       when(
         formpProxyConnector.getGovTalkStatus(
-          eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId))
+          eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
+          eqTo(Initial)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(None))
+
       when(formpProxyConnector.createGovTalkStatusRecord(eqTo(expectedCreateReq))(any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
@@ -851,7 +779,10 @@ final class SubmissionServiceSpec extends SpecBase {
 
       verify(monthlyReturnService).getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier])
       verify(formpProxyConnector)
-        .getGovTalkStatus(eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)))(any[HeaderCarrier])
+        .getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
+          eqTo(Initial)
+        )(any[HeaderCarrier])
       verify(formpProxyConnector).createGovTalkStatusRecord(eqTo(expectedCreateReq))(any[HeaderCarrier])
       verifyNoInteractions(chrisConnector)
       verifyNoInteractions(emailConnector)
@@ -871,9 +802,11 @@ final class SubmissionServiceSpec extends SpecBase {
 
       when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
         .thenReturn(Future.successful(taxpayer))
+
       when(
         formpProxyConnector.getGovTalkStatus(
-          eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId))
+          eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
+          eqTo(Initial)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Some(existing)))
 

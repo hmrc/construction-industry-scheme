@@ -14,17 +14,22 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models
+package models
 
-sealed trait ChrisSubmissionPhase {
-  def asQueryParam: String
-}
+import org.scalatest.matchers.must.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
 
-object ChrisSubmissionPhase {
-  case object Initial extends ChrisSubmissionPhase {
-    override val asQueryParam: String = "initial"
-  }
-  case object Polling extends ChrisSubmissionPhase {
-    override val asQueryParam: String = "polling"
+class ChrisSubmissionPhaseSpec extends AnyWordSpec with Matchers {
+
+  "ChrisSubmissionPhase" should {
+
+    "return 'initial' for Initial" in {
+      Initial.asQueryParam mustBe "initial"
+    }
+
+    "return 'polling' for Polling" in {
+      Polling.asQueryParam mustBe "polling"
+    }
   }
 }
