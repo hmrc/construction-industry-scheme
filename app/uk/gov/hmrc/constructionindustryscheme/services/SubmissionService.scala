@@ -19,6 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
@@ -75,10 +76,10 @@ class SubmissionService @Inject() (
         Future.unit
     }
 
-  def getGovTalkStatus(request: GetGovTalkStatusRequest)(implicit
-    hc: HeaderCarrier
-  ): Future[Option[GetGovTalkStatusResponse]] =
-    formpProxyConnector.getGovTalkStatus(request)
+//  def getGovTalkStatus(request: GetGovTalkStatusRequest)(implicit
+//    hc: HeaderCarrier
+//  ): Future[Option[GetGovTalkStatusResponse]] =
+//    formpProxyConnector.getGovTalkStatus(request)
 
   def createGovTalkStatusRecord(request: CreateGovTalkStatusRecordRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.createGovTalkStatusRecord(request)
@@ -106,7 +107,7 @@ class SubmissionService @Inject() (
       val instanceId = taxpayer.uniqueId
       val getReq     = GetGovTalkStatusRequest(instanceId, submissionId)
 
-      getGovTalkStatus(getReq).flatMap {
+      getInitialGovTalkStatus(getReq).flatMap {
         case Some(_) =>
           Future.failed(new RuntimeException("govtalk status already exists"))
 
@@ -211,7 +212,7 @@ class SubmissionService @Inject() (
   private def fetchAndStoreGovTalkStatus(instanceId: String, submissionId: String)(implicit
     hc: HeaderCarrier
   ): Future[Unit] =
-    getGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId)).flatMap {
+    getPollingGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId)).flatMap {
       case Some(status) =>
         chrisSubmissionSessionStore.saveGovTalkStatus(submissionId, status)
 
@@ -279,4 +280,13 @@ class SubmissionService @Inject() (
   private def toLocalDateTime(i: Instant): LocalDateTime =
     LocalDateTime.ofInstant(i, ZoneOffset.UTC)
 
+  private def getInitialGovTalkStatus(request: GetGovTalkStatusRequest)(implicit
+    hc: HeaderCarrier
+  ): Future[Option[GetGovTalkStatusResponse]] =
+    formpProxyConnector.getGovTalkStatus(request, Initial)
+
+  private def getPollingGovTalkStatus(request: GetGovTalkStatusRequest)(implicit
+    hc: HeaderCarrier
+  ): Future[Option[GetGovTalkStatusResponse]] =
+    formpProxyConnector.getGovTalkStatus(request, Polling)
 }
