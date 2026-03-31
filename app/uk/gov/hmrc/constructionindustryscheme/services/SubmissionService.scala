@@ -22,7 +22,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
+import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import java.time.{Instant, LocalDateTime, ZoneOffset}
@@ -37,7 +37,7 @@ class SubmissionService @Inject() (
   formpProxyConnector: FormpProxyConnector,
   emailConnector: EmailConnector,
   monthlyReturnService: MonthlyReturnService,
-  chrisSubmissionSessionStore: ChrisSubmissionSessionStore
+  chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository
 )(implicit ec: ExecutionContext)
     extends Logging {
   def createSubmission(request: CreateSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
@@ -56,7 +56,7 @@ class SubmissionService @Inject() (
     emailConnector.sendSuccessfulEmail(emailPayload).map(_ => ())
   }
 
-  private def deleteChrisReourcesIfNeeded(
+  private def deleteChrisResourcesIfNeeded(
     status: SubmissionStatus,
     correlationId: String,
     pollUrl: String
@@ -140,7 +140,7 @@ class SubmissionService @Inject() (
       case Right(_) =>
         for {
           instanceId <- initialiseGovTalkStatus(employerReference, submissionId, expectedCorrelationId, gatewayURL)
-          _          <- chrisSubmissionSessionStore.saveInitialAck(
+          _          <- saveInitialChrisSession(
                           submissionId,
                           instanceId,
                           expectedCorrelationId,
@@ -183,13 +183,13 @@ class SubmissionService @Inject() (
                               case Right(_)     => Future.unit
                               case Left(reason) => Future.failed(new RuntimeException(reason))
                             }
-      _                  <- deleteChrisReourcesIfNeeded(result.status, session.correlationId, pollUrl)
+      _                  <- deleteChrisResourcesIfNeeded(result.status, session.correlationId, pollUrl)
       nextLastMessageDate = result.lastMessageDate
                               .flatMap(ts => Try(Instant.parse(ts)).toOption)
                               .getOrElse(session.lastMessageDate)
       nextPollUrl         = result.pollUrl.getOrElse(session.pollUrl)
       nextPollInterval    = result.pollInterval.getOrElse(session.pollInterval)
-      _                  <- chrisSubmissionSessionStore.updateAfterPoll(
+      _                  <- updateChrisSessionAfterPoll(
                               submissionId,
                               result.correlationId,
                               nextLastMessageDate,
@@ -214,12 +214,64 @@ class SubmissionService @Inject() (
   ): Future[Unit] =
     getPollingGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId)).flatMap {
       case Some(status) =>
-        chrisSubmissionSessionStore.saveGovTalkStatus(submissionId, status)
+        saveGovTalkStatusToSession(submissionId, status)
 
       case None =>
         Future.failed(
           new RuntimeException(s"No GovTalk status found for instanceId: $instanceId, submissionId: $submissionId")
         )
+    }
+
+  private def saveInitialChrisSession(
+    submissionId: String,
+    instanceId: String,
+    correlationId: String,
+    pollInterval: Int,
+    pollUrl: String,
+    lastMessageDate: Instant
+  ): Future[Unit] =
+    chrisSubmissionSessionRepository.upsert(
+      ChrisSubmissionSessionData(
+        submissionId = submissionId,
+        instanceId = instanceId,
+        correlationId = correlationId,
+        lastMessageDate = lastMessageDate,
+        numPolls = 0,
+        pollInterval = pollInterval,
+        pollUrl = pollUrl,
+        govTalkStatus = None
+      )
+    )
+
+  private def updateChrisSessionAfterPoll(
+    submissionId: String,
+    correlationId: String,
+    lastMessageDate: Instant,
+    pollInterval: Int,
+    pollUrl: String
+  ): Future[Unit] =
+    getChrisSubmissionSession(submissionId).flatMap { existing =>
+      chrisSubmissionSessionRepository.upsert(
+        existing.copy(
+          correlationId = correlationId,
+          lastMessageDate = lastMessageDate,
+          numPolls = existing.numPolls + 1,
+          pollInterval = pollInterval,
+          pollUrl = pollUrl
+        )
+      )
+    }
+
+  private def saveGovTalkStatusToSession(
+    submissionId: String,
+    govTalkStatus: GetGovTalkStatusResponse
+  ): Future[Unit] =
+    getChrisSubmissionSession(submissionId).flatMap { existing =>
+      chrisSubmissionSessionRepository.upsert(
+        existing.copy(
+          govTalkStatus = Some(govTalkStatus)
+        )
+      )
     }
 
   private def validateCorrelationId(expectedRaw: String, actualRaw: String): Either[String, Unit] = {
@@ -272,7 +324,7 @@ class SubmissionService @Inject() (
     } yield ()
 
   private def getChrisSubmissionSession(submissionId: String): Future[ChrisSubmissionSessionData] =
-    chrisSubmissionSessionStore.get(submissionId).map {
+    chrisSubmissionSessionRepository.get(submissionId).map {
       case Some(session) => session
       case None          => throw new RuntimeException(s"No session found for submissionId: $submissionId")
     }

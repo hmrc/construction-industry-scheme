@@ -27,7 +27,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
-import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
+import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository}
 import uk.gov.hmrc.constructionindustryscheme.services.*
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -161,15 +161,23 @@ final class SubmissionServiceSpec extends SpecBase {
         govTalkStatus = None
       )
 
-      val updatedSession = session.copy(
+      val govTalk = GetGovTalkStatusResponse(
+        govtalk_status = Seq.empty
+      )
+
+      val sessionWithGovTalk = session.copy(
+        govTalkStatus = Some(govTalk)
+      )
+
+      val updatedSession = sessionWithGovTalk.copy(
         lastMessageDate = Instant.parse("2025-01-02T00:00:00Z"),
         numPolls = 1,
         pollInterval = 20,
         pollUrl = "/poll/999"
       )
 
-      val govTalk = GetGovTalkStatusResponse(
-        govtalk_status = Seq.empty
+      val updatedSessionWithGovTalk = updatedSession.copy(
+        govTalkStatus = Some(govTalk)
       )
 
       val pollResponse = ChrisPollResponse(
@@ -180,8 +188,11 @@ final class SubmissionServiceSpec extends SpecBase {
         lastMessageDate = Some("2025-01-02T00:00:00Z")
       )
 
-      when(chrisSubmissionSessionStore.get(eqTo(submissionId)))
+      when(chrisSubmissionSessionRepository.get(eqTo(submissionId)))
         .thenReturn(Future.successful(Some(session)))
+        .thenReturn(Future.successful(Some(session)))
+        .thenReturn(Future.successful(Some(sessionWithGovTalk)))
+        .thenReturn(Future.successful(Some(updatedSession)))
         .thenReturn(Future.successful(Some(updatedSession)))
 
       when(
@@ -192,7 +203,7 @@ final class SubmissionServiceSpec extends SpecBase {
       ).thenReturn(Future.successful(Some(govTalk)))
         .thenReturn(Future.successful(Some(govTalk)))
 
-      when(chrisSubmissionSessionStore.saveGovTalkStatus(eqTo(submissionId), eqTo(govTalk)))
+      when(chrisSubmissionSessionRepository.upsert(eqTo(sessionWithGovTalk)))
         .thenReturn(Future.unit)
 
       when(chrisConnector.pollSubmission(eqTo(correlation), eqTo(pollUrl))(using any[HeaderCarrier]))
@@ -205,15 +216,8 @@ final class SubmissionServiceSpec extends SpecBase {
         )(using any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
-      when(
-        chrisSubmissionSessionStore.updateAfterPoll(
-          eqTo(submissionId),
-          eqTo(correlation),
-          eqTo(Instant.parse("2025-01-02T00:00:00Z")),
-          eqTo(20),
-          eqTo("/poll/999")
-        )
-      ).thenReturn(Future.unit)
+      when(chrisSubmissionSessionRepository.upsert(eqTo(updatedSession)))
+        .thenReturn(Future.unit)
 
       when(
         formpProxyConnector.updateGovTalkStatusCorrelationId(
@@ -250,11 +254,15 @@ final class SubmissionServiceSpec extends SpecBase {
             UpdateGovTalkStatusRequest(
               userIdentifier = instanceId,
               formResultID = submissionId,
+              endStateDate = None,
               protocolStatus = "dataPoll"
             )
           )
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
+
+      when(chrisSubmissionSessionRepository.upsert(eqTo(updatedSessionWithGovTalk)))
+        .thenReturn(Future.unit)
 
       service.pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl).futureValue mustBe pollResponse
     }
@@ -263,7 +271,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val s = setup
       import s._
 
-      when(chrisSubmissionSessionStore.get(eqTo("sub-123")))
+      when(chrisSubmissionSessionRepository.get(eqTo("sub-123")))
         .thenReturn(Future.successful(None))
 
       service
@@ -296,6 +304,8 @@ final class SubmissionServiceSpec extends SpecBase {
         govtalk_status = Seq.empty
       )
 
+      val sessionWithGovTalk = session.copy(govTalkStatus = Some(govTalk))
+
       val pollResponse = ChrisPollResponse(
         status = SUBMITTED,
         correlationId = "corr-actual",
@@ -304,7 +314,8 @@ final class SubmissionServiceSpec extends SpecBase {
         lastMessageDate = Some("2025-01-02T00:00:00Z")
       )
 
-      when(chrisSubmissionSessionStore.get(eqTo(submissionId)))
+      when(chrisSubmissionSessionRepository.get(eqTo(submissionId)))
+        .thenReturn(Future.successful(Some(session)))
         .thenReturn(Future.successful(Some(session)))
 
       when(
@@ -314,7 +325,7 @@ final class SubmissionServiceSpec extends SpecBase {
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Some(govTalk)))
 
-      when(chrisSubmissionSessionStore.saveGovTalkStatus(eqTo(submissionId), eqTo(govTalk)))
+      when(chrisSubmissionSessionRepository.upsert(eqTo(sessionWithGovTalk)))
         .thenReturn(Future.unit)
 
       when(chrisConnector.pollSubmission(eqTo("corr-expected"), eqTo(pollUrl))(using any[HeaderCarrier]))
@@ -347,7 +358,7 @@ final class SubmissionServiceSpec extends SpecBase {
         govTalkStatus = None
       )
 
-      when(chrisSubmissionSessionStore.get(eqTo(submissionId)))
+      when(chrisSubmissionSessionRepository.get(eqTo(submissionId)))
         .thenReturn(Future.successful(Some(session)))
 
       when(
@@ -362,7 +373,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
       ex.getMessage mustBe s"No GovTalk status found for instanceId: $instanceId, submissionId: $submissionId"
 
-      verify(chrisSubmissionSessionStore, never()).saveGovTalkStatus(any[String], any[GetGovTalkStatusResponse])
+      verify(chrisSubmissionSessionRepository, never()).upsert(any[ChrisSubmissionSessionData])
       verifyNoInteractions(chrisConnector)
     }
   }
@@ -624,13 +635,19 @@ final class SubmissionServiceSpec extends SpecBase {
       ).thenReturn(Future.unit)
 
       when(
-        chrisSubmissionSessionStore.saveInitialAck(
-          eqTo(submissionId),
-          eqTo("instance-123"),
-          eqTo(expectedCorrelation),
-          eqTo(pollInterval),
-          eqTo(pollUrl),
-          eqTo(lastMessageDate)
+        chrisSubmissionSessionRepository.upsert(
+          eqTo(
+            ChrisSubmissionSessionData(
+              submissionId = submissionId,
+              instanceId = "instance-123",
+              correlationId = expectedCorrelation,
+              lastMessageDate = lastMessageDate,
+              numPolls = 0,
+              pollInterval = pollInterval,
+              pollUrl = pollUrl,
+              govTalkStatus = None
+            )
+          )
         )
       ).thenReturn(Future.unit)
 
@@ -823,18 +840,18 @@ final class SubmissionServiceSpec extends SpecBase {
   }
 
   trait Setup {
-    val chrisConnector: ChrisConnector                           = mock[ChrisConnector]
-    val formpProxyConnector: FormpProxyConnector                 = mock[FormpProxyConnector]
-    val emailConnector: EmailConnector                           = mock[EmailConnector]
-    val monthlyReturnService: MonthlyReturnService               = mock[MonthlyReturnService]
-    val chrisSubmissionSessionStore: ChrisSubmissionSessionStore = mock[ChrisSubmissionSessionStore]
+    val chrisConnector: ChrisConnector                                     = mock[ChrisConnector]
+    val formpProxyConnector: FormpProxyConnector                           = mock[FormpProxyConnector]
+    val emailConnector: EmailConnector                                     = mock[EmailConnector]
+    val monthlyReturnService: MonthlyReturnService                         = mock[MonthlyReturnService]
+    val chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository = mock[ChrisSubmissionSessionRepository]
 
     val service = new SubmissionService(
       chrisConnector,
       formpProxyConnector,
       emailConnector,
       monthlyReturnService,
-      chrisSubmissionSessionStore
+      chrisSubmissionSessionRepository
     )
 
     def mkPayload(
