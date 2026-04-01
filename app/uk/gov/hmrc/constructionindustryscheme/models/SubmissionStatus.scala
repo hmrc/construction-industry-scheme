@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.models
 
 sealed trait SubmissionStatus
+case object STARTED extends SubmissionStatus with WithName("STARTED")
 case object ACCEPTED extends SubmissionStatus with WithName("ACCEPTED")
 case object FATAL_ERROR extends SubmissionStatus with WithName("FATAL_ERROR")
 case object SUBMITTED extends SubmissionStatus with WithName("SUBMITTED")
