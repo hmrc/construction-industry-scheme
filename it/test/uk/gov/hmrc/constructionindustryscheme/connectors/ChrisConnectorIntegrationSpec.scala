@@ -126,7 +126,7 @@ final class ChrisConnectorIntegrationSpec
            |    <MessageDetails>
            |      <Qualifier>acknowledgement</Qualifier>
            |      <CorrelationID>$correlationId</CorrelationID>
-           |      <GatewayTimestamp>2025-01-01T00:00:00Z</GatewayTimestamp>
+           |      <GatewayTimestamp>2025-01-01T00:00:00</GatewayTimestamp>
            |      <ResponseEndPoint PollInterval="10">/poll/next-endpoint</ResponseEndPoint>
            |    </MessageDetails>
            |  </Header>
@@ -173,7 +173,7 @@ final class ChrisConnectorIntegrationSpec
            |    <MessageDetails>
            |      <Qualifier>response</Qualifier>
            |      <CorrelationID>$correlationId</CorrelationID>
-           |      <GatewayTimestamp>2025-01-02T00:00:00Z</GatewayTimestamp>
+           |      <GatewayTimestamp>2025-01-02T00:00:00</GatewayTimestamp>
            |      <ResponseEndPoint>/final/response</ResponseEndPoint>
            |    </MessageDetails>
            |  </Header>
@@ -208,7 +208,7 @@ final class ChrisConnectorIntegrationSpec
            |    <MessageDetails>
            |      <Qualifier>error</Qualifier>
            |      <CorrelationID>$correlationId</CorrelationID>
-           |      <GatewayTimestamp>2025-01-03T00:00:00Z</GatewayTimestamp>
+           |      <GatewayTimestamp>2025-01-03T00:00:00</GatewayTimestamp>
            |      <ResponseEndPoint>/error/endpoint</ResponseEndPoint>
            |    </MessageDetails>
            |  </Header>
@@ -252,7 +252,7 @@ final class ChrisConnectorIntegrationSpec
            |    <MessageDetails>
            |      <Qualifier>error</Qualifier>
            |      <CorrelationID>$correlationId</CorrelationID>
-           |      <GatewayTimestamp>2025-01-04T00:00:00Z</GatewayTimestamp>
+           |      <GatewayTimestamp>2025-01-04T00:00:00</GatewayTimestamp>
            |      <ResponseEndPoint>/business/error</ResponseEndPoint>
            |    </MessageDetails>
            |  </Header>
@@ -385,7 +385,7 @@ final class ChrisConnectorIntegrationSpec
            |    <MessageDetails>
            |      <Qualifier>response</Qualifier>
            |      <CorrelationID>$correlationId</CorrelationID>
-           |      <GatewayTimestamp>2025-01-05T00:00:00Z</GatewayTimestamp>
+           |      <GatewayTimestamp>2025-01-05T00:00:00</GatewayTimestamp>
            |      <ResponseEndPoint></ResponseEndPoint>
            |    </MessageDetails>
            |  </Header>

@@ -147,7 +147,7 @@ class CisReturnXmlBuilderSpec extends AnyWordSpec with Matchers {
       (xml \\ "Name").isEmpty mustBe true
     }
 
-    "include Unmatched when subcontractor UTR missing" in {
+    "include UnmatchedRate when subcontractor UTR missing" in {
       val sub = baseSub.copy(utr = None)
 
       val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
@@ -161,7 +161,7 @@ class CisReturnXmlBuilderSpec extends AnyWordSpec with Matchers {
 
       val xml = CisReturnXmlBuilder.build(req)
 
-      (xml \\ "Unmatched").text mustBe "yes"
+      (xml \\ "UnmatchedRate").text mustBe "yes"
     }
 
     "include CRN when subcontractorType is Partnership" in {

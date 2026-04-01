@@ -27,7 +27,7 @@ import java.time.Instant
 final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValues {
 
   private val corrId    = "CORR-123"
-  private val gatewayTs = "2025-01-01T00:00:00Z"
+  private val gatewayTs = "2025-01-01T00:00:00"
 
   private def headerXml(
     qualifier: String,
@@ -76,7 +76,7 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
         res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/poll/next")
         res.pollInterval mustBe Some(10)
-        res.lastMessageDate mustBe Some(gatewayTs)
+        res.lastMessageDate mustBe Some("2025-01-01T00:00:00Z")
       }
 
       "with endpoint URL but no poll interval" in {
@@ -92,7 +92,7 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
         res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/poll/next")
         res.pollInterval mustBe None
-        res.lastMessageDate mustBe Some(gatewayTs)
+        res.lastMessageDate mustBe Some("2025-01-01T00:00:00Z")
       }
 
       "without endpoint URL" in {
@@ -104,7 +104,7 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
         res.status mustBe ACCEPTED
         res.correlationId mustBe corrId
         res.pollUrl mustBe None
-        res.lastMessageDate mustBe Some(gatewayTs)
+        res.lastMessageDate mustBe Some("2025-01-01T00:00:00Z")
       }
 
       "case insensitive matching" in {
@@ -135,7 +135,7 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
         res.status mustBe SUBMITTED
         res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/response/endpoint")
-        res.lastMessageDate mustBe Some(gatewayTs)
+        res.lastMessageDate mustBe Some("2025-01-01T00:00:00Z")
       }
 
       "without endpoint URL" in {
@@ -559,7 +559,7 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
       res.status mustBe ACCEPTED
       res.correlationId mustBe corrId
       res.pollUrl mustBe Some("/poll/endpoint")
-      res.lastMessageDate mustBe Some(gatewayTs)
+      res.lastMessageDate mustBe Some("2025-01-01T00:00:00Z")
     }
 
     "handles empty ResponseEndPoint element" in {
