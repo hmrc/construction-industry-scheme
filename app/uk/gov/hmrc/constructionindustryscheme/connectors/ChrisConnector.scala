@@ -67,12 +67,12 @@ class ChrisConnector @Inject() (
           logger.error(
             s"[ChrisConnector] 5xx polling corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
           )
-          Future.successful(ChrisPollResponse(ACCEPTED, correlationId, None, None, None))
+          Future.successful(ChrisPollResponse(ACCEPTED, correlationId, None, None, None, None, None))
         } else {
           logger.error(
             s"[ChrisConnector] Non-2xx/Non-5xx polling corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
           )
-          Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None))
+          Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None, None, None))
         }
       }
       .recover { case NonFatal(e) =>
