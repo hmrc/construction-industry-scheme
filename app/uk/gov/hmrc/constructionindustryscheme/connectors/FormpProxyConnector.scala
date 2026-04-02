@@ -19,6 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.connectors
 import play.api.http.Status.{NOT_FOUND, NO_CONTENT}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
+import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
@@ -32,7 +33,8 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class FormpProxyConnector @Inject() (
   http: HttpClientV2,
-  config: ServicesConfig
+  config: ServicesConfig,
+  appConfig: AppConfig
 )(implicit ec: ExecutionContext)
     extends HttpReadsInstances {
 
@@ -224,10 +226,17 @@ class FormpProxyConnector @Inject() (
       }
 
   def getGovTalkStatus(
-    request: GetGovTalkStatusRequest
-  )(implicit hc: HeaderCarrier): Future[Option[GetGovTalkStatusResponse]] =
+    request: GetGovTalkStatusRequest,
+    phase: ChrisSubmissionPhase
+  )(implicit hc: HeaderCarrier): Future[Option[GetGovTalkStatusResponse]] = {
+    val endpoint =
+      if (appConfig.govTalkStatusStageQueryParamEnabled)
+        url"$base/cis/govtalkstatus/get?stage=${phase.asQueryParam}"
+      else
+        url"$base/cis/govtalkstatus/get"
+
     http
-      .post(url"$base/cis/govtalkstatus/get")
+      .post(endpoint)
       .withBody(Json.toJson(request))
       .execute[GetGovTalkStatusResponse]
       .map(Some(_))
@@ -235,6 +244,7 @@ class FormpProxyConnector @Inject() (
         case e: UpstreamErrorResponse if e.statusCode == NOT_FOUND =>
           None
       }
+  }
 
   def createGovTalkStatusRecord(request: CreateGovTalkStatusRecordRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
@@ -249,6 +259,30 @@ class FormpProxyConnector @Inject() (
   def updateGovTalkStatus(request: UpdateGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/govtalkstatus/update-status")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == 204) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+      }
+
+  def updateGovTalkStatusCorrelationId(
+    request: UpdateGovTalkStatusCorrelationIdRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/govtalkstatus/update-correlationID")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == 204) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+      }
+
+  def updateGovTalkStatusStatistics(
+    request: UpdateGovTalkStatusStatisticsRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/govtalkstatus/update-statistics")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>

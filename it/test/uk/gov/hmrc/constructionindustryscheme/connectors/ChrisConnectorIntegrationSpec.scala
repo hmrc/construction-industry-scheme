@@ -409,6 +409,7 @@ final class ChrisConnectorIntegrationSpec
       result.pollUrl mustBe None
       result.pollInterval mustBe None
       result.lastMessageDate mustBe Some("2025-01-05T00:00:00Z")
+      result.lastMessageDate mustBe Some("2025-01-05T00:00:00Z")
     }
   }
 

@@ -58,4 +58,7 @@ class AppConfig @Inject() (
 
   lazy val chrisGatewayUrl: String =
     servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.submit-url")
+
+  lazy val govTalkStatusStageQueryParamEnabled: Boolean =
+    config.getOptional[Boolean]("formpProxy.govTalkStatus.stageQueryParamEnabled").getOrElse(false)
 }
