@@ -295,7 +295,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 200 with STARTED when service returns StartedStatus" in {
       val submissionService = mock[SubmissionService]
-      val xmlValidator = mock[XmlValidator]
+      val xmlValidator      = mock[XmlValidator]
+
       val controller = mkController(
         submissionService = submissionService,
         xmlValidator = xmlValidator
@@ -305,21 +306,37 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
+
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
+
       when(xmlValidator.validate(any[NodeSeq]))
         .thenReturn(Success(()))
+
       when(
-        submissionService.initialiseGovTalkStatus(any[EmployerReference], any[String], any[String], any[String])(
-          any[HeaderCarrier]
-        )
-      ).thenReturn(Future.successful("instance-123"))
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
+
       when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
           val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+
           Future.successful(
             mkSubmissionResult(STARTED, Some(err)).copy(
-              meta = mkMeta(corrId = payload.correlationId, err = Some(err))
+              meta = mkMeta(
+                corrId = payload.correlationId,
+                ts = Some("2026-04-02T10:15:30Z"),
+                err = Some(err)
+              )
             )
           )
         }
@@ -331,9 +348,13 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       )
 
       status(result) mustBe OK
+
       val js = contentAsJson(result)
+
       (js \ "submissionId").as[String] mustBe submissionId
       (js \ "status").as[String] mustBe "STARTED"
+      (js \ "correlationId").as[String] must not be empty
+      (js \ "gatewayTimestamp").as[String] mustBe "2026-04-02T10:15:30Z"
       (js \ "error" \ "number").as[String] mustBe "1001"
       (js \ "error" \ "type").as[String] mustBe "recoverable"
       (js \ "error" \ "text").as[String] mustBe "recoverable error from ChRIS"
@@ -341,8 +362,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     "returns 200 with FATAL_ERROR when service returns FatalErrorStatus" in {
       val submissionService = mock[SubmissionService]
-      val xmlValidator = mock[XmlValidator]
-      val controller = mkController(
+      val xmlValidator      = mock[XmlValidator]
+      val controller        = mkController(
         submissionService = submissionService,
         xmlValidator = xmlValidator
       )
@@ -351,21 +372,37 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
+
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
+
       when(xmlValidator.validate(any[NodeSeq]))
         .thenReturn(Success(()))
+
       when(
-        submissionService.initialiseGovTalkStatus(any[EmployerReference], any[String], any[String], any[String])(
-          any[HeaderCarrier]
-        )
-      ).thenReturn(Future.successful("instance-123"))
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
+
       when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
           val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+
           Future.successful(
             mkSubmissionResult(FATAL_ERROR, Some(err)).copy(
-              meta = mkMeta(corrId = payload.correlationId, err = Some(err))
+              meta = mkMeta(
+                corrId = payload.correlationId,
+                ts = Some("2026-04-02T10:15:30Z"),
+                err = Some(err)
+              )
             )
           )
         }
@@ -377,6 +414,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       )
 
       status(result) mustBe OK
+
       val js = contentAsJson(result)
       (js \ "submissionId").as[String] mustBe submissionId
       (js \ "status").as[String] mustBe "FATAL_ERROR"
