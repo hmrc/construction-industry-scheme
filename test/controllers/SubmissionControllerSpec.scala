@@ -846,6 +846,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
               correlationId = "corr-123",
               pollUrl = Some(overridePollUrl),
               pollInterval = Some(10),
+              error = None,
+              irMarkReceived = None,
               lastMessageDate = None
             )
           )
@@ -891,6 +893,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             correlationId = "corr-123",
             pollUrl = None,
             pollInterval = None,
+            error = None,
+            irMarkReceived = None,
             lastMessageDate = None
           )
         )
