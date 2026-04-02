@@ -293,6 +293,98 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       verify(submissionService).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
     }
 
+    "returns 200 with STARTED when service returns StartedStatus" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator = mock[XmlValidator]
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      val err = GovTalkError("1001", "recoverable", "recoverable error from ChRIS")
+
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(xmlValidator.validate(any[NodeSeq]))
+        .thenReturn(Success(()))
+      when(
+        submissionService.initialiseGovTalkStatus(any[EmployerReference], any[String], any[String], any[String])(
+          any[HeaderCarrier]
+        )
+      ).thenReturn(Future.successful("instance-123"))
+      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+          Future.successful(
+            mkSubmissionResult(STARTED, Some(err)).copy(
+              meta = mkMeta(corrId = payload.correlationId, err = Some(err))
+            )
+          )
+        }
+
+      val result = controller.submitToChris(submissionId)(
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+      )
+
+      status(result) mustBe OK
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "STARTED"
+      (js \ "error" \ "number").as[String] mustBe "1001"
+      (js \ "error" \ "type").as[String] mustBe "recoverable"
+      (js \ "error" \ "text").as[String] mustBe "recoverable error from ChRIS"
+    }
+
+    "returns 200 with FATAL_ERROR when service returns FatalErrorStatus" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator = mock[XmlValidator]
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      val err = GovTalkError("9999", "fatal", "fatal error from ChRIS")
+
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(xmlValidator.validate(any[NodeSeq]))
+        .thenReturn(Success(()))
+      when(
+        submissionService.initialiseGovTalkStatus(any[EmployerReference], any[String], any[String], any[String])(
+          any[HeaderCarrier]
+        )
+      ).thenReturn(Future.successful("instance-123"))
+      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+          Future.successful(
+            mkSubmissionResult(FATAL_ERROR, Some(err)).copy(
+              meta = mkMeta(corrId = payload.correlationId, err = Some(err))
+            )
+          )
+        }
+
+      val result = controller.submitToChris(submissionId)(
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+      )
+
+      status(result) mustBe OK
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "FATAL_ERROR"
+      (js \ "error" \ "number").as[String] mustBe "9999"
+      (js \ "error" \ "type").as[String] mustBe "fatal"
+      (js \ "error" \ "text").as[String] mustBe "fatal error from ChRIS"
+    }
+
     "returns 400 when request JSON is invalid" in {
       val submissionService = mock[SubmissionService]
       val xmlValidator      = mock[XmlValidator]
