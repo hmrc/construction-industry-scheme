@@ -227,7 +227,7 @@ class MonthlyReturnService @Inject() (
     } yield ()
 
   def deleteUnsubmittedMonthlyReturn(request: DeleteUnsubmittedMonthlyReturnRequest)(implicit
-                                                                                     hc: HeaderCarrier
+    hc: HeaderCarrier
   ): Future[Unit] =
     formp.deleteUnsubmittedMonthlyReturn(request)
 
