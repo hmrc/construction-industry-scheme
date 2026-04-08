@@ -14,31 +14,17 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.response
+package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
 
-import java.time.LocalDateTime
-
-case class UnsubmittedMonthlyReturnsRow(
-  monthlyReturnId: Long,
+case class DeleteUnsubmittedMonthlyReturnRequest(
+  instanceId: String,
   taxYear: Int,
   taxMonth: Int,
-  returnType: String,
-  status: String,
-  lastUpdate: Option[LocalDateTime],
-  amendment: Option[String],
-  deletable: Boolean
+  amendment: String
 )
 
-object UnsubmittedMonthlyReturnsRow {
-  given format: OFormat[UnsubmittedMonthlyReturnsRow] = Json.format[UnsubmittedMonthlyReturnsRow]
-}
-
-case class UnsubmittedMonthlyReturnsResponse(
-  unsubmittedCisReturns: Seq[UnsubmittedMonthlyReturnsRow]
-)
-
-object UnsubmittedMonthlyReturnsResponse {
-  given format: OFormat[UnsubmittedMonthlyReturnsResponse] = Json.format[UnsubmittedMonthlyReturnsResponse]
+object DeleteUnsubmittedMonthlyReturnRequest {
+  given format: OFormat[DeleteUnsubmittedMonthlyReturnRequest] = Json.format[DeleteUnsubmittedMonthlyReturnRequest]
 }

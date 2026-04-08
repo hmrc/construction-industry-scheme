@@ -289,4 +289,18 @@ class FormpProxyConnector @Inject() (
         if (response.status == 204) Future.unit
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
+
+  def deleteUnsubmittedMonthlyReturn(
+    request: DeleteUnsubmittedMonthlyReturnRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/monthly-returns/unsubmitted/delete")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        response.status match {
+          case NO_CONTENT => Future.unit
+          case status     => Future.failed(UpstreamErrorResponse(response.body, status, status))
+        }
+      }
 }
