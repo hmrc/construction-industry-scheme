@@ -498,11 +498,14 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         val payload = UnsubmittedMonthlyReturnsResponse(
           unsubmittedCisReturns = Seq(
             UnsubmittedMonthlyReturnsRow(
+              monthlyReturnId = 3000L,
               taxYear = 2025,
               taxMonth = 1,
               returnType = "Nil",
               status = "STARTED",
-              lastUpdate = None
+              lastUpdate = None,
+              amendment = Some("Y"),
+              deletable = false
             )
           )
         )
@@ -963,6 +966,77 @@ class MonthlyReturnsControllerSpec extends SpecBase {
 
         status(result) mustBe INTERNAL_SERVER_ERROR
         contentAsJson(result) mustBe Json.obj("message" -> "Unexpected error")
+      }
+    }
+
+    "POST /monthly-returns/unsubmitted/delete (deleteUnsubmittedMonthlyReturn)" - {
+
+      "return 204 NoContent when service succeeds" in new SetupAuthOnly {
+        val reqBody = DeleteUnsubmittedMonthlyReturnRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          amendment = "Y"
+        )
+
+        when(mockMonthlyReturnService.deleteUnsubmittedMonthlyReturn(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(()))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.deleteUnsubmittedMonthlyReturn, request)
+
+        status(result) mustBe NO_CONTENT
+        verify(mockMonthlyReturnService).deleteUnsubmittedMonthlyReturn(eqTo(reqBody))(any[HeaderCarrier])
+      }
+
+      "return upstream status + message when service fails with UpstreamErrorResponse" in new SetupAuthOnly {
+        val reqBody = DeleteUnsubmittedMonthlyReturnRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          amendment = "Y"
+        )
+
+        val boom = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
+
+        when(mockMonthlyReturnService.deleteUnsubmittedMonthlyReturn(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(boom))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.deleteUnsubmittedMonthlyReturn, request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
+      }
+
+      "return 502 BadGateway with fixed message when service fails with NonFatal" in new SetupAuthOnly {
+        val reqBody = DeleteUnsubmittedMonthlyReturnRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          amendment = "Y"
+        )
+
+        when(mockMonthlyReturnService.deleteUnsubmittedMonthlyReturn(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("boom")))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.deleteUnsubmittedMonthlyReturn, request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "delete-unsubmitted-monthly-return-failed")
       }
     }
 
