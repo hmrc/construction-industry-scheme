@@ -58,6 +58,23 @@ class MonthlyReturnService @Inject() (
       )
     }
 
+  def getSubmittedMonthlyReturns(
+    cisId: String
+  )(implicit hc: HeaderCarrier): Future[SubmittedMonthlyReturnsResponse] =
+    formp.getUnsubmittedMonthlyReturns(cisId).map { unsubmitted =>
+      SubmittedMonthlyReturnsResponse(
+        unsubmittedCisReturns = unsubmitted.monthlyReturn.map { monthlyReturn =>
+          SubmittedMonthlyReturnsRow(
+            taxYear = monthlyReturn.taxYear,
+            taxMonth = monthlyReturn.taxMonth,
+            returnType = mapType(monthlyReturn.nilReturnIndicator),
+            status = mapStatus(monthlyReturn.status),
+            lastUpdate = monthlyReturn.lastUpdate
+          )
+        }
+      )
+    }
+
   def createNilMonthlyReturn(
     req: NilMonthlyReturnRequest
   )(implicit hc: HeaderCarrier): Future[CreateNilMonthlyReturnResponse] =
