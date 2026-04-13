@@ -17,25 +17,54 @@
 package uk.gov.hmrc.constructionindustryscheme.models.response
 
 import play.api.libs.json.{Json, OFormat}
-
-import java.time.LocalDateTime
-
-case class SubmittedMonthlyReturnsRow(
-  taxYear: Int,
-  taxMonth: Int,
-  returnType: String,
-  status: String,
-  lastUpdate: Option[LocalDateTime]
-)
-
-object SubmittedMonthlyReturnsRow {
-  given format: OFormat[SubmittedMonthlyReturnsRow] = Json.format[SubmittedMonthlyReturnsRow]
-}
+import java.time.Instant
 
 case class SubmittedMonthlyReturnsResponse(
-  unsubmittedCisReturns: Seq[SubmittedMonthlyReturnsRow]
+  scheme: SchemeData,
+  monthlyReturns: Seq[MonthlyReturnData],
+  submissions: Seq[SubmissionData]
 )
 
 object SubmittedMonthlyReturnsResponse {
   given format: OFormat[SubmittedMonthlyReturnsResponse] = Json.format[SubmittedMonthlyReturnsResponse]
+}
+
+case class SchemeData(
+  name: String,
+  taxOfficeNumber: String,
+  taxOfficeReference: String
+)
+
+object SchemeData {
+  given format: OFormat[SchemeData] = Json.format[SchemeData]
+}
+
+case class MonthlyReturnData(
+  monthlyReturnId: Long,
+  taxYear: Int,
+  taxMonth: Int,
+  nilReturnIndicator: String,
+  status: String,
+  supersededBy: Option[Long],
+  amendmentStatus: Option[String],
+  monthlyReturnItems: Option[String]
+)
+
+object MonthlyReturnData {
+  given format: OFormat[MonthlyReturnData] = Json.format[MonthlyReturnData]
+}
+
+case class SubmissionData(
+  submissionId: Long,
+  submissionType: Option[String],
+  activeObjectId: Option[Long],
+  status: String,
+  hmrcMarkGenerated: Option[String],
+  hmrcMarkGgis: Option[String],
+  emailRecipient: Option[String],
+  acceptedTime: Option[Instant]
+)
+
+object SubmissionData {
+  given format: OFormat[SubmissionData] = Json.format[SubmissionData]
 }
