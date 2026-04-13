@@ -21,20 +21,19 @@ import play.api.libs.json.{Json, OFormat}
 import java.time.LocalDateTime
 
 final case class VerificationBatch(
-                                    verificationBatchId: Long,
-                                    schemeId: Long,
-                                    verificationsCounter: Option[Long],
-                                    verifBatchResourceRef: Option[Long],
-                                    proceedSession: Option[String],
-                                    confirmArrangement: Option[String],
-                                    confirmCorrect: Option[String],
-                                    status: Option[String],
-                                    verificationNumber: Option[String],
-                                    createDate: Option[LocalDateTime],
-                                    lastUpdate: Option[LocalDateTime],
-                                    version: Option[Int]
-                                  )
+  verificationBatchId: Long,
+  schemeId: Long,
+  verificationsCounter: Option[Long],
+  verifBatchResourceRef: Option[Long],
+  proceedSession: Option[String],
+  confirmArrangement: Option[String],
+  confirmCorrect: Option[String],
+  status: Option[String],
+  verificationNumber: Option[String],
+  createDate: Option[LocalDateTime],
+  lastUpdate: Option[LocalDateTime],
+  version: Option[Int]
+)
 
 object VerificationBatch:
   given format: OFormat[VerificationBatch] = Json.format[VerificationBatch]
-

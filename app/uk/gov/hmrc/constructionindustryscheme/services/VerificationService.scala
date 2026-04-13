@@ -26,7 +26,9 @@ import scala.concurrent.Future
 @Singleton
 class VerificationService @Inject() (formpProxyConnector: FormpProxyConnector) {
 
-  def getNewestVerificationBatch(instanceId: String)(implicit hc: HeaderCarrier): Future[GetNewestVerificationBatchResponse] =
+  def getNewestVerificationBatch(instanceId: String)(implicit
+    hc: HeaderCarrier
+  ): Future[GetNewestVerificationBatchResponse] =
     formpProxyConnector.getNewestVerificationBatch(instanceId)
 
 }

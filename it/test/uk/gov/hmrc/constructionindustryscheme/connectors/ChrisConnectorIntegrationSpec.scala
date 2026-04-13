@@ -31,7 +31,7 @@ import uk.gov.hmrc.http.UpstreamErrorResponse
 import scala.xml.{Elem, XML}
 
 final class ChrisConnectorIntegrationSpec
-  extends Matchers
+    extends Matchers
     with ScalaFutures
     with IntegrationPatience
     with OptionValues
@@ -42,7 +42,6 @@ final class ChrisConnectorIntegrationSpec
 
   private lazy val xmlString: String = ItResources.read("chris/envelopes/nil_monthly_return.xml")
   private lazy val envelope: Elem    = XML.loadString(xmlString)
-
 
   "ChrisConnector.submitEnvelope" should {
 
@@ -119,8 +118,8 @@ final class ChrisConnectorIntegrationSpec
 
     "successfully parse acknowledgement response and return ACCEPTED" in {
       val correlationId = "poll-cid-ack"
-      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/endpoint"
-      val ackXml =
+      val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/endpoint"
+      val ackXml        =
         s"""<GovTalkMessage>
            |  <Header>
            |    <MessageDetails>
@@ -166,8 +165,8 @@ final class ChrisConnectorIntegrationSpec
 
     "successfully parse response and return SUBMITTED" in {
       val correlationId = "poll-cid-resp"
-      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/response"
-      val responseXml =
+      val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/response"
+      val responseXml   =
         s"""<GovTalkMessage>
            |  <Header>
            |    <MessageDetails>
@@ -201,8 +200,8 @@ final class ChrisConnectorIntegrationSpec
 
     "successfully parse fatal error response and return FATAL_ERROR" in {
       val correlationId = "poll-cid-fatal"
-      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/fatal"
-      val errorXml =
+      val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/fatal"
+      val errorXml      =
         s"""<GovTalkMessage>
            |  <Header>
            |    <MessageDetails>
@@ -245,8 +244,8 @@ final class ChrisConnectorIntegrationSpec
 
     "successfully parse business error response and return DEPARTMENTAL_ERROR" in {
       val correlationId = "poll-cid-biz"
-      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/business"
-      val errorXml =
+      val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/business"
+      val errorXml      =
         s"""<GovTalkMessage>
            |  <Header>
            |    <MessageDetails>
@@ -289,7 +288,7 @@ final class ChrisConnectorIntegrationSpec
 
     "return FATAL_ERROR when response is unparsable XML" in {
       val correlationId = "poll-cid-parse-err"
-      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/bad"
+      val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/bad"
 
       stubFor(
         post(urlPathEqualTo("/poll/bad"))
@@ -313,7 +312,7 @@ final class ChrisConnectorIntegrationSpec
 
     "return FATAL_ERROR when 500 error is returned" in {
       val correlationId = "poll-cid-500"
-      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/500"
+      val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/500"
 
       stubFor(
         post(urlPathEqualTo("/poll/500"))
@@ -336,7 +335,7 @@ final class ChrisConnectorIntegrationSpec
 
     "return FATAL_ERROR when 404 error is returned" in {
       val correlationId = "poll-cid-404"
-      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/404"
+      val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/404"
 
       stubFor(
         post(urlPathEqualTo("/poll/404"))
@@ -359,7 +358,7 @@ final class ChrisConnectorIntegrationSpec
 
     "return FATAL_ERROR on connection fault" in {
       val correlationId = "poll-cid-conn"
-      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/conn"
+      val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/conn"
 
       stubFor(
         post(urlPathEqualTo("/poll/conn"))
@@ -378,8 +377,8 @@ final class ChrisConnectorIntegrationSpec
 
     "handle response without pollUrl endpoint" in {
       val correlationId = "poll-cid-no-url"
-      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/no-url"
-      val responseXml =
+      val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/no-url"
+      val responseXml   =
         s"""<GovTalkMessage>
            |  <Header>
            |    <MessageDetails>
@@ -417,8 +416,8 @@ final class ChrisConnectorIntegrationSpec
 
     "send delete request to the same polling url and return Unit on 200" in {
       val correlationId = "delete-cid-123"
-      val pollPath = "/submission/ChRIS/poll/IR-CIS-CIS300MR/2"
-      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}$pollPath?final=SUBMITTED"
+      val pollPath      = "/submission/ChRIS/poll/IR-CIS-CIS300MR/2"
+      val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}$pollPath?final=SUBMITTED"
 
       val expectedRequestXml = ChrisDeleteRequest(correlationId).payload.toString
 

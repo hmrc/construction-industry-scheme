@@ -29,7 +29,7 @@ import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 
 class ChrisSubmissionSessionRepositorySpec
-  extends SpecBase
+    extends SpecBase
     with DefaultPlayMongoRepositorySupport[ChrisSubmissionSessionData]
     with ScalaFutures
     with IntegrationPatience
@@ -90,7 +90,7 @@ class ChrisSubmissionSessionRepositorySpec
       repository.upsert(sessionData).futureValue
 
       repository.delete(sessionData.submissionId).futureValue shouldBe true
-      repository.get(sessionData.submissionId).futureValue shouldBe None
+      repository.get(sessionData.submissionId).futureValue    shouldBe None
     }
 
     "deleting non-existent record returns true" in {

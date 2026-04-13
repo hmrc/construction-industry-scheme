@@ -27,11 +27,11 @@ import javax.inject.Inject
 import scala.concurrent.ExecutionContext
 
 class VerificationController @Inject() (
-                                         authorise: AuthAction,
-                                         verificationService: VerificationService,
-                                         cc: ControllerComponents
-                                       )(implicit ec: ExecutionContext)
-  extends BackendController(cc)
+  authorise: AuthAction,
+  verificationService: VerificationService,
+  cc: ControllerComponents
+)(implicit ec: ExecutionContext)
+    extends BackendController(cc)
     with Logging {
 
   def getNewestVerificationBatch(instanceId: String): Action[AnyContent] =

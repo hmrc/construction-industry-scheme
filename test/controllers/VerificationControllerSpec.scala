@@ -38,9 +38,9 @@ import scala.concurrent.Future
 class VerificationControllerSpec extends SpecBase with EitherValues {
 
   private def mockController(
-                              verificationService: VerificationService,
-                              auth: AuthAction = fakeAuthAction()
-                            ): VerificationController =
+    verificationService: VerificationService,
+    auth: AuthAction = fakeAuthAction()
+  ): VerificationController =
     new VerificationController(auth, verificationService, cc)
 
   "getNewestVerificationBatch" - {
