@@ -1415,7 +1415,7 @@ class FormpProxyConnectorIntegrationSpec
            |      "supersededBy": null
            |    }
            |  ],
-           |  "mrSubmission": [
+           |  "monthlyReturnSubmission": [
            |    {
            |      "submissionId": 556,
            |      "submissionType": "MONTHLY_RETURN",
@@ -1462,7 +1462,7 @@ class FormpProxyConnectorIntegrationSpec
 
       (outJson \ "submission")(0).\("submissionId").as[Long] mustBe 555L
       (outJson \ "monthlyReturn")(0).\("monthlyReturnId").as[Long] mustBe 777L
-      (outJson \ "mrSubmission")(0).\("submissionId").as[Long] mustBe 556L
+      (outJson \ "monthlyReturnSubmission")(0).\("submissionId").as[Long] mustBe 556L
     }
 
     "fail the future when upstream returns a non-2xx (e.g. 500)" in {

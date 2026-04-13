@@ -39,7 +39,7 @@ final class VerificationServiceSpec extends SpecBase {
       verifications = Seq.empty,
       submission = Seq.empty,
       monthlyReturn = Seq.empty,
-      mrSubmission = Seq.empty
+      monthlyReturnSubmission = Seq.empty
     )
 
     "delegates to FormpProxyConnector and returns response" in {

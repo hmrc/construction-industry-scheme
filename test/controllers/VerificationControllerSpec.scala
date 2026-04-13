@@ -183,7 +183,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             supersededBy = None
           )
         ),
-        mrSubmission = Seq(
+        monthlyReturnSubmission = Seq(
           Submission(
             submissionId = 556L,
             submissionType = "MONTHLY_RETURN",
@@ -228,7 +228,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       (json \ "submission")(0).\("submissionId").as[Long] mustBe 555L
       (json \ "monthlyReturn")(0).\("monthlyReturnId").as[Long] mustBe 777L
-      (json \ "mrSubmission")(0).\("submissionId").as[Long] mustBe 556L
+      (json \ "monthlyReturnSubmission")(0).\("submissionId").as[Long] mustBe 556L
 
       json mustBe Json.toJson(response)
 
