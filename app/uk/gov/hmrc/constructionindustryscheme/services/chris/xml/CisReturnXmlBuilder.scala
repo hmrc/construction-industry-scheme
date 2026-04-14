@@ -16,8 +16,8 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services.chris.xml
 
-import uk.gov.hmrc.constructionindustryscheme.models.{ChrisPersonName, ChrisStandardMonthlyReturn, ChrisStandardSubcontractor, MonthlyReturnType, Partnership, SoleTrader, SubcontractorType}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisSubmissionRequest
+import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeConstants
 import uk.gov.hmrc.constructionindustryscheme.utils.Normalise.*
 

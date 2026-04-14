@@ -38,7 +38,7 @@ class MonthlyReturnsControllerIntegrationSpec
   "GET /cis/taxpayer" should {
 
     "return 200 with {CisTaxpayer} when authorised and datacache proxy succeeds" in {
-      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
+      AuthStub.authorisedWithCisEnrolment()
 
       stubFor(
         post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer"))
@@ -79,7 +79,7 @@ class MonthlyReturnsControllerIntegrationSpec
     }
 
     "return 404 when contractor not found on datacache proxy" in {
-      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
+      AuthStub.authorisedWithCisEnrolment()
 
       stubFor(
         post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer/instance-id"))
@@ -104,7 +104,7 @@ class MonthlyReturnsControllerIntegrationSpec
     }
 
     "bubble up 5xx from datacache proxy (e.g. 502)" in {
-      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
+      AuthStub.authorisedWithCisEnrolment()
 
       stubFor(
         post(urlPathEqualTo("/rds-datacache-proxy/cis-taxpayer"))
@@ -125,7 +125,7 @@ class MonthlyReturnsControllerIntegrationSpec
   "GET /cis/monthly-returns?cisId=..." should {
 
     "return 200 with wrapper when authorised and formp proxy succeeds" in {
-      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
+      AuthStub.authorisedWithCisEnrolment()
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-returns"))
@@ -160,7 +160,7 @@ class MonthlyReturnsControllerIntegrationSpec
     }
 
     "return 400 when cisId query param is missing" in {
-      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
+      AuthStub.authorisedWithCisEnrolment()
 
       val resp = getJson(
         monthlyReturnsUrl,
@@ -198,7 +198,7 @@ class MonthlyReturnsControllerIntegrationSpec
   "POST /cis/monthly-returns/nil/create" should {
 
     "return 200 with MonthlyReturn when FormP succeeds" in {
-      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
+      AuthStub.authorisedWithCisEnrolment()
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-returns"))
@@ -246,7 +246,7 @@ class MonthlyReturnsControllerIntegrationSpec
     }
 
     "bubble up error when FormP fails" in {
-      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
+      AuthStub.authorisedWithCisEnrolment()
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-returns"))

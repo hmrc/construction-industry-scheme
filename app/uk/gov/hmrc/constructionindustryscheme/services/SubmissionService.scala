@@ -46,7 +46,7 @@ class SubmissionService @Inject() (
   def updateSubmission(req: UpdateSubmissionRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.updateSubmission(req)
 
-  def submitToChris(payload: BuiltSubmissionPayload)(implicit hc: HeaderCarrier): Future[SubmissionResult] =
+  def submitToChris(payload: ChRISSubmission)(implicit hc: HeaderCarrier): Future[SubmissionResult] =
     chrisConnector.submitEnvelope(payload.envelope, payload.correlationId)
 
   def sendSuccessfulEmail(submissionId: String, request: SendSuccessEmailRequest)(implicit

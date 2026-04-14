@@ -16,10 +16,10 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
-sealed trait ClientListStatus
+sealed trait ClientListStatus { val asString: String }
 object ClientListStatus {
-  case object InitiateDownload extends ClientListStatus
-  case object InProgress extends ClientListStatus
-  case object Succeeded extends ClientListStatus
-  case object Failed extends ClientListStatus
+  case object InitiateDownload extends ClientListStatus { val asString = "initiate-download" }
+  case object InProgress extends ClientListStatus { val asString = "in-progress" }
+  case object Succeeded extends ClientListStatus { val asString = "succeeded" }
+  case object Failed extends ClientListStatus { val asString = "failed" }
 }

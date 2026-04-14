@@ -19,7 +19,7 @@ package models
 import base.SpecBase
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.should.Matchers.shouldBe
-import uk.gov.hmrc.constructionindustryscheme.models.BuiltSubmissionPayload
+import uk.gov.hmrc.constructionindustryscheme.models.ChRISSubmission
 
 import scala.xml.Elem
 
@@ -30,13 +30,13 @@ class BuiltSubmissionPayloadSpec extends SpecBase {
     "correctly construct and compare instances" in {
       val envelope: Elem   = <envelope><id>1</id></envelope>
       val irEnvelope: Elem = <irEnvelope><mark>X</mark></irEnvelope>
-      val payload1         = BuiltSubmissionPayload(
+      val payload1         = ChRISSubmission(
         envelope = envelope,
         correlationId = "abc123",
         irMark = "mark456",
         irEnvelope = irEnvelope
       )
-      val payload2         = BuiltSubmissionPayload(
+      val payload2         = ChRISSubmission(
         envelope = envelope,
         correlationId = "abc123",
         irMark = "mark456",

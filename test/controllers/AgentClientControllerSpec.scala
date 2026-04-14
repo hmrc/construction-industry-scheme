@@ -40,7 +40,7 @@ class AgentClientControllerSpec extends SpecBase {
   val credId = "cred-123"
 
   private val mockedCache              = mock[AgentClientRepository]
-  val mockAuthAction: AuthAction       = FakeAuthAction.withEnrolments(Set.empty, bodyParsers, Some(credId))
+  val mockAuthAction: AuthAction       = FakeAuthAction.withEnrolments(Set.empty, bodyParsers, credId)
   val mockAuthConnector: AuthConnector = mock[AuthConnector]
 
   trait Setup {
@@ -73,11 +73,12 @@ class AgentClientControllerSpec extends SpecBase {
     "throw exception when mongo is down" in new Setup {
 
       val request: FakeRequest[AnyContentAsRaw] =
-        FakeRequest(POST, routes.AgentClientController.save("id").url).withRawBody(ByteString(nextBytes(512001)))
+        FakeRequest(POST, routes.AgentClientController.save("id").url)
+          .withRawBody(ByteString(nextBytes(51200)))
+          .withHeaders(CONTENT_TYPE -> JSON)
       val result: Future[Result]                = route(application, request).value
 
       status(result) mustBe BAD_REQUEST
-
     }
   }
 
