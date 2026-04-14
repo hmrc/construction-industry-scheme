@@ -58,7 +58,7 @@ case class SubmissionData(
   submissionId: Long,
   submissionType: Option[String],
   activeObjectId: Option[Long],
-  status: String,
+  status: Option[String],
   hmrcMarkGenerated: Option[String],
   hmrcMarkGgis: Option[String],
   emailRecipient: Option[String],

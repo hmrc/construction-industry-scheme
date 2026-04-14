@@ -86,7 +86,7 @@ class MonthlyReturnService @Inject() (
             submissionId = s.submissionId,
             submissionType = Some(s.submissionType),
             activeObjectId = s.activeObjectId,
-            status = mapStatus(s.status),
+            status = s.status,
             hmrcMarkGenerated = s.hmrcMarkGenerated,
             hmrcMarkGgis = s.hmrcMarkGgis,
             emailRecipient = s.emailRecipient,
