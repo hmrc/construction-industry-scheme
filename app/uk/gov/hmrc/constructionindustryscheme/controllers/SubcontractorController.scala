@@ -35,32 +35,30 @@ class SubcontractorController @Inject() (
     extends BackendController(cc)
     with Logging {
 
-  def createAndUpdateSubcontractor(): Action[JsValue] =
-    authorise(parse.json).async { implicit request =>
-      request.body
-        .validate[CreateAndUpdateSubcontractorRequest]
-        .fold(
-          errs => Future.successful(BadRequest(JsError.toJson(errs))),
-          request =>
-            subcontractorService
-              .createAndUpdateSubcontractor(request)
-              .map(resp => NoContent)
-              .recover { case ex =>
-                logger.error("[createAndUpdateSubcontractor] formp-proxy create failed", ex)
-                BadGateway(Json.obj("message" -> "create-and-update-subcontractor-failed"))
-              }
-        )
-    }
+  def createAndUpdateSubcontractor(): Action[JsValue] = authorise(parse.json).async { implicit request =>
+    request.body
+      .validate[CreateAndUpdateSubcontractorRequest]
+      .fold(
+        errs => Future.successful(BadRequest(JsError.toJson(errs))),
+        subcontractorRequest =>
+          subcontractorService
+            .createAndUpdateSubcontractor(subcontractorRequest)
+            .map(resp => NoContent)
+            .recover { case ex =>
+              logger.error("[createAndUpdateSubcontractor] formp-proxy create failed", ex)
+              BadGateway(Json.obj("message" -> "create-and-update-subcontractor-failed"))
+            }
+      )
+  }
 
-  def getSubcontractorUTRs(cisId: String): Action[AnyContent] =
-    authorise.async { implicit request =>
-      subcontractorService
-        .getSubcontractorUTRs(cisId)
-        .map(subcontractorUTRs => Ok(Json.obj("subcontractorUTRs" -> subcontractorUTRs)))
-        .recover { case ex =>
-          logger.error("[getSubcontractorUTRs] formp-proxy get failed", ex)
-          BadGateway(Json.obj("message" -> "get-subcontractorUTRs-failed"))
-        }
-    }
+  def getSubcontractorUTRs(cisId: String): Action[AnyContent] = authorise.async { implicit request =>
+    subcontractorService
+      .getSubcontractorUTRs(cisId)
+      .map(subcontractorUTRs => Ok(Json.obj("subcontractorUTRs" -> subcontractorUTRs)))
+      .recover { case ex =>
+        logger.error("[getSubcontractorUTRs] formp-proxy get failed", ex)
+        BadGateway(Json.obj("message" -> "get-subcontractorUTRs-failed"))
+      }
+  }
 
 }

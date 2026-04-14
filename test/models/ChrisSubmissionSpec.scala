@@ -14,19 +14,18 @@
  * limitations under the License.
  */
 
-package services.chris
+package models
 
 import base.SpecBase
-import org.scalatestplus.mockito.MockitoSugar
 import org.mockito.Mockito.*
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.should.Matchers.{should, shouldBe}
+import org.scalatestplus.mockito.MockitoSugar
 import uk.gov.hmrc.auth.core.*
-import uk.gov.hmrc.constructionindustryscheme.models.MonthlyReturnType
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionEnvelopeBuilder
+import uk.gov.hmrc.constructionindustryscheme.models.{ChRISSubmission, MonthlyReturnType}
 
-class ChrisSubmissionEnvelopeBuilderSpec extends SpecBase with Matchers with MockitoSugar {
+class ChrisSubmissionSpec extends SpecBase with Matchers with MockitoSugar {
 
   private def fakeEnrolments(taxOfficeNumber: String, taxOfficeReference: String): Enrolments = {
     val identifiers = Seq(
@@ -55,12 +54,9 @@ class ChrisSubmissionEnvelopeBuilderSpec extends SpecBase with Matchers with Moc
       standard = None
     )
 
-    val correlationId = "test-corr-id"
+    val payload = ChRISSubmission.buildPayload(submissionRequest, authRequest)
 
-    val payload = ChrisSubmissionEnvelopeBuilder.buildPayload(submissionRequest, authRequest, correlationId)
-
-    payload.correlationId shouldBe correlationId
-    payload.irMark.length   should be > 0
+    payload.irMark.length should be > 0
 
     (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeNumber").map(_.text).getOrElse("")    shouldBe "123"
     (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeReference").map(_.text).getOrElse("") shouldBe "ABC456"
@@ -87,12 +83,9 @@ class ChrisSubmissionEnvelopeBuilderSpec extends SpecBase with Matchers with Moc
       standard = None
     )
 
-    val correlationId = "agent-corr-id"
+    val payload = ChRISSubmission.buildPayload(submissionRequest, authRequest)
 
-    val payload = ChrisSubmissionEnvelopeBuilder.buildPayload(submissionRequest, authRequest, correlationId)
-
-    payload.correlationId shouldBe correlationId
-    payload.irMark.length   should be > 0
+    payload.irMark.length should be > 0
 
     (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeNumber").map(_.text).getOrElse("")    shouldBe "999"
     (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeReference").map(_.text).getOrElse("") shouldBe "XYZ123"
@@ -121,7 +114,7 @@ class ChrisSubmissionEnvelopeBuilderSpec extends SpecBase with Matchers with Moc
     )
 
     val thrown = intercept[IllegalStateException] {
-      ChrisSubmissionEnvelopeBuilder.buildPayload(submissionRequest, authRequest, "corr-id")
+      ChRISSubmission.buildPayload(submissionRequest, authRequest)
     }
 
     thrown.getMessage should include("Missing CIS enrolment identifiers")
@@ -129,13 +122,40 @@ class ChrisSubmissionEnvelopeBuilderSpec extends SpecBase with Matchers with Moc
 
   "parsePeriodEnd throws for invalid date" in {
     val thrown = intercept[IllegalArgumentException] {
-      ChrisSubmissionEnvelopeBuilder.parsePeriodEnd("wrong-format")
+      ChRISSubmission.parsePeriodEnd("wrong-format")
     }
     thrown.getMessage should include("Invalid monthYear")
   }
 
   "extractTaxOfficeFromCisEnrolment returns None if identifiers missing" in {
     val enrolments = Enrolments(Set.empty)
-    ChrisSubmissionEnvelopeBuilder.extractTaxOfficeFromCisEnrolment(enrolments) shouldBe None
+    ChRISSubmission.extractTaxOfficeFromCisEnrolment(enrolments) shouldBe None
   }
+
+//  "buildEnvelope should build envelope with correlationId, keys, periodEnd, sender and include cisReturn" in {
+//    val cisReturn: Node = <CISreturn>
+//      <Test>ok</Test>
+//    </CISreturn>
+//
+//    val xml: Elem = ChRISSubmission.buildEnvelope(
+//      taxOfficeNumber = "123",
+//      taxOfficeReference = "ABC456",
+//      correlationId = "corr-id",
+//      gatewayTimestamp = "2025-05-01T12:00:00",
+//      periodEnd = "2025-05-05",
+//      sender = "Company",
+//      cisReturn = cisReturn
+//    )
+//
+//    (xml \\ "CorrelationID").text mustBe "corr-id"
+//
+//    val keys = xml \\ "Key"
+//    keys.find(_ \@ "Type" == "TaxOfficeNumber").map(_.text).getOrElse("") mustBe "123"
+//    keys.find(_ \@ "Type" == "TaxOfficeReference").map(_.text).getOrElse("") mustBe "ABC456"
+//
+//    (xml \\ "PeriodEnd").text mustBe "2025-05-05"
+//    (xml \\ "Sender").text mustBe "Company"
+//
+//    (xml \\ "CISreturn" \\ "Test").text mustBe "ok"
+//  }
 }

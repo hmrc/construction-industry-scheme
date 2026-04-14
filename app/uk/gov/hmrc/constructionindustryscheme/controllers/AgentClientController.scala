@@ -17,13 +17,14 @@
 package uk.gov.hmrc.constructionindustryscheme.controllers
 
 import play.api.Logging
+import play.api.libs.json.JsValue
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.repositories.AgentClientRepository
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 @Singleton
 class AgentClientController @Inject() (
@@ -34,21 +35,23 @@ class AgentClientController @Inject() (
     extends BackendController(cc)
     with Logging {
 
-  def save(id: String): Action[AnyContent] = authenticate.async { request =>
-    request.body.asJson.map { jsValue =>
-      repository.upsert(id, jsValue).map(_ => Ok)
-    } getOrElse Future.successful(BadRequest("Cannot parse json"))
+  def save(id: String): Action[JsValue] = authenticate.async(parse.json) { request =>
+    repository
+      .upsert(id, request.body)
+      .map(_ => Ok)
+      .recover(_ => BadRequest("Cannot parse json"))
   }
 
   def get(id: String): Action[AnyContent] = authenticate.async { _ =>
-    repository.get(id).map { response =>
-      response.map(Ok(_)).getOrElse(NotFound)
+    repository.get(id) map {
+      case Some(result) => Ok(result)
+      case None         => NotFound
     }
   }
 
   def remove(id: String): Action[AnyContent] = authenticate.async { _ =>
-    repository.remove(id).map { response =>
-      if response then Ok else InternalServerError
+    repository.remove(id) map { result =>
+      if result then Ok else InternalServerError
     }
   }
 }

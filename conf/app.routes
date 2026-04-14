@@ -8,8 +8,8 @@ POST       /monthly-returns/update                                       uk.gov.
 POST       /monthly-returns/standard/create                              uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createMonthlyReturn
 POST       /monthly-returns-edit                                         uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getMonthlyReturnForEdit
 POST       /monthly-return-item/sync                                     uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.syncSelectedSubcontractors
-POST       /monthly-return-item/delete                                   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.deleteMonthlyReturnItem
-POST       /monthly-return-item/update                                   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.updateMonthlyReturnItem
+POST       /monthly-return-item/delete                                   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.deleteMonthlyReturnItem()
+POST       /monthly-return-item/update                                   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.updateMonthlyReturnItem()
 GET        /scheme/email/:instanceId                                     uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getSchemeEmail(instanceId: String)
 GET        /scheme/:instanceId                                           uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.getContractorScheme(instanceId: String)
 
