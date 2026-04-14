@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models.response
 
+import play.api.libs.json.JsValue
 import uk.gov.hmrc.constructionindustryscheme.models.SubmissionStatus
 
 case class ChrisPollResponse(
@@ -23,5 +24,7 @@ case class ChrisPollResponse(
   correlationId: String,
   pollUrl: Option[String],
   pollInterval: Option[Int],
+  error: Option[JsValue],
+  irMarkReceived: Option[String],
   lastMessageDate: Option[String]
 )

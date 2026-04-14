@@ -29,6 +29,8 @@ class ChrisPollResponseSpec extends AnyWordSpec with Matchers {
         correlationId = "corr-123",
         pollUrl = Some("/poll/123"),
         pollInterval = Some(10),
+        error = None,
+        irMarkReceived = None,
         lastMessageDate = Some("2025-01-01T00:00:00Z")
       )
 

@@ -185,6 +185,8 @@ final class SubmissionServiceSpec extends SpecBase {
         correlationId = correlation,
         pollUrl = Some("/poll/999"),
         pollInterval = Some(20),
+        error = None,
+        irMarkReceived = None,
         lastMessageDate = Some("2025-01-02T00:00:00Z")
       )
 
@@ -311,6 +313,8 @@ final class SubmissionServiceSpec extends SpecBase {
         correlationId = "corr-actual",
         pollUrl = Some("/poll/999"),
         pollInterval = Some(20),
+        error = None,
+        irMarkReceived = None,
         lastMessageDate = Some("2025-01-02T00:00:00Z")
       )
 
