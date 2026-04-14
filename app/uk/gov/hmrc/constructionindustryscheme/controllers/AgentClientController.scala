@@ -39,7 +39,6 @@ class AgentClientController @Inject() (
     repository
       .upsert(id, request.body)
       .map(_ => Ok)
-      .recover(_ => BadRequest("Cannot parse json"))
   }
 
   def get(id: String): Action[AnyContent] = authenticate.async { _ =>
