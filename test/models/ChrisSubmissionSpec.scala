@@ -131,31 +131,4 @@ class ChrisSubmissionSpec extends SpecBase with Matchers with MockitoSugar {
     val enrolments = Enrolments(Set.empty)
     ChRISSubmission.extractTaxOfficeFromCisEnrolment(enrolments) shouldBe None
   }
-
-//  "buildEnvelope should build envelope with correlationId, keys, periodEnd, sender and include cisReturn" in {
-//    val cisReturn: Node = <CISreturn>
-//      <Test>ok</Test>
-//    </CISreturn>
-//
-//    val xml: Elem = ChRISSubmission.buildEnvelope(
-//      taxOfficeNumber = "123",
-//      taxOfficeReference = "ABC456",
-//      correlationId = "corr-id",
-//      gatewayTimestamp = "2025-05-01T12:00:00",
-//      periodEnd = "2025-05-05",
-//      sender = "Company",
-//      cisReturn = cisReturn
-//    )
-//
-//    (xml \\ "CorrelationID").text mustBe "corr-id"
-//
-//    val keys = xml \\ "Key"
-//    keys.find(_ \@ "Type" == "TaxOfficeNumber").map(_.text).getOrElse("") mustBe "123"
-//    keys.find(_ \@ "Type" == "TaxOfficeReference").map(_.text).getOrElse("") mustBe "ABC456"
-//
-//    (xml \\ "PeriodEnd").text mustBe "2025-05-05"
-//    (xml \\ "Sender").text mustBe "Company"
-//
-//    (xml \\ "CISreturn" \\ "Test").text mustBe "ok"
-//  }
 }
