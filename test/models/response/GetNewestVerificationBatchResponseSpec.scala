@@ -73,6 +73,7 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
             prePopSuccessful = Some("Y"),
             subcontractorCounter = Some(10),
             verificationBatchCounter = Some(2),
+            createDate = Some(Instant.parse("2026-01-01T10:00:00Z")),
             lastUpdate = Some(Instant.parse("2026-01-01T10:00:00Z")),
             version = Some(1)
           )
@@ -228,6 +229,7 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
       (scheme0 \ "prePopSuccessful").as[String] mustBe "Y"
       (scheme0 \ "subcontractorCounter").as[Int] mustBe 10
       (scheme0 \ "verificationBatchCounter").as[Int] mustBe 2
+      (scheme0 \ "createDate").as[String] mustBe "2026-01-01T10:00:00Z"
       (scheme0 \ "lastUpdate").as[String] mustBe "2026-01-01T10:00:00Z"
       (scheme0 \ "version").as[Int] mustBe 1
 
