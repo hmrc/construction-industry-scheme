@@ -899,7 +899,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       addressLine3 = None,
       addressLine4 = None,
       country = None,
-      postCode = None,
+      postcode = None,
       emailAddress = None,
       phoneNumber = None,
       mobilePhoneNumber = None,

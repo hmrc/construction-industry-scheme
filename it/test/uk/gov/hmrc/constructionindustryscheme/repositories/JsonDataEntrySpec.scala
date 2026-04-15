@@ -26,30 +26,31 @@ class JsonDataEntrySpec extends SpecBase {
   import uk.gov.hmrc.constructionindustryscheme.repositories.JsonDataEntry.given
 
   "JsonDataEntry serializes to JSON" in {
-    val now = Instant.parse("2024-05-01T10:15:30.123Z")
+    val now   = Instant.parse("2024-05-01T10:15:30.123Z")
     val entry = JsonDataEntry("foo", Json.obj("a" -> 1, "b" -> "bar"), now)
-    val json = Json.toJson(entry)
+    val json  = Json.toJson(entry)
 
-    (json \ "id").as[String] shouldBe "foo"
-    (json \ "data").as[JsValue] shouldBe Json.obj("a" -> 1, "b" -> "bar")
+    (json \ "id").as[String]           shouldBe "foo"
+    (json \ "data").as[JsValue]        shouldBe Json.obj("a" -> 1, "b" -> "bar")
     (json \ "lastUpdated").as[Instant] shouldBe now
   }
 
   "JsonDataEntry deserializes from JSON" in {
     val now = Instant.parse("2024-05-01T13:55:01.001Z")
-    val js = Json.obj(
-      "id" -> "random",
-      "data" -> Json.obj("x" -> 5),
+    val js  = Json.obj(
+      "id"          -> "random",
+      "data"        -> Json.obj("x" -> 5),
       "lastUpdated" -> now
     )
 
     val result = js.validate[JsonDataEntry]
     result.isSuccess shouldBe true
-    result.get shouldBe JsonDataEntry("random", Json.obj("x" -> 5), now)
+    result.get       shouldBe JsonDataEntry("random", Json.obj("x" -> 5), now)
   }
 
   "Format is symmetrical (round-trip)" in {
-    val entry = JsonDataEntry("rt", Json.obj("qq" -> 999), Instant.now.truncatedTo(java.time.temporal.ChronoUnit.MILLIS))
+    val entry  =
+      JsonDataEntry("rt", Json.obj("qq" -> 999), Instant.now.truncatedTo(java.time.temporal.ChronoUnit.MILLIS))
     val parsed = Json.fromJson[JsonDataEntry](Json.toJson(entry)).get
     parsed shouldBe entry
   }

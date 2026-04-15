@@ -34,3 +34,5 @@ GET        /subcontractors/utr/:cisId                                    uk.gov.
 GET           /user-cache/agent-client/:id                            uk.gov.hmrc.constructionindustryscheme.controllers.AgentClientController.get(id: String)
 POST          /user-cache/agent-client/:id                            uk.gov.hmrc.constructionindustryscheme.controllers.AgentClientController.save(id: String)
 DELETE        /user-cache/agent-client/:id                            uk.gov.hmrc.constructionindustryscheme.controllers.AgentClientController.remove(id: String)
+
+GET           /verification-batch/newest/:instanceId              uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getNewestVerificationBatch(instanceId: String)

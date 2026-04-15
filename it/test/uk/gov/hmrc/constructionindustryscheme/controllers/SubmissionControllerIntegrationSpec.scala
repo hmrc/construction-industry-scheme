@@ -36,16 +36,16 @@ class SubmissionControllerIntegrationSpec
 
   private val submissionId              = "sub-123"
   private val validRequestJson: JsValue = Json.obj(
-    "utr" -> "1234567890",
-    "aoReference" -> "754PT00002240",
-    "informationCorrect" -> "yes",
-    "inactivity" -> "yes",
-    "monthYear" -> "2025-09",
-    "email" -> "test@test.com",
-    "isAgent" -> false,
+    "utr"                   -> "1234567890",
+    "aoReference"           -> "754PT00002240",
+    "informationCorrect"    -> "yes",
+    "inactivity"            -> "yes",
+    "monthYear"             -> "2025-09",
+    "email"                 -> "test@test.com",
+    "isAgent"               -> false,
     "clientTaxOfficeNumber" -> "",
-    "clientTaxOfficeRef" -> "",
-    "returnType" -> "monthlyNilReturn"
+    "clientTaxOfficeRef"    -> "",
+    "returnType"            -> "monthlyNilReturn"
   )
 
   private val createUrl                    = s"$base/submissions/create"

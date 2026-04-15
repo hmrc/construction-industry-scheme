@@ -289,4 +289,11 @@ class FormpProxyConnector @Inject() (
         if (response.status == 204) Future.unit
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
+
+  def getNewestVerificationBatch(
+    instanceId: String
+  )(implicit hc: HeaderCarrier): Future[GetNewestVerificationBatchResponse] =
+    http
+      .get(url"$base/cis/verification-batch/newest/$instanceId")
+      .execute[GetNewestVerificationBatchResponse]
 }

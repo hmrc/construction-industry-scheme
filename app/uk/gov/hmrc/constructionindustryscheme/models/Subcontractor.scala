@@ -38,7 +38,7 @@ case class Subcontractor(
   addressLine3: Option[String],
   addressLine4: Option[String],
   country: Option[String],
-  postCode: Option[String],
+  postcode: Option[String],
   emailAddress: Option[String],
   phoneNumber: Option[String],
   mobilePhoneNumber: Option[String],
