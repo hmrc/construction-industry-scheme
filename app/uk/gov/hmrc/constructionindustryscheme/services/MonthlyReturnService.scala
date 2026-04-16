@@ -16,16 +16,15 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services
 
-import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, Subcontractor, UnsubmittedMonthlyReturnStatus, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
-import java.time.{Instant, LocalDateTime, ZoneOffset, ZonedDateTime}
-import scala.concurrent.Future
+import java.time.{LocalDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class MonthlyReturnService @Inject() (
