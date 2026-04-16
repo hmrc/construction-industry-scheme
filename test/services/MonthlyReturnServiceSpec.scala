@@ -290,8 +290,42 @@ class MonthlyReturnServiceSpec extends SpecBase {
           taxOfficeReference = "AB0063"
         ),
         monthlyReturn = Seq(
-          MonthlyReturn(1L, 2025, 1, nilReturnIndicator = Some("Y"), status = Some("PENDING"), lastUpdate = last),
-          MonthlyReturn(2L, 2025, 2, nilReturnIndicator = Some("N"), status = Some("REJECTED"), lastUpdate = None)
+          MonthlyReturn(
+            1L,
+            2025,
+            1,
+            nilReturnIndicator = Some("Y"),
+            status = Some("PENDING"),
+            lastUpdate = last,
+            amendment = Some("Y")
+          ),
+          MonthlyReturn(
+            2L,
+            2025,
+            2,
+            nilReturnIndicator = Some("N"),
+            status = Some("REJECTED"),
+            lastUpdate = None,
+            amendment = Some("N")
+          ),
+          MonthlyReturn(
+            3L,
+            2025,
+            3,
+            nilReturnIndicator = Some("N"),
+            status = Some("STARTED"),
+            lastUpdate = None,
+            amendment = Some("N")
+          ),
+          MonthlyReturn(
+            4L,
+            2025,
+            4,
+            nilReturnIndicator = Some("N"),
+            status = Some("VALIDATED"),
+            lastUpdate = None,
+            amendment = Some("N")
+          )
         )
       )
 
@@ -302,8 +336,10 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
       out mustBe UnsubmittedMonthlyReturnsResponse(
         unsubmittedCisReturns = Seq(
-          UnsubmittedMonthlyReturnsRow(2025, 1, "Nil", "Awaiting confirmation", last),
-          UnsubmittedMonthlyReturnsRow(2025, 2, "Standard", "Failed", None)
+          UnsubmittedMonthlyReturnsRow(1L, 2025, 1, "Nil", "Awaiting confirmation", last, Some("Y"), false),
+          UnsubmittedMonthlyReturnsRow(2L, 2025, 2, "Standard", "Failed", None, Some("N"), false),
+          UnsubmittedMonthlyReturnsRow(3L, 2025, 3, "Standard", "In Progress", None, Some("N"), true),
+          UnsubmittedMonthlyReturnsRow(4L, 2025, 4, "Standard", "In Progress", None, Some("N"), true)
         )
       )
 
@@ -867,6 +903,52 @@ class MonthlyReturnServiceSpec extends SpecBase {
       service.updateMonthlyReturnItem(req).futureValue
 
       verify(formpProxy).updateMonthlyReturnItem(any())(any())
+    }
+  }
+
+  "deleteUnsubmittedMonthlyReturn" - {
+
+    "returns the response from formp" in {
+      val s = setup
+      import s._
+
+      val request = DeleteUnsubmittedMonthlyReturnRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "Y"
+      )
+
+      when(formpProxy.deleteUnsubmittedMonthlyReturn(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.deleteUnsubmittedMonthlyReturn(request).futureValue
+
+      verify(formpProxy).deleteUnsubmittedMonthlyReturn(eqTo(request))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp" in {
+      val s = setup
+      import s._
+
+      val request = DeleteUnsubmittedMonthlyReturnRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "Y"
+      )
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.deleteUnsubmittedMonthlyReturn(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.deleteUnsubmittedMonthlyReturn(request).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).deleteUnsubmittedMonthlyReturn(eqTo(request))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
     }
   }
 

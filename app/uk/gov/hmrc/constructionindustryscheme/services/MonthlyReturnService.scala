@@ -45,11 +45,14 @@ class MonthlyReturnService @Inject() (
       UnsubmittedMonthlyReturnsResponse(
         unsubmittedCisReturns = unsubmitted.monthlyReturn.map { monthlyReturn =>
           UnsubmittedMonthlyReturnsRow(
+            monthlyReturnId = monthlyReturn.monthlyReturnId,
             taxYear = monthlyReturn.taxYear,
             taxMonth = monthlyReturn.taxMonth,
             returnType = mapType(monthlyReturn.nilReturnIndicator),
             status = mapStatus(monthlyReturn.status),
-            lastUpdate = monthlyReturn.lastUpdate
+            lastUpdate = monthlyReturn.lastUpdate,
+            amendment = monthlyReturn.amendment,
+            deletable = isDeletable(monthlyReturn.status)
           )
         }
       )
@@ -223,6 +226,11 @@ class MonthlyReturnService @Inject() (
       _ <- formp.updateMonthlyReturnItem(proxyRequest)
     } yield ()
 
+  def deleteUnsubmittedMonthlyReturn(request: DeleteUnsubmittedMonthlyReturnRequest)(implicit
+    hc: HeaderCarrier
+  ): Future[Unit] =
+    formp.deleteUnsubmittedMonthlyReturn(request)
+
   private def mapType(nilReturnIndicator: Option[String]): String =
     if (nilReturnIndicator.exists(_.trim.equalsIgnoreCase("Y"))) "Nil"
     else "Standard"
@@ -230,4 +238,8 @@ class MonthlyReturnService @Inject() (
   private def mapStatus(raw: Option[String]): String =
     UnsubmittedMonthlyReturnStatus.fromRaw(raw).asText
 
+  private def isDeletable(status: Option[String]): Boolean = status match {
+    case Some("STARTED") | Some("VALIDATED") => true
+    case _                                   => false
+  }
 }
