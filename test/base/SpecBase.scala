@@ -29,7 +29,7 @@ import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.mvc.{AnyContent, AnyContentAsEmpty, BodyParser, ControllerComponents, PlayBodyParsers, Request, Result, Results}
 import play.api.test.{DefaultAwaitTimeout, FakeRequest}
-import play.api.test.Helpers.stubControllerComponents
+import play.api.test.Helpers.{CONTENT_TYPE, JSON, stubControllerComponents}
 import uk.gov.hmrc.auth.core.{Enrolment, EnrolmentIdentifier, Enrolments}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.CisTaxpayer
@@ -60,7 +60,7 @@ trait SpecBase
       .build()
 
   val cc: ControllerComponents                         = stubControllerComponents()
-  val fakeRequest: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
+  val fakeRequest: FakeRequest[AnyContentAsEmpty.type] = FakeRequest().withHeaders(CONTENT_TYPE -> JSON)
   val bodyParsers: PlayBodyParsers                     = app.injector.instanceOf[PlayBodyParsers]
 
   implicit val hc: HeaderCarrier               = HeaderCarrier()
@@ -122,14 +122,13 @@ trait SpecBase
 
   def createAuthReq(
     request: FakeRequest[_] = fakeRequest,
-    internalId: String = "internalId-123",
+    credId: String = "credId-123",
     session: SessionId = SessionId("session-123"),
     enrols: Enrolments = Enrolments(Set(cisEnrolment()))
   ): AuthenticatedRequest[_] =
     AuthenticatedRequest(
       request = request,
-      internalId = internalId,
-      sessionId = session,
-      enrolments = enrols
-    )
+      enrolments = enrols,
+      credentialId = credId
+    )(HeaderCarrier(sessionId = Some(SessionId("sessionId"))))
 }

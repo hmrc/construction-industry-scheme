@@ -19,21 +19,21 @@ package uk.gov.hmrc.constructionindustryscheme.controllers
 import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
-import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
+import uk.gov.hmrc.constructionindustryscheme.actions.{AgentAction, AuthAction}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, NilMonthlyReturnRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
-import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
+import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import uk.gov.hmrc.play.http.HeaderCarrierConverter
 
-import scala.concurrent.{ExecutionContext, Future}
 import javax.inject.Inject
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 class MonthlyReturnsController @Inject() (
   authorise: AuthAction,
+  isAgent: AgentAction,
   service: MonthlyReturnService,
   clientListService: ClientListService,
   val cc: ControllerComponents
@@ -41,50 +41,33 @@ class MonthlyReturnsController @Inject() (
     extends BackendController(cc)
     with Logging {
 
-  def getCisClientTaxpayer(taxOfficeNumber: String, taxOfficeReference: String): Action[AnyContent] = authorise.async {
-    implicit request =>
-      given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
-
-      val agentIdOpt = request.enrolments.getEnrolment("IR-PAYE-AGENT").flatMap(_.getIdentifier("IRAgentReference"))
-
-      (request.credentialId, agentIdOpt) match {
-        case (Some(credId), Some(agentIdEnrolment)) =>
-          clientListService
-            .hasClient(taxOfficeNumber, taxOfficeReference, agentIdEnrolment.value, credId)
-            .flatMap { hasClient =>
-              if (hasClient) {
-                service
-                  .getCisTaxpayer(EmployerReference(taxOfficeNumber, taxOfficeReference))
-                  .map(tp => Ok(Json.toJson(tp)))
-                  .recover {
-                    case u: UpstreamErrorResponse if u.statusCode == NOT_FOUND =>
-                      NotFound(Json.obj("message" -> "CIS taxpayer not found"))
-                    case u: UpstreamErrorResponse                              =>
-                      Status(u.statusCode)(Json.obj("message" -> u.message))
-                    case t: Throwable                                          =>
-                      logger.error("[getCisClientTaxpayer] failed", t)
-                      InternalServerError(Json.obj("message" -> "Unexpected error"))
-                  }
-              } else {
-                Future.successful(Forbidden(Json.obj("error" -> "Client not found")))
+  def getCisClientTaxpayer(taxOfficeNumber: String, taxOfficeReference: String): Action[AnyContent] =
+    (authorise andThen isAgent).async { implicit request =>
+      clientListService
+        .hasClient(taxOfficeNumber, taxOfficeReference, request.agentId, request.credentialId)
+        .flatMap { hasClient =>
+          if (hasClient) {
+            service
+              .getCisTaxpayer(EmployerReference(taxOfficeNumber, taxOfficeReference))
+              .map(tp => Ok(Json.toJson(tp)))
+              .recover {
+                case u: UpstreamErrorResponse if u.statusCode == NOT_FOUND =>
+                  NotFound(Json.obj("message" -> "CIS taxpayer not found"))
+                case u: UpstreamErrorResponse                              =>
+                  Status(u.statusCode)(Json.obj("message" -> u.message))
+                case t: Throwable                                          =>
+                  logger.error("[getCisClientTaxpayer] failed", t)
+                  InternalServerError(Json.obj("message" -> "Unexpected error"))
               }
-            }
-            .recover { case e: Exception =>
-              logger.error(s"[getCisClientTaxpayer] error checking client: ${e.getMessage}", e)
-              InternalServerError(Json.obj("error" -> "Failed to check client"))
-            }
-
-        case (None, _) =>
-          Future.successful(
-            Forbidden(Json.obj("error" -> "credentialId is missing from session"))
-          )
-
-        case (_, None) =>
-          Future.successful(
-            Forbidden(Json.obj("error" -> "IR-PAYE-AGENT enrolment with IRAgentReference is missing"))
-          )
-      }
-  }
+          } else {
+            Future.successful(Forbidden(Json.obj("error" -> "Client not found")))
+          }
+        }
+        .recover { case e: Exception =>
+          logger.error(s"[getCisClientTaxpayer] error checking client: ${e.getMessage}", e)
+          InternalServerError(Json.obj("error" -> "Failed to check client"))
+        }
+    }
 
   def getCisTaxpayer: Action[AnyContent] = authorise.async { implicit request =>
     val enrolmentsOpt: Option[EmployerReference] =
@@ -118,7 +101,7 @@ class MonthlyReturnsController @Inject() (
     cisId match {
       case Some(id) if id.trim.nonEmpty =>
         service
-          .getAllMonthlyReturnsByCisId(id)
+          .getAllMonthlyReturnsByCisId(id.trim)
           .map(res => Ok(Json.toJson(res)))
           .recover {
             case u: UpstreamErrorResponse =>
@@ -152,7 +135,6 @@ class MonthlyReturnsController @Inject() (
   }
 
   def createNil(): Action[JsValue] = authorise.async(parse.json) { implicit request =>
-    given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
     request.body
       .validate[NilMonthlyReturnRequest]
       .fold(
@@ -166,7 +148,6 @@ class MonthlyReturnsController @Inject() (
   }
 
   def updateMonthlyReturn(): Action[JsValue] = authorise.async(parse.json) { implicit request =>
-    given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
     request.body
       .validate[UpdateMonthlyReturnRequest]
       .fold(
@@ -199,6 +180,7 @@ class MonthlyReturnsController @Inject() (
         }
     }
 
+  // TODO no check that the email belongs to the requesting user?
   def getSchemeEmail(instanceId: String): Action[AnyContent] = authorise.async { implicit request =>
     service
       .getSchemeEmail(instanceId)
@@ -206,7 +188,7 @@ class MonthlyReturnsController @Inject() (
       .recover {
         case u: UpstreamErrorResponse =>
           Status(u.statusCode)(Json.obj("message" -> u.message))
-        case t: Throwable             =>
+        case NonFatal(t)              =>
           logger.error("[getSchemeEmail] failed", t)
           InternalServerError(Json.obj("message" -> "Unexpected error"))
       }
@@ -241,7 +223,7 @@ class MonthlyReturnsController @Inject() (
         }
     }
 
-  def deleteMonthlyReturnItem: Action[DeleteMonthlyReturnItemRequest] =
+  def deleteMonthlyReturnItem(): Action[DeleteMonthlyReturnItemRequest] =
     authorise.async(parse.json[DeleteMonthlyReturnItemRequest]) { implicit request =>
       service
         .deleteMonthlyReturnItem(request.body)
@@ -256,7 +238,7 @@ class MonthlyReturnsController @Inject() (
         }
     }
 
-  def updateMonthlyReturnItem: Action[UpdateMonthlyReturnItemRequest] =
+  def updateMonthlyReturnItem(): Action[UpdateMonthlyReturnItemRequest] =
     authorise.async(parse.json[UpdateMonthlyReturnItemRequest]) { implicit request =>
       service
         .updateMonthlyReturnItem(request.body)

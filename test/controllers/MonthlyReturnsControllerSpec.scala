@@ -16,7 +16,7 @@
 
 package controllers
 
-import actions.FakeAuthAction
+import actions.{FakeAgentAction, FakeAuthAction}
 import base.SpecBase
 import org.mockito.ArgumentMatchers
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
@@ -27,9 +27,9 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.*
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController
-import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
-import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
@@ -38,14 +38,15 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class MonthlyReturnsControllerSpec extends SpecBase {
 
+  val taxOfficeNumber    = "123"
+  val taxOfficeReference = "AB456"
+  val irAgentId          = "SA123456"
+  val credId             = "cred-123"
+  val agentAction        = FakeAgentAction(irAgentId)
+
   "MonthlyReturnsController" - {
 
     "GET /cis/client/taxpayer/:taxOfficeNumber/:taxOfficeReference (getCisClientTaxpayer)" - {
-
-      val taxOfficeNumber    = "123"
-      val taxOfficeReference = "AB456"
-      val irAgentId          = "SA123456"
-      val credId             = "cred-123"
 
       "return 200 with taxpayer when client exists and service resolves it (happy path)" in {
         val mockMonthlyReturnService = mock[MonthlyReturnService]
@@ -71,9 +72,10 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           .thenReturn(Future.successful(taxpayer))
 
         val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
-        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
+        val controller =
+          new MonthlyReturnsController(authAction, agentAction, mockMonthlyReturnService, mockClientListService, cc)
 
-        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+        val result: Future[Result] = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
 
         status(result) mustBe OK
         contentAsJson(result) mustBe Json.toJson(taxpayer)
@@ -105,9 +107,10 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           .thenReturn(Future.successful(false))
 
         val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
-        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
+        val controller =
+          new MonthlyReturnsController(authAction, agentAction, mockMonthlyReturnService, mockClientListService, cc)
 
-        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+        val result: Future[Result] = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
 
         status(result) mustBe FORBIDDEN
         contentAsJson(result) mustBe Json.obj("error" -> "Client not found")
@@ -144,9 +147,10 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           .thenReturn(Future.failed(UpstreamErrorResponse("not found", NOT_FOUND)))
 
         val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
-        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
+        val controller =
+          new MonthlyReturnsController(authAction, agentAction, mockMonthlyReturnService, mockClientListService, cc)
 
-        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+        val result: Future[Result] = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
 
         status(result) mustBe NOT_FOUND
         (contentAsJson(result) \ "message").as[String].toLowerCase must include("not found")
@@ -175,9 +179,10 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           .thenReturn(Future.failed(UpstreamErrorResponse("boom from upstream", BAD_GATEWAY)))
 
         val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
-        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
+        val controller =
+          new MonthlyReturnsController(authAction, agentAction, mockMonthlyReturnService, mockClientListService, cc)
 
-        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+        val result: Future[Result] = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
 
         status(result) mustBe BAD_GATEWAY
         (contentAsJson(result) \ "message").as[String] must include("boom from upstream")
@@ -206,62 +211,13 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           .thenReturn(Future.failed(new RuntimeException("unexpected-exception")))
 
         val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
-        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
+        val controller =
+          new MonthlyReturnsController(authAction, agentAction, mockMonthlyReturnService, mockClientListService, cc)
 
-        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+        val result: Future[Result] = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
 
         status(result) mustBe INTERNAL_SERVER_ERROR
         (contentAsJson(result) \ "message").as[String] must equal("Unexpected error")
-      }
-
-      "return 403 Forbidden when credentialId is missing" in {
-        val mockMonthlyReturnService = mock[MonthlyReturnService]
-        val mockClientListService    = mock[ClientListService]
-
-        val authAction = FakeAuthAction.withEnrolments(
-          Set(
-            uk.gov.hmrc.auth.core.Enrolment(
-              key = "IR-PAYE-AGENT",
-              identifiers = Seq(uk.gov.hmrc.auth.core.EnrolmentIdentifier("IRAgentReference", irAgentId)),
-              state = "Activated"
-            )
-          ),
-          bodyParsers,
-          credId = None
-        )
-        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
-
-        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
-
-        status(result) mustBe FORBIDDEN
-        contentAsJson(result) mustBe Json.obj("error" -> "credentialId is missing from session")
-        verify(mockClientListService, never()).hasClient(
-          any[String],
-          any[String],
-          any[String],
-          any[String],
-          any[scala.concurrent.duration.FiniteDuration]
-        )(using any[HeaderCarrier])
-      }
-
-      "return 403 Forbidden when IR-PAYE-AGENT enrolment is missing" in {
-        val mockMonthlyReturnService = mock[MonthlyReturnService]
-        val mockClientListService    = mock[ClientListService]
-
-        val authAction = FakeAuthAction.withEnrolments(Set.empty, bodyParsers, Some(credId))
-        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
-
-        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
-
-        status(result) mustBe FORBIDDEN
-        contentAsJson(result) mustBe Json.obj("error" -> "IR-PAYE-AGENT enrolment with IRAgentReference is missing")
-        verify(mockClientListService, never()).hasClient(
-          any[String],
-          any[String],
-          any[String],
-          any[String],
-          any[scala.concurrent.duration.FiniteDuration]
-        )(using any[HeaderCarrier])
       }
 
       "return 500 InternalServerError when hasClient service fails" in {
@@ -280,9 +236,10 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           .thenReturn(Future.failed(UpstreamErrorResponse("Service error", 500, 500)))
 
         val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
-        val controller = new MonthlyReturnsController(authAction, mockMonthlyReturnService, mockClientListService, cc)
+        val controller =
+          new MonthlyReturnsController(authAction, agentAction, mockMonthlyReturnService, mockClientListService, cc)
 
-        val result = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+        val result: Future[Result] = controller.getCisClientTaxpayer(taxOfficeNumber, taxOfficeReference)(fakeRequest)
 
         status(result) mustBe INTERNAL_SERVER_ERROR
         contentAsJson(result) mustBe Json.obj("error" -> "Failed to check client")
@@ -292,7 +249,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
     "GET /cis/taxpayer (getCisTaxpayer)" - {
 
       "return 200 with {cisId} when service resolves it (happy path)" in new SetupWithEnrolmentReference {
-        val taxpayer = mkTaxpayer()
+        val taxpayer: CisTaxpayer = mkTaxpayer()
         when(mockMonthlyReturnService.getCisTaxpayer(any[EmployerReference])(any[HeaderCarrier]))
           .thenReturn(Future.successful(taxpayer))
 
@@ -304,7 +261,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
       }
 
       "return 400 when datacache says not found" in new SetupAuthOnly {
-        val result = controller.getCisTaxpayer(fakeRequest)
+        val result: Future[Result] = controller.getCisTaxpayer(fakeRequest)
 
         status(result) mustBe BAD_REQUEST
         (contentAsJson(result) \ "message").as[String] mustBe "Missing CIS enrolment identifiers"
@@ -316,7 +273,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         when(mockMonthlyReturnService.getCisTaxpayer(any[EmployerReference])(any[HeaderCarrier]))
           .thenReturn(Future.failed(UpstreamErrorResponse("not found", NOT_FOUND)))
 
-        val result = controller.getCisTaxpayer(fakeRequest)
+        val result: Future[Result] = controller.getCisTaxpayer(fakeRequest)
         status(result) mustBe NOT_FOUND
         (contentAsJson(result) \ "message").as[String].toLowerCase must include("not found")
       }
@@ -325,7 +282,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         when(mockMonthlyReturnService.getCisTaxpayer(any[EmployerReference])(any[HeaderCarrier]))
           .thenReturn(Future.failed(UpstreamErrorResponse("boom from upstream", BAD_GATEWAY)))
 
-        val result = controller.getCisTaxpayer(fakeRequest)
+        val result: Future[Result] = controller.getCisTaxpayer(fakeRequest)
         status(result) mustBe BAD_GATEWAY
         (contentAsJson(result) \ "message").as[String] must include("boom from upstream")
       }
@@ -334,7 +291,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         when(mockMonthlyReturnService.getCisTaxpayer(any[EmployerReference])(any[HeaderCarrier]))
           .thenReturn(Future.failed(new RuntimeException("unexpected-exception")))
 
-        val result = controller.getCisTaxpayer(fakeRequest)
+        val result: Future[Result] = controller.getCisTaxpayer(fakeRequest)
         status(result) mustBe INTERNAL_SERVER_ERROR
         (contentAsJson(result) \ "message").as[String] must equal("Unexpected error")
       }
@@ -513,7 +470,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         when(mockMonthlyReturnService.getUnsubmittedMonthlyReturns(eqTo(instanceId))(any[HeaderCarrier]))
           .thenReturn(Future.successful(payload))
 
-        val result = controller.getUnsubmittedMonthlyReturns(instanceId)(fakeRequest)
+        val result: Future[Result] = controller.getUnsubmittedMonthlyReturns(instanceId)(fakeRequest)
 
         status(result) mustBe OK
         contentAsJson(result) mustBe Json.toJson(payload)
@@ -521,7 +478,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
       }
 
       "return 400 when instanceId is blank" in new SetupAuthOnly {
-        val result = controller.getUnsubmittedMonthlyReturns("   ")(fakeRequest)
+        val result: Future[Result] = controller.getUnsubmittedMonthlyReturns("   ")(fakeRequest)
 
         status(result) mustBe BAD_REQUEST
         (contentAsJson(result) \ "message").as[String] mustBe "Missing 'cisId'"
@@ -534,7 +491,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         when(mockMonthlyReturnService.getUnsubmittedMonthlyReturns(eqTo(instanceId))(any[HeaderCarrier]))
           .thenReturn(Future.failed(UpstreamErrorResponse("boom from upstream", BAD_GATEWAY)))
 
-        val result = controller.getUnsubmittedMonthlyReturns(instanceId)(fakeRequest)
+        val result: Future[Result] = controller.getUnsubmittedMonthlyReturns(instanceId)(fakeRequest)
 
         status(result) mustBe BAD_GATEWAY
         (contentAsJson(result) \ "message").as[String] must include("boom from upstream")
@@ -546,7 +503,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         when(mockMonthlyReturnService.getUnsubmittedMonthlyReturns(eqTo(instanceId))(any[HeaderCarrier]))
           .thenReturn(Future.failed(new RuntimeException("boom")))
 
-        val result = controller.getUnsubmittedMonthlyReturns(instanceId)(fakeRequest)
+        val result: Future[Result] = controller.getUnsubmittedMonthlyReturns(instanceId)(fakeRequest)
 
         status(result) mustBe INTERNAL_SERVER_ERROR
         (contentAsJson(result) \ "message").as[String] mustBe "Unexpected error"
@@ -560,8 +517,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         when(mockMonthlyReturnService.createNilMonthlyReturn(any[NilMonthlyReturnRequest])(any[HeaderCarrier]))
           .thenReturn(Future.successful(expectedResponse))
 
-        val payload                = NilMonthlyReturnRequest("CIS-123", 2024, 3, "Y", "Y")
-        val result: Future[Result] = controller.createNil()(fakeRequest.withBody(Json.toJson(payload)))
+        val payload = NilMonthlyReturnRequest("CIS-123", 2024, 3, "Y", "Y")
+        val result  = controller.createNil()(fakeRequest.withBody(Json.toJson(payload)))
 
         status(result) mustBe CREATED
         contentAsJson(result) mustBe Json.toJson(expectedResponse)
@@ -577,8 +534,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         when(mockMonthlyReturnService.createNilMonthlyReturn(any[NilMonthlyReturnRequest])(any[HeaderCarrier]))
           .thenReturn(Future.failed(UpstreamErrorResponse("boom", BAD_GATEWAY)))
 
-        val payload                = NilMonthlyReturnRequest("CIS-123", 2024, 3, "Y", "Y")
-        val result: Future[Result] = controller.createNil()(fakeRequest.withBody(Json.toJson(payload)))
+        val payload = NilMonthlyReturnRequest("CIS-123", 2024, 3, "Y", "Y")
+        val result  = controller.createNil()(fakeRequest.withBody(Json.toJson(payload)))
 
         status(result) mustBe BAD_GATEWAY
       }
@@ -606,7 +563,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(reqBody))
 
-        val result = call(controller.getMonthlyReturnForEdit, request)
+        val result: Future[Result] = call(controller.getMonthlyReturnForEdit, request)
 
         status(result) mustBe OK
         contentAsJson(result) mustBe Json.toJson(payload)
@@ -625,7 +582,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(reqBody))
 
-        val result = call(controller.getMonthlyReturnForEdit, request)
+        val result: Future[Result] = call(controller.getMonthlyReturnForEdit, request)
 
         status(result) mustBe BAD_GATEWAY
         contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
@@ -643,7 +600,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(reqBody))
 
-        val result = call(controller.getMonthlyReturnForEdit, request)
+        val result: Future[Result] = call(controller.getMonthlyReturnForEdit, request)
 
         status(result) mustBe INTERNAL_SERVER_ERROR
         contentAsJson(result) mustBe Json.obj("message" -> "Unexpected error")
@@ -668,7 +625,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(reqBody))
 
-        val result = call(controller.syncSelectedSubcontractors, request)
+        val result: Future[Result] = call(controller.syncSelectedSubcontractors, request)
 
         status(result) mustBe NO_CONTENT
         verify(mockMonthlyReturnService).syncMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier])
@@ -692,7 +649,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(reqBody))
 
-        val result = call(controller.syncSelectedSubcontractors, request)
+        val result: Future[Result] = call(controller.syncSelectedSubcontractors, request)
 
         status(result) mustBe BAD_GATEWAY
         contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
@@ -714,7 +671,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(reqBody))
 
-        val result = call(controller.syncSelectedSubcontractors, request)
+        val result: Future[Result] = call(controller.syncSelectedSubcontractors, request)
 
         status(result) mustBe BAD_GATEWAY
         contentAsJson(result) mustBe Json.obj("message" -> "sync-selected-subcontractors-failed")
@@ -739,7 +696,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(reqBody))
 
-        val result = call(controller.deleteMonthlyReturnItem, request)
+        val result: Future[Result] = call(controller.deleteMonthlyReturnItem(), request)
 
         status(result) mustBe NO_CONTENT
         verify(mockMonthlyReturnService).deleteMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier])
@@ -763,7 +720,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(reqBody))
 
-        val result = call(controller.deleteMonthlyReturnItem, request)
+        val result: Future[Result] = call(controller.deleteMonthlyReturnItem(), request)
 
         status(result) mustBe BAD_GATEWAY
         contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
@@ -785,7 +742,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(reqBody))
 
-        val result = call(controller.deleteMonthlyReturnItem, request)
+        val result: Future[Result] = call(controller.deleteMonthlyReturnItem(), request)
 
         status(result) mustBe BAD_GATEWAY
         contentAsJson(result) mustBe Json.obj("message" -> "delete-monthly-return-item-failed")
@@ -814,7 +771,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(reqBody))
 
-        val result = call(controller.updateMonthlyReturnItem, request)
+        val result: Future[Result] = call(controller.updateMonthlyReturnItem(), request)
 
         status(result) mustBe NO_CONTENT
         verify(mockMonthlyReturnService).updateMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier])
@@ -842,7 +799,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(reqBody))
 
-        val result = call(controller.updateMonthlyReturnItem, request)
+        val result: Future[Result] = call(controller.updateMonthlyReturnItem(), request)
 
         status(result) mustBe BAD_GATEWAY
         contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
@@ -868,7 +825,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(reqBody))
 
-        val result = call(controller.updateMonthlyReturnItem, request)
+        val result: Future[Result] = call(controller.updateMonthlyReturnItem(), request)
 
         status(result) mustBe INTERNAL_SERVER_ERROR
         contentAsJson(result) mustBe Json.obj("message" -> "Unexpected error")
@@ -897,7 +854,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(payload))
 
-        val result = call(controller.updateMonthlyReturn(), request)
+        val result: Future[Result] = call(controller.updateMonthlyReturn(), request)
 
         status(result) mustBe NO_CONTENT
         verify(mockMonthlyReturnService).updateMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
@@ -909,7 +866,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.obj("bad" -> "json"))
 
-        val result = call(controller.updateMonthlyReturn(), request)
+        val result: Future[Result] = call(controller.updateMonthlyReturn(), request)
 
         status(result) mustBe BAD_REQUEST
         contentAsJson(result) mustBe Json.obj("message" -> "Invalid payload")
@@ -936,7 +893,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(payload))
 
-        val result = call(controller.updateMonthlyReturn(), request)
+        val result: Future[Result] = call(controller.updateMonthlyReturn(), request)
 
         status(result) mustBe BAD_GATEWAY
         contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
@@ -962,7 +919,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
             .withHeaders("Content-Type" -> "application/json")
             .withBody(Json.toJson(payload))
 
-        val result = call(controller.updateMonthlyReturn(), request)
+        val result: Future[Result] = call(controller.updateMonthlyReturn(), request)
 
         status(result) mustBe INTERNAL_SERVER_ERROR
         contentAsJson(result) mustBe Json.obj("message" -> "Unexpected error")
@@ -1066,11 +1023,13 @@ class MonthlyReturnsControllerSpec extends SpecBase {
 
   private trait SetupWithEnrolmentReference extends BaseSetup {
     private val auth: AuthAction = fakeAuthAction(ton = "123", tor = "AB456")
-    val controller               = new MonthlyReturnsController(auth, mockMonthlyReturnService, mockClientListService, cc)
+    val controller               =
+      new MonthlyReturnsController(auth, agentAction, mockMonthlyReturnService, mockClientListService, cc)
   }
 
   private trait SetupAuthOnly extends BaseSetup {
     private val auth: AuthAction = noEnrolmentReferenceAuthAction
-    val controller               = new MonthlyReturnsController(auth, mockMonthlyReturnService, mockClientListService, cc)
+    val controller               =
+      new MonthlyReturnsController(auth, agentAction, mockMonthlyReturnService, mockClientListService, cc)
   }
 }

@@ -43,13 +43,13 @@ class ChrisSubmissionSessionDataSpec extends SpecBase {
 
     val json = Json.toJson(data)
 
-    (json \ "submissionId").as[String] shouldBe "sub-123"
-    (json \ "instanceId").as[String] shouldBe "instance-123"
-    (json \ "correlationId").as[String] shouldBe "corr-123"
-    (json \ "lastMessageDate").as[Instant] shouldBe now
-    (json \ "numPolls").as[Int] shouldBe 3
-    (json \ "pollInterval").as[Int] shouldBe 10
-    (json \ "pollUrl").as[String] shouldBe "/poll/123"
+    (json \ "submissionId").as[String]                       shouldBe "sub-123"
+    (json \ "instanceId").as[String]                         shouldBe "instance-123"
+    (json \ "correlationId").as[String]                      shouldBe "corr-123"
+    (json \ "lastMessageDate").as[Instant]                   shouldBe now
+    (json \ "numPolls").as[Int]                              shouldBe 3
+    (json \ "pollInterval").as[Int]                          shouldBe 10
+    (json \ "pollUrl").as[String]                            shouldBe "/poll/123"
     (json \ "govTalkStatus").asOpt[GetGovTalkStatusResponse] shouldBe None
   }
 
@@ -70,7 +70,7 @@ class ChrisSubmissionSessionDataSpec extends SpecBase {
     val result = json.validate[ChrisSubmissionSessionData]
 
     result.isSuccess shouldBe true
-    result.get shouldBe ChrisSubmissionSessionData(
+    result.get       shouldBe ChrisSubmissionSessionData(
       submissionId = "sub-456",
       instanceId = "instance-456",
       correlationId = "corr-456",

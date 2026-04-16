@@ -32,7 +32,7 @@ import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 import java.time.Instant
 
 class AgentClientRepositorySpec
-  extends SpecBase
+    extends SpecBase
     with DefaultPlayMongoRepositorySupport[AgentClientData]
     with ScalaFutures
     with IntegrationPatience
@@ -43,7 +43,7 @@ class AgentClientRepositorySpec
   private def newRepository(toggle: Boolean): AgentClientRepository = {
     val app = GuiceApplicationBuilder()
       .configure(
-        "encryptionToggle" -> toggle,
+        "encryptionToggle"      -> toggle,
         "agentClientCrypto.key" -> "Bk/WzqlUJk4/M279rO+BJYVtLkRq4lxH9Wn2A0k9lqo="
       )
       .overrides(
@@ -55,7 +55,7 @@ class AgentClientRepositorySpec
 
   private val userAnswersJson: JsValue =
     Json.obj("uniqueId" -> 123, "taxOfficeNumber" -> 345, "taxOfficeReference" -> "AB123")
-  private val userAnswersCache =
+  private val userAnswersCache         =
     AgentClientData(
       "id",
       userAnswersJson.toString(),
@@ -63,8 +63,8 @@ class AgentClientRepositorySpec
     )
 
   "with crypto" - {
-    val repository = newRepository(true)
-    val cryptoKey = "Bk/WzqlUJk4/M279rO+BJYVtLkRq4lxH9Wn2A0k9lqo="
+    val repository                       = newRepository(true)
+    val cryptoKey                        = "Bk/WzqlUJk4/M279rO+BJYVtLkRq4lxH9Wn2A0k9lqo="
     val crypto: Encrypter with Decrypter = SymmetricCryptoFactory.aesGcmCrypto(cryptoKey)
 
     "upsert" - {
@@ -76,7 +76,7 @@ class AgentClientRepositorySpec
 
       "encrypt the payload in db" in {
         repository.upsert(userAnswersCache.id, userAnswersJson).futureValue
-        val raw = mongoComponent.database
+        val raw       = mongoComponent.database
           .getCollection[BsonDocument]("agent-client-records")
           .find()
           .headOption()
@@ -95,7 +95,7 @@ class AgentClientRepositorySpec
   }
 
   "without crypto" - {
-    val repository = newRepository(false)
+    val repository       = newRepository(false)
     val userAnswersCache = AgentClientData("id2", userAnswersJson.toString, Instant.now)
 
     "upsert" - {
@@ -107,7 +107,7 @@ class AgentClientRepositorySpec
 
       "stores plain JSON in db" in {
         repository.upsert(userAnswersCache.id, userAnswersJson).futureValue
-        val raw = mongoComponent.database
+        val raw     = mongoComponent.database
           .getCollection[BsonDocument]("agent-client-records")
           .find()
           .headOption()
@@ -144,7 +144,7 @@ class AgentClientRepositorySpec
     val repository = newRepository(false)
     "persists and updates lastUpdated timestamp" in {
       repository.upsert(userAnswersCache.id, userAnswersJson).futureValue
-      val raw = mongoComponent.database
+      val raw      = mongoComponent.database
         .getCollection[BsonDocument]("agent-client-records")
         .find()
         .headOption()

@@ -18,12 +18,31 @@ package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.mvc.{Request, WrappedRequest}
 import uk.gov.hmrc.auth.core.Enrolments
-import uk.gov.hmrc.http.SessionId
+import uk.gov.hmrc.http.{HeaderCarrier, SessionId, UnauthorizedException}
 
 case class AuthenticatedRequest[A](
   private val request: Request[A],
-  internalId: String,
+  enrolments: Enrolments,
+  credentialId: String
+)(implicit hc: HeaderCarrier)
+    extends WrappedRequest[A](request) {
+  val sessionId: SessionId =
+    hc.sessionId.getOrElse(throw new UnauthorizedException("Unable to retrieve session ID from headers"))
+
+  def asAgent(agentIdentifier: String) =
+    AuthenticatedAgentRequest(
+      this.request,
+      this.sessionId,
+      this.enrolments,
+      this.credentialId,
+      agentIdentifier
+    )
+}
+
+case class AuthenticatedAgentRequest[A](
+  private val request: Request[A],
   sessionId: SessionId,
   enrolments: Enrolments,
-  credentialId: Option[String] = None
+  credentialId: String,
+  agentId: String
 ) extends WrappedRequest[A](request)

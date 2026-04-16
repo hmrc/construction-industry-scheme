@@ -22,12 +22,12 @@ import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
 import uk.gov.hmrc.constructionindustryscheme.services.PrepopulationService
-import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
+import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import uk.gov.hmrc.play.http.HeaderCarrierConverter
-import scala.util.control.NonFatal
-import scala.concurrent.ExecutionContext
+
 import javax.inject.Inject
+import scala.concurrent.ExecutionContext
+import scala.util.control.NonFatal
 
 class PrepopulationController @Inject() (
   authorise: AuthAction,
@@ -43,12 +43,8 @@ class PrepopulationController @Inject() (
     instanceId: String
   ): Action[AnyContent] =
     authorise.async { implicit request =>
-      implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
 
-      val employerRef = EmployerReference(
-        taxOfficeNumber = taxOfficeNumber,
-        taxOfficeReference = taxOfficeReference
-      )
+      val employerRef = EmployerReference(taxOfficeNumber, taxOfficeReference)
 
       service
         .prepopulateContractorKnownFacts(instanceId, employerRef)
@@ -70,12 +66,8 @@ class PrepopulationController @Inject() (
     instanceId: String
   ): Action[AnyContent] =
     authorise.async { implicit request =>
-      implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
 
-      val employerRef = EmployerReference(
-        taxOfficeNumber = taxOfficeNumber,
-        taxOfficeReference = taxOfficeReference
-      )
+      val employerRef = EmployerReference(taxOfficeNumber, taxOfficeReference)
 
       service
         .prepopulateContractorAndSubcontractors(instanceId, employerRef)
@@ -91,8 +83,6 @@ class PrepopulationController @Inject() (
 
   def getContractorScheme(instanceId: String): Action[AnyContent] =
     authorise.async { implicit request =>
-      implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
-
       service
         .getContractorScheme(instanceId)
         .map {

@@ -59,7 +59,7 @@ class ChrisConnector @Inject() (
               logger.error(
                 s"[ChrisConnector] Failed to parse 2xx polling response corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
               )
-              Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None))
+              Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None, None, None))
             case Right(parsed) =>
               Future.successful(parsed)
           }
@@ -67,19 +67,19 @@ class ChrisConnector @Inject() (
           logger.error(
             s"[ChrisConnector] 5xx polling corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
           )
-          Future.successful(ChrisPollResponse(ACCEPTED, correlationId, None, None, None))
+          Future.successful(ChrisPollResponse(ACCEPTED, correlationId, None, None, None, None, None))
         } else {
           logger.error(
             s"[ChrisConnector] Non-2xx/Non-5xx polling corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
           )
-          Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None))
+          Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None, None, None))
         }
       }
       .recover { case NonFatal(e) =>
         logger.error(
           s"[ChrisConnector] Transport exception calling $pollUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${e.getMessage}"
         )
-        ChrisPollResponse(ACCEPTED, correlationId, None, None, None)
+        ChrisPollResponse(ACCEPTED, correlationId, None, None, None, None, None)
       }
 
   def deleteSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[Unit] =

@@ -16,31 +16,28 @@
 
 package uk.gov.hmrc.constructionindustryscheme.controllers
 
-import javax.inject.Inject
-import play.api.mvc.*
-import play.api.libs.json.*
-import play.api.mvc.Results.*
-
-import scala.concurrent.{ExecutionContext, Future}
 import play.api.Logging
+import play.api.libs.json.*
+import play.api.mvc.*
+import play.api.mvc.Results.*
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, BuiltSubmissionPayload, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
-import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.*
-import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionEnvelopeBuilder
-import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
-import uk.gov.hmrc.constructionindustryscheme.utils.{UriHelper, XmlToJsonConvertor, XmlValidator}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.utils.{UriHelper, XmlToJsonConvertor, XmlValidator}
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
+import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
 
 import java.time.{Clock, Instant}
-import java.util.UUID
-import scala.util.{Failure, Success, Try}
+import javax.inject.Inject
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 class SubmissionController @Inject() (
   authorise: AuthAction,
@@ -61,10 +58,10 @@ class SubmissionController @Inject() (
       request.body
         .validate[CreateSubmissionRequest]
         .fold(
-          errs => Future.successful(BadRequest(JsError.toJson(errs))),
-          csr =>
+          errors => Future.successful(BadRequest(JsError.toJson(errors))),
+          submission =>
             submissionService
-              .createSubmission(csr)
+              .createSubmission(submission)
               .map(id => Created(Json.obj("submissionId" -> id)))
               .recover { case ex =>
                 logger.error("[create] formp-proxy create failed", ex)
@@ -74,12 +71,12 @@ class SubmissionController @Inject() (
     }
 
   def submitToChris(submissionId: String): Action[JsValue] =
-    authorise(parse.json).async { implicit req =>
-      req.body
+    authorise(parse.json).async { implicit request =>
+      request.body
         .validate[ChrisSubmissionRequest]
         .fold(
-          errs => Future.successful(BadRequest(Json.obj("message" -> JsError.toJson(errs)))),
-          csr => handleSubmitToChris(submissionId, csr)
+          errors => Future.successful(BadRequest(Json.obj("message" -> JsError.toJson(errors)))),
+          submission => handleSubmitToChris(submissionId, submission)
         )
     }
 
@@ -108,27 +105,38 @@ class SubmissionController @Inject() (
     authorise.async { implicit req =>
       pollUrl.getEither(redirectUrlPolicy) match {
         case Right(safeUrl) =>
-          val overridePollUrl: String = if (appConfig.useOverridePollResponseEndPoint) {
-            UriHelper.replaceHostIgnoringUserInfoAndPort(safeUrl.url, appConfig.overridePollResponseEndPoint) match {
-              case Some(x) => x
-              case _       => safeUrl.url
-            }
-          } else safeUrl.url
+          val overridePollUrl: String = (
+            if (appConfig.useOverridePollResponseEndPoint) {
+              UriHelper.replaceHostIgnoringUserInfoAndPort(safeUrl.url, appConfig.overridePollResponseEndPoint)
+            } else None
+          ).getOrElse(safeUrl.url)
+
           logger.info(s"useOverridePollResponseEndPoint: $appConfig.useOverridePollResponseEndPoint")
           logger.info(s"safeUrl.url: $safeUrl.url")
           logger.info(s"overridePollUrl: $overridePollUrl")
 
           submissionService
             .pollSubmissionAndUpdateGovTalkStatus(submissionId, overridePollUrl)
-            .map { case ChrisPollResponse(status, correlationId, overridePollUrl, interval, lastMessageDate) =>
-              Ok(
-                Json.obj(
-                  "status"          -> status.toString,
-                  "pollUrl"         -> overridePollUrl,
-                  "intervalSeconds" -> interval,
-                  "lastMessageDate" -> lastMessageDate
+            .map {
+              case ChrisPollResponse(
+                    status,
+                    correlationId,
+                    overridePollUrl,
+                    interval,
+                    error,
+                    irMarkReceived,
+                    lastMessageDate
+                  ) =>
+                Ok(
+                  Json.obj(
+                    "status"          -> status.toString,
+                    "pollUrl"         -> overridePollUrl,
+                    "intervalSeconds" -> interval,
+                    "error"           -> error,
+                    "irMarkReceived"  -> irMarkReceived,
+                    "lastMessageDate" -> lastMessageDate
+                  )
                 )
-              )
             }
         case Left(value)    =>
           logger.warn(s"could not poll the pollUrl provided as the host is not recognised: $value ")
@@ -154,7 +162,7 @@ class SubmissionController @Inject() (
         )
     }
 
-  def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue =
+  def createMonthlyNilReturnRequestJson(payload: ChRISSubmission): JsValue =
     XmlToJsonConvertor.convertXmlToJson(payload.envelope.toString) match {
       case XmlConversionResult(true, Some(json), _)   => json
       case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
@@ -167,11 +175,9 @@ class SubmissionController @Inject() (
       case _                                        => Json.toJson(res.rawXml)
     }
 
-  private def renderSubmissionResponse(submissionId: String, payload: BuiltSubmissionPayload)(
+  private def renderSubmissionResponse(submissionId: String, payload: ChRISSubmission)(
     res: SubmissionResult
-  ): Result = {
-
-    implicit val hc: HeaderCarrier = HeaderCarrier()
+  )(implicit hc: HeaderCarrier): Result = {
 
     val gatewayTimestamp: String = res.meta.gatewayTimestamp match {
       case Some(s) if s.trim.nonEmpty => s.trim
@@ -223,8 +229,7 @@ class SubmissionController @Inject() (
   private def handleSubmitToChris(submissionId: String, csr: ChrisSubmissionRequest)(implicit
     req: AuthenticatedRequest[JsValue]
   ): Future[Result] = {
-    val correlationId = UUID.randomUUID().toString.replace("-", "").toUpperCase
-    val payload       = ChrisSubmissionEnvelopeBuilder.buildPayload(csr, req, correlationId)
+    val payload = ChRISSubmission.buildPayload(csr, req)
 
     auditService.monthlyNilReturnRequestEvent(createMonthlyNilReturnRequestJson(payload))
 
@@ -234,12 +239,14 @@ class SubmissionController @Inject() (
         Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
 
       case Success(_) =>
-        logger.info(s"ChRIS XML validation successful. Sending ChRIS submission for a correlationId = $correlationId.")
+        logger.info(
+          s"ChRIS XML validation successful. Sending ChRIS submission for a correlationId = ${payload.correlationId}."
+        )
         submissionService
           .submitToChris(payload)
-          .flatMap(res => handleChrisResponse(submissionId, csr, correlationId, payload, res))
+          .flatMap(res => handleChrisResponse(submissionId, csr, payload, res))
           .recoverWith { case NonFatal(ex) =>
-            handleChrisFailure(submissionId, csr, correlationId, payload, ex)
+            handleChrisFailure(submissionId, csr, payload, ex)
           }
     }
   }
@@ -247,15 +254,14 @@ class SubmissionController @Inject() (
   private def handleChrisResponse(
     submissionId: String,
     csr: ChrisSubmissionRequest,
-    correlationId: String,
-    payload: BuiltSubmissionPayload,
+    payload: ChRISSubmission,
     res: SubmissionResult
   )(implicit hc: HeaderCarrier): Future[Result] =
     submissionService
       .processInitialChrisAck(
         EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef),
         submissionId,
-        correlationId,
+        payload.correlationId,
         res.meta.correlationId,
         res.meta.responseEndPoint.pollIntervalSeconds,
         res.meta.responseEndPoint.url,
@@ -267,7 +273,7 @@ class SubmissionController @Inject() (
         logger.error(s"Failed to handle initial ChRIS response", ex)
         BadGateway(
           withError(
-            baseSubmissionResponseJson(submissionId, payload, correlationId, "FATAL_ERROR"),
+            baseSubmissionResponseJson(submissionId, payload, "FATAL_ERROR"),
             ex.getMessage
           )
         )
@@ -276,8 +282,7 @@ class SubmissionController @Inject() (
   private def handleChrisFailure(
     submissionId: String,
     csr: ChrisSubmissionRequest,
-    correlationId: String,
-    payload: BuiltSubmissionPayload,
+    payload: ChRISSubmission,
     ex: Throwable
   )(implicit hc: HeaderCarrier): Future[Result] = {
     logger.error(s"Received 5xx/Exception from ChRIS, treating as RESUBMIT for submissionId=$submissionId", ex)
@@ -286,19 +291,19 @@ class SubmissionController @Inject() (
       .processInitialChrisFailure(
         EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef),
         submissionId,
-        correlationId,
+        payload.correlationId,
         appConfig.chrisGatewayUrl
       )
       .map { _ =>
         Ok(
-          withError(baseSubmissionResponseJson(submissionId, payload, correlationId, "STARTED"), "Chris failure")
+          withError(baseSubmissionResponseJson(submissionId, payload, "STARTED"), "Chris failure")
         )
       }
       .recover { case ex =>
         logger.error(s"Failed to initialise/update GovTalk status after 5xx", ex)
         InternalServerError(
           withError(
-            baseSubmissionResponseJson(submissionId, payload, correlationId, "FATAL_ERROR"),
+            baseSubmissionResponseJson(submissionId, payload, "FATAL_ERROR"),
             "GovTalk status already exists"
           )
         )
@@ -307,15 +312,14 @@ class SubmissionController @Inject() (
 
   private def baseSubmissionResponseJson(
     submissionId: String,
-    payload: BuiltSubmissionPayload,
-    correlationId: String,
+    payload: ChRISSubmission,
     status: String,
     gatewayTimestamp: String = Instant.now(clock).toString
   ): JsObject =
     Json.obj(
       "submissionId"      -> submissionId,
       "hmrcMarkGenerated" -> payload.irMark,
-      "correlationId"     -> correlationId,
+      "correlationId"     -> payload.correlationId,
       "gatewayTimestamp"  -> gatewayTimestamp,
       "status"            -> status
     )

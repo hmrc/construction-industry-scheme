@@ -17,121 +17,54 @@
 package uk.gov.hmrc.constructionindustryscheme.controllers
 
 import play.api.Logging
-
-import javax.inject.*
-import play.api.mvc.*
 import play.api.libs.json.*
+import play.api.mvc.*
+import uk.gov.hmrc.constructionindustryscheme.actions.{AgentAction, AuthAction}
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.*
-import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.play.http.HeaderCarrierConverter
-import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus
-import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.*
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
-import scala.concurrent.{ExecutionContext, Future}
+import javax.inject.*
+import scala.concurrent.ExecutionContext
 
 @Singleton
 class ClientListController @Inject() (
   authorise: AuthAction,
+  isAgent: AgentAction,
   service: ClientListService,
   cc: ControllerComponents
 )(using ec: ExecutionContext)
     extends BackendController(cc)
-    with Logging {
+    with Logging:
 
-  private def resultJson(status: ClientListStatus): Result =
-    status match {
-      case Succeeded        => Ok(Json.obj("result" -> "succeeded"))
-      case InProgress       => Ok(Json.obj("result" -> "in-progress"))
-      case Failed           => Ok(Json.obj("result" -> "failed"))
-      case InitiateDownload => Ok(Json.obj("result" -> "initiate-download"))
-    }
-
-  def start: Action[AnyContent] = authorise.async { implicit request =>
-    implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
-    val credIdOpt                  = request.credentialId
-    val agentIdOpt                 =
-      request.enrolments
-        .getEnrolment("IR-PAYE-AGENT")
-        .flatMap(_.getIdentifier("IRAgentReference"))
-        .map(_.value)
-
-    (credIdOpt, agentIdOpt) match {
-      case (Some(credId), Some(agentId)) =>
-        service
-          .process(credId, agentId)
-          .map(resultJson)
-          .recover { case _: NoBusinessIntervalsException =>
-            InternalServerError(Json.obj("result" -> "system-error"))
-          }
-      case (None, _)                     => Future.successful(BadRequest(Json.obj("message" -> "Missing credentialId")))
-      case (_, None)                     =>
-        Future.successful(Forbidden(Json.obj("message" -> "Missing IR-PAYE-AGENT enrolment / agent id")))
-    }
+  def start: Action[AnyContent] = (authorise andThen isAgent).async { implicit request =>
+    service
+      .process(request.credentialId, request.agentId)
+      .map(status => Ok(Json.obj("result" -> status.asString)))
+      .recover { case _: NoBusinessIntervalsException =>
+        InternalServerError(Json.obj("result" -> "system-error"))
+      }
   }
 
-  def status: Action[AnyContent] = authorise.async { implicit request =>
-    implicit val hc: HeaderCarrier =
-      HeaderCarrierConverter.fromRequest(request)
-
-    request.credentialId match
-      case Some(credId) =>
-        service
-          .getStatus(credId)
-          .map(resultJson)
-
-      case None =>
-        Future.successful(
-          BadRequest(Json.obj("message" -> "Missing credentialId"))
-        )
+  def status: Action[AnyContent] = (authorise andThen isAgent).async { implicit request =>
+    service
+      .getStatus(request.credentialId)
+      .map(status => Ok(Json.obj("result" -> status.asString)))
   }
 
-  def getAllClients: Action[AnyContent] = authorise.async { implicit request =>
-    given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
+  def getAllClients: Action[AnyContent] = (authorise andThen isAgent).async { implicit request =>
+    service
+      .getClientList(request.agentId, request.credentialId)
+      .map(result => Ok(Json.toJson(result)))
+  }
 
-    val irAgentId    = request.enrolments.getEnrolment("IR-PAYE-AGENT").flatMap(_.getIdentifier("IRAgentReference"))
-    val credentialId = request.credentialId
-
-    (irAgentId, credentialId) match {
-      case (Some(agentId), Some(credId)) =>
-        service.getClientList(agentId.value, credId).map((result: ClientSearchResult) => Ok(Json.toJson(result)))
-      case (maybeAgentId, maybeCredId)   =>
-        logger.info(
-          s"[ClientListController.getAllClients] authenticated request with missing agent enrollments - agentId: $maybeAgentId, credId: $maybeCredId"
-        )
-        Future.successful(Forbidden(Json.obj("error" -> "credentialId and/or irAgentId are missing from session")))
+  def hasClient(taxOfficeNumber: String, taxOfficeReference: String): Action[AnyContent] =
+    (authorise andThen isAgent).async { implicit request =>
+      service
+        .hasClient(taxOfficeNumber, taxOfficeReference, request.agentId, request.credentialId)
+        .map(hasClient => Ok(Json.obj("hasClient" -> hasClient)))
+        .recover { case e: Exception =>
+          logger.error(s"[ClientListController.checkClientExists] error checking client: ${e.getMessage}", e)
+          InternalServerError(Json.obj("error" -> "Failed to check client"))
+        }
     }
-  }
-
-  def hasClient(
-    taxOfficeNumber: String,
-    taxOfficeReference: String
-  ): Action[AnyContent] = authorise.async { implicit request =>
-    given HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
-
-    val agentIdOpt = request.enrolments.getEnrolment("IR-PAYE-AGENT").flatMap(_.getIdentifier("IRAgentReference"))
-
-    (request.credentialId, agentIdOpt) match {
-      case (Some(credId), Some(agentIdEnrolment)) =>
-        service
-          .hasClient(taxOfficeNumber, taxOfficeReference, agentIdEnrolment.value, credId)
-          .map(hasClient => Ok(Json.obj("hasClient" -> hasClient)))
-          .recover { case e: Exception =>
-            logger.error(s"[ClientListController.checkClientExists] error checking client: ${e.getMessage}", e)
-            InternalServerError(Json.obj("error" -> "Failed to check client"))
-          }
-
-      case (None, _) =>
-        Future.successful(
-          Forbidden(Json.obj("error" -> "credentialId is missing from session"))
-        )
-
-      case (_, None) =>
-        Future.successful(
-          Forbidden(Json.obj("error" -> "IR-PAYE-AGENT enrolment with IRAgentReference is missing"))
-        )
-    }
-  }
-}

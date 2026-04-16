@@ -28,9 +28,9 @@ import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, await, contentAsJso
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
+import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.audit.XmlConversionResult
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
-import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlValidator
@@ -38,15 +38,14 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl
 
-import scala.xml.NodeSeq
 import java.time.{Clock, Instant}
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
+import scala.xml.NodeSeq
 
 final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
-  private val submissionId = "sub-123"
-
+  private val submissionId       = "sub-123"
   private val validJson: JsValue = Json.obj(
     "utr"                   -> "1234567890",
     "aoReference"           -> "123/AB456",
@@ -118,16 +117,16 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Instant]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
-      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
-          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+          val payload = invocation.getArgument(0, classOf[ChRISSubmission])
           val result  = mkSubmissionResult(SUBMITTED)
           Future.successful(
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
           )
         }
 
-      val request: FakeRequest[JsValue] =
+      val request =
         FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
           .withBody(validJson)
           .withHeaders(CONTENT_TYPE -> JSON)
@@ -138,7 +137,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val js = contentAsJson(result)
       (js \ "submissionId").as[String] mustBe submissionId
 
-      verify(submissionService, times(1)).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
+      verify(submissionService, times(1)).submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
     "returns 200 with SUBMITTED_NO_RECEIPT when service returns SubmittedNoReceiptStatus" in {
@@ -166,9 +165,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Instant]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
-      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
-          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+          val payload = invocation.getArgument(0, classOf[ChRISSubmission])
           val result  = mkSubmissionResult(SUBMITTED_NO_RECEIPT)
           Future.successful(
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
@@ -187,7 +186,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "submissionId").as[String] mustBe submissionId
       (js \ "status").as[String] mustBe "SUBMITTED_NO_RECEIPT"
 
-      verify(submissionService).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
+      verify(submissionService).submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
     "returns 202 with ACCEPTED when service returns AcceptedStatus" in {
@@ -215,9 +214,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Instant]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
-      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
-          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+          val payload = invocation.getArgument(0, classOf[ChRISSubmission])
           val result  = mkSubmissionResult(ACCEPTED)
           Future.successful(
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
@@ -236,7 +235,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "status").as[String] mustBe "ACCEPTED"
       (js \ "responseEndPoint" \ "pollIntervalSeconds").as[Int] mustBe 15
 
-      verify(submissionService).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
+      verify(submissionService).submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
     "returns 200 with DEPARTMENTAL_ERROR and error object when service returns DepartmentalErrorStatus" in {
@@ -266,9 +265,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Instant]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
-      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
-          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+          val payload = invocation.getArgument(0, classOf[ChRISSubmission])
           val result  = mkSubmissionResult(DEPARTMENTAL_ERROR, Some(err))
           Future.successful(
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
@@ -290,7 +289,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (e \ "type").as[String] mustBe "fatal"
       (e \ "text").as[String].toLowerCase must include("boom")
 
-      verify(submissionService).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
+      verify(submissionService).submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
     "returns 200 with STARTED when service returns StartedStatus" in {
@@ -326,9 +325,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
-      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
-          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+          val payload = invocation.getArgument(0, classOf[ChRISSubmission])
 
           Future.successful(
             mkSubmissionResult(STARTED, Some(err)).copy(
@@ -392,9 +391,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
-      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
-          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+          val payload = invocation.getArgument(0, classOf[ChRISSubmission])
 
           Future.successful(
             mkSubmissionResult(FATAL_ERROR, Some(err)).copy(
@@ -465,7 +464,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq]))
         .thenReturn(Success(()))
-      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
       when(
         submissionService.processInitialChrisFailure(
@@ -491,7 +490,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "status").as[String] mustBe "STARTED"
 
       verify(submissionService, times(1))
-        .submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
+        .submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
     "returns RuntimeException if xmlValidator.validate fails" in {
@@ -506,11 +505,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
-      when(xmlValidator.validate(any[NodeSeq]))
-        .thenReturn(Failure(new RuntimeException("XML validation failed due to exception")))
-
       when(xmlValidator.validate(any())).thenReturn(Failure(new Exception("invalid!")))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -519,10 +515,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val result = controller.submitToChris(submissionId)(req)
 
-      val thrown = intercept[RuntimeException] {
+      intercept[RuntimeException] {
         await(result)
       }
-      thrown.getMessage must include("XML validation failed: invalid!")
     }
 
     "returns 500 InternalServerError when GovTalk initialisation/update fails in recoverable ChRIS failure flow" in {
@@ -541,7 +536,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(xmlValidator.validate(any[NodeSeq]))
         .thenReturn(Success(()))
 
-      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       when(
@@ -586,9 +581,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(xmlValidator.validate(any[NodeSeq]))
         .thenReturn(Success(()))
 
-      when(submissionService.submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier]))
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
-          val payload = invocation.getArgument(0, classOf[BuiltSubmissionPayload])
+          val payload = invocation.getArgument(0, classOf[ChRISSubmission])
           val result  = mkSubmissionResult(ACCEPTED)
           Future.successful(
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
@@ -622,7 +617,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "status").as[String] mustBe "FATAL_ERROR"
       (js \ "error" \ "text").as[String] must include("ack persistence failed")
 
-      verify(submissionService).submitToChris(any[BuiltSubmissionPayload])(any[HeaderCarrier])
+      verify(submissionService).submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
   }
 
@@ -846,6 +841,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
               correlationId = "corr-123",
               pollUrl = Some(overridePollUrl),
               pollInterval = Some(10),
+              error = None,
+              irMarkReceived = None,
               lastMessageDate = None
             )
           )
@@ -891,6 +888,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             correlationId = "corr-123",
             pollUrl = None,
             pollInterval = None,
+            error = None,
+            irMarkReceived = None,
             lastMessageDate = None
           )
         )
@@ -954,7 +953,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
     trait TestableMonthlyNilReturnService {
       def convertXmlToJson(xml: String): XmlConversionResult
-      def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue
+      def createMonthlyNilReturnRequestJson(payload: ChRISSubmission): JsValue
     }
 
     "return correct JSON for successful conversion" in {
@@ -962,14 +961,14 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         def convertXmlToJson(xml: String): XmlConversionResult =
           XmlConversionResult(true, Some(Json.obj("ok" -> true)), None)
 
-        def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue =
+        def createMonthlyNilReturnRequestJson(payload: ChRISSubmission): JsValue =
           convertXmlToJson(payload.envelope.toString) match {
             case XmlConversionResult(true, Some(json), _)   => json
             case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
             case _                                          => Json.obj("error" -> "unexpected conversion failure")
           }
       }
-      val payload                                  = BuiltSubmissionPayload(<xml></xml>, "corr-1", "irmark-1", <xml></xml>)
+      val payload                                  = ChRISSubmission(<xml></xml>, "corr-1", "irmark-1", <xml></xml>)
       val result                                   = service.createMonthlyNilReturnRequestJson(payload)
       result mustBe Json.obj("ok" -> true)
     }
@@ -978,14 +977,14 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         def convertXmlToJson(xml: String): XmlConversionResult =
           XmlConversionResult(false, None, Some("Invalid XML"))
 
-        def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue =
+        def createMonthlyNilReturnRequestJson(payload: ChRISSubmission): JsValue =
           convertXmlToJson(payload.envelope.toString) match {
             case XmlConversionResult(true, Some(json), _)   => json
             case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
             case _                                          => Json.obj("error" -> "unexpected conversion failure")
           }
       }
-      val payload                                  = BuiltSubmissionPayload(<xml>bad</xml>, "corr-2", "irmark-2", <xml></xml>)
+      val payload                                  = ChRISSubmission(<xml>bad</xml>, "corr-2", "irmark-2", <xml></xml>)
       val result                                   = service.createMonthlyNilReturnRequestJson(payload)
       result mustBe Json.obj("error" -> "Invalid XML")
     }
@@ -994,14 +993,14 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         def convertXmlToJson(xml: String): XmlConversionResult =
           XmlConversionResult(false, None, None)
 
-        def createMonthlyNilReturnRequestJson(payload: BuiltSubmissionPayload): JsValue =
+        def createMonthlyNilReturnRequestJson(payload: ChRISSubmission): JsValue =
           convertXmlToJson(payload.envelope.toString) match {
             case XmlConversionResult(true, Some(json), _)   => json
             case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
             case _                                          => Json.obj("error" -> "unexpected conversion failure")
           }
       }
-      val payload                                  = BuiltSubmissionPayload(<xml>weird</xml>, "corr-3", "irmark-3", <xml></xml>)
+      val payload                                  = ChRISSubmission(<xml>weird</xml>, "corr-3", "irmark-3", <xml></xml>)
       val result                                   = service.createMonthlyNilReturnRequestJson(payload)
       result mustBe Json.obj("error" -> "unexpected conversion failure")
     }

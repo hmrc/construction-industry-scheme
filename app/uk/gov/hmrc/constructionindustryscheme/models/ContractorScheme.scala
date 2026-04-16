@@ -33,6 +33,7 @@ case class ContractorScheme(
   prePopSuccessful: Option[String] = None,
   subcontractorCounter: Option[Int] = None,
   verificationBatchCounter: Option[Int] = None,
+  createDate: Option[Instant] = None,
   lastUpdate: Option[Instant] = None,
   version: Option[Int] = None
 )

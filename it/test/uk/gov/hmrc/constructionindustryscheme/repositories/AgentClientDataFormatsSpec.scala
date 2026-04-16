@@ -28,33 +28,33 @@ class AgentClientDataFormatsSpec extends SpecBase {
   import AgentClientDataFormats.given
 
   "AgentClientData serializes to JSON" in {
-    val now = Instant.parse("2024-10-01T12:34:56.789Z")
+    val now             = Instant.parse("2024-10-01T12:34:56.789Z")
     val agentClientData = AgentClientData("123", "xyz-data", now)
 
     val json = Json.toJson(agentClientData)
-    (json \ "id").as[String] shouldBe "123"
-    (json \ "data").as[String] shouldBe "xyz-data"
+    (json \ "id").as[String]           shouldBe "123"
+    (json \ "data").as[String]         shouldBe "xyz-data"
     (json \ "lastUpdated").as[Instant] shouldBe now
   }
 
   "AgentClientData deserializes from JSON" in {
-    val now = Instant.parse("2024-11-02T13:14:15.921Z")
-    val json = Json.obj(
-      "id" -> "id42",
-      "data" -> "test-data",
+    val now    = Instant.parse("2024-11-02T13:14:15.921Z")
+    val json   = Json.obj(
+      "id"          -> "id42",
+      "data"        -> "test-data",
       "lastUpdated" -> now
     )
     val result = json.validate[AgentClientData]
     result.isSuccess shouldBe true
-    result.get shouldBe AgentClientData("id42", "test-data", now)
+    result.get       shouldBe AgentClientData("id42", "test-data", now)
   }
 
   "Format is symmetrical (round-trip)" in {
     // Truncate to milliseconds to match formatter precision
-    val now = Instant.now().truncatedTo(ChronoUnit.MILLIS)
+    val now             = Instant.now().truncatedTo(ChronoUnit.MILLIS)
     val agentClientData = AgentClientData("roundtrip", "data", now)
-    val json = Json.toJson(agentClientData)
-    val parsed = Json.fromJson[AgentClientData](json).get
+    val json            = Json.toJson(agentClientData)
+    val parsed          = Json.fromJson[AgentClientData](json).get
     parsed shouldBe agentClientData
   }
 }

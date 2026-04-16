@@ -19,20 +19,24 @@ package actions
 import play.api.mvc.{AnyContent, BodyParser, PlayBodyParsers, Request, Result}
 import uk.gov.hmrc.auth.core.{Enrolment, EnrolmentIdentifier, Enrolments}
 import uk.gov.hmrc.http.SessionId
-import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.requests.AuthenticatedRequest
+import uk.gov.hmrc.constructionindustryscheme.actions.{AgentAction, AuthAction}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedAgentRequest, AuthenticatedRequest}
+import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.{ExecutionContext, Future}
 
-final class FakeAuthAction(enrols: Enrolments, parsers: PlayBodyParsers, credId: Option[String] = None)(implicit
+final class FakeAuthAction(enrols: Enrolments, parsers: PlayBodyParsers, credId: String)(implicit
   ec: ExecutionContext
 ) extends AuthAction {
+  given hc: HeaderCarrier = HeaderCarrier(sessionId = Some(SessionId("sessionId")))
 
   override def parser: BodyParser[AnyContent]               = parsers.defaultBodyParser
   override protected def executionContext: ExecutionContext = ec
 
-  override def invokeBlock[A](request: Request[A], block: AuthenticatedRequest[A] => Future[Result]): Future[Result] =
-    block(AuthenticatedRequest(request, "internalId", SessionId("sessionId"), enrols, credId))
+  override def invokeBlock[A](request: Request[A], block: AuthenticatedRequest[A] => Future[Result]): Future[Result] = {
+    val testRequest: AuthenticatedRequest[A] = AuthenticatedRequest(request, enrols, credId)
+    block(testRequest)
+  }
 }
 
 object FakeAuthAction {
@@ -47,7 +51,7 @@ object FakeAuthAction {
       ),
       state = "Activated"
     )
-    new FakeAuthAction(Enrolments(Set(cis)), parsers, Some("cred-123"))
+    new FakeAuthAction(Enrolments(Set(cis)), parsers, "cred-123")
   }
 
   def withIrPayeAgent(irAgentReference: String, parsers: PlayBodyParsers, credId: String = "cred-123")(implicit
@@ -60,14 +64,20 @@ object FakeAuthAction {
       ),
       state = "Activated"
     )
-    new FakeAuthAction(Enrolments(Set(irPayeAgent)), parsers, Some(credId))
+    new FakeAuthAction(Enrolments(Set(irPayeAgent)), parsers, credId)
   }
 
-  def withEnrolments(enrolments: Set[Enrolment], parsers: PlayBodyParsers, credId: Option[String] = Some("cred-123"))(
-    implicit ec: ExecutionContext
+  def withEnrolments(enrolments: Set[Enrolment], parsers: PlayBodyParsers, credId: String = "cred-123")(implicit
+    ec: ExecutionContext
   ): FakeAuthAction =
     new FakeAuthAction(Enrolments(enrolments), parsers, credId)
 
   def empty(parsers: PlayBodyParsers)(implicit ec: ExecutionContext): FakeAuthAction =
-    new FakeAuthAction(Enrolments(Set.empty), parsers)
+    new FakeAuthAction(Enrolments(Set.empty), parsers, "")
+}
+
+final class FakeAgentAction(agentId: String)(implicit ec: ExecutionContext) extends AgentAction {
+  override protected def executionContext: ExecutionContext                                         = ec
+  override def transform[A](request: AuthenticatedRequest[A]): Future[AuthenticatedAgentRequest[A]] =
+    Future.successful(request.asAgent(agentId))
 }

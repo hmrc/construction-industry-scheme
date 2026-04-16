@@ -290,6 +290,13 @@ class FormpProxyConnector @Inject() (
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
 
+  def getNewestVerificationBatch(
+    instanceId: String
+  )(implicit hc: HeaderCarrier): Future[GetNewestVerificationBatchResponse] =
+    http
+      .get(url"$base/cis/verification-batch/newest/$instanceId")
+      .execute[GetNewestVerificationBatchResponse]
+
   def deleteUnsubmittedMonthlyReturn(
     request: DeleteUnsubmittedMonthlyReturnRequest
   )(implicit hc: HeaderCarrier): Future[Unit] =

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,19 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models.response
 
-import play.api.libs.json.JsValue
-import uk.gov.hmrc.constructionindustryscheme.models.SubmissionStatus
+import play.api.libs.json.{Json, OFormat}
+import uk.gov.hmrc.constructionindustryscheme.models.*
 
-case class ChrisPollResponse(
-  status: SubmissionStatus,
-  correlationId: String,
-  pollUrl: Option[String],
-  pollInterval: Option[Int],
-  error: Option[JsValue],
-  irMarkReceived: Option[String],
-  lastMessageDate: Option[String]
+final case class GetNewestVerificationBatchResponse(
+  scheme: Seq[ContractorScheme],
+  subcontractors: Seq[Subcontractor],
+  verificationBatch: Seq[VerificationBatch],
+  verifications: Seq[Verification],
+  submission: Seq[Submission],
+  monthlyReturn: Seq[MonthlyReturn],
+  monthlyReturnSubmission: Seq[Submission]
 )
+
+object GetNewestVerificationBatchResponse {
+  given format: OFormat[GetNewestVerificationBatchResponse] = Json.format[GetNewestVerificationBatchResponse]
+}

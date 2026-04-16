@@ -23,7 +23,7 @@ import play.api.http.Status.{OK, UNAUTHORIZED}
 object AuthStub:
 
   def authorisedWithCisEnrolment(
-    internalId: String = "test-internal-id",
+    credentialId: String = "test-credential-id",
     taxOfficeNumber: String = "111",
     taxOfficeReference: String = "test111"
   ): StubMapping =
@@ -36,7 +36,10 @@ object AuthStub:
             .withBody(
               s"""
                  |{
-                 |  "internalId": "$internalId",
+                 |  "optionalCredentials": {
+                 |     "providerId": "$credentialId",
+                 |     "providerType": "gg"
+                 |  },
                  |  "allEnrolments": [
                  |    {
                  |      "key": "HMRC-CIS-ORG",
@@ -54,7 +57,7 @@ object AuthStub:
     )
 
   def authorisedWithoutCisEnrolment(
-    internalId: String = "test-internal-id"
+    credentialId: String = "test-credential-id"
   ): StubMapping =
     stubFor(
       post(urlPathEqualTo("/auth/authorise"))
@@ -65,7 +68,10 @@ object AuthStub:
             .withBody(
               s"""
                  |{
-                 |  "internalId": "$internalId",
+                 |  "optionalCredentials": {
+                 |     "providerId": "$credentialId",
+                 |     "providerType": "gg"
+                 |  },
                  |  "allEnrolments": [
                  |    {
                  |      "key": "OTHER-ENROLMENT",

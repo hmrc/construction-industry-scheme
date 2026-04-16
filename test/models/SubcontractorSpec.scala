@@ -46,7 +46,7 @@ class SubcontractorSpec extends AnyFreeSpec with Matchers {
     addressLine3 = None,
     addressLine4 = None,
     country = None,
-    postCode = None,
+    postcode = None,
     emailAddress = None,
     phoneNumber = None,
     mobilePhoneNumber = None,
