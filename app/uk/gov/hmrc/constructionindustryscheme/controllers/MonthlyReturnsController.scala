@@ -284,4 +284,18 @@ class MonthlyReturnsController @Inject() (
             BadGateway(Json.obj("message" -> "delete-unsubmitted-monthly-return-failed"))
         }
     }
+
+  def getSubmittedMonthlyReturn: Action[GetSubmittedMonthlyReturnsRequest] =
+    authorise.async(parse.json[GetSubmittedMonthlyReturnsRequest]) { implicit request =>
+      service
+        .getSubmittedMonthlyReturn(request.body)
+        .map(res => Ok(Json.toJson(res)))
+        .recover {
+          case u: UpstreamErrorResponse =>
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t)              =>
+            logger.error("[getUnsubmittedMonthlyReturns] failed", t)
+            InternalServerError(Json.obj("message" -> "Unexpected error"))
+        }
+    }
 }

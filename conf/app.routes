@@ -8,6 +8,7 @@ POST       /monthly-returns/unsubmitted/delete                           uk.gov.
 POST       /monthly-returns/nil/create                                   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createNil()
 POST       /monthly-returns/update                                       uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.updateMonthlyReturn()
 POST       /monthly-returns/standard/create                              uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.createMonthlyReturn
+POST       /monthly-returns/submitted                                    uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getSubmittedMonthlyReturn
 POST       /monthly-returns-edit                                         uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getMonthlyReturnForEdit
 POST       /monthly-return-item/sync                                     uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.syncSelectedSubcontractors
 POST       /monthly-return-item/delete                                   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.deleteMonthlyReturnItem()
