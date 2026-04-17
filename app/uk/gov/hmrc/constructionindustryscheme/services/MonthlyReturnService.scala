@@ -268,6 +268,32 @@ class MonthlyReturnService @Inject() (
   ): Future[Unit] =
     formp.deleteUnsubmittedMonthlyReturn(request)
 
+  def getSubmittedMonthlyReturn(request: GetSubmittedMonthlyReturnsRequest)(implicit
+    hc: HeaderCarrier
+  ): Future[GetSubmittedMonthlyReturnResponse] =
+    formp.getSubmittedMonthlyReturns(request).map { response =>
+      (response.monthlyReturn.headOption, response.submission.headOption) match {
+        case (Some(monthlyReturn), Some(submission)) =>
+          GetSubmittedMonthlyReturnResponse(
+            // scheme: ContractorScheme,
+            taxOfficeNumber = response.scheme.taxOfficeNumber,
+            taxOfficeReference = response.scheme.accountsOfficeReference,
+            contractorName = response.scheme.name.getOrElse(""),
+            // monthlyReturn: MonthlyReturn,
+            monthlyReturnId = monthlyReturn.monthlyReturnId,
+            taxYear = monthlyReturn.taxYear,
+            taxMonth = monthlyReturn.taxMonth,
+            returnType = mapType(monthlyReturn.nilReturnIndicator),
+            monthlyReturnItems = response.monthlyReturnItems,
+            // submission: Submission,
+            acceptedTime = submission.acceptedTime,
+            receiptReferenceNumber = submission.hmrcMarkGgis
+          )
+        case _                                       =>
+          throw new RuntimeException("Missing monthlyReturn or submission data")
+      }
+    }
+
   private def mapType(nilReturnIndicator: Option[String]): String =
     if (nilReturnIndicator.exists(_.trim.equalsIgnoreCase("Y"))) "Nil"
     else "Standard"
