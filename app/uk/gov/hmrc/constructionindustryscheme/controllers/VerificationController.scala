@@ -17,14 +17,15 @@
 package uk.gov.hmrc.constructionindustryscheme.controllers
 
 import play.api.Logging
-import play.api.libs.json.Json
+import play.api.libs.json.{JsError, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateVerificationBatchAndVerificationsRequest
 
 import javax.inject.Inject
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 class VerificationController @Inject() (
   authorise: AuthAction,
@@ -43,5 +44,22 @@ class VerificationController @Inject() (
           logger.error(s"[getNewestVerificationBatch] formp-proxy get failed (instanceId=$instanceId)", ex)
           BadGateway(Json.obj("message" -> "get-newest-verification-batch-failed"))
         }
+    }
+
+  def createVerificationBatchAndVerifications(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      request.body
+        .validate[CreateVerificationBatchAndVerificationsRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          body =>
+            verificationService
+              .createVerificationBatchAndVerifications(body)
+              .map(res => Created(Json.toJson(res)))
+              .recover { case ex =>
+                logger.error("[createVerificationBatchAndVerifications] formp-proxy create failed", ex)
+                BadGateway(Json.obj("message" -> "create-verification-batch-and-verifications-failed"))
+              }
+        )
     }
 }
