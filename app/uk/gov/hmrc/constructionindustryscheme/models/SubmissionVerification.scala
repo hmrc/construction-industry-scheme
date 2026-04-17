@@ -17,13 +17,15 @@
 package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.libs.json.{Json, OFormat}
+import java.time.LocalDateTime
 
-final case class VerificationBatch(
-  verificationBatchId: Long,
-  status: Option[String],
-  verificationNumber: Option[String]
+case class SubmissionVerification(
+  submissionId: Long,
+  activeObjectId: Option[Long],
+  submissionRequestDate: Option[LocalDateTime],
+  status: Option[String]
 )
 
-object VerificationBatch {
-  given format: OFormat[VerificationBatch] = Json.format[VerificationBatch]
+object SubmissionVerification {
+  given format: OFormat[SubmissionVerification] = Json.format[SubmissionVerification]
 }
