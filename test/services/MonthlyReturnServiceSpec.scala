@@ -412,8 +412,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
       out mustBe SubmittedMonthlyReturnsResponse(
         scheme = SchemeData("Scheme Name", "163", "AB0063"),
         monthlyReturns = Seq(
-          MonthlyReturnData(1L, 2025, 1, "Nil", "Awaiting confirmation", None, None, None),
-          MonthlyReturnData(2L, 2025, 2, "Standard", "Failed", None, None, None)
+          MonthlyReturnData(1L, 2025, 1, "Nil", "PENDING", None, None, None),
+          MonthlyReturnData(2L, 2025, 2, "Standard", "REJECTED", None, None, None)
         ),
         submissions = Seq(
           SubmissionData(
