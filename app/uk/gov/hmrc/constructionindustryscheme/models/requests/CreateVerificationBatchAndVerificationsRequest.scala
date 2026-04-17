@@ -19,11 +19,12 @@ package uk.gov.hmrc.constructionindustryscheme.models.requests
 import play.api.libs.json.{Json, OFormat}
 
 final case class CreateVerificationBatchAndVerificationsRequest(
-                                                                 instanceId: String,
-                                                                 verificationResourceReferences: Seq[Long],
-                                                                 actionIndicator: Option[String]
-                                                               )
+  instanceId: String,
+  verificationResourceReferences: Seq[Long],
+  actionIndicator: Option[String]
+)
 
 object CreateVerificationBatchAndVerificationsRequest {
-  given OFormat[CreateVerificationBatchAndVerificationsRequest] = Json.format[CreateVerificationBatchAndVerificationsRequest]
+  given OFormat[CreateVerificationBatchAndVerificationsRequest] =
+    Json.format[CreateVerificationBatchAndVerificationsRequest]
 }
