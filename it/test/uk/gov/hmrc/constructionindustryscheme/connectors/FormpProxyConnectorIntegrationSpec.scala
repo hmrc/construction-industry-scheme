@@ -1285,155 +1285,29 @@ class FormpProxyConnectorIntegrationSpec
       val responseJson = Json.parse(
         s"""
            |{
-           |  "scheme": [
-           |    {
-           |      "schemeId": 123,
-           |      "instanceId": "$instanceId",
-           |      "accountsOfficeReference": "123PA00123456",
-           |      "taxOfficeNumber": "163",
-           |      "taxOfficeReference": "AB0063",
-           |      "utr": "1234567890",
-           |      "name": "ABC Construction Ltd",
-           |      "emailAddress": "test@example.com",
-           |      "displayWelcomePage": "Y",
-           |      "prePopCount": 1,
-           |      "prePopSuccessful": "Y",
-           |      "subcontractorCounter": 10,
-           |      "verificationBatchCounter": 2,
-           |      "lastUpdate": "2026-04-01T10:15:30Z",
-           |      "version": 1
-           |    }
-           |  ],
            |  "subcontractors": [
            |    {
-           |      "subcontractorId": 1,
-           |      "utr": "1111111111",
-           |      "pageVisited": 2,
-           |      "partnerUtr": null,
-           |      "crn": null,
-           |      "firstName": "John",
-           |      "nino": "AA123456A",
-           |      "secondName": null,
-           |      "surname": "Smith",
-           |      "partnershipTradingName": null,
-           |      "tradingName": "ACME",
-           |      "subcontractorType": "soletrader",
-           |      "addressLine1": "1 Main Street",
-           |      "addressLine2": null,
-           |      "addressLine3": null,
-           |      "addressLine4": null,
-           |      "country": "United Kingdom",
-           |      "postcode": "AA1 1AA",
-           |      "emailAddress": null,
-           |      "phoneNumber": null,
-           |      "mobilePhoneNumber": null,
-           |      "worksReferenceNumber": null,
-           |      "createDate": "2026-04-01T10:00:00",
-           |      "lastUpdate": "2026-04-01T10:00:00",
-           |      "subbieResourceRef": 10,
-           |      "matched": "Y",
-           |      "autoVerified": "N",
-           |      "verified": "Y",
-           |      "verificationNumber": "V0000000001",
-           |      "taxTreatment": "0",
-           |      "verificationDate": "2026-04-01T10:00:00",
-           |      "version": 1,
-           |      "updatedTaxTreatment": null,
-           |      "lastMonthlyReturnDate": null,
-           |      "pendingVerifications": 0
+           |      "subcontractorId": 1
            |    }
            |  ],
            |  "verificationBatch": [
            |    {
-           |      "verificationBatchId": 99,
-           |      "schemeId": 123,
-           |      "verificationsCounter": 1,
-           |      "verifBatchResourceRef": 10,
-           |      "proceedSession": "Y",
-           |      "confirmArrangement": "Y",
-           |      "confirmCorrect": "Y",
-           |      "status": "STARTED",
-           |      "verificationNumber": "VB00000001",
-           |      "createDate": "2026-04-01T10:00:00",
-           |      "lastUpdate": "2026-04-01T10:00:00",
-           |      "version": 1
+           |      "verificationBatchId": 99
            |    }
            |  ],
            |  "verifications": [
            |    {
-           |      "verificationId": 1001,
-           |      "matched": "Y",
-           |      "verificationNumber": "V0000000001",
-           |      "taxTreatment": "0",
-           |      "actionIndicator": "A",
-           |      "verificationBatchId": 99,
-           |      "schemeId": 123,
-           |      "subcontractorId": 1,
-           |      "subcontractorName": "ACME",
-           |      "verificationResourceRef": 1,
-           |      "proceed": "Y",
-           |      "createDate": "2026-04-01T10:00:00",
-           |      "lastUpdate": "2026-04-01T10:00:00",
-           |      "version": 1
+           |      "verificationId": 1001
            |    }
            |  ],
            |  "submission": [
            |    {
-           |      "submissionId": 555,
-           |      "submissionType": "VERIFICATIONS",
-           |      "activeObjectId": 99,
-           |      "status": "ACCEPTED",
-           |      "hmrcMarkGenerated": null,
-           |      "hmrcMarkGgis": null,
-           |      "emailRecipient": null,
-           |      "acceptedTime": null,
-           |      "createDate": "2026-04-01T10:00:00",
-           |      "lastUpdate": "2026-04-01T10:00:00",
-           |      "schemeId": 123,
-           |      "agentId": null,
-           |      "l_Migrated": null,
-           |      "submissionRequestDate": "2026-04-01T10:00:00",
-           |      "govTalkErrorCode": null,
-           |      "govTalkErrorType": null,
-           |      "govTalkErrorMessage": null
+           |      "submissionId": 555
            |    }
            |  ],
            |  "monthlyReturn": [
            |    {
-           |      "monthlyReturnId": 777,
-           |      "taxYear": 2025,
-           |      "taxMonth": 1,
-           |      "nilReturnIndicator": null,
-           |      "decEmpStatusConsidered": null,
-           |      "decAllSubsVerified": null,
-           |      "decInformationCorrect": null,
-           |      "decNoMoreSubPayments": null,
-           |      "decNilReturnNoPayments": null,
-           |      "status": "SUBMITTED",
-           |      "lastUpdate": "2026-04-01T10:00:00",
-           |      "amendment": null,
-           |      "supersededBy": null
-           |    }
-           |  ],
-           |  "monthlyReturnSubmission": [
-           |    {
-           |      "submissionId": 556,
-           |      "submissionType": "MONTHLY_RETURN",
-           |      "activeObjectId": 777,
-           |      "status": "ACCEPTED",
-           |      "hmrcMarkGenerated": null,
-           |      "hmrcMarkGgis": null,
-           |      "emailRecipient": null,
-           |      "acceptedTime": null,
-           |      "createDate": "2026-04-01T10:00:00",
-           |      "lastUpdate": "2026-04-01T10:00:00",
-           |      "schemeId": 123,
-           |      "agentId": null,
-           |      "l_Migrated": null,
-           |      "submissionRequestDate": "2026-04-01T10:00:00",
-           |      "govTalkErrorCode": null,
-           |      "govTalkErrorType": null,
-           |      "govTalkErrorMessage": null
+           |      "monthlyReturnId": 777
            |    }
            |  ]
            |}
@@ -1451,18 +1325,14 @@ class FormpProxyConnectorIntegrationSpec
 
       val outJson = Json.toJson(connector.getNewestVerificationBatch(instanceId).futureValue)
 
-      (outJson \ "scheme")(0).\("schemeId").as[Int] mustBe 123
-      (outJson \ "scheme")(0).\("instanceId").as[String] mustBe instanceId
 
       (outJson \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
-      (outJson \ "subcontractors")(0).\("utr").as[String] mustBe "1111111111"
 
       (outJson \ "verificationBatch")(0).\("verificationBatchId").as[Long] mustBe 99L
       (outJson \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L
 
       (outJson \ "submission")(0).\("submissionId").as[Long] mustBe 555L
       (outJson \ "monthlyReturn")(0).\("monthlyReturnId").as[Long] mustBe 777L
-      (outJson \ "monthlyReturnSubmission")(0).\("submissionId").as[Long] mustBe 556L
     }
 
     "fail the future when upstream returns a non-2xx (e.g. 500)" in {
