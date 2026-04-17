@@ -154,6 +154,12 @@ class FormpProxyConnector @Inject() (
       .withBody(Json.obj("instanceId" -> instanceId))
       .execute[UnsubmittedMonthlyReturns]
 
+  def getSubmittedMonthlyReturns(instanceId: String)(implicit hc: HeaderCarrier): Future[SubmittedMonthlyReturns] =
+    http
+      .post(url"$base/cis/retrieve-submitted-monthly-returns")
+      .withBody(Json.obj("instanceId" -> instanceId))
+      .execute[SubmittedMonthlyReturns]
+
   def createAndUpdateSubcontractor(
     request: CreateAndUpdateSubcontractorRequest
   )(implicit hc: HeaderCarrier): Future[Unit] =

@@ -626,6 +626,64 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector getSubmittedMonthlyReturns" should {
+
+    "POST instanceId to /formp-proxy/cis/retrieve-submitted-monthly-returns and return wrapper (200)" in {
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "scheme": {
+           |    "schemeId": 999,
+           |    "instanceId": "$instanceId",
+           |    "accountsOfficeReference": "123PA00123456",
+           |    "taxOfficeNumber": "163",
+           |    "taxOfficeReference": "AB0063",
+           |    "name": "Scheme Name"
+           |  },
+           |  "monthlyReturns": [
+           |    { "monthlyReturnId": 66666, "taxYear": 2025, "taxMonth": 1 },
+           |    { "monthlyReturnId": 66667, "taxYear": 2025, "taxMonth": 7 }
+           |  ],
+           |  "submissions": [
+           |    {
+           |      "submissionId": 1,
+           |      "submissionType": "Type",
+           |      "activeObjectId": 1,
+           |      "status": "Status",
+           |      "hmrcMarkGenerated": "Mark",
+           |      "hmrcMarkGgis": "Ggis",
+           |      "emailRecipient": "Email",
+           |      "acceptedTime": "2025-01-01T00:00:00Z",
+           |      "schemeId": 999
+           |    }
+           |  ]
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/retrieve-submitted-monthly-returns"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
+          .willReturn(aResponse().withStatus(200).withBody(responseJson.toString()))
+      )
+
+      val out = connector.getSubmittedMonthlyReturns(instanceId).futureValue
+      Json.toJson(out) mustBe responseJson
+    }
+
+    "fail the future when upstream returns a non-2xx (e.g. 500)" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/retrieve-submitted-monthly-returns"))
+          .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = intercept[Throwable](connector.getSubmittedMonthlyReturns(instanceId).futureValue)
+      ex.getMessage must include("500")
+    }
+  }
+
   "FormpProxyConnector createAndUpdateSubcontractor" should {
 
     "POSTs sole trader request and returns Unit (204)" in {

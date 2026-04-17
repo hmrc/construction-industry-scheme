@@ -510,6 +510,60 @@ class MonthlyReturnsControllerSpec extends SpecBase {
       }
     }
 
+    "GET /cis/monthly-returns/submitted/:instanceId (getSubmittedMonthlyReturns)" - {
+
+      "return 200 with wrapper when service succeeds (happy path)" in new SetupAuthOnly {
+        val instanceId = "INSTANCE-123"
+
+        val payload = SubmittedMonthlyReturnsResponse(
+          scheme = SchemeData("Scheme Name", "163", "AB0063"),
+          monthlyReturns = Seq.empty,
+          submissions = Seq.empty
+        )
+
+        when(mockMonthlyReturnService.getSubmittedMonthlyReturns(eqTo(instanceId))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(payload))
+
+        val result = controller.getSubmittedMonthlyReturns(instanceId)(fakeRequest)
+
+        status(result) mustBe OK
+        contentAsJson(result) mustBe Json.toJson(payload)
+        verify(mockMonthlyReturnService).getSubmittedMonthlyReturns(eqTo(instanceId))(any[HeaderCarrier])
+      }
+
+      "return 400 when instanceId is blank" in new SetupAuthOnly {
+        val result = controller.getSubmittedMonthlyReturns("   ")(fakeRequest)
+
+        status(result) mustBe BAD_REQUEST
+        (contentAsJson(result) \ "message").as[String] mustBe "Missing 'cisId'"
+        verifyNoInteractions(mockMonthlyReturnService)
+      }
+
+      "map UpstreamErrorResponse to same status with message" in new SetupAuthOnly {
+        val instanceId = "abc-123"
+
+        when(mockMonthlyReturnService.getSubmittedMonthlyReturns(eqTo(instanceId))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("boom from upstream", BAD_GATEWAY)))
+
+        val result = controller.getSubmittedMonthlyReturns(instanceId)(fakeRequest)
+
+        status(result) mustBe BAD_GATEWAY
+        (contentAsJson(result) \ "message").as[String] must include("boom from upstream")
+      }
+
+      "return 500 with 'Unexpected error' when a NonFatal exception occurs" in new SetupAuthOnly {
+        val instanceId = "abc-123"
+
+        when(mockMonthlyReturnService.getSubmittedMonthlyReturns(eqTo(instanceId))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("boom")))
+
+        val result = controller.getSubmittedMonthlyReturns(instanceId)(fakeRequest)
+
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        (contentAsJson(result) \ "message").as[String] mustBe "Unexpected error"
+      }
+    }
+
     "POST /cis/monthly-returns/nil (createNil)" - {
 
       "return 200 with monthly return when service succeeds" in new SetupAuthOnly {

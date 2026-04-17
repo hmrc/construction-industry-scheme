@@ -27,7 +27,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
-import java.time.LocalDateTime
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 import scala.concurrent.Future
 
 class MonthlyReturnServiceSpec extends SpecBase {
@@ -359,6 +359,92 @@ class MonthlyReturnServiceSpec extends SpecBase {
       ex mustBe boom
 
       verify(formpProxy).getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
+  "getSubmittedMonthlyReturns" - {
+
+    "maps formp submitted returns into response" in {
+      val s = setup; import s._
+
+      val submitted = SubmittedMonthlyReturns(
+        scheme = ContractorScheme(
+          schemeId = 1,
+          instanceId = cisInstanceId,
+          accountsOfficeReference = "123PA00123456",
+          taxOfficeNumber = "163",
+          taxOfficeReference = "AB0063",
+          name = Some("Scheme Name")
+        ),
+        monthlyReturns = Seq(
+          SubmittedMonthlyReturn(1L, 2025, 1, nilReturnIndicator = Some("Y"), status = Some("PENDING")),
+          SubmittedMonthlyReturn(2L, 2025, 2, nilReturnIndicator = Some("N"), status = Some("REJECTED"))
+        ),
+        submissions = Seq(
+          Submission(
+            submissionId = 1L,
+            submissionType = "Type",
+            activeObjectId = Some(1L),
+            status = Some("Status"),
+            hmrcMarkGenerated = Some("Mark"),
+            hmrcMarkGgis = Some("Ggis"),
+            emailRecipient = Some("Email"),
+            acceptedTime = Some("2025-01-01T00:00:00"),
+            createDate = None,
+            lastUpdate = None,
+            schemeId = 1L,
+            agentId = None,
+            l_Migrated = None,
+            submissionRequestDate = None,
+            govTalkErrorCode = None,
+            govTalkErrorType = None,
+            govTalkErrorMessage = None
+          )
+        )
+      )
+
+      when(formpProxy.getSubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(submitted))
+
+      val out = service.getSubmittedMonthlyReturns(cisInstanceId).futureValue
+
+      out mustBe SubmittedMonthlyReturnsResponse(
+        scheme = SchemeData("Scheme Name", "163", "AB0063"),
+        monthlyReturns = Seq(
+          MonthlyReturnData(1L, 2025, 1, "Nil", "Awaiting confirmation", None, None, None),
+          MonthlyReturnData(2L, 2025, 2, "Standard", "Failed", None, None, None)
+        ),
+        submissions = Seq(
+          SubmissionData(
+            1L,
+            Some("Type"),
+            Some(1L),
+            Some("Status"),
+            Some("Mark"),
+            Some("Ggis"),
+            Some("Email"),
+            Some(Instant.parse("2025-01-01T00:00:00Z"))
+          )
+        )
+      )
+
+      verify(formpProxy).getSubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp" in {
+      val s = setup; import s._
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.getSubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.getSubmittedMonthlyReturns(cisInstanceId).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).getSubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
   }

@@ -16,15 +16,15 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services
 
-import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, Subcontractor, UnsubmittedMonthlyReturnStatus, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
-import scala.concurrent.Future
+import java.time.{LocalDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class MonthlyReturnService @Inject() (
@@ -55,6 +55,43 @@ class MonthlyReturnService @Inject() (
             deletable = isDeletable(monthlyReturn.status)
           )
         }
+      )
+    }
+
+  def getSubmittedMonthlyReturns(
+    cisId: String
+  )(implicit hc: HeaderCarrier): Future[SubmittedMonthlyReturnsResponse] =
+    formp.getSubmittedMonthlyReturns(cisId).map { submitted =>
+      SubmittedMonthlyReturnsResponse(
+        scheme = SchemeData(
+          taxOfficeNumber = submitted.scheme.taxOfficeNumber,
+          taxOfficeReference = submitted.scheme.taxOfficeReference,
+          name = submitted.scheme.name.getOrElse("No name provided")
+        ),
+        monthlyReturns = submitted.monthlyReturns.map(mr =>
+          MonthlyReturnData(
+            monthlyReturnId = mr.monthlyReturnId,
+            taxYear = mr.taxYear,
+            taxMonth = mr.taxMonth,
+            nilReturnIndicator = mapType(mr.nilReturnIndicator),
+            status = mapStatus(mr.status),
+            supersededBy = mr.supersededBy,
+            amendmentStatus = mr.amendmentStatus,
+            monthlyReturnItems = mr.monthlyReturnItems
+          )
+        ),
+        submissions = submitted.submissions.map(s =>
+          SubmissionData(
+            submissionId = s.submissionId,
+            submissionType = Some(s.submissionType),
+            activeObjectId = s.activeObjectId,
+            status = s.status,
+            hmrcMarkGenerated = s.hmrcMarkGenerated,
+            hmrcMarkGgis = s.hmrcMarkGgis,
+            emailRecipient = s.emailRecipient,
+            acceptedTime = s.acceptedTime.map(x => LocalDateTime.parse(x).toInstant(ZoneOffset.UTC))
+          )
+        )
       )
     }
 
