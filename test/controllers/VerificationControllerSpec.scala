@@ -32,7 +32,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
 import uk.gov.hmrc.http.HeaderCarrier
 
-import java.time.{Instant, LocalDateTime}
+import java.time.LocalDateTime
 import scala.concurrent.Future
 
 class VerificationControllerSpec extends SpecBase with EitherValues {
@@ -54,7 +54,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       val response = GetNewestVerificationBatchResponse(
         subcontractors = Seq(
-          SubcontractorVerification(
+          SubcontractorNewVerification(
             subcontractorId = 1L,
             firstName = Some("John"),
             secondName = Some("Q"),
@@ -85,7 +85,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
           )
         ),
         submission = Seq(
-          SubmissionVerification(
+          SubmissionNewVerification(
             submissionId = 555L,
             activeObjectId = Some(99L),
             status = Some("ACCEPTED"),
@@ -93,7 +93,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
           )
         ),
         monthlyReturn = Seq(
-          MonthlyReturnVerification(
+          MonthlyReturnNewVerification(
             monthlyReturnId = 777L,
             decNoMoreSubPayments = Some("N")
           )

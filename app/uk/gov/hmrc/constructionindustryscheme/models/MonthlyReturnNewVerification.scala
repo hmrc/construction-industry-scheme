@@ -18,11 +18,11 @@ package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.libs.json.{Json, OFormat}
 
-case class MonthlyReturnVerification(
+case class MonthlyReturnNewVerification(
   monthlyReturnId: Long,
   decNoMoreSubPayments: Option[String] = None
 )
 
-object MonthlyReturnVerification {
-  implicit val format: OFormat[MonthlyReturnVerification] = Json.format[MonthlyReturnVerification]
+object MonthlyReturnNewVerification {
+  implicit val format: OFormat[MonthlyReturnNewVerification] = Json.format[MonthlyReturnNewVerification]
 }

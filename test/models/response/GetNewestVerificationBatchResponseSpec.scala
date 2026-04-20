@@ -22,7 +22,7 @@ import play.api.libs.json.{JsSuccess, Json}
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.GetNewestVerificationBatchResponse
 
-import java.time.{Instant, LocalDateTime}
+import java.time.LocalDateTime
 
 final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matchers {
 
@@ -55,7 +55,7 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
     "write a response to JSON" in {
       val model = GetNewestVerificationBatchResponse(
         subcontractors = Seq(
-          SubcontractorVerification(
+          SubcontractorNewVerification(
             subcontractorId = 1L,
             firstName = Some("John"),
             secondName = None,
@@ -86,7 +86,7 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
           )
         ),
         submission = Seq(
-          SubmissionVerification(
+          SubmissionNewVerification(
             submissionId = 555L,
             activeObjectId = Some(99L),
             status = Some("ACCEPTED"),
@@ -94,7 +94,7 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
           )
         ),
         monthlyReturn = Seq(
-          MonthlyReturnVerification(
+          MonthlyReturnNewVerification(
             monthlyReturnId = 777L,
             decNoMoreSubPayments = Some("N")
           )
@@ -152,7 +152,7 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
         verifications = Seq.empty,
         submission = Seq.empty,
         monthlyReturn = Seq(
-          MonthlyReturnVerification(
+          MonthlyReturnNewVerification(
             monthlyReturnId = 777L,
             decNoMoreSubPayments = Some("N")
           )
