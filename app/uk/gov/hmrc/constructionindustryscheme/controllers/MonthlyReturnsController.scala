@@ -226,6 +226,20 @@ class MonthlyReturnsController @Inject() (
         }
     }
 
+  def getMonthlyReturnComplete: Action[GetMonthlyReturnCompleteRequest] =
+    authorise.async(parse.json[GetMonthlyReturnCompleteRequest]) { implicit request =>
+      service
+        .getMonthlyReturnComplete(request.body)
+        .map(payload => Ok(Json.toJson(payload)))
+        .recover {
+          case u: UpstreamErrorResponse =>
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t)              =>
+            logger.error("[getMonthlyReturnComplete] failed", t)
+            InternalServerError(Json.obj("message" -> "Unexpected error"))
+        }
+    }
+
   def syncSelectedSubcontractors: Action[SelectedSubcontractorsRequest] =
     authorise.async(parse.json[SelectedSubcontractorsRequest]) { implicit request =>
       service

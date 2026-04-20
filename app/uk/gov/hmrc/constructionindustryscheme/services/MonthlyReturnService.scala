@@ -131,6 +131,11 @@ class MonthlyReturnService @Inject() (
   ): Future[GetMonthlyReturnForEditResponse] =
     formp.getMonthlyReturnForEdit(request)
 
+  def getMonthlyReturnComplete(request: GetMonthlyReturnCompleteRequest)(implicit
+    hc: HeaderCarrier
+  ): Future[GetMonthlyReturnCompleteResponse] =
+    formp.getMonthlyReturnComplete(request)
+
   def syncMonthlyReturnItems(request: SelectedSubcontractorsRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     for {
       edit                    <- formp.getMonthlyReturnForEdit(

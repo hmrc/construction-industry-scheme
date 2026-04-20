@@ -1051,6 +1051,71 @@ class MonthlyReturnsControllerSpec extends SpecBase {
       }
     }
 
+    "getMonthlyReturnComplete" - {
+
+      "returns 200 with json payload when service succeeds" in new SetupWithEnrolmentReference {
+
+        val reqBody = GetMonthlyReturnCompleteRequest("abc-123", 2025, 1, "N")
+
+        val payload = GetMonthlyReturnCompleteResponse(
+          scheme = Seq.empty,
+          monthlyReturn = Seq.empty,
+          subcontractors = Seq.empty,
+          monthlyReturnItems = Seq.empty,
+          submission = Seq.empty
+        )
+
+        when(mockMonthlyReturnService.getMonthlyReturnComplete(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(payload))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.getMonthlyReturnComplete, request)
+
+        status(result) mustBe OK
+        contentAsJson(result) mustBe Json.toJson(payload)
+      }
+
+      "returns upstream status + message when service fails with UpstreamErrorResponse" in new SetupWithEnrolmentReference {
+
+        val reqBody = GetMonthlyReturnCompleteRequest("abc-123", 2025, 1, "N")
+        val boom    = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
+
+        when(mockMonthlyReturnService.getMonthlyReturnComplete(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(boom))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.getMonthlyReturnComplete, request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
+      }
+
+      "returns 500 with Unexpected error when service fails with NonFatal" in new SetupWithEnrolmentReference {
+
+        val reqBody = GetMonthlyReturnCompleteRequest("abc-123", 2025, 1, "N")
+
+        when(mockMonthlyReturnService.getMonthlyReturnComplete(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("boom")))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result = call(controller.getMonthlyReturnComplete, request)
+
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        contentAsJson(result) mustBe Json.obj("message" -> "Unexpected error")
+      }
+    }
   }
 
   private lazy val sampleWrapper: UserMonthlyReturns = UserMonthlyReturns(
