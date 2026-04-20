@@ -18,9 +18,10 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
+import uk.gov.hmrc.constructionindustryscheme.models.UnsubmittedMonthlyReturnStatus.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, Subcontractor, UnsubmittedMonthlyReturnStatus, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.*
 
 import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}
@@ -43,15 +44,22 @@ class MonthlyReturnService @Inject() (
   )(implicit hc: HeaderCarrier): Future[UnsubmittedMonthlyReturnsResponse] =
     formp.getUnsubmittedMonthlyReturns(cisId).map { unsubmitted =>
       UnsubmittedMonthlyReturnsResponse(
-        unsubmittedCisReturns = unsubmitted.monthlyReturn.map { monthlyReturn =>
-          UnsubmittedMonthlyReturnsRow(
-            taxYear = monthlyReturn.taxYear,
-            taxMonth = monthlyReturn.taxMonth,
-            returnType = mapType(monthlyReturn.nilReturnIndicator),
-            status = mapStatus(monthlyReturn.status),
-            lastUpdate = monthlyReturn.lastUpdate
-          )
-        }
+        unsubmittedCisReturns = unsubmitted.monthlyReturn
+          .filter(mr => UnsubmittedMonthlyReturnStatus.isIncomplete(mr.status))
+          .map { monthlyReturn =>
+            val mappedStatus = UnsubmittedMonthlyReturnStatus.fromRaw(monthlyReturn.status)
+
+            UnsubmittedMonthlyReturnsRow(
+              monthlyReturnId = monthlyReturn.monthlyReturnId,
+              taxYear = monthlyReturn.taxYear,
+              taxMonth = monthlyReturn.taxMonth,
+              returnType = mapType(monthlyReturn.nilReturnIndicator),
+              status = mappedStatus.asText,
+              action = mapActions(mappedStatus),
+              lastUpdate = monthlyReturn.lastUpdate,
+              amendment = monthlyReturn.amendment
+            )
+          }
       )
     }
 
@@ -227,7 +235,12 @@ class MonthlyReturnService @Inject() (
     if (nilReturnIndicator.exists(_.trim.equalsIgnoreCase("Y"))) "Nil"
     else "Standard"
 
-  private def mapStatus(raw: Option[String]): String =
-    UnsubmittedMonthlyReturnStatus.fromRaw(raw).asText
+  private def mapActions(status: UnsubmittedMonthlyReturnStatus): Seq[String] =
+    status match {
+      case InProgress           => Seq("Continue", "Delete")
+      case AwaitingConfirmation => Seq("View")
+      case Unsuccessful         => Seq("View")
+      case Unknown              => Seq.empty
+    }
 
 }

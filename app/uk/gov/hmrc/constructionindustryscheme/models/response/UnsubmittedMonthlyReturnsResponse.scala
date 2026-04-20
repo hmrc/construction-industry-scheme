@@ -21,11 +21,14 @@ import play.api.libs.json.{Json, OFormat}
 import java.time.LocalDateTime
 
 case class UnsubmittedMonthlyReturnsRow(
+  monthlyReturnId: Long,
   taxYear: Int,
   taxMonth: Int,
   returnType: String,
   status: String,
-  lastUpdate: Option[LocalDateTime]
+  action: Seq[String],
+  lastUpdate: Option[LocalDateTime],
+  amendment: Option[String]
 )
 
 object UnsubmittedMonthlyReturnsRow {

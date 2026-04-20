@@ -22,22 +22,32 @@ sealed trait UnsubmittedMonthlyReturnStatus {
 
 object UnsubmittedMonthlyReturnStatus {
   case object InProgress extends UnsubmittedMonthlyReturnStatus {
-    override def asText: String = "In Progress"
+    override def asText: String = "In progress"
   }
 
   case object AwaitingConfirmation extends UnsubmittedMonthlyReturnStatus {
     override def asText: String = "Awaiting confirmation"
   }
 
-  case object Failed extends UnsubmittedMonthlyReturnStatus {
-    override def asText: String = "Failed"
+  case object Unsuccessful extends UnsubmittedMonthlyReturnStatus {
+    override def asText: String = "Unsuccessful"
+  }
+
+  case object Unknown extends UnsubmittedMonthlyReturnStatus {
+    override def asText: String = "Unknown"
   }
 
   def fromRaw(raw: Option[String]): UnsubmittedMonthlyReturnStatus =
     raw.map(_.trim.toUpperCase) match {
       case Some("STARTED") | Some("VALIDATED") => InProgress
       case Some("PENDING")                     => AwaitingConfirmation
-      case Some("REJECTED")                    => Failed
-      case _                                   => InProgress
+      case Some("REJECTED")                    => Unsuccessful
+      case _                                   => Unknown
     }
+
+  private val IncompleteStatuses = Set("STARTED", "VALIDATED", "PENDING", "REJECTED")
+
+  def isIncomplete(raw: Option[String]): Boolean =
+    raw.exists(IncompleteStatuses.contains)
+
 }
