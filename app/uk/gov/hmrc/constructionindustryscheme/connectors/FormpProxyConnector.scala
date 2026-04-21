@@ -154,6 +154,12 @@ class FormpProxyConnector @Inject() (
       .withBody(Json.obj("instanceId" -> instanceId))
       .execute[UnsubmittedMonthlyReturns]
 
+  def getSubmittedMonthlyReturns(instanceId: String)(implicit hc: HeaderCarrier): Future[SubmittedMonthlyReturns] =
+    http
+      .post(url"$base/cis/retrieve-submitted-monthly-returns")
+      .withBody(Json.obj("instanceId" -> instanceId))
+      .execute[SubmittedMonthlyReturns]
+
   def createAndUpdateSubcontractor(
     request: CreateAndUpdateSubcontractorRequest
   )(implicit hc: HeaderCarrier): Future[Unit] =
@@ -296,4 +302,18 @@ class FormpProxyConnector @Inject() (
     http
       .get(url"$base/cis/verification-batch/newest/$instanceId")
       .execute[GetNewestVerificationBatchResponse]
+
+  def deleteUnsubmittedMonthlyReturn(
+    request: DeleteUnsubmittedMonthlyReturnRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/monthly-returns/unsubmitted/delete")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        response.status match {
+          case NO_CONTENT => Future.unit
+          case status     => Future.failed(UpstreamErrorResponse(response.body, status, status))
+        }
+      }
 }

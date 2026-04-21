@@ -36,7 +36,8 @@ class UnsubmittedMonthlyReturnsResponseSpec extends AnyWordSpec with Matchers {
         status = "PENDING",
         action = Seq.empty,
         lastUpdate = Some(LocalDateTime.parse("2025-01-01T00:00:00")),
-        amendment = Some("N")
+        amendment = Some("N"),
+        deletable = true
       )
 
       val json = Json.toJson(row)
@@ -57,7 +58,8 @@ class UnsubmittedMonthlyReturnsResponseSpec extends AnyWordSpec with Matchers {
             status = "STARTED",
             action = Seq.empty,
             lastUpdate = None,
-            amendment = None
+            amendment = None,
+            deletable = true
           )
         )
       )

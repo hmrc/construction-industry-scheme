@@ -28,7 +28,8 @@ case class UnsubmittedMonthlyReturnsRow(
   status: String,
   action: Seq[String],
   lastUpdate: Option[LocalDateTime],
-  amendment: Option[String]
+  amendment: Option[String],
+  deletable: Boolean
 )
 
 object UnsubmittedMonthlyReturnsRow {

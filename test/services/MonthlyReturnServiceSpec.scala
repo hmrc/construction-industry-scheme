@@ -27,7 +27,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
-import java.time.LocalDateTime
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 import scala.concurrent.Future
 
 class MonthlyReturnServiceSpec extends SpecBase {
@@ -270,6 +270,181 @@ class MonthlyReturnServiceSpec extends SpecBase {
       ex mustBe boom
 
       verify(formpProxy).createMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
+  "getUnsubmittedMonthlyReturns" - {
+
+    "maps formp monthly returns into response rows" in {
+      val s = setup; import s._
+
+      val last = Some(LocalDateTime.parse("2025-01-01T00:00:00"))
+
+      val unsubmitted = UnsubmittedMonthlyReturns(
+        scheme = ContractorScheme(
+          schemeId = 1,
+          instanceId = cisInstanceId,
+          accountsOfficeReference = "123PA00123456",
+          taxOfficeNumber = "163",
+          taxOfficeReference = "AB0063"
+        ),
+        monthlyReturn = Seq(
+          MonthlyReturn(
+            1L,
+            2025,
+            1,
+            nilReturnIndicator = Some("Y"),
+            status = Some("PENDING"),
+            lastUpdate = last,
+            amendment = Some("Y")
+          ),
+          MonthlyReturn(
+            2L,
+            2025,
+            2,
+            nilReturnIndicator = Some("N"),
+            status = Some("REJECTED"),
+            lastUpdate = None,
+            amendment = Some("N")
+          ),
+          MonthlyReturn(
+            3L,
+            2025,
+            3,
+            nilReturnIndicator = Some("N"),
+            status = Some("STARTED"),
+            lastUpdate = None,
+            amendment = Some("N")
+          ),
+          MonthlyReturn(
+            4L,
+            2025,
+            4,
+            nilReturnIndicator = Some("N"),
+            status = Some("VALIDATED"),
+            lastUpdate = None,
+            amendment = Some("N")
+          )
+        )
+      )
+
+      when(formpProxy.getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(unsubmitted))
+
+      val out = service.getUnsubmittedMonthlyReturns(cisInstanceId).futureValue
+
+      out mustBe UnsubmittedMonthlyReturnsResponse(
+        unsubmittedCisReturns = Seq(
+          UnsubmittedMonthlyReturnsRow(1L, 2025, 1, "Nil", "Awaiting confirmation", last, Some("Y"), false),
+          UnsubmittedMonthlyReturnsRow(2L, 2025, 2, "Standard", "Failed", None, Some("N"), false),
+          UnsubmittedMonthlyReturnsRow(3L, 2025, 3, "Standard", "In Progress", None, Some("N"), true),
+          UnsubmittedMonthlyReturnsRow(4L, 2025, 4, "Standard", "In Progress", None, Some("N"), true)
+        )
+      )
+
+      verify(formpProxy).getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp" in {
+      val s = setup; import s._
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.getUnsubmittedMonthlyReturns(cisInstanceId).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
+  "getSubmittedMonthlyReturns" - {
+
+    "maps formp submitted returns into response" in {
+      val s = setup; import s._
+
+      val submitted = SubmittedMonthlyReturns(
+        scheme = ContractorScheme(
+          schemeId = 1,
+          instanceId = cisInstanceId,
+          accountsOfficeReference = "123PA00123456",
+          taxOfficeNumber = "163",
+          taxOfficeReference = "AB0063",
+          name = Some("Scheme Name")
+        ),
+        monthlyReturns = Seq(
+          SubmittedMonthlyReturn(1L, 2025, 1, nilReturnIndicator = Some("Y"), status = Some("PENDING")),
+          SubmittedMonthlyReturn(2L, 2025, 2, nilReturnIndicator = Some("N"), status = Some("REJECTED"))
+        ),
+        submissions = Seq(
+          Submission(
+            submissionId = 1L,
+            submissionType = "Type",
+            activeObjectId = Some(1L),
+            status = Some("Status"),
+            hmrcMarkGenerated = Some("Mark"),
+            hmrcMarkGgis = Some("Ggis"),
+            emailRecipient = Some("Email"),
+            acceptedTime = Some("2025-01-01T00:00:00"),
+            createDate = None,
+            lastUpdate = None,
+            schemeId = 1L,
+            agentId = None,
+            l_Migrated = None,
+            submissionRequestDate = None,
+            govTalkErrorCode = None,
+            govTalkErrorType = None,
+            govTalkErrorMessage = None
+          )
+        )
+      )
+
+      when(formpProxy.getSubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(submitted))
+
+      val out = service.getSubmittedMonthlyReturns(cisInstanceId).futureValue
+
+      out mustBe SubmittedMonthlyReturnsResponse(
+        scheme = SchemeData("Scheme Name", "163", "AB0063"),
+        monthlyReturns = Seq(
+          MonthlyReturnData(1L, 2025, 1, "Nil", "PENDING", None, None, None),
+          MonthlyReturnData(2L, 2025, 2, "Standard", "REJECTED", None, None, None)
+        ),
+        submissions = Seq(
+          SubmissionData(
+            1L,
+            Some("Type"),
+            Some(1L),
+            Some("Status"),
+            Some("Mark"),
+            Some("Ggis"),
+            Some("Email"),
+            Some(Instant.parse("2025-01-01T00:00:00Z"))
+          )
+        )
+      )
+
+      verify(formpProxy).getSubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp" in {
+      val s = setup; import s._
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.getSubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.getSubmittedMonthlyReturns(cisInstanceId).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).getSubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
   }
@@ -814,6 +989,52 @@ class MonthlyReturnServiceSpec extends SpecBase {
       service.updateMonthlyReturnItem(req).futureValue
 
       verify(formpProxy).updateMonthlyReturnItem(any())(any())
+    }
+  }
+
+  "deleteUnsubmittedMonthlyReturn" - {
+
+    "returns the response from formp" in {
+      val s = setup
+      import s._
+
+      val request = DeleteUnsubmittedMonthlyReturnRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "Y"
+      )
+
+      when(formpProxy.deleteUnsubmittedMonthlyReturn(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.deleteUnsubmittedMonthlyReturn(request).futureValue
+
+      verify(formpProxy).deleteUnsubmittedMonthlyReturn(eqTo(request))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp" in {
+      val s = setup
+      import s._
+
+      val request = DeleteUnsubmittedMonthlyReturnRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "Y"
+      )
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.deleteUnsubmittedMonthlyReturn(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.deleteUnsubmittedMonthlyReturn(request).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).deleteUnsubmittedMonthlyReturn(eqTo(request))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
     }
   }
 
