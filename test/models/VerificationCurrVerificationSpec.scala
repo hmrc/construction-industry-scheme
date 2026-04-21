@@ -29,7 +29,7 @@ class VerificationCurrVerificationSpec extends SpecBase {
         subcontractorId = Some(2L),
         verificationResourceRef = Some(20L)
       )
-      val json = Json.toJson(verification)
+      val json         = Json.toJson(verification)
 
       (json \ "verificationId").as[Long] mustBe 1L
       (json \ "verificationBatchId").as[Long] mustBe 10L
@@ -37,7 +37,7 @@ class VerificationCurrVerificationSpec extends SpecBase {
       (json \ "verificationResourceRef").as[Long] mustBe 20L
     }
     "deserialize from JSON correctly" in {
-      val json = Json.parse(
+      val json   = Json.parse(
         """
           |{
           |  "verificationId": 1,
@@ -60,8 +60,8 @@ class VerificationCurrVerificationSpec extends SpecBase {
         subcontractorId = Some(2L),
         verificationResourceRef = Some(20L)
       )
-      val json = Json.toJson(verification)
-      val result = json.as[VerificationCurrVerification]
+      val json         = Json.toJson(verification)
+      val result       = json.as[VerificationCurrVerification]
       result mustBe verification
     }
   }
