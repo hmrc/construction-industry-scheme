@@ -134,6 +134,24 @@ class MonthlyReturnsController @Inject() (
     }
   }
 
+  def getSubmittedMonthlyReturns(cisId: String): Action[AnyContent] = authorise.async { implicit request =>
+    val id = cisId.trim
+    if (id.isEmpty) {
+      Future.successful(BadRequest(Json.obj("message" -> "Missing 'cisId'")))
+    } else {
+      service
+        .getSubmittedMonthlyReturns(id)
+        .map(res => Ok(Json.toJson(res)))
+        .recover {
+          case u: UpstreamErrorResponse =>
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t)              =>
+            logger.error("[getUnsubmittedMonthlyReturns] failed", t)
+            InternalServerError(Json.obj("message" -> "Unexpected error"))
+        }
+    }
+  }
+
   def createNil(): Action[JsValue] = authorise.async(parse.json) { implicit request =>
     request.body
       .validate[NilMonthlyReturnRequest]
@@ -249,6 +267,21 @@ class MonthlyReturnsController @Inject() (
           case NonFatal(t)              =>
             logger.error("[updateMonthlyReturnItem] failed", t)
             InternalServerError(Json.obj("message" -> "Unexpected error"))
+        }
+    }
+
+  def deleteUnsubmittedMonthlyReturn: Action[DeleteUnsubmittedMonthlyReturnRequest] =
+    authorise.async(parse.json[DeleteUnsubmittedMonthlyReturnRequest]) { implicit request =>
+      service
+        .deleteUnsubmittedMonthlyReturn(request.body)
+        .map(_ => NoContent)
+        .recover {
+          case u: UpstreamErrorResponse =>
+            logger.error("[deleteUnsubmittedMonthlyReturn] formp-proxy unsubmitted monthly return delete failed", u)
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t)              =>
+            logger.error("[deleteUnsubmittedMonthlyReturn] formp-proxy unsubmitted monthly return delete failed", t)
+            BadGateway(Json.obj("message" -> "delete-unsubmitted-monthly-return-failed"))
         }
     }
 }

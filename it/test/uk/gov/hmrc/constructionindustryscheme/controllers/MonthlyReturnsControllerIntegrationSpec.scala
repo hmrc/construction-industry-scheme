@@ -278,4 +278,85 @@ class MonthlyReturnsControllerIntegrationSpec
       (resp.json \ "message").as[String].toLowerCase must include("bad gateway")
     }
   }
+
+  "GET /monthly-returns/unsubmitted/:instanceId" should {
+
+    "return 200 with UnsubmittedMonthlyReturnsResponse when FormP succeeds" in {
+      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
+
+      val instanceId = "123"
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "scheme": {
+           |    "schemeId": 999,
+           |    "instanceId": "$instanceId",
+           |    "accountsOfficeReference": "123PA00123456",
+           |    "taxOfficeNumber": "163",
+           |    "taxOfficeReference": "AB0063"
+           |  },
+           |  "monthlyReturn": [
+           |    { "monthlyReturnId": 66666, "taxYear": 2025, "taxMonth": 1, "nilReturnIndicator": "Y", "status": "PENDING" }
+           |  ]
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/retrieve-unsubmitted-monthly-returns"))
+          .willReturn(aResponse().withStatus(200).withBody(responseJson.toString()))
+      )
+
+      val resp = getJson(
+        s"$base/monthly-returns/unsubmitted/$instanceId",
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
+
+      resp.status mustBe OK
+      (resp.json \ "unsubmittedCisReturns").as[Seq[JsValue]].size mustBe 1
+    }
+  }
+
+  "GET /monthly-returns/submitted/:instanceId" should {
+
+    "return 200 with SubmittedMonthlyReturnsResponse when FormP succeeds" in {
+      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
+
+      val instanceId = "123"
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "scheme": {
+           |    "schemeId": 999,
+           |    "instanceId": "$instanceId",
+           |    "accountsOfficeReference": "123PA00123456",
+           |    "taxOfficeNumber": "163",
+           |    "taxOfficeReference": "AB0063",
+           |    "name": "Scheme Name"
+           |  },
+           |  "monthlyReturns": [
+           |    { "monthlyReturnId": 66666, "taxYear": 2025, "taxMonth": 1, "nilReturnIndicator": "Y", "status": "PENDING" }
+           |  ],
+           |  "submissions": []
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/retrieve-submitted-monthly-returns"))
+          .willReturn(aResponse().withStatus(200).withBody(responseJson.toString()))
+      )
+
+      val resp = getJson(
+        s"$base/monthly-returns/submitted/$instanceId",
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
+
+      resp.status mustBe OK
+      (resp.json \ "scheme" \ "name").as[String] mustBe "Scheme Name"
+      (resp.json \ "monthlyReturns").as[Seq[JsValue]].size mustBe 1
+    }
+  }
 }
