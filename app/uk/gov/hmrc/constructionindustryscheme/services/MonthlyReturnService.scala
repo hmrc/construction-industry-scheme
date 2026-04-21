@@ -61,6 +61,8 @@ class MonthlyReturnService @Inject() (
               deletable = isDeletable(monthlyReturn.status)
             )
           }
+      )
+    }
 
   def getSubmittedMonthlyReturns(
     cisId: String
