@@ -20,7 +20,7 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.response.GetNewestVerificationBatchResponse
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetCurrentVerificationBatchResponse, GetNewestVerificationBatchResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -62,6 +62,39 @@ final class VerificationServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.getNewestVerificationBatch(instanceId).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "VerificationService#getCurrentVerificationBatch" - {
+
+    val instanceId = "abc-123"
+
+    val response = GetCurrentVerificationBatchResponse(
+      subcontractors = Seq.empty,
+      verificationBatch = Seq.empty,
+      verifications = Seq.empty
+    )
+
+    "delegates to FormpProxyConnector and returns response" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      service.getCurrentVerificationBatch(instanceId).futureValue mustBe response
+
+      verify(connector).getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.getCurrentVerificationBatch(instanceId).failed.futureValue.getMessage must include("boom")
     }
   }
 }

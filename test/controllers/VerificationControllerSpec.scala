@@ -27,7 +27,7 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.{GET, JSON, contentAsJson, contentType, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController
-import uk.gov.hmrc.constructionindustryscheme.models.response.GetNewestVerificationBatchResponse
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetCurrentVerificationBatchResponse, GetNewestVerificationBatchResponse}
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -250,6 +250,86 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentAsJson(result) mustBe Json.obj("message" -> "get-newest-verification-batch-failed")
 
       verify(service).getNewestVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+    }
+  }
+
+  "getCurrentVerificationBatch" - {
+
+    val instanceId = "abc-123"
+    val url        = s"/cis/verification-batch/current/$instanceId"
+
+    "returns 200 OK with JSON body when service succeeds (full payload)" in {
+      val service    = mock[VerificationService]
+      val controller = mockController(service)
+
+      val response = GetCurrentVerificationBatchResponse(
+        subcontractors = Seq(
+          SubcontractorCurrVerification(
+            subcontractorId = 1L,
+            subbieResourceRef = Some(10L),
+            firstName = Some("John"),
+            surname = Some("Smith"),
+            secondName = Some("Q"),
+            tradingName = Some("ACME"),
+            utr = Some("1111111111"),
+            nino = Some("AA123456A"),
+            crn = Some("AC012345"),
+            partnerUtr = Some("5860920998")
+          )
+        ),
+        verificationBatch = Seq(
+          VerificationBatchCurrVerification(
+            verificationBatchId = 99L,
+            verifBatchResourceRef = Some(999L)
+          )
+        ),
+        verifications = Seq(
+          VerificationCurrVerification(
+            verificationId = 1001L,
+            verificationBatchId = Some(99L),
+            subcontractorId = Some(1L),
+            verificationResourceRef = Some(1L)
+          )
+        )
+      )
+
+      when(service.getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, url)
+      val result                                   = controller.getCurrentVerificationBatch(instanceId)(req)
+
+      status(result) mustBe OK
+      contentType(result) mustBe Some(JSON)
+
+      val json = contentAsJson(result)
+
+      (json \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
+      (json \ "subcontractors")(0).\("utr").as[String] mustBe "1111111111"
+
+      (json \ "verificationBatch")(0).\("verificationBatchId").as[Long] mustBe 99L
+      (json \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L
+
+      json mustBe Json.toJson(response)
+
+      verify(service).getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+    }
+
+    "returns 502 BadGateway with error body when service fails" in {
+      val service    = mock[VerificationService]
+      val controller = mockController(service)
+
+      when(service.getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, url)
+      val result                                   = controller.getCurrentVerificationBatch(instanceId)(req)
+
+      status(result) mustBe BAD_GATEWAY
+      contentType(result) mustBe Some(JSON)
+      contentAsJson(result) mustBe Json.obj("message" -> "get-current-verification-batch-failed")
+
+      verify(service).getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
     }
   }
 }
