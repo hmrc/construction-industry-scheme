@@ -274,59 +274,6 @@ class MonthlyReturnServiceSpec extends SpecBase {
     }
   }
 
-  "getUnsubmittedMonthlyReturns" - {
-
-    "maps formp monthly returns into response rows" in {
-      val s = setup; import s._
-
-      val last = Some(LocalDateTime.parse("2025-01-01T00:00:00"))
-
-      val unsubmitted = UnsubmittedMonthlyReturns(
-        scheme = ContractorScheme(
-          schemeId = 1,
-          instanceId = cisInstanceId,
-          accountsOfficeReference = "123PA00123456",
-          taxOfficeNumber = "163",
-          taxOfficeReference = "AB0063"
-        ),
-        monthlyReturn = Seq(
-          MonthlyReturn(1L, 2025, 1, nilReturnIndicator = Some("Y"), status = Some("PENDING"), lastUpdate = last),
-          MonthlyReturn(2L, 2025, 2, nilReturnIndicator = Some("N"), status = Some("REJECTED"), lastUpdate = None)
-        )
-      )
-
-      when(formpProxy.getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(unsubmitted))
-
-      val out = service.getUnsubmittedMonthlyReturns(cisInstanceId).futureValue
-
-      out mustBe UnsubmittedMonthlyReturnsResponse(
-        unsubmittedCisReturns = Seq(
-          UnsubmittedMonthlyReturnsRow(2025, 1, "Nil", "Awaiting confirmation", last),
-          UnsubmittedMonthlyReturnsRow(2025, 2, "Standard", "Failed", None)
-        )
-      )
-
-      verify(formpProxy).getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
-      verifyNoInteractions(datacacheProxy)
-    }
-
-    "propagates failure from formp" in {
-      val s = setup; import s._
-
-      val boom = UpstreamErrorResponse("formp proxy failure", 500)
-
-      when(formpProxy.getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
-        .thenReturn(Future.failed(boom))
-
-      val ex = service.getUnsubmittedMonthlyReturns(cisInstanceId).failed.futureValue
-      ex mustBe boom
-
-      verify(formpProxy).getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier])
-      verifyNoInteractions(datacacheProxy)
-    }
-  }
-
   "getMonthlyReturnForEdit" - {
 
     "returns the response from formp" in {

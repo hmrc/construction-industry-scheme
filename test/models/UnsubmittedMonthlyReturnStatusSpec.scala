@@ -28,19 +28,49 @@ class UnsubmittedMonthlyReturnStatusSpec extends AnyFreeSpec with Matchers {
       UnsubmittedMonthlyReturnStatus.fromRaw(Some("STARTED")) mustBe
         UnsubmittedMonthlyReturnStatus.InProgress
 
+      UnsubmittedMonthlyReturnStatus.fromRaw(Some("VALIDATED")) mustBe
+        UnsubmittedMonthlyReturnStatus.InProgress
+
       UnsubmittedMonthlyReturnStatus.fromRaw(Some("PENDING")) mustBe
         UnsubmittedMonthlyReturnStatus.AwaitingConfirmation
 
       UnsubmittedMonthlyReturnStatus.fromRaw(Some("REJECTED")) mustBe
-        UnsubmittedMonthlyReturnStatus.Failed
+        UnsubmittedMonthlyReturnStatus.Unsuccessful
     }
 
-    "default to InProgress for unknown or missing values" in {
+    "default to Unknown for unknown or missing values" in {
       UnsubmittedMonthlyReturnStatus.fromRaw(Some("UNKNOWN")) mustBe
-        UnsubmittedMonthlyReturnStatus.InProgress
+        UnsubmittedMonthlyReturnStatus.Unknown
 
       UnsubmittedMonthlyReturnStatus.fromRaw(None) mustBe
+        UnsubmittedMonthlyReturnStatus.Unknown
+    }
+
+    "ignore case and surrounding whitespace" in {
+      UnsubmittedMonthlyReturnStatus.fromRaw(Some(" started ")) mustBe
         UnsubmittedMonthlyReturnStatus.InProgress
+
+      UnsubmittedMonthlyReturnStatus.fromRaw(Some(" pending ")) mustBe
+        UnsubmittedMonthlyReturnStatus.AwaitingConfirmation
+    }
+  }
+
+  "UnsubmittedMonthlyReturnStatus.isIncomplete" - {
+
+    "return true for incomplete statuses" in {
+      UnsubmittedMonthlyReturnStatus.isIncomplete(Some("STARTED")) mustBe true
+      UnsubmittedMonthlyReturnStatus.isIncomplete(Some("VALIDATED")) mustBe true
+      UnsubmittedMonthlyReturnStatus.isIncomplete(Some("PENDING")) mustBe true
+      UnsubmittedMonthlyReturnStatus.isIncomplete(Some("REJECTED")) mustBe true
+    }
+
+    "return false for unknown or missing statuses" in {
+      UnsubmittedMonthlyReturnStatus.isIncomplete(Some("UNKNOWN")) mustBe false
+      UnsubmittedMonthlyReturnStatus.isIncomplete(None) mustBe false
+    }
+
+    "be case sensitive because raw values are checked directly" in {
+      UnsubmittedMonthlyReturnStatus.isIncomplete(Some("started")) mustBe false
     }
   }
 }

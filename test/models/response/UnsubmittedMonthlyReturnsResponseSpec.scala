@@ -29,11 +29,14 @@ class UnsubmittedMonthlyReturnsResponseSpec extends AnyWordSpec with Matchers {
 
     "round-trip to/from JSON" in {
       val row = UnsubmittedMonthlyReturnsRow(
+        monthlyReturnId = 12345L,
         taxYear = 2025,
         taxMonth = 1,
         returnType = "Nil",
         status = "PENDING",
-        lastUpdate = Some(LocalDateTime.parse("2025-01-01T00:00:00"))
+        action = Seq.empty,
+        lastUpdate = Some(LocalDateTime.parse("2025-01-01T00:00:00")),
+        amendment = Some("N")
       )
 
       val json = Json.toJson(row)
@@ -47,11 +50,14 @@ class UnsubmittedMonthlyReturnsResponseSpec extends AnyWordSpec with Matchers {
       val model = UnsubmittedMonthlyReturnsResponse(
         unsubmittedCisReturns = Seq(
           UnsubmittedMonthlyReturnsRow(
+            monthlyReturnId = 67890L,
             taxYear = 2025,
             taxMonth = 2,
             returnType = "Standard",
             status = "STARTED",
-            lastUpdate = None
+            action = Seq.empty,
+            lastUpdate = None,
+            amendment = None
           )
         )
       )

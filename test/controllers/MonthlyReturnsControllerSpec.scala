@@ -459,7 +459,10 @@ class MonthlyReturnsControllerSpec extends SpecBase {
               taxMonth = 1,
               returnType = "Nil",
               status = "STARTED",
-              lastUpdate = None
+              lastUpdate = None,
+              action = Seq.empty,
+              amendment = None,
+              monthlyReturnId = 12345L
             )
           )
         )
