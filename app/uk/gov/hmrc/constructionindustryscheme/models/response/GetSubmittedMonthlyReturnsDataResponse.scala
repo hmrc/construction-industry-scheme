@@ -32,7 +32,7 @@ case class GetSubmittedMonthlyReturnsDataResponse(
   monthlyReturnItems: Seq[MonthlyReturnItem],
   // submission: Submission,
   acceptedTime: Option[String],
-  receiptReferenceNumber: Option[String] // hmrcMarkGgis: Option[String],
+  hmrcMarkGgis: Option[String] // hmrcMarkGgis: Option[String],
 )
 
 object GetSubmittedMonthlyReturnsDataResponse:

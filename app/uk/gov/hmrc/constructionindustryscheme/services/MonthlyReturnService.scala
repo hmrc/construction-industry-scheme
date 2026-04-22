@@ -270,11 +270,11 @@ class MonthlyReturnService @Inject() (
 
   def getSubmittedMonthlyReturnsData(request: GetSubmittedMonthlyReturnsRequest)(implicit
     hc: HeaderCarrier
-  ): Future[GetSubmittedMonthlyReturnResponse] =
+  ): Future[GetSubmittedMonthlyReturnsDataResponse] =
     formp.getSubmittedMonthlyReturnsData(request).map { response =>
       (response.monthlyReturn.headOption, response.submission.headOption) match {
         case (Some(monthlyReturn), Some(submission)) =>
-          GetSubmittedMonthlyReturnResponse(
+          GetSubmittedMonthlyReturnsDataResponse(
             // scheme: ContractorScheme,
             taxOfficeNumber = response.scheme.taxOfficeNumber,
             taxOfficeReference = response.scheme.accountsOfficeReference,
@@ -287,7 +287,7 @@ class MonthlyReturnService @Inject() (
             monthlyReturnItems = response.monthlyReturnItems,
             // submission: Submission,
             acceptedTime = submission.acceptedTime,
-            receiptReferenceNumber = submission.hmrcMarkGgis
+            hmrcMarkGgis = submission.hmrcMarkGgis
           )
         case _                                       =>
           throw new RuntimeException("Missing monthlyReturn or submission data")
