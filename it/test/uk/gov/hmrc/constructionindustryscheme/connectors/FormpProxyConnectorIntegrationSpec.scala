@@ -1290,6 +1290,11 @@ class FormpProxyConnectorIntegrationSpec
            |      "subcontractorId": 1
            |    }
            |  ],
+           |  "scheme": [
+           |    {
+           |      "name": "david"
+           |    }
+           |  ],
            |  "verificationBatch": [
            |    {
            |      "verificationBatchId": 99
@@ -1327,6 +1332,7 @@ class FormpProxyConnectorIntegrationSpec
 
 
       (outJson \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
+      (outJson \ "scheme")(0).\("name").as[String] mustBe "david"
 
       (outJson \ "verificationBatch")(0).\("verificationBatchId").as[Long] mustBe 99L
       (outJson \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L

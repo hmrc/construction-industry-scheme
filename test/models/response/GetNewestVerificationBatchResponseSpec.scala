@@ -58,7 +58,7 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
       val model = GetNewestVerificationBatchResponse(
         scheme = Seq(
           ContractorSchemeNewVerification(
-            accountsOfficeReference = "123PA00123456",
+            accountsOfficeReference = Some("123PA00123456"),
             utr = Some("1111111111"),
             name = Some("ABC Construction Ltd"),
             emailAddress = Some("ops@example.com")

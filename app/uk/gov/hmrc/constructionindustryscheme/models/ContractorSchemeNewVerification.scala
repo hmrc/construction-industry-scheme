@@ -19,7 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.models
 import play.api.libs.json.{Json, OFormat}
 
 case class ContractorSchemeNewVerification(
-  accountsOfficeReference: String,
+  accountsOfficeReference: Option[String],
   utr: Option[String] = None,
   name: Option[String] = None,
   emailAddress: Option[String] = None
