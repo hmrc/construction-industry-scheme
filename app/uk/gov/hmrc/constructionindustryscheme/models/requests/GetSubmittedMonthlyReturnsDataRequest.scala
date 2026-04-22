@@ -18,13 +18,13 @@ package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
 
-case class GetSubmittedMonthlyReturnsRequest(
+case class GetSubmittedMonthlyReturnsDataRequest(
   instanceId: String,
   taxYear: Int,
   taxMonth: Int,
   amendment: String
 )
 
-object GetSubmittedMonthlyReturnsRequest {
-  given format: OFormat[GetSubmittedMonthlyReturnsRequest] = Json.format[GetSubmittedMonthlyReturnsRequest]
+object GetSubmittedMonthlyReturnsDataRequest {
+  given format: OFormat[GetSubmittedMonthlyReturnsDataRequest] = Json.format[GetSubmittedMonthlyReturnsDataRequest]
 }

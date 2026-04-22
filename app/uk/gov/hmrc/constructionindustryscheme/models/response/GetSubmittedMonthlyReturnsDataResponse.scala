@@ -19,7 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.models.response
 import play.api.libs.json.{Json, OFormat}
 import uk.gov.hmrc.constructionindustryscheme.models.*
 
-case class GetSubmittedMonthlyReturnResponse(
+case class GetSubmittedMonthlyReturnsDataResponse(
   // scheme: ContractorScheme,
   taxOfficeNumber: String,
   taxOfficeReference: String,
@@ -35,5 +35,5 @@ case class GetSubmittedMonthlyReturnResponse(
   receiptReferenceNumber: Option[String] // hmrcMarkGgis: Option[String],
 )
 
-object GetSubmittedMonthlyReturnResponse:
-  given format: OFormat[GetSubmittedMonthlyReturnResponse] = Json.format[GetSubmittedMonthlyReturnResponse]
+object GetSubmittedMonthlyReturnsDataResponse:
+  given format: OFormat[GetSubmittedMonthlyReturnsDataResponse] = Json.format[GetSubmittedMonthlyReturnsDataResponse]

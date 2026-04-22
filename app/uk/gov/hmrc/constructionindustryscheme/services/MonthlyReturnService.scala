@@ -268,10 +268,10 @@ class MonthlyReturnService @Inject() (
   ): Future[Unit] =
     formp.deleteUnsubmittedMonthlyReturn(request)
 
-  def getSubmittedMonthlyReturn(request: GetSubmittedMonthlyReturnsRequest)(implicit
+  def getSubmittedMonthlyReturnsData(request: GetSubmittedMonthlyReturnsRequest)(implicit
     hc: HeaderCarrier
   ): Future[GetSubmittedMonthlyReturnResponse] =
-    formp.getSubmittedMonthlyReturns(request).map { response =>
+    formp.getSubmittedMonthlyReturnsData(request).map { response =>
       (response.monthlyReturn.headOption, response.submission.headOption) match {
         case (Some(monthlyReturn), Some(submission)) =>
           GetSubmittedMonthlyReturnResponse(

@@ -285,10 +285,10 @@ class MonthlyReturnsController @Inject() (
         }
     }
 
-  def getSubmittedMonthlyReturn: Action[GetSubmittedMonthlyReturnsRequest] =
+  def getSubmittedMonthlyReturnsData: Action[GetSubmittedMonthlyReturnsRequest] =
     authorise.async(parse.json[GetSubmittedMonthlyReturnsRequest]) { implicit request =>
       service
-        .getSubmittedMonthlyReturn(request.body)
+        .getSubmittedMonthlyReturnsData(request.body)
         .map(res => Ok(Json.toJson(res)))
         .recover {
           case u: UpstreamErrorResponse =>
