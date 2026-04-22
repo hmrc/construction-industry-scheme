@@ -19,14 +19,12 @@ package uk.gov.hmrc.constructionindustryscheme.models
 import play.api.libs.json.{Json, OFormat}
 
 case class ContractorSchemeNewVerification(
-                                            accountsOfficeReference: String,
-                                            utr: Option[String] = None,
-                                            name: Option[String] = None,
-                                            emailAddress: Option[String] = None,
-                                           
+  accountsOfficeReference: String,
+  utr: Option[String] = None,
+  name: Option[String] = None,
+  emailAddress: Option[String] = None
 )
 
 object ContractorSchemeNewVerification {
   given OFormat[ContractorSchemeNewVerification] = Json.format[ContractorSchemeNewVerification]
 }
-
