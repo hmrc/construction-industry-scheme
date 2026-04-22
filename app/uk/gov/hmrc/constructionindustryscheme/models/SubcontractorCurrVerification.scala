@@ -28,7 +28,8 @@ case class SubcontractorCurrVerification(
   utr: Option[String],
   nino: Option[String],
   crn: Option[String],
-  partnerUtr: Option[String]
+  partnerUtr: Option[String],
+  partnershipTradingName: Option[String]
 )
 
 object SubcontractorCurrVerification {

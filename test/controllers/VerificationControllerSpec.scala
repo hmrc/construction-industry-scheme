@@ -175,7 +175,8 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             utr = Some("1111111111"),
             nino = Some("AA123456A"),
             crn = Some("AC012345"),
-            partnerUtr = Some("5860920998")
+            partnerUtr = Some("5860920998"),
+            partnershipTradingName = Some("ACME trading")
           )
         ),
         verificationBatch = Seq(
