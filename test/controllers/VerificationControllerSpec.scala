@@ -53,6 +53,14 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       val controller = mockController(service)
 
       val response = GetNewestVerificationBatchResponse(
+        scheme = Seq(
+          ContractorSchemeNewVerification(
+            accountsOfficeReference = "123PA00123456",
+            utr = Some("1111111111"),
+            name = Some("ABC Construction Ltd"),
+            emailAddress = Some("ops@example.com")
+          )
+        ),
         subcontractors = Seq(
           SubcontractorNewVerification(
             subcontractorId = 1L,
@@ -60,11 +68,13 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             secondName = Some("Q"),
             surname = Some("Smith"),
             tradingName = Some("ACME"),
+            partnershipTradingName = Some("ACME trading"),
             verified = Some("Y"),
             verificationNumber = Some("V0000000001"),
             taxTreatment = Some("0"),
             verificationDate = Some(LocalDateTime.of(2026, 1, 3, 10, 0, 0)),
-            lastMonthlyReturnDate = Some(LocalDateTime.of(2026, 1, 4, 10, 0, 0))
+            lastMonthlyReturnDate = Some(LocalDateTime.of(2026, 1, 4, 10, 0, 0)),
+            createDate = Some(LocalDateTime.of(2026, 1, 4, 10, 0, 0))
           )
         ),
         verificationBatch = Seq(
@@ -110,6 +120,8 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentType(result) mustBe Some(JSON)
 
       val json = contentAsJson(result)
+
+      (json \ "scheme")(0).\("name").as[String] mustBe "ABC Construction Ltd"
 
       (json \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
 

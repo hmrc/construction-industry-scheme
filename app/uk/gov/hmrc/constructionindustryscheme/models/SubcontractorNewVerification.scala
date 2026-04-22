@@ -26,11 +26,13 @@ case class SubcontractorNewVerification(
   secondName: Option[String],
   surname: Option[String],
   tradingName: Option[String],
+  partnershipTradingName: Option[String],
   verified: Option[String],
   verificationNumber: Option[String],
   taxTreatment: Option[String],
   verificationDate: Option[LocalDateTime],
-  lastMonthlyReturnDate: Option[LocalDateTime]
+  lastMonthlyReturnDate: Option[LocalDateTime],
+  createDate: Option[LocalDateTime]
 )
 
 object SubcontractorNewVerification {
