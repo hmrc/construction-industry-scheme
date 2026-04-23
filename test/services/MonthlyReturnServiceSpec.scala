@@ -19,6 +19,7 @@ package services
 import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
+import org.scalatest.RecoverMethods.recoverToExceptionIf
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
@@ -27,7 +28,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
-import java.time.{Instant, LocalDateTime, ZoneOffset}
+import java.time.{Instant, LocalDateTime, ZoneOffset, ZonedDateTime}
 import scala.concurrent.Future
 
 class MonthlyReturnServiceSpec extends SpecBase {
@@ -238,6 +239,38 @@ class MonthlyReturnServiceSpec extends SpecBase {
       ex mustBe boom
 
       verify(formpProxy).createMonthlyReturn(eqTo(payload))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
+  "getSchemeEmail" - {
+
+    "returns wrapper when formp succeeds" in new Setup {
+      val instanceId   = "1"
+      val mockResponse = Some("test@test.com")
+      when(formpProxy.getSchemeEmail(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(mockResponse))
+
+      val result: Option[String] = service.getSchemeEmail(instanceId).futureValue
+      result mustBe mockResponse
+
+      verify(formpProxy).getSchemeEmail(eqTo(instanceId))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp connector" in new Setup {
+      val instanceId   = "1"
+      val mockResponse = Some("test@test.com")
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.getSchemeEmail(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.getSchemeEmail(instanceId).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).getSchemeEmail(eqTo(instanceId))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
   }
@@ -949,6 +982,192 @@ class MonthlyReturnServiceSpec extends SpecBase {
       ex mustBe boom
 
       verify(formpProxy).deleteUnsubmittedMonthlyReturn(eqTo(request))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
+  "getSubmittedMonthlyReturnsData" - {
+
+    "returns the response from formp" in new Setup {
+      val request = GetSubmittedMonthlyReturnsDataRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "Y"
+      )
+
+      val mockFormPResponse = GetSubmittedMonthlyReturnsProxyResponse(
+        scheme = ContractorScheme(
+          schemeId = 100,
+          instanceId = cisInstanceId,
+          accountsOfficeReference = "accountsOfficeReference",
+          taxOfficeNumber = "163",
+          taxOfficeReference = "AB0063",
+          name = Some("Scheme Name")
+        ),
+        monthlyReturn =
+          Seq(MonthlyReturn(monthlyReturnId = 3000L, taxYear = 2025, taxMonth = 1, nilReturnIndicator = Some("Y"))),
+        monthlyReturnItems = Seq.empty,
+        submission = Seq(
+          Submission(
+            submissionId = 1000L,
+            submissionType = "Monthly Return",
+            activeObjectId = None,
+            status = None,
+            hmrcMarkGenerated = None,
+            hmrcMarkGgis = None,
+            emailRecipient = None,
+            acceptedTime = Some("2026-04-06T09:50:08.000"),
+            createDate = None,
+            lastUpdate = None,
+            schemeId = 100,
+            agentId = None,
+            l_Migrated = None,
+            submissionRequestDate = None,
+            govTalkErrorCode = None,
+            govTalkErrorType = None,
+            govTalkErrorMessage = None
+          )
+        )
+      )
+
+      val expectedResult = GetSubmittedMonthlyReturnsDataResponse(
+        scheme = SchemeData("Scheme Name", "163", "AB0063"),
+        monthlyReturnId = 3000L,
+        taxYear = 2025,
+        taxMonth = 1,
+        returnType = "Nil",
+        monthlyReturnItems = Seq.empty,
+        submission = SubmissionData(
+          submissionId = 1000L,
+          submissionType = Some("Monthly Return"),
+          activeObjectId = None,
+          status = None,
+          hmrcMarkGenerated = None,
+          hmrcMarkGgis = None,
+          emailRecipient = None,
+          acceptedTime =
+            Some(ZonedDateTime.of(2026, 4, 6, 9, 50, 8, 0, ZoneOffset.UTC).toInstant) // 2026-04-06T09:50:08.081
+        )
+      )
+      when(formpProxy.getSubmittedMonthlyReturnsData(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(mockFormPResponse))
+
+      val out: GetSubmittedMonthlyReturnsDataResponse = service.getSubmittedMonthlyReturnsData(request).futureValue
+      out mustBe expectedResult
+
+      verify(formpProxy).getSubmittedMonthlyReturnsData(eqTo(request))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "returns error when monthly returns missing from formp response" in new Setup {
+      val request = GetSubmittedMonthlyReturnsDataRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "Y"
+      )
+
+      val mockFormPResponse = GetSubmittedMonthlyReturnsProxyResponse(
+        scheme = ContractorScheme(
+          schemeId = 100,
+          instanceId = cisInstanceId,
+          accountsOfficeReference = "accountsOfficeReference",
+          taxOfficeNumber = "163",
+          taxOfficeReference = "AB0063",
+          name = Some("Scheme Name")
+        ),
+        monthlyReturn = Seq.empty,
+        monthlyReturnItems = Seq.empty,
+        submission = Seq(
+          Submission(
+            submissionId = 1000L,
+            submissionType = "Monthly Return",
+            activeObjectId = None,
+            status = None,
+            hmrcMarkGenerated = None,
+            hmrcMarkGgis = None,
+            emailRecipient = None,
+            acceptedTime = None,
+            createDate = None,
+            lastUpdate = None,
+            schemeId = 100,
+            agentId = None,
+            l_Migrated = None,
+            submissionRequestDate = None,
+            govTalkErrorCode = None,
+            govTalkErrorType = None,
+            govTalkErrorMessage = None
+          )
+        )
+      )
+
+      when(formpProxy.getSubmittedMonthlyReturnsData(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(mockFormPResponse))
+
+      val ex: RuntimeException = recoverToExceptionIf[RuntimeException] {
+        service.getSubmittedMonthlyReturnsData(request)
+      }.futureValue
+
+      ex.getMessage mustBe "Missing monthlyReturn or submission data"
+
+      verify(formpProxy).getSubmittedMonthlyReturnsData(eqTo(request))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "returns error when submissions missing from formp response" in new Setup {
+      val request = GetSubmittedMonthlyReturnsDataRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "Y"
+      )
+
+      val mockFormPResponse = GetSubmittedMonthlyReturnsProxyResponse(
+        scheme = ContractorScheme(
+          schemeId = 100,
+          instanceId = cisInstanceId,
+          accountsOfficeReference = "accountsOfficeReference",
+          taxOfficeNumber = "163",
+          taxOfficeReference = "AB0063",
+          name = Some("Scheme Name")
+        ),
+        monthlyReturn =
+          Seq(MonthlyReturn(monthlyReturnId = 3000L, taxYear = 2025, taxMonth = 1, nilReturnIndicator = Some("Y"))),
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      when(formpProxy.getSubmittedMonthlyReturnsData(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(mockFormPResponse))
+
+      val ex: RuntimeException = recoverToExceptionIf[RuntimeException] {
+        service.getSubmittedMonthlyReturnsData(request)
+      }.futureValue
+
+      ex.getMessage mustBe "Missing monthlyReturn or submission data"
+
+      verify(formpProxy).getSubmittedMonthlyReturnsData(eqTo(request))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp" in new Setup {
+      val request = GetSubmittedMonthlyReturnsDataRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "Y"
+      )
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.getSubmittedMonthlyReturnsData(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex: Throwable = service.getSubmittedMonthlyReturnsData(request).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).getSubmittedMonthlyReturnsData(eqTo(request))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
   }
