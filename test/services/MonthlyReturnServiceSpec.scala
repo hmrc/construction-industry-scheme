@@ -458,9 +458,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "getMonthlyReturnComplete" - {
 
-    "returns the response from formp" in {
-      val s = setup
-      import s._
+    "returns the response from formp" in new Setup {
 
       val request = GetMonthlyReturnCompleteRequest(
         instanceId = cisInstanceId,
@@ -487,9 +485,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "propagates failure from formp" in {
-      val s = setup
-      import s._
+    "propagates failure from formp" in new Setup {
 
       val request = GetMonthlyReturnCompleteRequest(
         instanceId = cisInstanceId,
