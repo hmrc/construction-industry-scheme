@@ -14,20 +14,15 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.response
+package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.constructionindustryscheme.models.*
 
-final case class GetNewestVerificationBatchResponse(
-  scheme: Seq[ContractorSchemeNewVerification],
-  subcontractors: Seq[SubcontractorNewVerification],
-  verificationBatch: Seq[VerificationBatch],
-  verifications: Seq[Verification],
-  submission: Seq[SubmissionNewVerification],
-  monthlyReturn: Seq[MonthlyReturnNewVerification]
+case class MonthlyReturnNewVerification(
+  monthlyReturnId: Long,
+  decNoMoreSubPayments: Option[String] = None
 )
 
-object GetNewestVerificationBatchResponse {
-  given format: OFormat[GetNewestVerificationBatchResponse] = Json.format[GetNewestVerificationBatchResponse]
+object MonthlyReturnNewVerification {
+  implicit val format: OFormat[MonthlyReturnNewVerification] = Json.format[MonthlyReturnNewVerification]
 }
