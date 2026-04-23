@@ -285,8 +285,8 @@ class MonthlyReturnsController @Inject() (
         }
     }
 
-  def getSubmittedMonthlyReturnsData: Action[GetSubmittedMonthlyReturnsRequest] =
-    authorise.async(parse.json[GetSubmittedMonthlyReturnsRequest]) { implicit request =>
+  def getSubmittedMonthlyReturnsData: Action[GetSubmittedMonthlyReturnsDataRequest] =
+    authorise.async(parse.json[GetSubmittedMonthlyReturnsDataRequest]) { implicit request =>
       service
         .getSubmittedMonthlyReturnsData(request.body)
         .map(res => Ok(Json.toJson(res)))
@@ -294,8 +294,8 @@ class MonthlyReturnsController @Inject() (
           case u: UpstreamErrorResponse =>
             Status(u.statusCode)(Json.obj("message" -> u.message))
           case NonFatal(t)              =>
-            logger.error("[getUnsubmittedMonthlyReturns] failed", t)
-            InternalServerError(Json.obj("message" -> "Unexpected error"))
+            logger.error("[getUnsubmittedMonthlyReturns] formp-proxy get submitted monthly returns data failed", t)
+            BadGateway(Json.obj("message" -> "get-submitted-monthly-returns-data-failed"))
         }
     }
 }
