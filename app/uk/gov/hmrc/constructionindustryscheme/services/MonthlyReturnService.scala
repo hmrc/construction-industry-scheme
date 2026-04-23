@@ -275,19 +275,26 @@ class MonthlyReturnService @Inject() (
       (response.monthlyReturn.headOption, response.submission.headOption) match {
         case (Some(monthlyReturn), Some(submission)) =>
           GetSubmittedMonthlyReturnsDataResponse(
-            // scheme: ContractorScheme,
-            taxOfficeNumber = response.scheme.taxOfficeNumber,
-            taxOfficeReference = response.scheme.accountsOfficeReference,
-            contractorName = response.scheme.name.getOrElse(""),
-            // monthlyReturn: MonthlyReturn,
+            scheme = SchemeData(
+              taxOfficeNumber = response.scheme.taxOfficeNumber,
+              taxOfficeReference = response.scheme.taxOfficeReference,
+              name = response.scheme.name.getOrElse("No name provided")
+            ),
             monthlyReturnId = monthlyReturn.monthlyReturnId,
             taxYear = monthlyReturn.taxYear,
             taxMonth = monthlyReturn.taxMonth,
             returnType = mapType(monthlyReturn.nilReturnIndicator),
             monthlyReturnItems = response.monthlyReturnItems,
-            // submission: Submission,
-            acceptedTime = submission.acceptedTime,
-            hmrcMarkGgis = submission.hmrcMarkGgis
+            submission = SubmissionData(
+              submissionId = submission.submissionId,
+              submissionType = Some(submission.submissionType),
+              activeObjectId = submission.activeObjectId,
+              status = submission.status,
+              hmrcMarkGenerated = submission.hmrcMarkGenerated,
+              hmrcMarkGgis = submission.hmrcMarkGgis,
+              emailRecipient = submission.emailRecipient,
+              acceptedTime = submission.acceptedTime.map(x => LocalDateTime.parse(x).toInstant(ZoneOffset.UTC))
+            )
           )
         case _                                       =>
           throw new RuntimeException("Missing monthlyReturn or submission data")

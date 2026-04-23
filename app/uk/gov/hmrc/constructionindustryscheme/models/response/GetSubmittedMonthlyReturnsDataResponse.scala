@@ -20,19 +20,13 @@ import play.api.libs.json.{Json, OFormat}
 import uk.gov.hmrc.constructionindustryscheme.models.*
 
 case class GetSubmittedMonthlyReturnsDataResponse(
-  // scheme: ContractorScheme,
-  taxOfficeNumber: String,
-  taxOfficeReference: String,
-  contractorName: String,
-  // monthlyReturn: MonthlyReturn,
+  scheme: SchemeData,
   monthlyReturnId: Long,
   taxYear: Int,
   taxMonth: Int,
   returnType: String,
   monthlyReturnItems: Seq[MonthlyReturnItem],
-  // submission: Submission,
-  acceptedTime: Option[String],
-  hmrcMarkGgis: Option[String] // hmrcMarkGgis: Option[String],
+  submission: SubmissionData
 )
 
 object GetSubmittedMonthlyReturnsDataResponse:
