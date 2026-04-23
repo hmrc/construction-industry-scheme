@@ -460,7 +460,6 @@ class MonthlyReturnsControllerSpec extends SpecBase {
               returnType = "Nil",
               status = "STARTED",
               lastUpdate = None,
-              action = Seq.empty,
               amendment = None,
               monthlyReturnId = 12345L,
               deletable = false

@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.models.response
 
 import play.api.libs.json.{Json, OFormat}
+import uk.gov.hmrc.constructionindustryscheme.models.{MonthlyReturn, UnsubmittedMonthlyReturnStatus}
 
 import java.time.LocalDateTime
 
@@ -26,13 +27,31 @@ case class UnsubmittedMonthlyReturnsRow(
   taxMonth: Int,
   returnType: String,
   status: String,
-  action: Seq[String],
   lastUpdate: Option[LocalDateTime],
   amendment: Option[String],
   deletable: Boolean
 )
 
 object UnsubmittedMonthlyReturnsRow {
+  def from(
+    monthlyReturn: MonthlyReturn,
+    returnType: String,
+    deletable: Boolean
+  ): UnsubmittedMonthlyReturnsRow = {
+    val mappedStatus = UnsubmittedMonthlyReturnStatus.fromRaw(monthlyReturn.status)
+
+    UnsubmittedMonthlyReturnsRow(
+      monthlyReturnId = monthlyReturn.monthlyReturnId,
+      taxYear = monthlyReturn.taxYear,
+      taxMonth = monthlyReturn.taxMonth,
+      returnType = returnType,
+      status = mappedStatus.asText,
+      lastUpdate = monthlyReturn.lastUpdate,
+      amendment = monthlyReturn.amendment,
+      deletable = deletable
+    )
+  }
+
   given format: OFormat[UnsubmittedMonthlyReturnsRow] = Json.format[UnsubmittedMonthlyReturnsRow]
 }
 

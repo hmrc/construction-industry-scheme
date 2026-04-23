@@ -27,7 +27,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
-import java.time.{Instant, LocalDateTime, ZoneOffset}
+import java.time.{Instant, LocalDateTime}
 import scala.concurrent.Future
 
 class MonthlyReturnServiceSpec extends SpecBase {
@@ -308,19 +308,17 @@ class MonthlyReturnServiceSpec extends SpecBase {
             1,
             "Nil",
             "Awaiting confirmation",
-            Seq("View"),
             last,
             Some("Y"),
             false
           ),
-          UnsubmittedMonthlyReturnsRow(2L, 2025, 2, "Standard", "Unsuccessful", Seq("View"), None, Some("N"), false),
+          UnsubmittedMonthlyReturnsRow(2L, 2025, 2, "Standard", "Unsuccessful", None, Some("N"), false),
           UnsubmittedMonthlyReturnsRow(
             3L,
             2025,
             3,
             "Standard",
             "In progress",
-            Seq("Continue", "Delete"),
             None,
             Some("N"),
             true
@@ -331,7 +329,6 @@ class MonthlyReturnServiceSpec extends SpecBase {
             4,
             "Standard",
             "In progress",
-            Seq("Continue", "Delete"),
             None,
             Some("N"),
             true

@@ -17,7 +17,6 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.UnsubmittedMonthlyReturnStatus.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
@@ -43,24 +42,17 @@ class MonthlyReturnService @Inject() (
     cisId: String
   )(implicit hc: HeaderCarrier): Future[UnsubmittedMonthlyReturnsResponse] =
     formp.getUnsubmittedMonthlyReturns(cisId).map { unsubmitted =>
-      UnsubmittedMonthlyReturnsResponse(
-        unsubmittedCisReturns = unsubmitted.monthlyReturn
-          .filter(mr => UnsubmittedMonthlyReturnStatus.isIncomplete(mr.status))
-          .map { monthlyReturn =>
-            val mappedStatus = UnsubmittedMonthlyReturnStatus.fromRaw(monthlyReturn.status)
+      val incompleteMonthlyReturns = unsubmitted.monthlyReturn
+        .filter(monthlyReturn => UnsubmittedMonthlyReturnStatus.isIncomplete(monthlyReturn.status))
 
-            UnsubmittedMonthlyReturnsRow(
-              monthlyReturnId = monthlyReturn.monthlyReturnId,
-              taxYear = monthlyReturn.taxYear,
-              taxMonth = monthlyReturn.taxMonth,
-              returnType = mapType(monthlyReturn.nilReturnIndicator),
-              status = mappedStatus.asText,
-              action = mapActions(mappedStatus),
-              lastUpdate = monthlyReturn.lastUpdate,
-              amendment = monthlyReturn.amendment,
-              deletable = isDeletable(monthlyReturn.status)
-            )
-          }
+      UnsubmittedMonthlyReturnsResponse(
+        unsubmittedCisReturns = incompleteMonthlyReturns.map { monthlyReturn =>
+          UnsubmittedMonthlyReturnsRow.from(
+            monthlyReturn = monthlyReturn,
+            returnType = mapType(monthlyReturn.nilReturnIndicator),
+            deletable = isDeletable(monthlyReturn.status)
+          )
+        }
       )
     }
 
@@ -277,14 +269,6 @@ class MonthlyReturnService @Inject() (
   private def mapType(nilReturnIndicator: Option[String]): String =
     if (nilReturnIndicator.exists(_.trim.equalsIgnoreCase("Y"))) "Nil"
     else "Standard"
-
-  private def mapActions(status: UnsubmittedMonthlyReturnStatus): Seq[String] =
-    status match {
-      case InProgress           => Seq("Continue", "Delete")
-      case AwaitingConfirmation => Seq("View")
-      case Unsuccessful         => Seq("View")
-      case Unknown              => Seq.empty
-    }
 
   private def isDeletable(status: Option[String]): Boolean = status match {
     case Some("STARTED") | Some("VALIDATED") => true

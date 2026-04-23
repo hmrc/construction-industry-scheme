@@ -19,34 +19,60 @@ package models.response
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.Json
+import uk.gov.hmrc.constructionindustryscheme.models.MonthlyReturn
 import uk.gov.hmrc.constructionindustryscheme.models.response.{UnsubmittedMonthlyReturnsResponse, UnsubmittedMonthlyReturnsRow}
 
 import java.time.LocalDateTime
 
 class UnsubmittedMonthlyReturnsResponseSpec extends AnyWordSpec with Matchers {
 
-  "UnsubmittedMonthlyReturnsRow JSON format" should {
+  "UnsubmittedMonthlyReturnsRow.from" should {
+    "build a row from MonthlyReturn" in {
+      val monthlyReturn = MonthlyReturn(
+        monthlyReturnId = 12345L,
+        taxYear = 2025,
+        taxMonth = 1,
+        nilReturnIndicator = Some("Y"),
+        status = Some("PENDING"),
+        lastUpdate = Some(LocalDateTime.parse("2025-01-01T00:00:00")),
+        amendment = Some("N")
+      )
 
+      UnsubmittedMonthlyReturnsRow.from(
+        monthlyReturn = monthlyReturn,
+        returnType = "Nil",
+        deletable = true
+      ) mustBe UnsubmittedMonthlyReturnsRow(
+        monthlyReturnId = 12345L,
+        taxYear = 2025,
+        taxMonth = 1,
+        returnType = "Nil",
+        status = "Awaiting confirmation",
+        lastUpdate = Some(LocalDateTime.parse("2025-01-01T00:00:00")),
+        amendment = Some("N"),
+        deletable = true
+      )
+    }
+  }
+
+  "UnsubmittedMonthlyReturnsRow JSON format" should {
     "round-trip to/from JSON" in {
       val row = UnsubmittedMonthlyReturnsRow(
         monthlyReturnId = 12345L,
         taxYear = 2025,
         taxMonth = 1,
         returnType = "Nil",
-        status = "PENDING",
-        action = Seq.empty,
+        status = "Awaiting confirmation",
         lastUpdate = Some(LocalDateTime.parse("2025-01-01T00:00:00")),
         amendment = Some("N"),
         deletable = true
       )
 
-      val json = Json.toJson(row)
-      json.as[UnsubmittedMonthlyReturnsRow] mustBe row
+      Json.toJson(row).as[UnsubmittedMonthlyReturnsRow] mustBe row
     }
   }
 
   "UnsubmittedMonthlyReturnsResponse JSON format" should {
-
     "round-trip to/from JSON" in {
       val model = UnsubmittedMonthlyReturnsResponse(
         unsubmittedCisReturns = Seq(
@@ -55,8 +81,7 @@ class UnsubmittedMonthlyReturnsResponseSpec extends AnyWordSpec with Matchers {
             taxYear = 2025,
             taxMonth = 2,
             returnType = "Standard",
-            status = "STARTED",
-            action = Seq.empty,
+            status = "In progress",
             lastUpdate = None,
             amendment = None,
             deletable = true
@@ -64,8 +89,7 @@ class UnsubmittedMonthlyReturnsResponseSpec extends AnyWordSpec with Matchers {
         )
       )
 
-      val json = Json.toJson(model)
-      json.as[UnsubmittedMonthlyReturnsResponse] mustBe model
+      Json.toJson(model).as[UnsubmittedMonthlyReturnsResponse] mustBe model
     }
   }
 }
