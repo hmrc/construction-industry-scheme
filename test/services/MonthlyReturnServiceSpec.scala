@@ -32,16 +32,8 @@ import scala.concurrent.Future
 
 class MonthlyReturnServiceSpec extends SpecBase {
 
-  var setup: Setup                = new Setup {}
-  override def beforeEach(): Unit =
-    setup = new Setup {}
-
   "getCisTaxpayer" - {
-
-    "returns cis taxpayer when datacache succeeds" in {
-      val s = setup
-      import s._
-
+    "returns cis taxpayer when datacache succeeds" in new Setup {
       val taxpayer = mkTaxpayer()
       when(datacacheProxy.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
         .thenReturn(Future.successful(taxpayer))
@@ -53,10 +45,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(formpProxy)
     }
 
-    "propagates failure from datacache" in {
-      val s = setup
-      import s._
-
+    "propagates failure from datacache" in new Setup {
       val boom = UpstreamErrorResponse("rds-datacache proxy error", 502)
 
       when(datacacheProxy.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
@@ -72,10 +61,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "getAllMonthlyReturnsByCisId" - {
 
-    "returns wrapper when formp succeeds" in {
-      val s = setup
-      import s._
-
+    "returns wrapper when formp succeeds" in new Setup {
       when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
         .thenReturn(Future.successful(returnsFixture))
 
@@ -86,10 +72,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "propagates failure from formp" in {
-      val s = setup
-      import s._
-
+    "propagates failure from formp" in new Setup {
       val boom = UpstreamErrorResponse("formp proxy failure", 500)
 
       when(formpProxy.getMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
@@ -105,9 +88,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "createNilMonthlyReturn" - {
 
-    "calls single endpoint and returns status response" in {
-      val s = setup; import s._
-
+    "calls single endpoint and returns status response" in new Setup {
       val payload          = NilMonthlyReturnRequest("abc-123", 2024, 3, "Y", "Y")
       val expectedResponse = CreateNilMonthlyReturnResponse("STARTED")
 
@@ -124,9 +105,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "returns status response from existing monthly return when duplicate exist" in {
-      val s = setup; import s._
-
+    "returns status response from existing monthly return when duplicate exist" in new Setup {
       val payload        = NilMonthlyReturnRequest("abc-123", 2025, 1, "Y", "Y")
       val existingReturn = MonthlyReturn(
         monthlyReturnId = 66666L,
@@ -155,9 +134,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "propagates failure from formp proxy" in {
-      val s = setup; import s._
-
+    "propagates failure from formp proxy" in new Setup {
       val payload = NilMonthlyReturnRequest("abc-123", 2024, 3, "Y", "Y")
       val boom    = UpstreamErrorResponse("formp proxy failure", 500)
 
@@ -177,9 +154,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "updateMonthlyReturn" - {
 
-    "delegates to formp connector and returns Unit" in {
-      val s = setup; import s._
-
+    "delegates to formp connector and returns Unit" in new Setup {
       val payload = UpdateMonthlyReturnRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -202,8 +177,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "propagates failure from formp connector" in {
-      val s = setup; import s._
+    "propagates failure from formp connector" in new Setup {
 
       val payload = UpdateMonthlyReturnRequest(
         instanceId = cisInstanceId,
@@ -231,10 +205,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "createMonthlyReturn" - {
 
-    "delegates to formp connector and returns Unit" in {
-      val s = setup
-      import s._
-
+    "delegates to formp connector and returns Unit" in new Setup {
       val payload = MonthlyReturnRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -251,10 +222,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "propagates failure from formp connector" in {
-      val s = setup
-      import s._
-
+    "propagates failure from formp connector" in new Setup {
       val payload = MonthlyReturnRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -276,9 +244,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "getUnsubmittedMonthlyReturns" - {
 
-    "maps formp monthly returns into response rows" in {
-      val s = setup; import s._
-
+    "maps formp monthly returns into response rows" in new Setup {
       val last = Some(LocalDateTime.parse("2025-01-01T00:00:00"))
 
       val unsubmitted = UnsubmittedMonthlyReturns(
@@ -347,9 +313,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "propagates failure from formp" in {
-      val s = setup; import s._
-
+    "propagates failure from formp" in new Setup {
       val boom = UpstreamErrorResponse("formp proxy failure", 500)
 
       when(formpProxy.getUnsubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
@@ -365,9 +329,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "getSubmittedMonthlyReturns" - {
 
-    "maps formp submitted returns into response" in {
-      val s = setup; import s._
-
+    "maps formp submitted returns into response" in new Setup {
       val submitted = SubmittedMonthlyReturns(
         scheme = ContractorScheme(
           schemeId = 1,
@@ -433,9 +395,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "propagates failure from formp" in {
-      val s = setup; import s._
-
+    "propagates failure from formp" in new Setup {
       val boom = UpstreamErrorResponse("formp proxy failure", 500)
 
       when(formpProxy.getSubmittedMonthlyReturns(eqTo(cisInstanceId))(any[HeaderCarrier]))
@@ -451,10 +411,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "getMonthlyReturnForEdit" - {
 
-    "returns the response from formp" in {
-      val s = setup
-      import s._
-
+    "returns the response from formp" in new Setup {
       val request = GetMonthlyReturnForEditRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -479,10 +436,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "propagates failure from formp" in {
-      val s = setup
-      import s._
-
+    "propagates failure from formp" in new Setup {
       val request = GetMonthlyReturnForEditRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -504,10 +458,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "syncMonthlyReturnItems" - {
 
-    "computes create/delete diffs and calls formp sync endpoint" in {
-      val s = setup
-      import s._
-
+    "computes create/delete diffs and calls formp sync endpoint" in new Setup {
       val req = SelectedSubcontractorsRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -560,10 +511,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "fails with 400 when selectedSubcontractorIds contains an ID not present in edit.subcontractors" in {
-      val s = setup
-      import s._
-
+    "fails with 400 when selectedSubcontractorIds contains an ID not present in edit.subcontractors" in new Setup {
       val req = SelectedSubcontractorsRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -596,10 +544,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "propagates failure from formp sync endpoint" in {
-      val s = setup
-      import s._
-
+    "propagates failure from formp sync endpoint" in new Setup {
       val req = SelectedSubcontractorsRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -651,10 +596,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "deleteMonthlyReturnItem" - {
 
-    "looks up subbieResourceRef via getMonthlyReturnForEdit and calls formp delete endpoint" in {
-      val s = setup
-      import s._
-
+    "looks up subbieResourceRef via getMonthlyReturnForEdit and calls formp delete endpoint" in new Setup {
       val req = DeleteMonthlyReturnItemRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -699,10 +641,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "fails with 400 when subcontractorId is not present in edit.subcontractors" in {
-      val s = setup
-      import s._
-
+    "fails with 400 when subcontractorId is not present in edit.subcontractors" in new Setup {
       val req = DeleteMonthlyReturnItemRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -735,10 +674,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "fails with 400 when subcontractorId exists but has no subbieResourceRef" in {
-      val s = setup
-      import s._
-
+    "fails with 400 when subcontractorId exists but has no subbieResourceRef" in new Setup {
       val req = DeleteMonthlyReturnItemRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -771,10 +707,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "propagates failure from formp delete endpoint" in {
-      val s = setup
-      import s._
-
+    "propagates failure from formp delete endpoint" in new Setup {
       val req = DeleteMonthlyReturnItemRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -823,10 +756,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "updateMonthlyReturnItem" - {
 
-    "builds proxy request using resource ref + verification number and calls formp.updateMonthlyReturnItem" in {
-      val s = setup
-      import s._
-
+    "builds proxy request using resource ref + verification number and calls formp.updateMonthlyReturnItem" in new Setup {
       val req = UpdateMonthlyReturnItemRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -877,10 +807,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "fail with 400 when subcontractorId is not found in edit response" in {
-      val s = setup
-      import s._
-
+    "fail with 400 when subcontractorId is not found in edit response" in new Setup {
       val req = UpdateMonthlyReturnItemRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -918,10 +845,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "fail when subcontractor resource reference is missing" in {
-      val s = setup
-      import s._
-
+    "fail when subcontractor resource reference is missing" in new Setup {
       val req = UpdateMonthlyReturnItemRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -953,10 +877,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verify(formpProxy, never()).updateMonthlyReturnItem(any())(any())
     }
 
-    "succeed when verification number is missing" in {
-      val s = setup
-      import s._
-
+    "succeed when verification number is missing" in new Setup {
       val req = UpdateMonthlyReturnItemRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -994,10 +915,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "deleteUnsubmittedMonthlyReturn" - {
 
-    "returns the response from formp" in {
-      val s = setup
-      import s._
-
+    "returns the response from formp" in new Setup {
       val request = DeleteUnsubmittedMonthlyReturnRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -1014,10 +932,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "propagates failure from formp" in {
-      val s = setup
-      import s._
-
+    "propagates failure from formp" in new Setup {
       val request = DeleteUnsubmittedMonthlyReturnRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
