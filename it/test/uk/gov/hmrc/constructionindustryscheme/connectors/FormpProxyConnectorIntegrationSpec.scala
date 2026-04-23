@@ -218,6 +218,32 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector getSchemeEmail" should {
+
+    "POST /formp-proxy/scheme/email and return email on 200" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/email"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.obj("instanceId" -> instanceId).toString(), true, true))
+          .willReturn(aResponse().withStatus(200).withBody("\"test@test.com\""))
+      )
+
+      connector.getSchemeEmail(instanceId).futureValue mustBe Some("test@test.com")
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-2xx (e.g. 500)" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/email"))
+          .withRequestBody(equalToJson(Json.obj("instanceId" -> instanceId).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = connector.getSchemeEmail(instanceId).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
   "FormpProxyConnector createAndTrackSubmission" should {
 
     "POSTs request and maps JSON to submissionId" in {
@@ -1387,7 +1413,6 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val outJson = Json.toJson(connector.getNewestVerificationBatch(instanceId).futureValue)
-
 
       (outJson \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
       (outJson \ "scheme")(0).\("name").as[String] mustBe "david"

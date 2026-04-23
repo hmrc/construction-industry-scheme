@@ -1046,8 +1046,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
           hmrcMarkGenerated = None,
           hmrcMarkGgis = None,
           emailRecipient = None,
-          acceptedTime =
-            Some(ZonedDateTime.of(2026, 4, 6, 9, 50, 8, 0, ZoneOffset.UTC).toInstant) // 2026-04-06T09:50:08.081
+          acceptedTime = Some(ZonedDateTime.of(2026, 4, 6, 9, 50, 8, 0, ZoneOffset.UTC).toInstant)
         )
       )
       when(formpProxy.getSubmittedMonthlyReturnsData(eqTo(request))(any[HeaderCarrier]))
