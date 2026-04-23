@@ -336,10 +336,40 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
       out mustBe UnsubmittedMonthlyReturnsResponse(
         unsubmittedCisReturns = Seq(
-          UnsubmittedMonthlyReturnsRow(1L, 2025, 1, "Nil", "Awaiting confirmation", Seq("View"), last, Some("Y"), false),
+          UnsubmittedMonthlyReturnsRow(
+            1L,
+            2025,
+            1,
+            "Nil",
+            "Awaiting confirmation",
+            Seq("View"),
+            last,
+            Some("Y"),
+            false
+          ),
           UnsubmittedMonthlyReturnsRow(2L, 2025, 2, "Standard", "Unsuccessful", Seq("View"), None, Some("N"), false),
-          UnsubmittedMonthlyReturnsRow(3L, 2025, 3, "Standard", "In progress", Seq("Continue", "Delete"), None, Some("N"), true),
-          UnsubmittedMonthlyReturnsRow(4L, 2025, 4, "Standard", "In progress", Seq("Continue", "Delete"), None, Some("N"), true)
+          UnsubmittedMonthlyReturnsRow(
+            3L,
+            2025,
+            3,
+            "Standard",
+            "In progress",
+            Seq("Continue", "Delete"),
+            None,
+            Some("N"),
+            true
+          ),
+          UnsubmittedMonthlyReturnsRow(
+            4L,
+            2025,
+            4,
+            "Standard",
+            "In progress",
+            Seq("Continue", "Delete"),
+            None,
+            Some("N"),
+            true
+          )
         )
       )
 
