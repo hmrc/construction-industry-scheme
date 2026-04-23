@@ -14,16 +14,6 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models
+package models
 
-import play.api.libs.json.{Json, OFormat}
-
-final case class VerificationBatch(
-  verificationBatchId: Long,
-  status: Option[String],
-  verificationNumber: Option[String]
-)
-
-object VerificationBatch {
-  given format: OFormat[VerificationBatch] = Json.format[VerificationBatch]
-}
+class MonthlyReturnNewVerificationSpec

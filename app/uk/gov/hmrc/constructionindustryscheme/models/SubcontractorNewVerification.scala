@@ -16,16 +16,25 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
-import play.api.libs.json.{Json, OFormat}
+import play.api.libs.json.{JsObject, Json, OFormat, Reads, Writes}
 
-final case class Verification(
-  verificationId: Long,
-  matched: Option[String],
+import java.time.LocalDateTime
+
+case class SubcontractorNewVerification(
+  subcontractorId: Long,
+  firstName: Option[String],
+  secondName: Option[String],
+  surname: Option[String],
+  tradingName: Option[String],
+  partnershipTradingName: Option[String],
+  verified: Option[String],
   verificationNumber: Option[String],
   taxTreatment: Option[String],
-  verificationBatchId: Option[Long],
-  subcontractorId: Option[Long]
+  verificationDate: Option[LocalDateTime],
+  lastMonthlyReturnDate: Option[LocalDateTime],
+  createDate: Option[LocalDateTime]
 )
 
-object Verification:
-  given format: OFormat[Verification] = Json.format[Verification]
+object SubcontractorNewVerification {
+  given format: OFormat[SubcontractorNewVerification] = Json.format[SubcontractorNewVerification]
+}
