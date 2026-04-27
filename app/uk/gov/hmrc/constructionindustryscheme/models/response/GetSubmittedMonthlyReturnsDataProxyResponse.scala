@@ -19,12 +19,13 @@ package uk.gov.hmrc.constructionindustryscheme.models.response
 import play.api.libs.json.{Json, OFormat}
 import uk.gov.hmrc.constructionindustryscheme.models.*
 
-case class GetSubmittedMonthlyReturnsProxyResponse(
+case class GetSubmittedMonthlyReturnsDataProxyResponse(
   scheme: ContractorScheme,
   monthlyReturn: Seq[MonthlyReturn],
   monthlyReturnItems: Seq[MonthlyReturnItem],
   submission: Seq[Submission]
 )
 
-object GetSubmittedMonthlyReturnsProxyResponse:
-  given format: OFormat[GetSubmittedMonthlyReturnsProxyResponse] = Json.format[GetSubmittedMonthlyReturnsProxyResponse]
+object GetSubmittedMonthlyReturnsDataProxyResponse:
+  given format: OFormat[GetSubmittedMonthlyReturnsDataProxyResponse] =
+    Json.format[GetSubmittedMonthlyReturnsDataProxyResponse]

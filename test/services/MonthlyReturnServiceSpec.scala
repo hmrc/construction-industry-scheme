@@ -996,7 +996,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
         amendment = "Y"
       )
 
-      val mockFormPResponse = GetSubmittedMonthlyReturnsProxyResponse(
+      val mockFormPResponse = GetSubmittedMonthlyReturnsDataProxyResponse(
         scheme = ContractorScheme(
           schemeId = 100,
           instanceId = cisInstanceId,
@@ -1067,7 +1067,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
         amendment = "Y"
       )
 
-      val mockFormPResponse = GetSubmittedMonthlyReturnsProxyResponse(
+      val mockFormPResponse = GetSubmittedMonthlyReturnsDataProxyResponse(
         scheme = ContractorScheme(
           schemeId = 100,
           instanceId = cisInstanceId,
@@ -1122,7 +1122,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
         amendment = "Y"
       )
 
-      val mockFormPResponse = GetSubmittedMonthlyReturnsProxyResponse(
+      val mockFormPResponse = GetSubmittedMonthlyReturnsDataProxyResponse(
         scheme = ContractorScheme(
           schemeId = 100,
           instanceId = cisInstanceId,

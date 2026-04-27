@@ -327,9 +327,9 @@ class FormpProxyConnector @Inject() (
 
   def getSubmittedMonthlyReturnsData(
     request: GetSubmittedMonthlyReturnsDataRequest
-  )(implicit hc: HeaderCarrier): Future[GetSubmittedMonthlyReturnsProxyResponse] =
+  )(implicit hc: HeaderCarrier): Future[GetSubmittedMonthlyReturnsDataProxyResponse] =
     http
       .post(url"$base/cis/retrieve-submitted-monthly-returns-data")
       .withBody(Json.toJson(request))
-      .execute[GetSubmittedMonthlyReturnsProxyResponse]
+      .execute[GetSubmittedMonthlyReturnsDataProxyResponse]
 }

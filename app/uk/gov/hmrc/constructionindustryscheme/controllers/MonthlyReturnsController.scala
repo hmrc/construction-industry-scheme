@@ -292,9 +292,10 @@ class MonthlyReturnsController @Inject() (
         .map(res => Ok(Json.toJson(res)))
         .recover {
           case u: UpstreamErrorResponse =>
+            logger.error("[getSubmittedMonthlyReturnsData] formp-proxy get-submitted-monthly-returns-data-failed", u)
             Status(u.statusCode)(Json.obj("message" -> u.message))
           case NonFatal(t)              =>
-            logger.error("[getUnsubmittedMonthlyReturns] formp-proxy get submitted monthly returns data failed", t)
+            logger.error("[getSubmittedMonthlyReturnsData] formp-proxy get submitted monthly returns data failed", t)
             BadGateway(Json.obj("message" -> "get-submitted-monthly-returns-data-failed"))
         }
     }

@@ -20,14 +20,14 @@ import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.models.ContractorScheme
-import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubmittedMonthlyReturnsProxyResponse
+import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubmittedMonthlyReturnsDataProxyResponse
 
-class GetSubmittedMonthlyReturnsProxyResponseSpec extends AnyWordSpec with Matchers {
+class GetSubmittedMonthlyReturnsDataProxyResponseSpec extends AnyWordSpec with Matchers {
 
-  "GetSubmittedMonthlyReturnsProxyResponse JSON format" should {
+  "GetSubmittedMonthlyReturnsDataProxyResponse JSON format" should {
 
     "serialize and deserialize correctly" in {
-      val model = GetSubmittedMonthlyReturnsProxyResponse(
+      val model = GetSubmittedMonthlyReturnsDataProxyResponse(
         scheme = ContractorScheme(
           schemeId = 999,
           instanceId = "1",
@@ -48,7 +48,7 @@ class GetSubmittedMonthlyReturnsProxyResponseSpec extends AnyWordSpec with Match
       )
 
       val json = Json.toJson(model)
-      json.as[GetSubmittedMonthlyReturnsProxyResponse] mustBe model
+      json.as[GetSubmittedMonthlyReturnsDataProxyResponse] mustBe model
     }
   }
 }
