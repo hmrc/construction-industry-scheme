@@ -18,16 +18,17 @@ package controllers
 
 import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
-import org.mockito.Mockito.{verify, when}
+import org.mockito.Mockito.{verify, verifyNoInteractions, when}
 import org.scalatest.EitherValues
-import play.api.http.Status.{BAD_GATEWAY, OK}
-import play.api.libs.json.Json
+import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, OK}
+import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.AnyContentAsEmpty
 import play.api.test.FakeRequest
-import play.api.test.Helpers.{GET, JSON, contentAsJson, contentType, status}
+import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, contentType, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController
-import uk.gov.hmrc.constructionindustryscheme.models.response.{GetCurrentVerificationBatchResponse, GetNewestVerificationBatchResponse}
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -232,6 +233,81 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentAsJson(result) mustBe Json.obj("message" -> "get-current-verification-batch-failed")
 
       verify(service).getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+    }
+  }
+
+  "createVerificationBatchAndVerifications" - {
+
+    val url = "/cis/verification-batch/create"
+
+    val validRequest: CreateVerificationBatchAndVerificationsRequest =
+      CreateVerificationBatchAndVerificationsRequest(
+        instanceId = "abc-123",
+        verificationResourceReferences = Seq(1L, 2L),
+        actionIndicator = Some("A")
+      )
+
+    val validJson: JsValue = Json.toJson(validRequest)
+
+    val response: CreateVerificationBatchAndVerificationsResponse =
+      CreateVerificationBatchAndVerificationsResponse(
+        verificationBatchResourceReference = 10L
+      )
+
+    "returns 201 Created with JSON body when service succeeds" in {
+      val service    = mock[VerificationService]
+      val controller = mockController(service)
+
+      when(service.createVerificationBatchAndVerifications(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      val req = FakeRequest(POST, url)
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.createVerificationBatchAndVerifications()(req)
+
+      status(result) mustBe CREATED
+      contentType(result) mustBe Some(JSON)
+      contentAsJson(result) mustBe Json.toJson(response)
+
+      verify(service).createVerificationBatchAndVerifications(eqTo(validRequest))(any[HeaderCarrier])
+    }
+
+    "returns 400 BadRequest when JSON is invalid" in {
+      val service    = mock[VerificationService]
+      val controller = mockController(service)
+
+      val badJson = Json.obj("bad" -> "json")
+
+      val req = FakeRequest(POST, url)
+        .withBody(badJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.createVerificationBatchAndVerifications()(req)
+
+      status(result) mustBe BAD_REQUEST
+      verifyNoInteractions(service)
+    }
+
+    "returns 502 BadGateway with error body when service fails" in {
+      val service    = mock[VerificationService]
+      val controller = mockController(service)
+
+      when(service.createVerificationBatchAndVerifications(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req = FakeRequest(POST, url)
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.createVerificationBatchAndVerifications()(req)
+
+      status(result) mustBe BAD_GATEWAY
+      contentType(result) mustBe Some(JSON)
+      contentAsJson(result) mustBe Json.obj("message" -> "create-verification-batch-and-verifications-failed")
+
+      verify(service).createVerificationBatchAndVerifications(eqTo(validRequest))(any[HeaderCarrier])
     }
   }
 }

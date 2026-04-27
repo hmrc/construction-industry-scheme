@@ -17,7 +17,8 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.response.{GetCurrentVerificationBatchResponse, GetNewestVerificationBatchResponse}
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
@@ -35,5 +36,10 @@ class VerificationService @Inject() (formpProxyConnector: FormpProxyConnector) {
     hc: HeaderCarrier
   ): Future[GetCurrentVerificationBatchResponse] =
     formpProxyConnector.getCurrentVerificationBatch(instanceId)
+
+  def createVerificationBatchAndVerifications(
+    request: CreateVerificationBatchAndVerificationsRequest
+  )(implicit hc: HeaderCarrier): Future[CreateVerificationBatchAndVerificationsResponse] =
+    formpProxyConnector.createVerificationBatchAndVerifications(request)
 
 }
