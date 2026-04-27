@@ -1388,7 +1388,6 @@ class FormpProxyConnectorIntegrationSpec
 
       val outJson = Json.toJson(connector.getNewestVerificationBatch(instanceId).futureValue)
 
-
       (outJson \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
       (outJson \ "scheme")(0).\("name").as[String] mustBe "david"
 
@@ -1538,7 +1537,7 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val responseJson = Json.toJson(
-        GetSubmittedMonthlyReturnsProxyResponse(
+        GetSubmittedMonthlyReturnsDataProxyResponse(
           scheme = ContractorScheme(
             schemeId = 100,
             instanceId = "abc-123",
