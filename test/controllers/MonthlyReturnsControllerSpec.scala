@@ -21,7 +21,7 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
-import play.api.libs.json.Json
+import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.Result
 import play.api.test.FakeRequest
 import play.api.test.Helpers.*
@@ -1048,6 +1048,97 @@ class MonthlyReturnsControllerSpec extends SpecBase {
 
         status(result) mustBe BAD_GATEWAY
         contentAsJson(result) mustBe Json.obj("message" -> "delete-unsubmitted-monthly-return-failed")
+      }
+    }
+
+    "POST /monthly-returns/submitted-data (getSubmittedMonthlyReturnsData)" - {
+
+      "return 200 with wrapper when service succeeds (happy path)" in new SetupAuthOnly {
+        val reqBody = GetSubmittedMonthlyReturnsDataRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          amendment = "Y"
+        )
+
+        val payload = GetSubmittedMonthlyReturnsDataResponse(
+          scheme = SchemeData("Scheme Name", "163", "AB0063"),
+          monthlyReturnId = 3000L,
+          taxYear = 2025,
+          taxMonth = 1,
+          nilReturnIndicator = "Y",
+          monthlyReturnItems = Seq.empty,
+          submission = SubmissionData(
+            submissionId = 12345L,
+            submissionType = None,
+            activeObjectId = None,
+            status = None,
+            hmrcMarkGenerated = None,
+            hmrcMarkGgis = None,
+            emailRecipient = None,
+            acceptedTime = None
+          )
+        )
+
+        when(mockMonthlyReturnService.getSubmittedMonthlyReturnsData(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(payload))
+
+        val request: FakeRequest[JsValue] =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result: Future[Result] = call(controller.getSubmittedMonthlyReturnsData, request)
+
+        status(result) mustBe OK
+        contentAsJson(result) mustBe Json.toJson(payload)
+        verify(mockMonthlyReturnService).getSubmittedMonthlyReturnsData(eqTo(reqBody))(any[HeaderCarrier])
+      }
+
+      "return upstream status + message when service fails with UpstreamErrorResponse" in new SetupAuthOnly {
+        val reqBody = GetSubmittedMonthlyReturnsDataRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          amendment = "Y"
+        )
+
+        val boom = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
+
+        when(mockMonthlyReturnService.getSubmittedMonthlyReturnsData(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(boom))
+
+        val request: FakeRequest[JsValue] =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result: Future[Result] = call(controller.getSubmittedMonthlyReturnsData, request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
+      }
+
+      "return 502 BadGateway with fixed message when service fails with NonFatal" in new SetupAuthOnly {
+        val reqBody = GetSubmittedMonthlyReturnsDataRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          amendment = "Y"
+        )
+
+        when(mockMonthlyReturnService.getSubmittedMonthlyReturnsData(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("boom")))
+
+        val request: FakeRequest[JsValue] =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result: Future[Result] = call(controller.getSubmittedMonthlyReturnsData, request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "get-submitted-monthly-returns-data-failed")
       }
     }
 

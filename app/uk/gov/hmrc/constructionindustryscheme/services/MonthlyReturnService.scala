@@ -75,6 +75,7 @@ class MonthlyReturnService @Inject() (
             taxMonth = mr.taxMonth,
             nilReturnIndicator = mapType(mr.nilReturnIndicator),
             status = mr.status.getOrElse(""),
+            amendment = mr.amendment.getOrElse("N"),
             supersededBy = mr.supersededBy,
             amendmentStatus = mr.amendmentStatus,
             monthlyReturnItems = mr.monthlyReturnItems
@@ -267,6 +268,13 @@ class MonthlyReturnService @Inject() (
     hc: HeaderCarrier
   ): Future[Unit] =
     formp.deleteUnsubmittedMonthlyReturn(request)
+
+  def getSubmittedMonthlyReturnsData(
+    request: GetSubmittedMonthlyReturnsDataRequest
+  )(implicit hc: HeaderCarrier): Future[GetSubmittedMonthlyReturnsDataResponse] =
+    formp
+      .getSubmittedMonthlyReturnsData(request)
+      .map(GetSubmittedMonthlyReturnsDataResponse.fromProxyResponse)
 
   private def mapType(nilReturnIndicator: Option[String]): String =
     if (nilReturnIndicator.exists(_.trim.equalsIgnoreCase("Y"))) "Nil"
