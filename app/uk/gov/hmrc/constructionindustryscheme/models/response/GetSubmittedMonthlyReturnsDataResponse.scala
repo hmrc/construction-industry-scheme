@@ -19,15 +19,50 @@ package uk.gov.hmrc.constructionindustryscheme.models.response
 import play.api.libs.json.{Json, OFormat}
 import uk.gov.hmrc.constructionindustryscheme.models.*
 
+import java.time.{LocalDateTime, ZoneOffset}
+
 case class GetSubmittedMonthlyReturnsDataResponse(
   scheme: SchemeData,
   monthlyReturnId: Long,
   taxYear: Int,
   taxMonth: Int,
-  returnType: String,
+  nilReturnIndicator: String,
   monthlyReturnItems: Seq[MonthlyReturnItem],
   submission: SubmissionData
 )
 
-object GetSubmittedMonthlyReturnsDataResponse:
+object GetSubmittedMonthlyReturnsDataResponse {
   given format: OFormat[GetSubmittedMonthlyReturnsDataResponse] = Json.format[GetSubmittedMonthlyReturnsDataResponse]
+
+  def fromProxyResponse(
+    response: GetSubmittedMonthlyReturnsDataProxyResponse
+  ): GetSubmittedMonthlyReturnsDataResponse =
+    (response.monthlyReturn.headOption, response.submission.headOption) match {
+      case (Some(monthlyReturn), Some(submission)) =>
+        GetSubmittedMonthlyReturnsDataResponse(
+          scheme = SchemeData(
+            taxOfficeNumber = response.scheme.taxOfficeNumber,
+            taxOfficeReference = response.scheme.taxOfficeReference,
+            name = response.scheme.name.getOrElse("No name provided")
+          ),
+          monthlyReturnId = monthlyReturn.monthlyReturnId,
+          taxYear = monthlyReturn.taxYear,
+          taxMonth = monthlyReturn.taxMonth,
+          nilReturnIndicator = monthlyReturn.nilReturnIndicator.getOrElse("N"),
+          monthlyReturnItems = response.monthlyReturnItems,
+          submission = SubmissionData(
+            submissionId = submission.submissionId,
+            submissionType = Some(submission.submissionType),
+            activeObjectId = submission.activeObjectId,
+            status = submission.status,
+            hmrcMarkGenerated = submission.hmrcMarkGenerated,
+            hmrcMarkGgis = submission.hmrcMarkGgis,
+            emailRecipient = submission.emailRecipient,
+            acceptedTime = submission.acceptedTime.map(x => LocalDateTime.parse(x).toInstant(ZoneOffset.UTC))
+          )
+        )
+
+      case _ =>
+        throw new RuntimeException("Missing monthlyReturn or submission data")
+    }
+}

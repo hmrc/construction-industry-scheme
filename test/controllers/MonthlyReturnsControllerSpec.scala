@@ -1066,7 +1066,7 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           monthlyReturnId = 3000L,
           taxYear = 2025,
           taxMonth = 1,
-          returnType = "Nil",
+          nilReturnIndicator = "Y",
           monthlyReturnItems = Seq.empty,
           submission = SubmissionData(
             submissionId = 12345L,
