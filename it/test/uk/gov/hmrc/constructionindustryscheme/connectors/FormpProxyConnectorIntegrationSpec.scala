@@ -26,7 +26,7 @@ import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.models.response.{GetGovTalkStatusResponse, GetSubmittedMonthlyReturnsProxyResponse}
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
 import java.time.LocalDateTime
@@ -213,32 +213,6 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = connector.createMonthlyReturn(req).failed.futureValue
-      ex mustBe a[UpstreamErrorResponse]
-      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
-    }
-  }
-
-  "FormpProxyConnector getSchemeEmail" should {
-
-    "POST /formp-proxy/scheme/email and return email on 200" in {
-      stubFor(
-        post(urlPathEqualTo("/formp-proxy/scheme/email"))
-          .withHeader("Content-Type", equalTo("application/json"))
-          .withRequestBody(equalToJson(Json.obj("instanceId" -> instanceId).toString(), true, true))
-          .willReturn(aResponse().withStatus(200).withBody("\"test@test.com\""))
-      )
-
-      connector.getSchemeEmail(instanceId).futureValue mustBe Some("test@test.com")
-    }
-
-    "fail with UpstreamErrorResponse when upstream returns non-2xx (e.g. 500)" in {
-      stubFor(
-        post(urlPathEqualTo("/formp-proxy/scheme/email"))
-          .withRequestBody(equalToJson(Json.obj("instanceId" -> instanceId).toString(), true, true))
-          .willReturn(aResponse().withStatus(500).withBody("formp error"))
-      )
-
-      val ex = connector.getSchemeEmail(instanceId).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
@@ -1414,6 +1388,7 @@ class FormpProxyConnectorIntegrationSpec
 
       val outJson = Json.toJson(connector.getNewestVerificationBatch(instanceId).futureValue)
 
+
       (outJson \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
       (outJson \ "scheme")(0).\("name").as[String] mustBe "david"
 
@@ -1492,6 +1467,63 @@ class FormpProxyConnectorIntegrationSpec
       val ex = connector.deleteUnsubmittedMonthlyReturn(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 400
+    }
+  }
+
+  "FormpProxyConnector createVerificationBatchAndVerifications" should {
+
+    "POST /formp-proxy/cis/verification-batch/create and return payload (200)" in {
+      val req = CreateVerificationBatchAndVerificationsRequest(
+        instanceId = instanceId,
+        verificationResourceReferences = Seq(1L, 2L),
+        actionIndicator = Some("A")
+      )
+
+      val responseJson = Json.parse(
+        """
+          |{
+          |  "verificationBatchResourceReference": 10
+          |}
+          |""".stripMargin
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification-batch/create"))
+          .withHeader("Content-Type", containing("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.createVerificationBatchAndVerifications(req).futureValue
+      Json.toJson(out) mustBe responseJson
+
+      (Json.toJson(out) \ "verificationBatchResourceReference").as[Long] mustBe 10L
+    }
+
+    "fail the future when upstream returns a non-2xx (e.g. 500)" in {
+      val req = CreateVerificationBatchAndVerificationsRequest(
+        instanceId = instanceId,
+        verificationResourceReferences = Seq(1L),
+        actionIndicator = Some("A")
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification-batch/create"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("""{"message":"boom"}""")
+          )
+      )
+
+      val ex = connector.createVerificationBatchAndVerifications(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
 

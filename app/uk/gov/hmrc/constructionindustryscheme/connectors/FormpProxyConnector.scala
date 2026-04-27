@@ -317,6 +317,14 @@ class FormpProxyConnector @Inject() (
         }
       }
 
+  def createVerificationBatchAndVerifications(
+    request: CreateVerificationBatchAndVerificationsRequest
+  )(implicit hc: HeaderCarrier): Future[CreateVerificationBatchAndVerificationsResponse] =
+    http
+      .post(url"$base/cis/verification-batch/create")
+      .withBody(Json.toJson(request))
+      .execute[CreateVerificationBatchAndVerificationsResponse]
+
   def getSubmittedMonthlyReturnsData(
     request: GetSubmittedMonthlyReturnsDataRequest
   )(implicit hc: HeaderCarrier): Future[GetSubmittedMonthlyReturnsProxyResponse] =
