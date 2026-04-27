@@ -49,7 +49,7 @@ class GetCurrentVerificationBatchResponseSpec extends AnyWordSpec with Matchers 
     "write a response to JSON" in {
       val model = GetCurrentVerificationBatchResponse(
         subcontractors = Seq(
-          SubcontractorCurrVerification(
+          SubcontractorCurrentVerification(
             subcontractorId = 1L,
             subbieResourceRef = Some(10L),
             firstName = Some("John"),
@@ -64,13 +64,13 @@ class GetCurrentVerificationBatchResponseSpec extends AnyWordSpec with Matchers 
           )
         ),
         verificationBatch = Seq(
-          VerificationBatchCurrVerification(
+          VerificationBatchCurrentVerification(
             verificationBatchId = 99L,
             verifBatchResourceRef = Some(999L)
           )
         ),
         verifications = Seq(
-          VerificationCurrVerification(
+          VerificationCurrentVerification(
             verificationId = 1001L,
             verificationBatchId = Some(99L),
             subcontractorId = Some(1L),

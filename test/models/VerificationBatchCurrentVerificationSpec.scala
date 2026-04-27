@@ -18,12 +18,12 @@ package models
 
 import base.SpecBase
 import play.api.libs.json.Json
-import uk.gov.hmrc.constructionindustryscheme.models.VerificationBatchCurrVerification
+import uk.gov.hmrc.constructionindustryscheme.models.VerificationBatchCurrentVerification
 
-class VerificationBatchCurrVerificationSpec extends SpecBase {
-  "VerificationBatchCurrVerification" - {
+class VerificationBatchCurrentVerificationSpec extends SpecBase {
+  "VerificationBatchCurrentVerification" - {
     "serialize to JSON correctly" in {
-      val verificationBatch = VerificationBatchCurrVerification(
+      val verificationBatch = VerificationBatchCurrentVerification(
         verificationBatchId = 1L,
         verifBatchResourceRef = Some(10L)
       )
@@ -41,17 +41,17 @@ class VerificationBatchCurrVerificationSpec extends SpecBase {
           |}
           |""".stripMargin
       )
-      val result = json.as[VerificationBatchCurrVerification]
+      val result = json.as[VerificationBatchCurrentVerification]
       result.verificationBatchId mustBe 1L
       result.verifBatchResourceRef mustBe Some(10L)
     }
     "round-trip serialize and deserialize correctly" in {
-      val verificationBatch = VerificationBatchCurrVerification(
+      val verificationBatch = VerificationBatchCurrentVerification(
         verificationBatchId = 1L,
         verifBatchResourceRef = Some(10L)
       )
       val json              = Json.toJson(verificationBatch)
-      val result            = json.as[VerificationBatchCurrVerification]
+      val result            = json.as[VerificationBatchCurrentVerification]
       result mustBe verificationBatch
     }
   }

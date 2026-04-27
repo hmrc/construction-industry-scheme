@@ -18,11 +18,11 @@ package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.libs.json.{Json, OFormat}
 
-case class VerificationBatchCurrVerification(
+case class VerificationBatchCurrentVerification(
   verificationBatchId: Long,
   verifBatchResourceRef: Option[Long]
 )
 
-object VerificationBatchCurrVerification {
-  given format: OFormat[VerificationBatchCurrVerification] = Json.format[VerificationBatchCurrVerification]
+object VerificationBatchCurrentVerification {
+  given format: OFormat[VerificationBatchCurrentVerification] = Json.format[VerificationBatchCurrentVerification]
 }

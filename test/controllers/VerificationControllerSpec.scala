@@ -166,7 +166,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       val response = GetCurrentVerificationBatchResponse(
         subcontractors = Seq(
-          SubcontractorCurrVerification(
+          SubcontractorCurrentVerification(
             subcontractorId = 1L,
             subbieResourceRef = Some(10L),
             firstName = Some("John"),
@@ -181,13 +181,13 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
           )
         ),
         verificationBatch = Seq(
-          VerificationBatchCurrVerification(
+          VerificationBatchCurrentVerification(
             verificationBatchId = 99L,
             verifBatchResourceRef = Some(999L)
           )
         ),
         verifications = Seq(
-          VerificationCurrVerification(
+          VerificationCurrentVerification(
             verificationId = 1001L,
             verificationBatchId = Some(99L),
             subcontractorId = Some(1L),
