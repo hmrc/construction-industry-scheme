@@ -20,7 +20,8 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.response.GetNewestVerificationBatchResponse
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -61,6 +62,41 @@ final class VerificationServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.getNewestVerificationBatch(instanceId).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "VerificationService#createVerificationBatchAndVerifications" - {
+
+    val request = CreateVerificationBatchAndVerificationsRequest(
+      instanceId = "abc-123",
+      verificationResourceReferences = Seq(1L, 2L),
+      actionIndicator = Some("A")
+    )
+
+    val response = CreateVerificationBatchAndVerificationsResponse(
+      verificationBatchResourceReference = 10L
+    )
+
+    "delegates to FormpProxyConnector and returns response" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.createVerificationBatchAndVerifications(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      service.createVerificationBatchAndVerifications(request).futureValue mustBe response
+
+      verify(connector).createVerificationBatchAndVerifications(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.createVerificationBatchAndVerifications(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.createVerificationBatchAndVerifications(request).failed.futureValue.getMessage must include("boom")
     }
   }
 }
