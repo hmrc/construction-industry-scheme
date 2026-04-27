@@ -45,6 +45,7 @@ case class MonthlyReturnData(
   taxMonth: Int,
   nilReturnIndicator: String,
   status: String,
+  amendment: String,
   supersededBy: Option[Long],
   amendmentStatus: Option[String],
   monthlyReturnItems: Option[String]

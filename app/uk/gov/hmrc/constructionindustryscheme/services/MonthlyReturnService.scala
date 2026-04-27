@@ -75,6 +75,7 @@ class MonthlyReturnService @Inject() (
             taxMonth = mr.taxMonth,
             nilReturnIndicator = mapType(mr.nilReturnIndicator),
             status = mr.status.getOrElse(""),
+            amendment = mr.amendment.getOrElse("N"),
             supersededBy = mr.supersededBy,
             amendmentStatus = mr.amendmentStatus,
             monthlyReturnItems = mr.monthlyReturnItems

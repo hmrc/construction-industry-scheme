@@ -373,8 +373,21 @@ class MonthlyReturnServiceSpec extends SpecBase {
           name = Some("Scheme Name")
         ),
         monthlyReturns = Seq(
-          SubmittedMonthlyReturn(1L, 2025, 1, nilReturnIndicator = Some("Y"), status = Some("PENDING")),
-          SubmittedMonthlyReturn(2L, 2025, 2, nilReturnIndicator = Some("N"), status = Some("REJECTED"))
+          SubmittedMonthlyReturn(
+            1L,
+            2025,
+            1,
+            nilReturnIndicator = Some("Y"),
+            status = Some("PENDING"),
+            amendment = Some("Y")
+          ),
+          SubmittedMonthlyReturn(
+            2L,
+            2025,
+            2,
+            nilReturnIndicator = Some("N"),
+            status = Some("REJECTED")
+          )
         ),
         submissions = Seq(
           Submission(
@@ -407,8 +420,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
       out mustBe SubmittedMonthlyReturnsResponse(
         scheme = SchemeData("Scheme Name", "163", "AB0063"),
         monthlyReturns = Seq(
-          MonthlyReturnData(1L, 2025, 1, "Nil", "PENDING", None, None, None),
-          MonthlyReturnData(2L, 2025, 2, "Standard", "REJECTED", None, None, None)
+          MonthlyReturnData(1L, 2025, 1, "Nil", "PENDING", "Y", None, None, None),
+          MonthlyReturnData(2L, 2025, 2, "Standard", "REJECTED", "N", None, None, None)
         ),
         submissions = Seq(
           SubmissionData(
