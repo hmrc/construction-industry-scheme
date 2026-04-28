@@ -46,6 +46,17 @@ class VerificationController @Inject() (
         }
     }
 
+  def getCurrentVerificationBatch(instanceId: String): Action[AnyContent] =
+    authorise.async { implicit request =>
+      verificationService
+        .getCurrentVerificationBatch(instanceId)
+        .map(res => Ok(Json.toJson(res)))
+        .recover { case ex =>
+          logger.error(s"[getCurrentVerificationBatch] formp-proxy get failed (instanceId=$instanceId)", ex)
+          BadGateway(Json.obj("message" -> "get-current-verification-batch-failed"))
+        }
+    }
+
   def createVerificationBatchAndVerifications(): Action[JsValue] =
     authorise(parse.json).async { implicit request =>
       request.body

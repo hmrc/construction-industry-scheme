@@ -65,6 +65,39 @@ final class VerificationServiceSpec extends SpecBase {
     }
   }
 
+  "VerificationService#getCurrentVerificationBatch" - {
+
+    val instanceId = "abc-123"
+
+    val response = GetCurrentVerificationBatchResponse(
+      subcontractors = Seq.empty,
+      verificationBatch = Seq.empty,
+      verifications = Seq.empty
+    )
+
+    "delegates to FormpProxyConnector and returns response" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      service.getCurrentVerificationBatch(instanceId).futureValue mustBe response
+
+      verify(connector).getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.getCurrentVerificationBatch(instanceId).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
   "VerificationService#createVerificationBatchAndVerifications" - {
 
     val request = CreateVerificationBatchAndVerificationsRequest(
