@@ -455,13 +455,13 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         val payload = UnsubmittedMonthlyReturnsResponse(
           unsubmittedCisReturns = Seq(
             UnsubmittedMonthlyReturnsRow(
-              monthlyReturnId = 3000L,
               taxYear = 2025,
               taxMonth = 1,
               returnType = "Nil",
               status = "STARTED",
               lastUpdate = None,
-              amendment = Some("Y"),
+              amendment = None,
+              monthlyReturnId = 12345L,
               deletable = false
             )
           )
