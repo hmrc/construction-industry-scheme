@@ -31,7 +31,8 @@ class ChrisPollResponseSpec extends AnyWordSpec with Matchers {
         pollInterval = Some(10),
         error = None,
         irMarkReceived = None,
-        lastMessageDate = Some("2025-01-01T00:00:00Z")
+        lastMessageDate = Some("2025-01-01T00:00:00Z"),
+        acceptedTime = None
       )
 
       response.status mustBe ACCEPTED

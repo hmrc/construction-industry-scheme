@@ -37,6 +37,7 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
       endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
       pollIntervalOpt: Option[Int]   = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
       lastMessageDateOpt            <- gatewayTimeStampOrNow(messageDetails, now)
+      acceptedTime                   = textOptional(doc \\ "Body" \ "SuccessResponse", "AcceptedTime")
       errOpt                        <- parseError(qualifier, doc)
       irMark                         = textOptional(
                                          doc \\ "Body" \ "SuccessResponse" \ "IRmarkReceipt" \ "Signature" \ "SignedInfo" \ "Reference",
@@ -51,7 +52,8 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
         pollIntervalOpt,
         errOpt.map(Json.toJson(_)),
         irMark,
-        lastMessageDateOpt
+        lastMessageDateOpt,
+        acceptedTime
       )
     }
   }

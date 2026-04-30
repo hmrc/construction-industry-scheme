@@ -843,7 +843,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
               pollInterval = Some(10),
               error = None,
               irMarkReceived = None,
-              lastMessageDate = None
+              lastMessageDate = None,
+              acceptedTime = None
             )
           )
         )
@@ -890,7 +891,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             pollInterval = None,
             error = None,
             irMarkReceived = None,
-            lastMessageDate = None
+            lastMessageDate = None,
+            acceptedTime = None
           )
         )
       )
