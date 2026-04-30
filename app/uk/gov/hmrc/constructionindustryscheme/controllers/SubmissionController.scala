@@ -190,7 +190,8 @@ class SubmissionController @Inject() (
       "submissionId"      -> submissionId,
       "hmrcMarkGenerated" -> payload.irMark,
       "correlationId"     -> res.meta.correlationId,
-      "gatewayTimestamp"  -> gatewayTimestamp
+      "gatewayTimestamp"  -> gatewayTimestamp,
+      "acceptedTime"      -> res.meta.acceptedTime
     )
 
     def withStatus(s: String): JsObject = base ++ Json.obj("status" -> s)

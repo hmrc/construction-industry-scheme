@@ -45,7 +45,8 @@ final case class GovTalkMeta(
   correlationId: String,
   gatewayTimestamp: Option[String],
   responseEndPoint: ResponseEndPoint,
-  error: Option[GovTalkError]
+  error: Option[GovTalkError],
+  acceptedTime: Option[String] = None
 )
 
 final case class SubmissionResult(
