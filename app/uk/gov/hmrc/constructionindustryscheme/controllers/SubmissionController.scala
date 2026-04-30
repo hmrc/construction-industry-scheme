@@ -125,7 +125,8 @@ class SubmissionController @Inject() (
                     interval,
                     error,
                     irMarkReceived,
-                    lastMessageDate
+                    lastMessageDate,
+                    acceptedTime
                   ) =>
                 Ok(
                   Json.obj(
@@ -134,7 +135,8 @@ class SubmissionController @Inject() (
                     "intervalSeconds" -> interval,
                     "error"           -> error,
                     "irMarkReceived"  -> irMarkReceived,
-                    "lastMessageDate" -> lastMessageDate
+                    "lastMessageDate" -> lastMessageDate,
+                    "acceptedTime"    -> acceptedTime
                   )
                 )
             }
