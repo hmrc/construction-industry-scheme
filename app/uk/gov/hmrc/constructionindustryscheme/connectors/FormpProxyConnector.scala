@@ -339,4 +339,14 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/verification-batch/create")
       .withBody(Json.toJson(request))
       .execute[CreateVerificationBatchAndVerificationsResponse]
+
+  def createAmendedMonthlyReturn(request: CreateAmendedMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/amend-monthly-return/create")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == 201) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+      }
 }

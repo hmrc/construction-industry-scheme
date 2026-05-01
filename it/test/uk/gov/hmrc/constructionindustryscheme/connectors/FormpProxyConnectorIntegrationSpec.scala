@@ -1706,4 +1706,45 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
+
+  "FormpProxyConnector createAmendedMonthlyReturn" should {
+
+    "POST /formp-proxy/cis/amend-monthly-return/create and return Unit on 201" in {
+      val req = CreateAmendedMonthlyReturnRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        version = 0
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/amend-monthly-return/create"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(201))
+      )
+
+      connector.createAmendedMonthlyReturn(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-201" in {
+      val req = CreateAmendedMonthlyReturnRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        version = 0
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/amend-monthly-return/create"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = connector.createAmendedMonthlyReturn(req).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
 }
