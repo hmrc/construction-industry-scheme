@@ -31,7 +31,7 @@ class GetCurrentVerificationBatchResponseSpec extends AnyWordSpec with Matchers 
         """
           |{
           |  "subcontractors": [],
-          |  "verificationBatch": [],
+          |  "verificationBatch": null,
           |  "verifications": []
           |}
           |""".stripMargin
@@ -42,7 +42,7 @@ class GetCurrentVerificationBatchResponseSpec extends AnyWordSpec with Matchers 
 
       val out = result.get
       out.subcontractors mustBe empty
-      out.verificationBatch mustBe empty
+      out.verificationBatch mustBe None
       out.verifications mustBe empty
     }
 
@@ -63,7 +63,7 @@ class GetCurrentVerificationBatchResponseSpec extends AnyWordSpec with Matchers 
             partnershipTradingName = Some("ACME trading")
           )
         ),
-        verificationBatch = Seq(
+        verificationBatch = Some(
           VerificationBatchCurrentVerification(
             verificationBatchId = 99L,
             verifBatchResourceRef = Some(999L)
@@ -95,7 +95,7 @@ class GetCurrentVerificationBatchResponseSpec extends AnyWordSpec with Matchers 
       (sub0 \ "partnerUtr").as[String] mustBe "5860920998"
       (sub0 \ "partnershipTradingName").as[String] mustBe "ACME trading"
 
-      val vb0 = (json \ "verificationBatch")(0)
+      val vb0 = json \ "verificationBatch"
 
       (vb0 \ "verificationBatchId").as[Long] mustBe 99L
       (vb0 \ "verifBatchResourceRef").as[Long] mustBe 999L
@@ -111,7 +111,7 @@ class GetCurrentVerificationBatchResponseSpec extends AnyWordSpec with Matchers 
     "round-trip (model -> json -> model) without losing data" in {
       val model = GetCurrentVerificationBatchResponse(
         subcontractors = Seq.empty,
-        verificationBatch = Seq.empty,
+        verificationBatch = None,
         verifications = Seq.empty
       )
 

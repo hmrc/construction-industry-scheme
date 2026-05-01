@@ -1348,31 +1348,23 @@ class FormpProxyConnectorIntegrationSpec
            |      "subcontractorId": 1
            |    }
            |  ],
-           |  "scheme": [
-           |    {
+           |  "scheme": {
            |      "name": "david"
-           |    }
-           |  ],
-           |  "verificationBatch": [
-           |    {
+           |    },
+           |  "verificationBatch": {
            |      "verificationBatchId": 99
-           |    }
-           |  ],
+           |    },
            |  "verifications": [
            |    {
            |      "verificationId": 1001
            |    }
            |  ],
-           |  "submission": [
-           |    {
+           |  "submission": {
            |      "submissionId": 555
-           |    }
-           |  ],
-           |  "monthlyReturn": [
-           |    {
+           |    },
+           |  "monthlyReturn": {
            |      "monthlyReturnId": 777
            |    }
-           |  ]
            |}
            |""".stripMargin
       )

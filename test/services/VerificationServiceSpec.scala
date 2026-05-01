@@ -34,12 +34,12 @@ final class VerificationServiceSpec extends SpecBase {
     val instanceId = "abc-123"
 
     val response = GetNewestVerificationBatchResponse(
-      scheme = Seq.empty,
+      scheme = None,
       subcontractors = Seq.empty,
-      verificationBatch = Seq.empty,
+      verificationBatch = None,
       verifications = Seq.empty,
-      submission = Seq.empty,
-      monthlyReturn = Seq.empty
+      submission = None,
+      monthlyReturn = None
     )
 
     "delegates to FormpProxyConnector and returns response" in {
@@ -71,7 +71,7 @@ final class VerificationServiceSpec extends SpecBase {
 
     val response = GetCurrentVerificationBatchResponse(
       subcontractors = Seq.empty,
-      verificationBatch = Seq.empty,
+      verificationBatch = None,
       verifications = Seq.empty
     )
 
