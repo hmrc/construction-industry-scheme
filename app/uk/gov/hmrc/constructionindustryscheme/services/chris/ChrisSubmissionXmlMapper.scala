@@ -17,6 +17,8 @@
 package uk.gov.hmrc.constructionindustryscheme.services.chris
 
 import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisPollXmlMapper.textOptional
+
 import scala.xml.*
 
 object ChrisSubmissionXmlMapper extends ChrisXmlMapper {
@@ -32,6 +34,7 @@ object ChrisSubmissionXmlMapper extends ChrisXmlMapper {
       className                     <- textRequired(messageDetails, "Class", "Class")
       correlationId                 <- textRequired(messageDetails, "CorrelationID", "CorrelationID")
       gatewayTimestampOpt            = textOptional(messageDetails, "GatewayTimestamp")
+      acceptedTime                   = textOptional(doc \\ "Body" \ "SuccessResponse", "AcceptedTime")
       pollIntervalOpt: Option[Int]   = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
       endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
       errOpt                        <- parseError(qualifier, doc)
@@ -50,7 +53,8 @@ object ChrisSubmissionXmlMapper extends ChrisXmlMapper {
         correlationId = correlationId,
         gatewayTimestamp = gatewayTimestampOpt,
         responseEndPoint = ResponseEndPoint(epUrl, pollInt),
-        error = errOpt
+        error = errOpt,
+        acceptedTime = acceptedTime
       )
 
       SubmissionResult(status, xml, meta)
