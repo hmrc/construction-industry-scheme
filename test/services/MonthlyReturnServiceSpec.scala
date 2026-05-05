@@ -335,10 +335,37 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
       out mustBe UnsubmittedMonthlyReturnsResponse(
         unsubmittedCisReturns = Seq(
-          UnsubmittedMonthlyReturnsRow(1L, 2025, 1, "Nil", "Awaiting confirmation", last, Some("Y"), false),
-          UnsubmittedMonthlyReturnsRow(2L, 2025, 2, "Standard", "Failed", None, Some("N"), false),
-          UnsubmittedMonthlyReturnsRow(3L, 2025, 3, "Standard", "In Progress", None, Some("N"), true),
-          UnsubmittedMonthlyReturnsRow(4L, 2025, 4, "Standard", "In Progress", None, Some("N"), true)
+          UnsubmittedMonthlyReturnsRow(
+            1L,
+            2025,
+            1,
+            "Nil",
+            "Awaiting confirmation",
+            last,
+            Some("Y"),
+            false
+          ),
+          UnsubmittedMonthlyReturnsRow(2L, 2025, 2, "Standard", "Unsuccessful", None, Some("N"), false),
+          UnsubmittedMonthlyReturnsRow(
+            3L,
+            2025,
+            3,
+            "Standard",
+            "In progress",
+            None,
+            Some("N"),
+            true
+          ),
+          UnsubmittedMonthlyReturnsRow(
+            4L,
+            2025,
+            4,
+            "Standard",
+            "In progress",
+            None,
+            Some("N"),
+            true
+          )
         )
       )
 
@@ -498,6 +525,57 @@ class MonthlyReturnServiceSpec extends SpecBase {
       ex mustBe boom
 
       verify(formpProxy).getMonthlyReturnForEdit(eqTo(request))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
+  "getMonthlyReturnComplete" - {
+
+    "returns the response from formp" in new Setup {
+
+      val request = GetMonthlyReturnCompleteRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N"
+      )
+
+      val expected = GetMonthlyReturnCompleteResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq.empty,
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      when(formpProxy.getMonthlyReturnComplete(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(expected))
+
+      val out = service.getMonthlyReturnComplete(request).futureValue
+      out mustBe expected
+
+      verify(formpProxy).getMonthlyReturnComplete(eqTo(request))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "propagates failure from formp" in new Setup {
+
+      val request = GetMonthlyReturnCompleteRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N"
+      )
+
+      val boom = UpstreamErrorResponse("formp proxy failure", 500)
+
+      when(formpProxy.getMonthlyReturnComplete(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(boom))
+
+      val ex = service.getMonthlyReturnComplete(request).failed.futureValue
+      ex mustBe boom
+
+      verify(formpProxy).getMonthlyReturnComplete(eqTo(request))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
   }

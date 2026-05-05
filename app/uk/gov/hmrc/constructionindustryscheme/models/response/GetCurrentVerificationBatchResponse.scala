@@ -19,15 +19,12 @@ package uk.gov.hmrc.constructionindustryscheme.models.response
 import play.api.libs.json.{Json, OFormat}
 import uk.gov.hmrc.constructionindustryscheme.models.*
 
-final case class GetNewestVerificationBatchResponse(
-  scheme: Option[ContractorSchemeNewVerification],
-  subcontractors: Seq[SubcontractorNewVerification],
-  verificationBatch: Option[VerificationBatch],
-  verifications: Seq[Verification],
-  submission: Option[SubmissionNewVerification],
-  monthlyReturn: Option[MonthlyReturnNewVerification]
+final case class GetCurrentVerificationBatchResponse(
+  subcontractors: Seq[SubcontractorCurrentVerification],
+  verificationBatch: Option[VerificationBatchCurrentVerification],
+  verifications: Seq[VerificationCurrentVerification]
 )
 
-object GetNewestVerificationBatchResponse {
-  given format: OFormat[GetNewestVerificationBatchResponse] = Json.format[GetNewestVerificationBatchResponse]
+object GetCurrentVerificationBatchResponse {
+  given format: OFormat[GetCurrentVerificationBatchResponse] = Json.format[GetCurrentVerificationBatchResponse]
 }

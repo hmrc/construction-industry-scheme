@@ -187,6 +187,14 @@ class FormpProxyConnector @Inject() (
       .withBody(Json.toJson(request))
       .execute[GetMonthlyReturnForEditResponse]
 
+  def getMonthlyReturnComplete(
+    request: GetMonthlyReturnCompleteRequest
+  )(implicit hc: HeaderCarrier): Future[GetMonthlyReturnCompleteResponse] =
+    http
+      .post(url"$base/cis/monthly-return-complete")
+      .withBody(Json.toJson(request))
+      .execute[GetMonthlyReturnCompleteResponse]
+
   def getSubcontractorUTRs(cisId: String)(implicit hc: HeaderCarrier): Future[Seq[String]] = {
 
     implicit val readsSubcontractorUTRsOnly: Reads[Seq[String]] =
@@ -302,6 +310,13 @@ class FormpProxyConnector @Inject() (
     http
       .get(url"$base/cis/verification-batch/newest/$instanceId")
       .execute[GetNewestVerificationBatchResponse]
+
+  def getCurrentVerificationBatch(
+    instanceId: String
+  )(implicit hc: HeaderCarrier): Future[GetCurrentVerificationBatchResponse] =
+    http
+      .get(url"$base/cis/verification-batch/current/$instanceId")
+      .execute[GetCurrentVerificationBatchResponse]
 
   def deleteUnsubmittedMonthlyReturn(
     request: DeleteUnsubmittedMonthlyReturnRequest

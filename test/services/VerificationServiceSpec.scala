@@ -34,12 +34,12 @@ final class VerificationServiceSpec extends SpecBase {
     val instanceId = "abc-123"
 
     val response = GetNewestVerificationBatchResponse(
-      scheme = Seq.empty,
+      scheme = None,
       subcontractors = Seq.empty,
-      verificationBatch = Seq.empty,
+      verificationBatch = None,
       verifications = Seq.empty,
-      submission = Seq.empty,
-      monthlyReturn = Seq.empty
+      submission = None,
+      monthlyReturn = None
     )
 
     "delegates to FormpProxyConnector and returns response" in {
@@ -62,6 +62,39 @@ final class VerificationServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.getNewestVerificationBatch(instanceId).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "VerificationService#getCurrentVerificationBatch" - {
+
+    val instanceId = "abc-123"
+
+    val response = GetCurrentVerificationBatchResponse(
+      subcontractors = Seq.empty,
+      verificationBatch = None,
+      verifications = Seq.empty
+    )
+
+    "delegates to FormpProxyConnector and returns response" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      service.getCurrentVerificationBatch(instanceId).futureValue mustBe response
+
+      verify(connector).getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.getCurrentVerificationBatch(instanceId).failed.futureValue.getMessage must include("boom")
     }
   }
 

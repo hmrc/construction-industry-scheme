@@ -42,16 +42,14 @@ class MonthlyReturnService @Inject() (
     cisId: String
   )(implicit hc: HeaderCarrier): Future[UnsubmittedMonthlyReturnsResponse] =
     formp.getUnsubmittedMonthlyReturns(cisId).map { unsubmitted =>
+      val incompleteMonthlyReturns = unsubmitted.monthlyReturn
+        .filter(monthlyReturn => UnsubmittedMonthlyReturnStatus.isIncomplete(monthlyReturn.status))
+
       UnsubmittedMonthlyReturnsResponse(
-        unsubmittedCisReturns = unsubmitted.monthlyReturn.map { monthlyReturn =>
-          UnsubmittedMonthlyReturnsRow(
-            monthlyReturnId = monthlyReturn.monthlyReturnId,
-            taxYear = monthlyReturn.taxYear,
-            taxMonth = monthlyReturn.taxMonth,
+        unsubmittedCisReturns = incompleteMonthlyReturns.map { monthlyReturn =>
+          UnsubmittedMonthlyReturnsRow.from(
+            monthlyReturn = monthlyReturn,
             returnType = mapType(monthlyReturn.nilReturnIndicator),
-            status = mapStatus(monthlyReturn.status),
-            lastUpdate = monthlyReturn.lastUpdate,
-            amendment = monthlyReturn.amendment,
             deletable = isDeletable(monthlyReturn.status)
           )
         }
@@ -131,6 +129,11 @@ class MonthlyReturnService @Inject() (
     hc: HeaderCarrier
   ): Future[GetMonthlyReturnForEditResponse] =
     formp.getMonthlyReturnForEdit(request)
+
+  def getMonthlyReturnComplete(request: GetMonthlyReturnCompleteRequest)(implicit
+    hc: HeaderCarrier
+  ): Future[GetMonthlyReturnCompleteResponse] =
+    formp.getMonthlyReturnComplete(request)
 
   def syncMonthlyReturnItems(request: SelectedSubcontractorsRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     for {
@@ -279,9 +282,6 @@ class MonthlyReturnService @Inject() (
   private def mapType(nilReturnIndicator: Option[String]): String =
     if (nilReturnIndicator.exists(_.trim.equalsIgnoreCase("Y"))) "Nil"
     else "Standard"
-
-  private def mapStatus(raw: Option[String]): String =
-    UnsubmittedMonthlyReturnStatus.fromRaw(raw).asText
 
   private def isDeletable(status: Option[String]): Boolean = status match {
     case Some("STARTED") | Some("VALIDATED") => true

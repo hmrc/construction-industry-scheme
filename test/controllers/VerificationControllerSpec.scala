@@ -54,7 +54,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       val controller = mockController(service)
 
       val response = GetNewestVerificationBatchResponse(
-        scheme = Seq(
+        scheme = Some(
           ContractorSchemeNewVerification(
             accountsOfficeReference = Some("123PA00123456"),
             utr = Some("1111111111"),
@@ -75,10 +75,16 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             taxTreatment = Some("0"),
             verificationDate = Some(LocalDateTime.of(2026, 1, 3, 10, 0, 0)),
             lastMonthlyReturnDate = Some(LocalDateTime.of(2026, 1, 4, 10, 0, 0)),
-            createDate = Some(LocalDateTime.of(2026, 1, 4, 10, 0, 0))
+            createDate = Some(LocalDateTime.of(2026, 1, 4, 10, 0, 0)),
+            subcontractorType = Some("soletrader"),
+            subbieResourceRef = Some(10L),
+            utr = Some("1111111111"),
+            partnerUtr = None,
+            crn = None,
+            nino = Some("AA123456A")
           )
         ),
-        verificationBatch = Seq(
+        verificationBatch = Some(
           VerificationBatch(
             verificationBatchId = 99L,
             status = Some("STARTED"),
@@ -95,7 +101,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             subcontractorId = Some(1L)
           )
         ),
-        submission = Seq(
+        submission = Some(
           SubmissionNewVerification(
             submissionId = 555L,
             activeObjectId = Some(99L),
@@ -103,7 +109,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             submissionRequestDate = Some(LocalDateTime.of(2026, 1, 1, 13, 5, 0))
           )
         ),
-        monthlyReturn = Seq(
+        monthlyReturn = Some(
           MonthlyReturnNewVerification(
             monthlyReturnId = 777L,
             decNoMoreSubPayments = Some("N")
@@ -122,15 +128,15 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       val json = contentAsJson(result)
 
-      (json \ "scheme")(0).\("name").as[String] mustBe "ABC Construction Ltd"
+      (json \ "scheme").\("name").as[String] mustBe "ABC Construction Ltd"
 
       (json \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
 
-      (json \ "verificationBatch")(0).\("verificationBatchId").as[Long] mustBe 99L
+      (json \ "verificationBatch").\("verificationBatchId").as[Long] mustBe 99L
       (json \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L
 
-      (json \ "submission")(0).\("submissionId").as[Long] mustBe 555L
-      (json \ "monthlyReturn")(0).\("monthlyReturnId").as[Long] mustBe 777L
+      (json \ "submission").\("submissionId").as[Long] mustBe 555L
+      (json \ "monthlyReturn").\("monthlyReturnId").as[Long] mustBe 777L
 
       json mustBe Json.toJson(response)
 
@@ -152,6 +158,87 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentAsJson(result) mustBe Json.obj("message" -> "get-newest-verification-batch-failed")
 
       verify(service).getNewestVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+    }
+  }
+
+  "getCurrentVerificationBatch" - {
+
+    val instanceId = "abc-123"
+    val url        = s"/cis/verification-batch/current/$instanceId"
+
+    "returns 200 OK with JSON body when service succeeds (full payload)" in {
+      val service    = mock[VerificationService]
+      val controller = mockController(service)
+
+      val response = GetCurrentVerificationBatchResponse(
+        subcontractors = Seq(
+          SubcontractorCurrentVerification(
+            subcontractorId = 1L,
+            subbieResourceRef = Some(10L),
+            firstName = Some("John"),
+            surname = Some("Smith"),
+            secondName = Some("Q"),
+            tradingName = Some("ACME"),
+            utr = Some("1111111111"),
+            nino = Some("AA123456A"),
+            crn = Some("AC012345"),
+            partnerUtr = Some("5860920998"),
+            partnershipTradingName = Some("ACME trading")
+          )
+        ),
+        verificationBatch = Some(
+          VerificationBatchCurrentVerification(
+            verificationBatchId = 99L,
+            verifBatchResourceRef = Some(999L)
+          )
+        ),
+        verifications = Seq(
+          VerificationCurrentVerification(
+            verificationId = 1001L,
+            verificationBatchId = Some(99L),
+            subcontractorId = Some(1L),
+            verificationResourceRef = Some(1L)
+          )
+        )
+      )
+
+      when(service.getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, url)
+      val result                                   = controller.getCurrentVerificationBatch(instanceId)(req)
+
+      status(result) mustBe OK
+      contentType(result) mustBe Some(JSON)
+
+      val json = contentAsJson(result)
+
+      (json \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
+      (json \ "subcontractors")(0).\("utr").as[String] mustBe "1111111111"
+
+      (json \ "verificationBatch").\("verificationBatchId").as[Long] mustBe 99L
+      (json \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L
+
+      json mustBe Json.toJson(response)
+
+      verify(service).getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+    }
+
+    "returns 502 BadGateway with error body when service fails" in {
+      val service    = mock[VerificationService]
+      val controller = mockController(service)
+
+      when(service.getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, url)
+      val result                                   = controller.getCurrentVerificationBatch(instanceId)(req)
+
+      status(result) mustBe BAD_GATEWAY
+      contentType(result) mustBe Some(JSON)
+      contentAsJson(result) mustBe Json.obj("message" -> "get-current-verification-batch-failed")
+
+      verify(service).getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
     }
   }
 
