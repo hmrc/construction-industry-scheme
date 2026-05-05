@@ -32,12 +32,12 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
       val json = Json.parse(
         """
           |{
-          |  "scheme": [],
+          |  "scheme": null,
           |  "subcontractors": [],
-          |  "verificationBatch": [],
+          |  "verificationBatch": null,
           |  "verifications": [],
-          |  "submission": [],
-          |  "monthlyReturn": []
+          |  "submission": null,
+          |  "monthlyReturn": null
           |}
           |""".stripMargin
       )
@@ -46,17 +46,17 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
       result mustBe a[JsSuccess[?]]
 
       val out = result.get
-      out.scheme mustBe empty
+      out.scheme mustBe None
       out.subcontractors mustBe empty
-      out.verificationBatch mustBe empty
+      out.verificationBatch mustBe None
       out.verifications mustBe empty
-      out.submission mustBe empty
-      out.monthlyReturn mustBe empty
+      out.submission mustBe None
+      out.monthlyReturn mustBe None
     }
 
     "write a response to JSON" in {
       val model = GetNewestVerificationBatchResponse(
-        scheme = Seq(
+        scheme = Some(
           ContractorSchemeNewVerification(
             accountsOfficeReference = Some("123PA00123456"),
             utr = Some("1111111111"),
@@ -77,10 +77,16 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
             taxTreatment = Some("0"),
             verificationDate = Some(LocalDateTime.of(2026, 1, 12, 11, 0, 0)),
             lastMonthlyReturnDate = None,
-            createDate = Some(LocalDateTime.of(2026, 1, 4, 10, 0, 0))
+            createDate = Some(LocalDateTime.of(2026, 1, 4, 10, 0, 0)),
+            subcontractorType = Some("soletrader"),
+            subbieResourceRef = Some(10L),
+            utr = Some("1111111111"),
+            partnerUtr = None,
+            crn = None,
+            nino = Some("AA123456A")
           )
         ),
-        verificationBatch = Seq(
+        verificationBatch = Some(
           VerificationBatch(
             verificationBatchId = 99L,
             status = Some("STARTED"),
@@ -97,7 +103,7 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
             subcontractorId = Some(1L)
           )
         ),
-        submission = Seq(
+        submission = Some(
           SubmissionNewVerification(
             submissionId = 555L,
             activeObjectId = Some(99L),
@@ -105,7 +111,7 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
             submissionRequestDate = Some(LocalDateTime.of(2026, 1, 12, 11, 59, 0))
           )
         ),
-        monthlyReturn = Seq(
+        monthlyReturn = Some(
           MonthlyReturnNewVerification(
             monthlyReturnId = 777L,
             decNoMoreSubPayments = Some("N")
@@ -115,7 +121,7 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
 
       val json = Json.toJson(model)
 
-      val scheme0 = (json \ "scheme")(0)
+      val scheme0 = json \ "scheme"
 
       (scheme0 \ "accountsOfficeReference").as[String] mustBe "123PA00123456"
       (scheme0 \ "utr").as[String] mustBe "1111111111"
@@ -136,8 +142,14 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
       (sub0 \ "verificationDate").as[String] mustBe "2026-01-12T11:00:00"
       (sub0 \ "lastMonthlyReturnDate").toOption mustBe None
       (sub0 \ "createDate").as[String] mustBe "2026-01-04T10:00:00"
+      (sub0 \ "subcontractorType").as[String] mustBe "soletrader"
+      (sub0 \ "subbieResourceRef").as[Long] mustBe 10L
+      (sub0 \ "utr").as[String] mustBe "1111111111"
+      (sub0 \ "partnerUtr").toOption mustBe None
+      (sub0 \ "crn").toOption mustBe None
+      (sub0 \ "nino").as[String] mustBe "AA123456A"
 
-      val vb0 = (json \ "verificationBatch")(0)
+      val vb0 = json \ "verificationBatch"
 
       (vb0 \ "verificationBatchId").as[Long] mustBe 99L
       (vb0 \ "status").as[String] mustBe "STARTED"
@@ -152,14 +164,14 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
       (v0 \ "verificationBatchId").as[Long] mustBe 99L
       (v0 \ "subcontractorId").as[Long] mustBe 1L
 
-      val subm0 = (json \ "submission")(0)
+      val subm0 = json \ "submission"
 
       (subm0 \ "submissionId").as[Long] mustBe 555L
       (subm0 \ "activeObjectId").as[Long] mustBe 99L
       (subm0 \ "status").as[String] mustBe "ACCEPTED"
       (subm0 \ "submissionRequestDate").as[String] mustBe "2026-01-12T11:59:00"
 
-      val mr0 = (json \ "monthlyReturn")(0)
+      val mr0 = json \ "monthlyReturn"
 
       (mr0 \ "monthlyReturnId").as[Long] mustBe 777L
       (mr0 \ "decNoMoreSubPayments").as[String] mustBe "N"
@@ -168,12 +180,12 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
 
     "round-trip (model -> json -> model) without losing data" in {
       val model = GetNewestVerificationBatchResponse(
-        scheme = Seq.empty,
+        scheme = None,
         subcontractors = Seq.empty,
-        verificationBatch = Seq.empty,
+        verificationBatch = None,
         verifications = Seq.empty,
-        submission = Seq.empty,
-        monthlyReturn = Seq(
+        submission = None,
+        monthlyReturn = Some(
           MonthlyReturnNewVerification(
             monthlyReturnId = 777L,
             decNoMoreSubPayments = Some("N")

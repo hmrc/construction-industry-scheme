@@ -32,7 +32,13 @@ case class SubcontractorNewVerification(
   taxTreatment: Option[String],
   verificationDate: Option[LocalDateTime],
   lastMonthlyReturnDate: Option[LocalDateTime],
-  createDate: Option[LocalDateTime]
+  createDate: Option[LocalDateTime],
+  subcontractorType: Option[String],
+  subbieResourceRef: Option[Long],
+  utr: Option[String],
+  partnerUtr: Option[String],
+  crn: Option[String],
+  nino: Option[String]
 )
 
 object SubcontractorNewVerification {

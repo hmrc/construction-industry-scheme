@@ -73,7 +73,13 @@ final class SubcontractorNewVerificationSpec extends AnyWordSpec with Matchers {
         taxTreatment = Some("0"),
         verificationDate = Some(LocalDateTime.of(2026, 4, 1, 10, 0, 0)),
         lastMonthlyReturnDate = Some(LocalDateTime.of(2026, 4, 2, 10, 0, 0)),
-        createDate = Some(LocalDateTime.of(2026, 4, 2, 10, 0, 0))
+        createDate = Some(LocalDateTime.of(2026, 4, 2, 10, 0, 0)),
+        subcontractorType = Some("soletrader"),
+        subbieResourceRef = Some(10L),
+        utr = Some("1111111111"),
+        partnerUtr = None,
+        crn = None,
+        nino = Some("AA123456A")
       )
 
       val json = Json.toJson(model)
@@ -89,6 +95,12 @@ final class SubcontractorNewVerificationSpec extends AnyWordSpec with Matchers {
       (json \ "verificationDate").as[String] mustBe "2026-04-01T10:00:00"
       (json \ "lastMonthlyReturnDate").as[String] mustBe "2026-04-02T10:00:00"
       (json \ "createDate").as[String] mustBe "2026-04-02T10:00:00"
+      (json \ "subcontractorType").as[String] mustBe "soletrader"
+      (json \ "subbieResourceRef").as[Long] mustBe 10L
+      (json \ "utr").as[String] mustBe "1111111111"
+      (json \ "partnerUtr").toOption mustBe None
+      (json \ "crn").toOption mustBe None
+      (json \ "nino").as[String] mustBe "AA123456A"
     }
 
     "round-trip (model -> json -> model) without losing data" in {
@@ -104,7 +116,13 @@ final class SubcontractorNewVerificationSpec extends AnyWordSpec with Matchers {
         taxTreatment = None,
         verificationDate = None,
         lastMonthlyReturnDate = None,
-        createDate = None
+        createDate = None,
+        subcontractorType = None,
+        subbieResourceRef = None,
+        utr = None,
+        partnerUtr = None,
+        crn = None,
+        nino = None
       )
 
       val json = Json.toJson(model)

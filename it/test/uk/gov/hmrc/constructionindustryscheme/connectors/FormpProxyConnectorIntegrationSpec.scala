@@ -1348,31 +1348,23 @@ class FormpProxyConnectorIntegrationSpec
            |      "subcontractorId": 1
            |    }
            |  ],
-           |  "scheme": [
-           |    {
+           |  "scheme": {
            |      "name": "david"
-           |    }
-           |  ],
-           |  "verificationBatch": [
-           |    {
+           |    },
+           |  "verificationBatch": {
            |      "verificationBatchId": 99
-           |    }
-           |  ],
+           |    },
            |  "verifications": [
            |    {
            |      "verificationId": 1001
            |    }
            |  ],
-           |  "submission": [
-           |    {
+           |  "submission": {
            |      "submissionId": 555
-           |    }
-           |  ],
-           |  "monthlyReturn": [
-           |    {
+           |    },
+           |  "monthlyReturn": {
            |      "monthlyReturnId": 777
            |    }
-           |  ]
            |}
            |""".stripMargin
       )
@@ -1390,13 +1382,13 @@ class FormpProxyConnectorIntegrationSpec
 
 
       (outJson \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
-      (outJson \ "scheme")(0).\("name").as[String] mustBe "david"
+      (outJson \ "scheme").\("name").as[String] mustBe "david"
 
-      (outJson \ "verificationBatch")(0).\("verificationBatchId").as[Long] mustBe 99L
+      (outJson \ "verificationBatch").\("verificationBatchId").as[Long] mustBe 99L
       (outJson \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L
 
-      (outJson \ "submission")(0).\("submissionId").as[Long] mustBe 555L
-      (outJson \ "monthlyReturn")(0).\("monthlyReturnId").as[Long] mustBe 777L
+      (outJson \ "submission").\("submissionId").as[Long] mustBe 555L
+      (outJson \ "monthlyReturn").\("monthlyReturnId").as[Long] mustBe 777L
     }
 
     "fail the future when upstream returns a non-2xx (e.g. 500)" in {
@@ -1423,11 +1415,9 @@ class FormpProxyConnectorIntegrationSpec
            |      "subcontractorId": 1
            |    }
            |  ],
-           |  "verificationBatch": [
-           |    {
+           |  "verificationBatch": {
            |      "verificationBatchId": 99
-           |    }
-           |  ],
+           |    },
            |  "verifications": [
            |    {
            |      "verificationId": 1001
@@ -1450,7 +1440,7 @@ class FormpProxyConnectorIntegrationSpec
 
       (outJson \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
 
-      (outJson \ "verificationBatch")(0).\("verificationBatchId").as[Long] mustBe 99L
+      (outJson \ "verificationBatch").\("verificationBatchId").as[Long] mustBe 99L
       (outJson \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L
     }
 
@@ -1522,6 +1512,131 @@ class FormpProxyConnectorIntegrationSpec
       val ex = connector.deleteUnsubmittedMonthlyReturn(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 400
+    }
+  }
+
+  "FormpProxyConnector getMonthlyReturnComplete" should {
+
+    val completeReq = GetMonthlyReturnCompleteRequest(
+      instanceId = instanceId,
+      taxYear = 2024,
+      taxMonth = 6,
+      amendment = "N"
+    )
+
+    val completeResponseJson = Json.parse(
+      s"""
+         |{
+         |  "scheme": [
+         |    {
+         |      "schemeId": 1,
+         |      "instanceId": "$instanceId",
+         |      "accountsOfficeReference": "123PA00123456",
+         |      "taxOfficeNumber": "123",
+         |      "taxOfficeReference": "AB456",
+         |      "name": "Test Contractor"
+         |    }
+         |  ],
+         |  "monthlyReturn": [
+         |    {
+         |      "monthlyReturnId": 100,
+         |      "taxYear": 2024,
+         |      "taxMonth": 6,
+         |      "nilReturnIndicator": "N",
+         |      "status": "SUBMITTED"
+         |    }
+         |  ],
+         |  "subcontractors": [],
+         |  "monthlyReturnItems": [
+         |    {
+         |      "monthlyReturnId": 100,
+         |      "monthlyReturnItemId": 201,
+         |      "totalPayments": "5000.00",
+         |      "costOfMaterials": "1000.00",
+         |      "totalDeducted": "800.00",
+         |      "subcontractorName": "John Smith"
+         |    }
+         |  ],
+         |  "submission": [
+         |    {
+         |      "submissionId": 400,
+         |      "submissionType": "Original",
+         |      "activeObjectId": 100,
+         |      "status": "SUBMITTED",
+         |      "hmrcMarkGenerated": "HMRC-123-ABC",
+         |      "hmrcMarkGgis": "HMRC-123-ABC",
+         |      "emailRecipient": "user@example.com",
+         |      "acceptedTime": "2024-07-01T10:30:00",
+         |      "schemeId": 1
+         |    }
+         |  ]
+         |}
+         |""".stripMargin
+    )
+
+    "POST to /formp-proxy/cis/monthly-return-complete and return the response (200)" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-complete"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(completeReq).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(completeResponseJson.toString())
+          )
+      )
+
+      val out = connector.getMonthlyReturnComplete(completeReq).futureValue
+
+      out.scheme.head.instanceId          mustBe instanceId
+      out.scheme.head.name                mustBe Some("Test Contractor")
+      out.monthlyReturn.head.monthlyReturnId mustBe 100L
+      out.monthlyReturn.head.taxYear      mustBe 2024
+      out.monthlyReturn.head.taxMonth     mustBe 6
+      out.monthlyReturnItems.head.totalPayments mustBe Some("5000.00")
+      out.submission.head.submissionId    mustBe 400L
+      out.submission.head.status          mustBe Some("SUBMITTED")
+      out.submission.head.hmrcMarkGenerated mustBe Some("HMRC-123-ABC")
+    }
+
+    "return empty collections when upstream returns empty arrays (200)" in {
+      val emptyResponseJson = Json.parse(
+        """
+          |{
+          |  "scheme": [],
+          |  "monthlyReturn": [],
+          |  "subcontractors": [],
+          |  "monthlyReturnItems": [],
+          |  "submission": []
+          |}
+          |""".stripMargin
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-complete"))
+          .withRequestBody(equalToJson(Json.toJson(completeReq).toString(), true, true))
+          .willReturn(aResponse().withStatus(200).withBody(emptyResponseJson.toString()))
+      )
+
+      val out = connector.getMonthlyReturnComplete(completeReq).futureValue
+
+      out.scheme            mustBe empty
+      out.monthlyReturn     mustBe empty
+      out.subcontractors    mustBe empty
+      out.monthlyReturnItems mustBe empty
+      out.submission        mustBe empty
+    }
+
+    "fail the future when upstream returns non-2xx (e.g. 500)" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/monthly-return-complete"))
+          .withRequestBody(equalToJson(Json.toJson(completeReq).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.getMonthlyReturnComplete(completeReq).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
 

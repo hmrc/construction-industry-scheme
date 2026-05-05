@@ -47,11 +47,9 @@ class VerificationControllerIntegrationSpec
            |      "subcontractorId": 1
            |    }
            |  ],
-           |  "verificationBatch": [
-           |    {
+           |  "verificationBatch": {
            |      "verificationBatchId": 99
-           |    }
-           |  ],
+           |    },
            |  "verifications": [
            |    {
            |      "verificationId": 1001
@@ -80,7 +78,7 @@ class VerificationControllerIntegrationSpec
 
       resp.status mustBe OK
       (resp.json \ "subcontractors" \ 0 \ "subcontractorId").as[Long] mustBe 1L
-      (resp.json \ "verificationBatch" \ 0 \ "verificationBatchId").as[Long] mustBe 99L
+      (resp.json \ "verificationBatch"  \ "verificationBatchId").as[Long] mustBe 99L
       (resp.json \ "verifications" \ 0 \ "verificationId").as[Long] mustBe 1001L
 
       verify(
