@@ -35,31 +35,31 @@ class JourneyHandoffRepository @Inject() (
   mongoComponent: MongoComponent,
   config: AppConfig
 )(using ec: ExecutionContext)
-  extends PlayMongoRepository[JourneyHandoffData](
-    collectionName = "journey-handoff-records",
-    mongoComponent = mongoComponent,
-    domainFormat = JourneyHandoffData.format,
-    indexes = Seq(
-      IndexModel(
-        Indexes.ascending(lastUpdatedField),
-        IndexOptions()
-          .name("lastUpdatedIndex")
-          .expireAfter(config.cacheTtl, TimeUnit.SECONDS)
+    extends PlayMongoRepository[JourneyHandoffData](
+      collectionName = "journey-handoff-records",
+      mongoComponent = mongoComponent,
+      domainFormat = JourneyHandoffData.format,
+      indexes = Seq(
+        IndexModel(
+          Indexes.ascending(lastUpdatedField),
+          IndexOptions()
+            .name("lastUpdatedIndex")
+            .expireAfter(config.cacheTtl, TimeUnit.SECONDS)
+        ),
+        IndexModel(
+          Indexes.ascending(idField),
+          IndexOptions().name("idIndex").unique(true).background(false)
+        ),
+        IndexModel(
+          Indexes.ascending(userIdField, journeyTypeField),
+          IndexOptions().name("userIdJourneyTypeIndex").background(true)
+        )
       ),
-      IndexModel(
-        Indexes.ascending(idField),
-        IndexOptions().name("idIndex").unique(true).background(false)
-      ),
-      IndexModel(
-        Indexes.ascending(userIdField, journeyTypeField),
-        IndexOptions().name("userIdJourneyTypeIndex").background(true)
-      )
-    ),
-    replaceIndexes = true
-  ) {
+      replaceIndexes = true
+    ) {
 
   private def now: Instant = Instant.now()
-  
+
   def get(id: String, userId: String, journeyType: String): Future[Option[JourneyHandoffData]] =
     collection
       .find(
@@ -73,7 +73,7 @@ class JourneyHandoffRepository @Inject() (
 
   def create(userId: String, journeyType: String, data: JsObject): Future[String] =
     val id = UUID.randomUUID().toString
-    
+
     val handoff = JourneyHandoffData(
       id = id,
       userId = userId,
@@ -81,7 +81,7 @@ class JourneyHandoffRepository @Inject() (
       data = data,
       lastUpdated = now
     )
-    
+
     collection
       .insertOne(handoff)
       .toFuture()

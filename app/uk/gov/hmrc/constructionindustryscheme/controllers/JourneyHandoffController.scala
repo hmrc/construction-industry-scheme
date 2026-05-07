@@ -24,15 +24,15 @@ import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.constructionindustryscheme.repositories.JourneyHandoffRepository
 
 import javax.inject.*
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class JourneyHandoffController @Inject() (
   authorise: AuthAction,
   repo: JourneyHandoffRepository,
   cc: ControllerComponents
-)( using ec: ExecutionContext)
-  extends BackendController(cc)
+)(using ec: ExecutionContext)
+    extends BackendController(cc)
     with Logging {
 
   def create(journeyType: String): Action[JsValue] =
@@ -41,7 +41,7 @@ class JourneyHandoffController @Inject() (
         case JsSuccess(data, _) =>
           repo
             .create(request.credentialId, journeyType, data)
-            .map { handoffId => 
+            .map { handoffId =>
               Created(Json.obj("id" -> handoffId))
             }
             .recover { case e =>
@@ -54,8 +54,8 @@ class JourneyHandoffController @Inject() (
           Future.successful(BadRequest(Json.obj("error" -> "Invalid JSON")))
       }
     }
-    
-  def get(journeyType: String, id: String): Action[AnyContent] = 
+
+  def get(journeyType: String, id: String): Action[AnyContent] =
     authorise.async { implicit request =>
       repo
         .get(id, request.credentialId, journeyType)
@@ -68,7 +68,7 @@ class JourneyHandoffController @Inject() (
           InternalServerError(Json.obj("error" -> "Failed to retrieve handoff data"))
         }
     }
-    
+
   def delete(journeyType: String, id: String): Action[AnyContent] =
     authorise.async { implicit request =>
       repo
@@ -80,6 +80,6 @@ class JourneyHandoffController @Inject() (
           logger.error(s"[JourneyHandOffController.delete] error deleting handoff data", e)
           InternalServerError(Json.obj("error" -> "Failed to delete handoff data"))
         }
-    } 
+    }
 
 }

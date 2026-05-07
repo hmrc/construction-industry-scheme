@@ -31,14 +31,14 @@ case class JourneyHandoffData(
 )
 
 object JourneyHandoffData {
-  given dataFormat: Format[Instant] = MongoJavatimeFormats.instantFormat
+  given dataFormat: Format[Instant]        = MongoJavatimeFormats.instantFormat
   given format: Format[JourneyHandoffData] = Json.format[JourneyHandoffData]
 }
 
 object JourneyHandoffDataKeys {
-  val idField: String = "id"
-  val userIdField: String = "userId"
+  val idField: String          = "id"
+  val userIdField: String      = "userId"
   val journeyTypeField: String = "journeyType"
-  val dataField: String = "data"
+  val dataField: String        = "data"
   val lastUpdatedField: String = "lastUpdated"
 }
