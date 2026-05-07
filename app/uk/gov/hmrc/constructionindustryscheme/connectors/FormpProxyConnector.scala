@@ -349,4 +349,12 @@ class FormpProxyConnector @Inject() (
         if (response.status == 201) Future.unit
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
+
+  def getSubmittedMonthlyReturnsData(
+    request: GetSubmittedMonthlyReturnsDataRequest
+  )(implicit hc: HeaderCarrier): Future[GetSubmittedMonthlyReturnsDataProxyResponse] =
+    http
+      .post(url"$base/cis/retrieve-submitted-monthly-returns-data")
+      .withBody(Json.toJson(request))
+      .execute[GetSubmittedMonthlyReturnsDataProxyResponse]
 }
