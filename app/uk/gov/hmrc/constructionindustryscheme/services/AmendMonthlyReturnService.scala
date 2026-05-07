@@ -26,7 +26,7 @@ import scala.concurrent.Future
 
 @Singleton
 class AmendMonthlyReturnService @Inject() (formp: FormpProxyConnector) {
-  
+
   def createAmendedMonthlyReturn(request: CreateAmendedMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formp.createAmendedMonthlyReturn(request)
 

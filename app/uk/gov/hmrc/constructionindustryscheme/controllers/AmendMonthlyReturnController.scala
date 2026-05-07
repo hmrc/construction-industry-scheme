@@ -34,9 +34,9 @@ class AmendMonthlyReturnController @Inject() (
   service: AmendMonthlyReturnService,
   val cc: ControllerComponents
 )(implicit ec: ExecutionContext)
-  extends BackendController(cc)
+    extends BackendController(cc)
     with Logging {
-  
+
   def createAmendedMonthlyReturn: Action[CreateAmendedMonthlyReturnRequest] =
     authorise.async(parse.json[CreateAmendedMonthlyReturnRequest]) { implicit request =>
       service
@@ -46,7 +46,7 @@ class AmendMonthlyReturnController @Inject() (
           case u: UpstreamErrorResponse =>
             logger.error("[createAmendedMonthlyReturn] failed", u)
             Status(u.statusCode)(Json.obj("message" -> u.message))
-          
+
           case NonFatal(t) =>
             logger.error("[createAmendedMonthlyReturn] failed", t)
             InternalServerError(Json.obj("message" -> "Unexpected error"))
