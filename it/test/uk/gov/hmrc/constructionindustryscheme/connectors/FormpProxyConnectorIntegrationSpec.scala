@@ -1696,6 +1696,66 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector getSubmittedMonthlyReturnsData" should {
+
+    "POST request to /formp-proxy/cis/monthly-return-edit and return payload (200)" in {
+      val req = GetSubmittedMonthlyReturnsDataRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N"
+      )
+
+      val responseJson = Json.toJson(
+        GetSubmittedMonthlyReturnsDataProxyResponse(
+          scheme = ContractorScheme(
+            schemeId = 100,
+            instanceId = "abc-123",
+            accountsOfficeReference = "accountsOfficeReference",
+            taxOfficeNumber = "taxOfficeNumber",
+            taxOfficeReference = "taxOfficeReference"
+          ),
+          monthlyReturn = Seq.empty,
+          monthlyReturnItems = Seq.empty,
+          submission = Seq.empty
+        )
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/retrieve-submitted-monthly-returns-data"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.getSubmittedMonthlyReturnsData(req).futureValue
+      Json.toJson(out) mustBe responseJson
+    }
+
+    "fail the future when upstream returns non-2xx (e.g. 500)" in {
+      val req = GetSubmittedMonthlyReturnsDataRequest(
+        instanceId = instanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/retrieve-submitted-monthly-returns-data"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.getSubmittedMonthlyReturnsData(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
   "FormpProxyConnector modifyVerifications" should {
 
     "POST /formp-proxy/cis/verification-batch/modify and return payload (204)" in {

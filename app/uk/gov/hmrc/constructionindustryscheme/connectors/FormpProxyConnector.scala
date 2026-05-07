@@ -340,6 +340,14 @@ class FormpProxyConnector @Inject() (
       .withBody(Json.toJson(request))
       .execute[CreateVerificationBatchAndVerificationsResponse]
 
+  def getSubmittedMonthlyReturnsData(
+    request: GetSubmittedMonthlyReturnsDataRequest
+  )(implicit hc: HeaderCarrier): Future[GetSubmittedMonthlyReturnsDataProxyResponse] =
+    http
+      .post(url"$base/cis/retrieve-submitted-monthly-returns-data")
+      .withBody(Json.toJson(request))
+      .execute[GetSubmittedMonthlyReturnsDataProxyResponse]
+
   def modifyVerifications(
     request: ModifyVerificationsRequest
   )(implicit hc: HeaderCarrier): Future[Unit] =
