@@ -689,7 +689,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
-    "computes create/delete diffs and calls formp sync endpoint when amending" in new Setup {
+    "computes create/delete diffs and calls formp sync endpoint when isAmendment is true" in new Setup {
       val req = SelectedSubcontractorsRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
