@@ -41,6 +41,7 @@ class SubmittedMonthlyReturnsResponseSpec extends AnyWordSpec with Matchers {
             taxMonth = 1,
             nilReturnIndicator = "Y",
             status = "Open",
+            amendment = "N",
             supersededBy = Some(2L),
             amendmentStatus = Some("Status"),
             monthlyReturnItems = Some("Items")

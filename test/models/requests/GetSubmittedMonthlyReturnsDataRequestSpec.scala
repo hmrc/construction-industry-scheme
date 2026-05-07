@@ -16,31 +16,24 @@
 
 package models.requests
 
-import base.SpecBase
+import org.scalatest.matchers.must.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.Json
-import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAmendedMonthlyReturnRequest
+import uk.gov.hmrc.constructionindustryscheme.models.requests.GetSubmittedMonthlyReturnsDataRequest
 
-class CreateAmendedMonthlyReturnRequestSpec extends SpecBase {
+class GetSubmittedMonthlyReturnsDataRequestSpec extends AnyWordSpec with Matchers {
 
-  "CreateAmendedMonthlyReturnRequest" - {
+  "GetSubmittedMonthlyReturnsDataRequest JSON format" should {
 
-    "must serialise and deserialise correctly" in {
-      val model = CreateAmendedMonthlyReturnRequest(
-        instanceId = "1",
+    "round-trip serialize and deserialize" in {
+      val model = GetSubmittedMonthlyReturnsDataRequest(
+        instanceId = "inst-123",
         taxYear = 2025,
         taxMonth = 1,
-        version = 0
+        amendment = "Y"
       )
 
-      val json = Json.obj(
-        "instanceId" -> "1",
-        "taxYear"    -> 2025,
-        "taxMonth"   -> 1,
-        "version"    -> 0
-      )
-
-      Json.toJson(model) mustBe json
-      json.as[CreateAmendedMonthlyReturnRequest] mustBe model
+      Json.fromJson[GetSubmittedMonthlyReturnsDataRequest](Json.toJson(model)).get mustBe model
     }
   }
 }
