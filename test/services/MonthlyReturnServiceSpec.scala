@@ -582,7 +582,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "syncMonthlyReturnItems" - {
 
-    "computes create/delete diffs and calls formp sync endpoint when isAmendment is None" in new Setup {
+    "computes create/delete diffs and calls formp sync endpoint when isAmendment is None test commit" in new Setup {
       val req = SelectedSubcontractorsRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
