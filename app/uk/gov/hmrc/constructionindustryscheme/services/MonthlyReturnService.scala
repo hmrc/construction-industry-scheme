@@ -175,11 +175,7 @@ class MonthlyReturnService @Inject() (
                instanceId = request.instanceId,
                taxYear = request.taxYear,
                taxMonth = request.taxMonth,
-               amendment = request.isAmendment match {
-                 case Some(true)  => "Y"
-                 case Some(false) => "N"
-                 case None        => "N"
-               },
+               amendment = if (request.isAmendment.contains(true)) "Y" else "N",
                createResourceReferences = toCreate,
                deleteResourceReferences = toDelete
              )
