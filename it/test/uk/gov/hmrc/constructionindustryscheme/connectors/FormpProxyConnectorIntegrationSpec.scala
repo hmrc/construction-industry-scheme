@@ -1587,14 +1587,14 @@ class FormpProxyConnectorIntegrationSpec
 
       val out = connector.getMonthlyReturnComplete(completeReq).futureValue
 
-      out.scheme.head.instanceId          mustBe instanceId
-      out.scheme.head.name                mustBe Some("Test Contractor")
+      out.scheme.head.instanceId mustBe instanceId
+      out.scheme.head.name mustBe Some("Test Contractor")
       out.monthlyReturn.head.monthlyReturnId mustBe 100L
-      out.monthlyReturn.head.taxYear      mustBe 2024
-      out.monthlyReturn.head.taxMonth     mustBe 6
+      out.monthlyReturn.head.taxYear mustBe 2024
+      out.monthlyReturn.head.taxMonth mustBe 6
       out.monthlyReturnItems.head.totalPayments mustBe Some("5000.00")
-      out.submission.head.submissionId    mustBe 400L
-      out.submission.head.status          mustBe Some("SUBMITTED")
+      out.submission.head.submissionId mustBe 400L
+      out.submission.head.status mustBe Some("SUBMITTED")
       out.submission.head.hmrcMarkGenerated mustBe Some("HMRC-123-ABC")
     }
 
@@ -1619,11 +1619,11 @@ class FormpProxyConnectorIntegrationSpec
 
       val out = connector.getMonthlyReturnComplete(completeReq).futureValue
 
-      out.scheme            mustBe empty
-      out.monthlyReturn     mustBe empty
-      out.subcontractors    mustBe empty
+      out.scheme mustBe empty
+      out.monthlyReturn mustBe empty
+      out.subcontractors mustBe empty
       out.monthlyReturnItems mustBe empty
-      out.submission        mustBe empty
+      out.submission mustBe empty
     }
 
     "fail the future when upstream returns non-2xx (e.g. 500)" in {
@@ -1792,6 +1792,66 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = connector.getSubmittedMonthlyReturnsData(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector modifyVerifications" should {
+
+    "POST /formp-proxy/cis/verification-batch/modify and return payload (204)" in {
+      val req = ModifyVerificationsRequest(
+        instanceId = "abc-123",
+        deleteVerifications = Some(
+          DeleteVerifications(
+            verificationResourceReferences = Seq(111L, 222L)
+          )
+        ),
+        createVerifications = Some(
+          CreateVerifications(
+            verificationBatchResourceRef = 10L,
+            verificationResourceReferences = Seq(333L, 444L)
+          )
+        )
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification-batch/modify"))
+          .withHeader("Content-Type", containing("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(204))
+      )
+
+      connector.modifyVerifications(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail the future when upstream returns a non-2xx (e.g. 500)" in {
+      val req = ModifyVerificationsRequest(
+        instanceId = "abc-123",
+        deleteVerifications = Some(
+          DeleteVerifications(
+            verificationResourceReferences = Seq(111L, 222L)
+          )
+        ),
+        createVerifications = Some(
+          CreateVerifications(
+            verificationBatchResourceRef = 10L,
+            verificationResourceReferences = Seq(333L, 444L)
+          )
+        )
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification-batch/modify"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("""{"message":"boom"}""")
+          )
+      )
+
+      val ex = connector.modifyVerifications(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
