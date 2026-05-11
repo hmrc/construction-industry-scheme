@@ -21,7 +21,8 @@ import play.api.libs.json.{Json, OFormat}
 case class GetMonthlyReturnForEditRequest(
   instanceId: String,
   taxYear: Int,
-  taxMonth: Int
+  taxMonth: Int,
+  isAmendment: Option[Boolean] = None
 )
 
 object GetMonthlyReturnForEditRequest:
