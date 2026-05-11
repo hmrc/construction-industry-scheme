@@ -125,7 +125,8 @@ class SubmissionController @Inject() (
                     interval,
                     error,
                     irMarkReceived,
-                    lastMessageDate
+                    lastMessageDate,
+                    acceptedTime
                   ) =>
                 Ok(
                   Json.obj(
@@ -134,7 +135,8 @@ class SubmissionController @Inject() (
                     "intervalSeconds" -> interval,
                     "error"           -> error,
                     "irMarkReceived"  -> irMarkReceived,
-                    "lastMessageDate" -> lastMessageDate
+                    "lastMessageDate" -> lastMessageDate,
+                    "acceptedTime"    -> acceptedTime
                   )
                 )
             }
@@ -188,7 +190,8 @@ class SubmissionController @Inject() (
       "submissionId"      -> submissionId,
       "hmrcMarkGenerated" -> payload.irMark,
       "correlationId"     -> res.meta.correlationId,
-      "gatewayTimestamp"  -> gatewayTimestamp
+      "gatewayTimestamp"  -> gatewayTimestamp,
+      "acceptedTime"      -> res.meta.acceptedTime
     )
 
     def withStatus(s: String): JsObject = base ++ Json.obj("status" -> s)

@@ -31,8 +31,10 @@ GET        /agent/client-taxpayer/:taxOfficeNumber/:taxOfficeReference   uk.gov.
 POST       /contractor-known-facts/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId                     uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorKnownFacts(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
 POST       /scheme/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId                                     uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorAndSubcontractors(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
 
-POST       /subcontractor/create-and-update                               uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.createAndUpdateSubcontractor()
+POST       /subcontractor/create-and-update                              uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.createAndUpdateSubcontractor()
 GET        /subcontractors/utr/:cisId                                    uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractorUTRs(cisId: String)
+
+POST       /amend-monthly-return/create                                  uk.gov.hmrc.constructionindustryscheme.controllers.AmendMonthlyReturnController.createAmendedMonthlyReturn()
 
 # user answers caching in mongo
 GET           /user-cache/agent-client/:id                            uk.gov.hmrc.constructionindustryscheme.controllers.AgentClientController.get(id: String)
@@ -42,3 +44,7 @@ DELETE        /user-cache/agent-client/:id                            uk.gov.hmr
 GET           /verification-batch/newest/:instanceId              uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getNewestVerificationBatch(instanceId: String)
 GET           /verification-batch/current/:instanceId             uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getCurrentVerificationBatch(instanceId: String)
 POST          /verification-batch/modify                          uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.modifyVerifications()
+
+GET          /journey-handoffs/:journeyType/:id                      uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.get(journeyType: String, id: String)
+POST         /journey-handoffs/:journeyType                          uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.create(journeyType: String)
+DELETE       /journey-handoffs/:journeyType/:id                      uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.delete(journeyType: String, id: String)
