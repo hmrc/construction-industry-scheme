@@ -187,7 +187,8 @@ final class SubmissionServiceSpec extends SpecBase {
         pollInterval = Some(20),
         error = None,
         irMarkReceived = None,
-        lastMessageDate = Some("2025-01-02T00:00:00Z")
+        lastMessageDate = Some("2025-01-02T00:00:00Z"),
+        acceptedTime = Some("2025-01-02T00:00:00Z")
       )
 
       when(chrisSubmissionSessionRepository.get(eqTo(submissionId)))
@@ -315,7 +316,8 @@ final class SubmissionServiceSpec extends SpecBase {
         pollInterval = Some(20),
         error = None,
         irMarkReceived = None,
-        lastMessageDate = Some("2025-01-02T00:00:00Z")
+        lastMessageDate = Some("2025-01-02T00:00:00Z"),
+        acceptedTime = Some("2025-01-02T00:00:00Z")
       )
 
       when(chrisSubmissionSessionRepository.get(eqTo(submissionId)))
