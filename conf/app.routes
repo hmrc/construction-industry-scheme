@@ -45,7 +45,7 @@ GET           /verification-batch/newest/:instanceId              uk.gov.hmrc.co
 
 GET           /verification-batch/current/:instanceId             uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getCurrentVerificationBatch(instanceId: String)
 
-POST          /cis/verification-batch/create                      uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createVerificationBatchAndVerifications()
+POST          /verification-batch/create                          uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createVerificationBatchAndVerifications()
 
 GET          /journey-handoffs/:journeyType/:id                      uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.get(journeyType: String, id: String)
 POST         /journey-handoffs/:journeyType                          uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.create(journeyType: String)
