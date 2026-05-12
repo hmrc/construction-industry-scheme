@@ -29,7 +29,8 @@ class GetMonthlyReturnForEditRequestSpec extends AnyWordSpec with Matchers {
       val model = GetMonthlyReturnForEditRequest(
         instanceId = "abc-123",
         taxYear = 2025,
-        taxMonth = 1
+        taxMonth = 1,
+        isAmendment = Some(true)
       )
 
       val json = Json.toJson(model)
