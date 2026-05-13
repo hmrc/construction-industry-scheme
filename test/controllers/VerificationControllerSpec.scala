@@ -27,9 +27,9 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, contentType, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateVerificationBatchAndVerificationsRequest, ModifyVerificationsRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.{ContractorSchemeNewVerification, CreateVerifications, DeleteVerifications, MonthlyReturnNewVerification, SubcontractorCurrentVerification, SubcontractorNewVerification, SubmissionNewVerification, Verification, VerificationBatch, VerificationBatchCurrentVerification, VerificationCurrentVerification}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.models.requests.*
-import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -176,14 +176,22 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             subcontractorId = 1L,
             subbieResourceRef = Some(10L),
             firstName = Some("John"),
-            surname = Some("Smith"),
             secondName = Some("Q"),
+            surname = Some("Smith"),
             tradingName = Some("ACME"),
             utr = Some("1111111111"),
             nino = Some("AA123456A"),
             crn = Some("AC012345"),
             partnerUtr = Some("5860920998"),
-            partnershipTradingName = Some("ACME trading")
+            partnershipTradingName = Some("ACME trading"),
+            subcontractorType = Some("soletrader"),
+            addressLine1 = Some("Line 1"),
+            addressLine2 = Some("Line 2"),
+            addressLine3 = Some("Line 3"),
+            addressLine4 = Some("Line 4"),
+            country = Some("UK"),
+            postcode = Some("NE1 1AA"),
+            worksReferenceNumber = Some("WRN123")
           )
         ),
         verificationBatch = Some(
@@ -215,6 +223,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       (json \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
       (json \ "subcontractors")(0).\("utr").as[String] mustBe "1111111111"
+      (json \ "subcontractors")(0).\("subcontractorType").as[String] mustBe "soletrader"
 
       (json \ "verificationBatch").\("verificationBatchId").as[Long] mustBe 99L
       (json \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L

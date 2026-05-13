@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,26 +18,26 @@ package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.Logging
 import uk.gov.hmrc.auth.core.Enrolments
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeConstants
-import uk.gov.hmrc.constructionindustryscheme.services.chris.xml.CisReturnXmlBuilder
+import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisVerificationRequest
+import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisVerificationEnvelopeConstants
+import uk.gov.hmrc.constructionindustryscheme.services.chris.xml.CisVerificationRequestXmlBuilder
+import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHelper.extractTaxOfficeIdentifiers
 import uk.gov.hmrc.constructionindustryscheme.utils.IrMarkProcessor.UpdatedPayloadWithIrMark
-import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHelper._
 
 import java.time.format.DateTimeFormatter
-import java.time.{LocalDateTime, YearMonth, ZoneOffset}
+import java.time.{LocalDate, LocalDateTime, ZoneOffset}
 import java.util.UUID
-import scala.util.Try
 import scala.xml.{Elem, Node, PrettyPrinter}
 
-case class ChRISSubmission(
+case class CisVerificationSubmission(
   envelope: Elem,
   correlationId: String,
   irMark: String,
   irEnvelope: Elem
 )
 
-object ChRISSubmission extends Logging {
+object CisVerificationSubmission extends Logging {
+
   private val gatewayTimestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
   private val isoDateFmt                = DateTimeFormatter.ISO_LOCAL_DATE
   private val prettyPrinter             = new PrettyPrinter(120, 4)
@@ -49,69 +49,94 @@ object ChRISSubmission extends Logging {
     gatewayTimestamp: String,
     periodEnd: String,
     sender: String,
-    cisReturn: Node
+    cisRequest: Node
   ): Elem =
     <GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
       <EnvelopeVersion>2.0</EnvelopeVersion>
+
       <Header>
         <MessageDetails>
-          <Class>{ChrisEnvelopeConstants.MessageDetailsClass}</Class>
-          <Qualifier>{ChrisEnvelopeConstants.Qualifier}</Qualifier>
-          <Function>{ChrisEnvelopeConstants.Function}</Function>
+          <Class>{ChrisVerificationEnvelopeConstants.MessageDetailsClass}</Class>
+          <Qualifier>{ChrisVerificationEnvelopeConstants.Qualifier}</Qualifier>
+          <Function>{ChrisVerificationEnvelopeConstants.Function}</Function>
           <CorrelationID>{correlationId}</CorrelationID>
-          <Transformation>{ChrisEnvelopeConstants.Transformation}</Transformation>
+          <Transformation>{ChrisVerificationEnvelopeConstants.Transformation}</Transformation>
           <GatewayTimestamp>{gatewayTimestamp}</GatewayTimestamp>
         </MessageDetails>
         <SenderDetails/>
       </Header>
+
       <GovTalkDetails>
         <Keys>
           <Key Type="TaxOfficeNumber">{taxOfficeNumber}</Key>
           <Key Type="TaxOfficeReference">{taxOfficeReference}</Key>
         </Keys>
+
         <TargetDetails>
-          <Organisation>{ChrisEnvelopeConstants.Organisation}</Organisation>
+          <Organisation>{ChrisVerificationEnvelopeConstants.Organisation}</Organisation>
         </TargetDetails>
+
         <ChannelRouting>
           <Channel>
-            <URI>{ChrisEnvelopeConstants.ChannelUri}</URI>
-            <Product>{ChrisEnvelopeConstants.ChannelProduct}</Product>
-            <Version>{ChrisEnvelopeConstants.ChannelVersion}</Version>
+            <URI>{ChrisVerificationEnvelopeConstants.ChannelUri}</URI>
+            <Product>{ChrisVerificationEnvelopeConstants.ChannelProduct}</Product>
+            <Version>{ChrisVerificationEnvelopeConstants.ChannelVersion}</Version>
           </Channel>
         </ChannelRouting>
       </GovTalkDetails>
+
       <Body>
-        <IRenvelope xmlns={ChrisEnvelopeConstants.Namespace}>
+        <IRenvelope xmlns={ChrisVerificationEnvelopeConstants.Namespace}>
           <IRheader>
             <Keys>
               <Key Type="TaxOfficeNumber">{taxOfficeNumber}</Key>
               <Key Type="TaxOfficeReference">{taxOfficeReference}</Key>
             </Keys>
+
             <PeriodEnd>{periodEnd}</PeriodEnd>
-            <DefaultCurrency>{ChrisEnvelopeConstants.DefaultCurrency}</DefaultCurrency>
+            <DefaultCurrency>{ChrisVerificationEnvelopeConstants.DefaultCurrency}</DefaultCurrency>
+
             <Manifest>
               <Contains>
                 <Reference>
-                  <Namespace>{ChrisEnvelopeConstants.Namespace}</Namespace>
-                  <SchemaVersion>{ChrisEnvelopeConstants.SchemaVersion}</SchemaVersion>
-                  <TopElementName>{ChrisEnvelopeConstants.TopElementName}</TopElementName>
+                  <Namespace>{ChrisVerificationEnvelopeConstants.Namespace}</Namespace>
+                  <SchemaVersion>{ChrisVerificationEnvelopeConstants.SchemaVersion}</SchemaVersion>
+                  <TopElementName>{"CISrequest"}</TopElementName>
                 </Reference>
               </Contains>
             </Manifest>
+
             <IRmark Type="generic">TBC</IRmark>
+
             <Sender>{sender}</Sender>
           </IRheader>
-          {cisReturn}
+
+          {cisRequest}
+
         </IRenvelope>
       </Body>
     </GovTalkMessage>
 
-  private def buildChrisSubmission(
-    request: ChrisSubmissionRequest,
-    enrolments: Enrolments
-  ): ChRISSubmission = {
+  def buildPayload(
+    request: ChrisVerificationRequest,
+    enrolments: Enrolments,
+    subcontractors: Seq[SubcontractorCurrentVerification]
+  ): CisVerificationSubmission = {
+
     val correlationId    = UUID.randomUUID().toString.replace("-", "").toUpperCase
     val gatewayTimestamp = LocalDateTime.now(ZoneOffset.UTC).format(gatewayTimestampFormatter)
+
+    val periodEnd = LocalDate.now(ZoneOffset.UTC).format(isoDateFmt)
+    val sender    = if (request.isAgent) "Agent" else "Company"
+
+    val cisRequest: Elem =
+      CisVerificationRequestXmlBuilder.build(
+        contractorUtr = request.contractorUTR,
+        contractorAoRef = request.contractorAORef,
+        subs = subcontractors,
+        action = request.action,
+        declaration = request.declaration
+      )
 
     val (taxOfficeNumber, taxOfficeReference) =
       if (!request.isAgent) {
@@ -126,11 +151,6 @@ object ChRISSubmission extends Logging {
         (request.clientTaxOfficeNumber, request.clientTaxOfficeRef)
       }
 
-    val periodEnd = parsePeriodEnd(request.monthYear)
-    val sender    = if (request.isAgent) "Agent" else "Company"
-
-    val cisReturn: Elem = CisReturnXmlBuilder.build(request)
-
     val envelopeXml: Elem =
       buildXml(
         taxOfficeNumber = taxOfficeNumber,
@@ -139,18 +159,18 @@ object ChRISSubmission extends Logging {
         gatewayTimestamp = gatewayTimestamp,
         periodEnd = periodEnd,
         sender = sender,
-        cisReturn = cisReturn
+        cisRequest = cisRequest
       )
 
-    val (updatedXML, irMarkBase64, irMarkBase32, irEnvelope) = UpdatedPayloadWithIrMark(envelopeXml.toString)
+    val (updatedXML, irMarkBase64, irMarkBase32, irEnvelope) =
+      UpdatedPayloadWithIrMark(envelopeXml.toString)
 
-    val prettyXmlString = prettyPrinter.format(updatedXML)
+    val prettyXml = prettyPrinter.format(updatedXML)
 
-    logger.debug(s"Chris Envelope XML:\n$prettyXmlString")
-    logger.debug(s"[ChrisSubmissionEnvelopeBuilder] finalEnvelope: ${updatedXML.toString}")
-    logger.debug(s"[ChrisSubmissionEnvelopeBuilder] irMarkBase64: $irMarkBase64")
+    logger.debug(s"CIS Verification Envelope XML:\n$prettyXml")
+    logger.debug(s"[CisVerificationSubmission] irMarkBase64: $irMarkBase64")
 
-    ChRISSubmission(
+    CisVerificationSubmission(
       envelope = updatedXML,
       correlationId = correlationId,
       irMark = irMarkBase64,
@@ -158,20 +178,4 @@ object ChRISSubmission extends Logging {
     )
   }
 
-  def parsePeriodEnd(monthYear: String): String = {
-    val ymTry =
-      Try(YearMonth.parse(monthYear))
-        .orElse(Try(YearMonth.parse(monthYear.replace('/', '-'))))
-
-    val ym = ymTry.getOrElse {
-      throw new IllegalArgumentException(s"Invalid monthYear: $monthYear (expected YYYY-MM)")
-    }
-    ym.atDay(5).format(isoDateFmt)
-  }
-
-  def buildPayload(
-    submission: ChrisSubmissionRequest,
-    request: AuthenticatedRequest[_]
-  ): ChRISSubmission =
-    buildChrisSubmission(submission, request.enrolments)
 }
