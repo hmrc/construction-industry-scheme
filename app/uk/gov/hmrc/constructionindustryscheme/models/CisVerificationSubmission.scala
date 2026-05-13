@@ -19,15 +19,15 @@ package uk.gov.hmrc.constructionindustryscheme.models
 import play.api.Logging
 import uk.gov.hmrc.auth.core.Enrolments
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisVerificationRequest
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisVerificationEnvelopeConstants
 import uk.gov.hmrc.constructionindustryscheme.services.chris.xml.CisVerificationRequestXmlBuilder
+import uk.gov.hmrc.constructionindustryscheme.services.chris.{EnvelopeProfile, GovTalkEnvelopeBuilder}
 import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHelper.extractTaxOfficeIdentifiers
 import uk.gov.hmrc.constructionindustryscheme.utils.IrMarkProcessor.UpdatedPayloadWithIrMark
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneOffset}
 import java.util.UUID
-import scala.xml.{Elem, Node, PrettyPrinter}
+import scala.xml.{Elem, PrettyPrinter}
 
 case class CisVerificationSubmission(
   envelope: Elem,
@@ -41,81 +41,6 @@ object CisVerificationSubmission extends Logging {
   private val gatewayTimestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
   private val isoDateFmt                = DateTimeFormatter.ISO_LOCAL_DATE
   private val prettyPrinter             = new PrettyPrinter(120, 4)
-
-  private def buildXml(
-    taxOfficeNumber: String,
-    taxOfficeReference: String,
-    correlationId: String,
-    gatewayTimestamp: String,
-    periodEnd: String,
-    sender: String,
-    cisRequest: Node
-  ): Elem =
-    <GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
-      <EnvelopeVersion>2.0</EnvelopeVersion>
-
-      <Header>
-        <MessageDetails>
-          <Class>{ChrisVerificationEnvelopeConstants.MessageDetailsClass}</Class>
-          <Qualifier>{ChrisVerificationEnvelopeConstants.Qualifier}</Qualifier>
-          <Function>{ChrisVerificationEnvelopeConstants.Function}</Function>
-          <CorrelationID>{correlationId}</CorrelationID>
-          <Transformation>{ChrisVerificationEnvelopeConstants.Transformation}</Transformation>
-          <GatewayTimestamp>{gatewayTimestamp}</GatewayTimestamp>
-        </MessageDetails>
-        <SenderDetails/>
-      </Header>
-
-      <GovTalkDetails>
-        <Keys>
-          <Key Type="TaxOfficeNumber">{taxOfficeNumber}</Key>
-          <Key Type="TaxOfficeReference">{taxOfficeReference}</Key>
-        </Keys>
-
-        <TargetDetails>
-          <Organisation>{ChrisVerificationEnvelopeConstants.Organisation}</Organisation>
-        </TargetDetails>
-
-        <ChannelRouting>
-          <Channel>
-            <URI>{ChrisVerificationEnvelopeConstants.ChannelUri}</URI>
-            <Product>{ChrisVerificationEnvelopeConstants.ChannelProduct}</Product>
-            <Version>{ChrisVerificationEnvelopeConstants.ChannelVersion}</Version>
-          </Channel>
-        </ChannelRouting>
-      </GovTalkDetails>
-
-      <Body>
-        <IRenvelope xmlns={ChrisVerificationEnvelopeConstants.Namespace}>
-          <IRheader>
-            <Keys>
-              <Key Type="TaxOfficeNumber">{taxOfficeNumber}</Key>
-              <Key Type="TaxOfficeReference">{taxOfficeReference}</Key>
-            </Keys>
-
-            <PeriodEnd>{periodEnd}</PeriodEnd>
-            <DefaultCurrency>{ChrisVerificationEnvelopeConstants.DefaultCurrency}</DefaultCurrency>
-
-            <Manifest>
-              <Contains>
-                <Reference>
-                  <Namespace>{ChrisVerificationEnvelopeConstants.Namespace}</Namespace>
-                  <SchemaVersion>{ChrisVerificationEnvelopeConstants.SchemaVersion}</SchemaVersion>
-                  <TopElementName>{"CISrequest"}</TopElementName>
-                </Reference>
-              </Contains>
-            </Manifest>
-
-            <IRmark Type="generic">TBC</IRmark>
-
-            <Sender>{sender}</Sender>
-          </IRheader>
-
-          {cisRequest}
-
-        </IRenvelope>
-      </Body>
-    </GovTalkMessage>
 
   def buildPayload(
     request: ChrisVerificationRequest,
@@ -131,11 +56,8 @@ object CisVerificationSubmission extends Logging {
 
     val cisRequest: Elem =
       CisVerificationRequestXmlBuilder.build(
-        contractorUtr = request.contractorUTR,
-        contractorAoRef = request.contractorAORef,
-        subs = subcontractors,
-        action = request.action,
-        declaration = request.declaration
+        request = request,
+        subs = subcontractors
       )
 
     val (taxOfficeNumber, taxOfficeReference) =
@@ -152,14 +74,15 @@ object CisVerificationSubmission extends Logging {
       }
 
     val envelopeXml: Elem =
-      buildXml(
+      GovTalkEnvelopeBuilder.build(
+        profile = EnvelopeProfile.Verification,
         taxOfficeNumber = taxOfficeNumber,
         taxOfficeReference = taxOfficeReference,
         correlationId = correlationId,
         gatewayTimestamp = gatewayTimestamp,
         periodEnd = periodEnd,
         sender = sender,
-        cisRequest = cisRequest
+        payload = cisRequest
       )
 
     val (updatedXML, irMarkBase64, irMarkBase32, irEnvelope) =

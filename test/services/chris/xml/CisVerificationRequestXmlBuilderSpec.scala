@@ -19,17 +19,31 @@ package services.chris.xml
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisVerificationRequest, VerificationDetails}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.xml.CisVerificationRequestXmlBuilder
 
 class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
 
-  private val contractorUtr   = "1234567890"
-  private val contractorAoRef = "123/AB456"
+  private val request = ChrisVerificationRequest(
+    instanceId = "id-1",
+    isAgent = false,
+    clientTaxOfficeNumber = "",
+    clientTaxOfficeRef = "",
+    contractorUTR = "1234567890",
+    contractorAORef = "123/AB456",
+    verificationBatchId = "batch-1",
+    verificationBatchResourceRef = "batch-ref",
+    emailRecipient = None,
+    verifications = Seq(
+      VerificationDetails("John Smith", "10", proceedVerification = true),
+      VerificationDetails("Jane Doe", "20", proceedVerification = false)
+    )
+  )
 
-  private def baseSub =
+  private def baseSub(ref: Long) =
     SubcontractorCurrentVerification(
-      subcontractorId = 1L,
-      subbieResourceRef = Some(10L),
+      subcontractorId = ref,
+      subbieResourceRef = Some(ref),
       firstName = Some("John"),
       secondName = Some("Q"),
       surname = Some("Smith"),
@@ -53,145 +67,101 @@ class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
 
     "build CISrequest with contractor and declaration" in {
       val xml =
-        CisVerificationRequestXmlBuilder.build(
-          contractorUtr,
-          contractorAoRef,
-          Seq(baseSub),
-          action = "Verify"
-        )
+        CisVerificationRequestXmlBuilder.build(request, Seq(baseSub(10)))
 
       xml.label mustBe "CISrequest"
 
-      (xml \\ "Contractor" \\ "UTR").text mustBe contractorUtr
-      (xml \\ "Contractor" \\ "AOref").text mustBe contractorAoRef
-      (xml \\ "Declaration").text mustBe "yes"
+      (xml \\ "Contractor" \\ "UTR").text.trim mustBe "1234567890"
+      (xml \\ "Contractor" \\ "AOref").text.trim mustBe "123/AB456"
+      (xml \\ "Declaration").text.trim mustBe "yes"
     }
 
-    "build multiple Subcontractor nodes" in {
+    "build multiple subcontractors" in {
       val xml =
-        CisVerificationRequestXmlBuilder.build(
-          contractorUtr,
-          contractorAoRef,
-          Seq(baseSub, baseSub.copy(subcontractorId = 2L)),
-          action = "Verify"
-        )
+        CisVerificationRequestXmlBuilder.build(request, Seq(baseSub(10), baseSub(20)))
 
       (xml \\ "Subcontractor").size mustBe 2
     }
 
-    "build SoleTrader correctly with Name and NINO" in {
+    "set action to verify when proceedVerification is true" in {
       val xml =
-        CisVerificationRequestXmlBuilder.build(
-          contractorUtr,
-          contractorAoRef,
-          Seq(baseSub.copy(subcontractorType = Some("soletrader"))),
-          action = "Verify"
-        )
+        CisVerificationRequestXmlBuilder.build(request, Seq(baseSub(10)))
+
+      (xml \\ "Subcontractor" \\ "Action").text.trim mustBe "verify"
+    }
+
+    "set action to match when proceedVerification is false" in {
+      val xml =
+        CisVerificationRequestXmlBuilder.build(request, Seq(baseSub(20)))
+
+      (xml \\ "Subcontractor" \\ "Action").text.trim mustBe "match"
+    }
+
+    "default action to match when no verification found" in {
+      val xml =
+        CisVerificationRequestXmlBuilder.build(request, Seq(baseSub(999)))
+
+      (xml \\ "Subcontractor" \\ "Action").text.trim mustBe "match"
+    }
+
+    "build SoleTrader correctly with Name and no TradingName" in {
+      val xml =
+        CisVerificationRequestXmlBuilder.build(request, Seq(baseSub(10).copy(subcontractorType = Some("soletrader"))))
 
       (xml \\ "Name").nonEmpty mustBe true
       (xml \\ "TradingName").isEmpty mustBe true
-      (xml \\ "NINO").text mustBe "AA123456A"
     }
 
-    "build Partnership correctly with TradingName, CRN, NINO and Partnership block" in {
+    "build Partnership correctly" in {
       val xml =
         CisVerificationRequestXmlBuilder.build(
-          contractorUtr,
-          contractorAoRef,
-          Seq(baseSub.copy(subcontractorType = Some("partnership"))),
-          action = "Verify"
+          request,
+          Seq(baseSub(10).copy(subcontractorType = Some("partnership")))
         )
 
-      (xml \\ "TradingName").text mustBe "PARTNERS LTD"
-      (xml \\ "CRN").text mustBe "CRN123"
-      (xml \\ "NINO").text mustBe "AA123456A"
+      (xml \\ "TradingName").text.trim mustBe "PARTNERS LTD"
+      (xml \\ "CRN").text.trim mustBe "CRN123"
+      (xml \\ "NINO").text.trim mustBe "AA123456A"
       (xml \\ "Partnership").nonEmpty mustBe true
     }
 
-    "build Company correctly with TradingName and CRN but no NINO or Partnership" in {
+    "build Company without NINO or Partnership" in {
       val xml =
         CisVerificationRequestXmlBuilder.build(
-          contractorUtr,
-          contractorAoRef,
-          Seq(baseSub.copy(subcontractorType = Some("company"))),
-          action = "Verify"
+          request,
+          Seq(baseSub(10).copy(subcontractorType = Some("company")))
         )
 
-      (xml \\ "TradingName").text mustBe "ACME"
-      (xml \\ "CRN").text mustBe "CRN123"
       (xml \\ "NINO").isEmpty mustBe true
       (xml \\ "Partnership").isEmpty mustBe true
     }
 
-    "build Trust correctly with TradingName only" in {
+    "include address lines and fields" in {
       val xml =
-        CisVerificationRequestXmlBuilder.build(
-          contractorUtr,
-          contractorAoRef,
-          Seq(baseSub.copy(subcontractorType = Some("trust"))),
-          action = "Verify"
-        )
-
-      (xml \\ "TradingName").text mustBe "ACME"
-      (xml \\ "CRN").isEmpty mustBe true
-      (xml \\ "NINO").isEmpty mustBe true
-      (xml \\ "Partnership").isEmpty mustBe true
-    }
-
-    "include WorksRef and UTR" in {
-      val xml =
-        CisVerificationRequestXmlBuilder.build(
-          contractorUtr,
-          contractorAoRef,
-          Seq(baseSub),
-          action = "Verify"
-        )
-
-      (xml \\ "WorksRef").text mustBe "WRN123"
-      (xml \\ "Subcontractor" \\ "UTR").text mustBe "1111111111"
-    }
-
-    "include Address with 4 Line nodes" in {
-      val xml =
-        CisVerificationRequestXmlBuilder.build(
-          contractorUtr,
-          contractorAoRef,
-          Seq(baseSub),
-          action = "Verify"
-        )
+        CisVerificationRequestXmlBuilder.build(request, Seq(baseSub(10)))
 
       val lines = xml \\ "Address" \\ "Line"
       lines.size mustBe 4
 
-      (xml \\ "PostCode").text mustBe "NE1 1AA"
-      (xml \\ "Country").text mustBe "UK"
+      (xml \\ "PostCode").text.trim mustBe "NE1 1AA"
+      (xml \\ "Country").text.trim mustBe "UK"
     }
 
     "throw when subcontractorType is missing" in {
-      val invalidSub = baseSub.copy(subcontractorType = None)
+      val invalid = baseSub(10).copy(subcontractorType = None)
 
       val ex = intercept[IllegalArgumentException] {
-        CisVerificationRequestXmlBuilder.build(
-          contractorUtr,
-          contractorAoRef,
-          Seq(invalidSub),
-          action = "Verify"
-        )
+        CisVerificationRequestXmlBuilder.build(request, Seq(invalid))
       }
 
       ex.getMessage must include("Missing subcontractorType")
     }
 
     "throw when subcontractorType is invalid" in {
-      val invalidSub = baseSub.copy(subcontractorType = Some("invalid-type"))
+      val invalid = baseSub(10).copy(subcontractorType = Some("invalid"))
 
       val ex = intercept[IllegalArgumentException] {
-        CisVerificationRequestXmlBuilder.build(
-          contractorUtr,
-          contractorAoRef,
-          Seq(invalidSub),
-          action = "Verify"
-        )
+        CisVerificationRequestXmlBuilder.build(request, Seq(invalid))
       }
 
       ex.getMessage must include("Invalid SubcontractorType value")

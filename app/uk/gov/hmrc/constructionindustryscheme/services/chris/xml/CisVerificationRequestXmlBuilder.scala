@@ -17,8 +17,8 @@
 package uk.gov.hmrc.constructionindustryscheme.services.chris.xml
 
 import play.api.libs.json.{JsString, Reads}
-
 import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisVerificationRequest, VerificationDetails}
 import uk.gov.hmrc.constructionindustryscheme.utils.Normalise.*
 
 import scala.xml.{Elem, NodeSeq}
@@ -26,25 +26,26 @@ import scala.xml.{Elem, NodeSeq}
 object CisVerificationRequestXmlBuilder {
 
   def build(
-    contractorUtr: String,
-    contractorAoRef: String,
+    request: ChrisVerificationRequest,
     subs: Seq[SubcontractorCurrentVerification],
-    action: String,
     declaration: String = "yes"
-  ): Elem =
+  ): Elem = {
+
+    val verificationByResourceRef: Map[String, VerificationDetails] =
+      request.verifications.map(v => v.verificationResourceRef.trim -> v).toMap
     <CISrequest>
-      {contractorNode(contractorUtr, contractorAoRef)}
-      {subs.flatMap(sub => buildSubcontractor(sub, action))}
+      {contractorNode(request.contractorUTR, request.contractorAORef)}
+      {subs.flatMap(sub => buildSubcontractor(sub, actionFor(sub, verificationByResourceRef)))}
       <Declaration>{declaration}</Declaration>
     </CISrequest>
-
+  }
   private def contractorNode(utr: String, aoRef: String): Elem =
     <Contractor>
       <UTR>{utr}</UTR>
       <AOref>{aoRef}</AOref>
     </Contractor>
 
-  private def buildSubcontractor(sub: SubcontractorCurrentVerification, action: String): NodeSeq = {
+  private def buildSubcontractor(sub: SubcontractorCurrentVerification, action: VerificationAction): NodeSeq = {
     val st: SubcontractorType = parseSubcontractorType(sub.subcontractorType)
 
     val worksRef: String = nonBlank(sub.worksReferenceNumber).getOrElse("")
@@ -91,9 +92,9 @@ object CisVerificationRequestXmlBuilder {
           buildPartnership(sub).getOrElse(NodeSeq.Empty)
         case _           => NodeSeq.Empty
       }
-
+    val actionValue              = VerificationAction.toXmlValue(action)
     <Subcontractor>
-      <Action>{action}</Action>
+      <Action>{actionValue}</Action>
       <Type>{st.toString}</Type>
       {tradingNameNode}
       {nameNode}
@@ -174,4 +175,21 @@ object CisVerificationRequestXmlBuilder {
       <Country>{country}</Country>
     </Address>
   }
+
+  private def actionFor(
+    sub: SubcontractorCurrentVerification,
+    verificationByResourceRef: Map[String, VerificationDetails]
+  ): VerificationAction = {
+
+    val maybeVerification =
+      sub.subbieResourceRef
+        .map(_.toString)
+        .flatMap(verificationByResourceRef.get)
+
+    maybeVerification match {
+      case Some(v) if v.proceedVerification => Verify
+      case _                                => Match
+    }
+  }
+
 }

@@ -28,18 +28,16 @@ case class ChrisVerificationRequest(
   verificationBatchId: String,
   verificationBatchResourceRef: String,
   emailRecipient: Option[String],
-  verifications: Seq[Verification],
-  action: String,
-  declaration: String
+  verifications: Seq[VerificationDetails]
 )
 
-case class Verification(
+case class VerificationDetails(
   subcontractorName: String,
   verificationResourceRef: String,
   proceedVerification: Boolean
 )
 
 object ChrisVerificationRequest {
-  implicit val verificationFormat: OFormat[Verification] = Json.format[Verification]
-  implicit val format: OFormat[ChrisVerificationRequest] = Json.format[ChrisVerificationRequest]
+  implicit val verificationFormat: OFormat[VerificationDetails] = Json.format[VerificationDetails]
+  implicit val format: OFormat[ChrisVerificationRequest]        = Json.format[ChrisVerificationRequest]
 }

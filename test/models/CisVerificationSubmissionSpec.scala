@@ -72,9 +72,7 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
       verifications = Seq.empty,
       isAgent = false,
       clientTaxOfficeNumber = "999",
-      clientTaxOfficeRef = "XYZ123",
-      action = "Verify",
-      declaration = "yes"
+      clientTaxOfficeRef = "XYZ123"
     )
 
     val payload =
@@ -82,15 +80,12 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
 
     payload.irMark.length should be > 0
 
-    // ✅ Enrolment values used
     (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeNumber").map(_.text).getOrElse("")    shouldBe "123"
     (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeReference").map(_.text).getOrElse("") shouldBe "ABC456"
 
-    // ✅ Request values
     (payload.envelope \\ "Contractor" \\ "UTR").text shouldBe "1234567890"
     (payload.envelope \\ "AOref").text               shouldBe "123/AB456"
 
-    // ✅ CISrequest structure
     (payload.envelope \\ "CISrequest").nonEmpty    shouldBe true
     (payload.envelope \\ "Subcontractor").nonEmpty shouldBe true
   }
@@ -107,9 +102,7 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
       verifications = Seq.empty,
       isAgent = true,
       clientTaxOfficeNumber = "999",
-      clientTaxOfficeRef = "XYZ123",
-      action = "Verify",
-      declaration = "yes"
+      clientTaxOfficeRef = "XYZ123"
     )
 
     val payload =
@@ -117,7 +110,6 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
 
     payload.irMark.length should be > 0
 
-    // ✅ Agent values used
     (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeNumber").map(_.text).getOrElse("")    shouldBe "999"
     (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeReference").map(_.text).getOrElse("") shouldBe "XYZ123"
   }
@@ -134,9 +126,7 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
       verifications = Seq.empty,
       isAgent = false,
       clientTaxOfficeNumber = "",
-      clientTaxOfficeRef = "",
-      action = "Verify",
-      declaration = "yes"
+      clientTaxOfficeRef = ""
     )
 
     val thrown = intercept[IllegalStateException] {
