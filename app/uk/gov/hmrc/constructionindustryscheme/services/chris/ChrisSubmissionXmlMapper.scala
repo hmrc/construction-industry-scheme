@@ -57,7 +57,7 @@ object ChrisSubmissionXmlMapper extends ChrisXmlMapper {
         acceptedTime = acceptedTime
       )
 
-      SubmissionResult(status, xml, meta)
+      SubmissionResult(status, xml, meta, Some(GovTalkErrorStatusClassifier.fromXmlOutcome(status, errOpt)))
     }
   }
 
