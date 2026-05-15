@@ -167,7 +167,7 @@ class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
 
       val sub = subcontractorNode(xml)
 
-      (sub \\ "TradingName").text.trim mustBe "PARTNERS LTD"
+      (sub \\ "TradingName").text.trim mustBe "ACME"
       (sub \\ "CRN").text.trim mustBe "CRN123"
       (sub \\ "NINO").text.trim mustBe "AA123456A"
       (sub \\ "Subcontractor" \\ "UTR").head.text.trim mustBe "2222222222"
@@ -238,7 +238,7 @@ class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
     "include Address with 4 Line nodes when address exists" in {
       val xml = CisVerificationRequestXmlBuilder.build(request, Seq(baseSub(10)))
 
-      val sub = subcontractorNode(xml)
+      val sub   = subcontractorNode(xml)
       val lines = sub \\ "Address" \\ "Line"
 
       lines.size mustBe 4

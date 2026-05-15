@@ -51,7 +51,7 @@ object CisVerificationRequestXmlBuilder {
     val st: SubcontractorType = parseSubcontractorType(sub.subcontractorType)
 
     val worksRef: String = nonBlank(sub.worksReferenceNumber).getOrElse("")
-    val utr: String =
+    val utr: String      =
       st match {
         case Partnership =>
           nonBlank(sub.partnerUtr).getOrElse("")
@@ -60,11 +60,14 @@ object CisVerificationRequestXmlBuilder {
           nonBlank(sub.utr).getOrElse("")
       }
 
-    val actionValue      = VerificationAction.toXmlValue(action)
+    val actionValue = VerificationAction.toXmlValue(action)
 
-    val hasTradingName = chooseTradingName(st, sub).isDefined
-    val hasName        =
-      nonBlank(sub.firstName).isDefined || nonBlank(sub.surname).isDefined
+    val hasTradingName = chooseTradingName(sub).isDefined
+
+    val hasName =
+      nonBlank(sub.firstName).isDefined ||
+        nonBlank(sub.secondName).isDefined ||
+        nonBlank(sub.surname).isDefined
 
     val nameNode: NodeSeq =
       st match {
@@ -75,20 +78,9 @@ object CisVerificationRequestXmlBuilder {
       }
 
     val tradingNameNode: NodeSeq =
-      st match {
-        case SoleTrader if hasTradingName =>
-          chooseTradingName(st, sub)
-            .map(tn => <TradingName>{tn}</TradingName>)
-            .getOrElse(NodeSeq.Empty)
-
-        case Partnership | Company | Trust =>
-          chooseTradingName(st, sub)
-            .map(tn => <TradingName>{tn}</TradingName>)
-            .getOrElse(NodeSeq.Empty)
-
-        case _ =>
-          NodeSeq.Empty
-      }
+      chooseTradingName(sub)
+        .map(tn => <TradingName>{tn}</TradingName>)
+        .getOrElse(NodeSeq.Empty)
 
     val crnNode: NodeSeq =
       st match {
@@ -146,9 +138,8 @@ object CisVerificationRequestXmlBuilder {
     }
   }
 
-
   private def buildName(sub: SubcontractorCurrentVerification): Option[Elem] = {
-    val fore = nonBlank(sub.firstName)
+    val fore = nonBlank(sub.firstName).orElse(nonBlank(sub.secondName))
     val sur  = nonBlank(sub.surname)
 
     if (fore.isEmpty && sur.isEmpty) None
@@ -162,17 +153,10 @@ object CisVerificationRequestXmlBuilder {
     }
   }
 
-  private def chooseTradingName(st: SubcontractorType, sub: SubcontractorCurrentVerification): Option[String] =
-    st match {
-      case SoleTrader =>
-        nonBlank(sub.tradingName)
-
-      case Partnership =>
-        nonBlank(sub.partnershipTradingName).orElse(nonBlank(sub.tradingName))
-
-      case Company | Trust =>
-        nonBlank(sub.tradingName).orElse(nonBlank(sub.partnershipTradingName))
-    }
+  private def chooseTradingName(
+    sub: SubcontractorCurrentVerification
+  ): Option[String] =
+    nonBlank(sub.tradingName)
 
   private def buildPartnership(sub: SubcontractorCurrentVerification): Option[Elem] = {
     val nameOpt = nonBlank(sub.partnershipTradingName)
@@ -209,7 +193,7 @@ object CisVerificationRequestXmlBuilder {
     } else {
       Some(
         <Address>
-          <Line>{line1.getOrElse("")}</Line>
+          <Line>{line1.get}</Line>
           <Line>{line2.getOrElse("")}</Line>
           <Line>{line3.getOrElse("")}</Line>
           <Line>{line4.getOrElse("")}</Line>
