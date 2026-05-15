@@ -880,7 +880,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "updateMonthlyReturnItem" - {
 
-    "builds proxy request using resource ref + verification number and calls formp.updateMonthlyReturnItem" in new Setup {
+    "builds proxy request using resource ref + verification number and calls formp.updateMonthlyReturnItem when isAmendment = None" in new Setup {
       val req = UpdateMonthlyReturnItemRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -913,6 +913,58 @@ class MonthlyReturnServiceSpec extends SpecBase {
         taxYear = 2025,
         taxMonth = 1,
         amendment = "N",
+        itemResourceReference = 10L,
+        totalPayments = "1200",
+        costOfMaterials = "500",
+        totalDeducted = "240",
+        subcontractorName = "Tyne Test Ltd",
+        verificationNumber = Some("V123456")
+      )
+
+      when(formpProxy.updateMonthlyReturnItem(eqTo(expectedProxyReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.updateMonthlyReturnItem(req).futureValue mustBe ()
+
+      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verify(formpProxy).updateMonthlyReturnItem(eqTo(expectedProxyReq))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "builds proxy request using resource ref + verification number and calls formp.updateMonthlyReturnItem when isAmendment = true" in new Setup {
+      val req = UpdateMonthlyReturnItemRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        subcontractorId = 1L,
+        subcontractorName = "Tyne Test Ltd",
+        totalPayments = "1200",
+        costOfMaterials = "500",
+        totalDeducted = "240",
+        isAmendment = Some(true)
+      )
+
+      val subcontractor = mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L))
+        .copy(verificationNumber = Some("V123456"))
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq(subcontractor),
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(editResponse))
+
+      val expectedProxyReq = UpdateMonthlyReturnItemProxyRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "Y",
         itemResourceReference = 10L,
         totalPayments = "1200",
         costOfMaterials = "500",

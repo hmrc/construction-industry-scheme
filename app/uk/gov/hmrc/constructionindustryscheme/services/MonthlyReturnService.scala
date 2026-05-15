@@ -255,7 +255,7 @@ class MonthlyReturnService @Inject() (
                        instanceId = request.instanceId,
                        taxYear = request.taxYear,
                        taxMonth = request.taxMonth,
-                       amendment = "N",
+                       amendment = if (request.isAmendment.contains(true)) "Y" else "N",
                        itemResourceReference = resourceRef,
                        totalPayments = request.totalPayments,
                        costOfMaterials = request.costOfMaterials,
