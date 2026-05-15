@@ -20,6 +20,7 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
+import uk.gov.hmrc.constructionindustryscheme.models.{CreateVerifications, DeleteVerifications}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
@@ -130,6 +131,46 @@ final class VerificationServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.createVerificationBatchAndVerifications(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "VerificationService#modifyVerifications" - {
+
+    val request = ModifyVerificationsRequest(
+      instanceId = "abc-123",
+      deleteVerifications = Some(
+        DeleteVerifications(
+          verificationResourceReferences = Seq(111L, 222L)
+        )
+      ),
+      createVerifications = Some(
+        CreateVerifications(
+          verificationBatchResourceRef = 10L,
+          verificationResourceReferences = Seq(333L, 444L)
+        )
+      )
+    )
+
+    "delegates to FormpProxyConnector and returns response" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.modifyVerifications(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.modifyVerifications(request).futureValue mustBe ()
+
+      verify(connector).modifyVerifications(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.modifyVerifications(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.modifyVerifications(request).failed.futureValue.getMessage must include("boom")
     }
   }
 }

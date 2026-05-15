@@ -14,16 +14,24 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package models
 
-import play.api.libs.json.{Json, OFormat}
+import org.scalatest.matchers.must.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+import play.api.libs.json.Json
+import uk.gov.hmrc.constructionindustryscheme.models.DeleteVerifications
 
-case class GetMonthlyReturnForEditRequest(
-  instanceId: String,
-  taxYear: Int,
-  taxMonth: Int,
-  isAmendment: Option[Boolean] = None
-)
+class DeleteVerificationsSpec extends AnyWordSpec with Matchers {
 
-object GetMonthlyReturnForEditRequest:
-  given format: OFormat[GetMonthlyReturnForEditRequest] = Json.format[GetMonthlyReturnForEditRequest]
+  "DeleteVerifications JSON format" should {
+
+    "serialize and deserialize correctly" in {
+      val model = DeleteVerifications(
+        verificationResourceReferences = Seq(111L, 222L)
+      )
+
+      val json = Json.toJson(model)
+      json.as[DeleteVerifications] mustBe model
+    }
+  }
+}
