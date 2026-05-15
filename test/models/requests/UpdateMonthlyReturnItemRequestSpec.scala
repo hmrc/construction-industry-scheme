@@ -34,7 +34,8 @@ class UpdateMonthlyReturnItemRequestSpec extends AnyWordSpec with Matchers {
         subcontractorName = "Tyne Test Ltd",
         totalPayments = "1200",
         costOfMaterials = "500",
-        totalDeducted = "240"
+        totalDeducted = "240",
+        amendment = "N"
       )
 
       val json = Json.toJson(model)
@@ -52,7 +53,8 @@ class UpdateMonthlyReturnItemRequestSpec extends AnyWordSpec with Matchers {
           "subcontractorName": "Tyne Test Ltd",
           "totalPayments": "1200",
           "costOfMaterials": "500",
-          "totalDeducted": "240"
+          "totalDeducted": "240",
+          "amendment": "N"
         }
       """)
 
@@ -64,7 +66,8 @@ class UpdateMonthlyReturnItemRequestSpec extends AnyWordSpec with Matchers {
         subcontractorName = "Tyne Test Ltd",
         totalPayments = "1200",
         costOfMaterials = "500",
-        totalDeducted = "240"
+        totalDeducted = "240",
+        amendment = "N"
       )
 
       json.as[UpdateMonthlyReturnItemRequest] mustBe expected
