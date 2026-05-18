@@ -34,7 +34,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlValidator
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl
 
@@ -488,6 +488,51 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       (js \ "submissionId").as[String] mustBe submissionId
       (js \ "status").as[String] mustBe "STARTED"
+
+      verify(submissionService, times(1))
+        .submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
+    }
+
+    "returns 200 OK with STARTED and ServerError govTalkErrorStatus when ChRIS submit fails with a 5xx UpstreamErrorResponse" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+
+      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(xmlValidator.validate(any[NodeSeq]))
+        .thenReturn(Success(()))
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(UpstreamErrorResponse("ChRIS unavailable", 503, 503)))
+      when(
+        submissionService.processInitialChrisFailure(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
+
+      val req =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(req)
+
+      status(result) mustBe OK
+
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "STARTED"
+      (js \ "govTalkErrorStatus" \ "kind").as[String] mustBe "ServerError"
+      (js \ "govTalkErrorStatus" \ "httpStatus").as[Int] mustBe 503
 
       verify(submissionService, times(1))
         .submitToChris(any[ChRISSubmission])(any[HeaderCarrier])

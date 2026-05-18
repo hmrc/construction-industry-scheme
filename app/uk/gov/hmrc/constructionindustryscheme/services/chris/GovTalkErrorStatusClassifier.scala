@@ -25,21 +25,16 @@ object GovTalkErrorStatusClassifier {
   private val ServerErrorRange = 500 to 505
 
   def fromXmlOutcome(status: SubmissionStatus, error: Option[GovTalkError]): GovTalkErrorStatus =
-    status match {
-      case DEPARTMENTAL_ERROR                                                         =>
+    (status, error.map(_.errorNumber)) match {
+      case (DEPARTMENTAL_ERROR, _)                                                =>
         DepartmentalError(error.map(_.errorText).getOrElse(""))
-      case STARTED if error.exists(e => RecoverableCodes.contains(e.errorNumber))     =>
-        val e = error.get
-        RecoverableError(e.errorNumber, e.errorText)
-      case FATAL_ERROR if error.exists(e => RecoverableCodes.contains(e.errorNumber)) =>
-        val e = error.get
-        RecoverableError(e.errorNumber, e.errorText)
-      case FATAL_ERROR                                                                =>
-        error match {
-          case Some(e) => FatalError(e.errorNumber, e.errorText)
-          case None    => OtherStatus
-        }
-      case _                                                                          =>
+      case (STARTED | FATAL_ERROR, Some(code)) if RecoverableCodes.contains(code) =>
+        error.map(e => RecoverableError(e.errorNumber, e.errorText)).getOrElse(OtherStatus)
+      case (FATAL_ERROR, Some(_))                                                 =>
+        error.map(e => FatalError(e.errorNumber, e.errorText)).getOrElse(OtherStatus)
+      case (FATAL_ERROR, None)                                                    =>
+        OtherStatus
+      case _                                                                      =>
         OtherStatus
     }
 
