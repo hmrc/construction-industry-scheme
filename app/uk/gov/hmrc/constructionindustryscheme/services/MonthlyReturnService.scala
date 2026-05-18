@@ -143,7 +143,8 @@ class MonthlyReturnService @Inject() (
                                    GetMonthlyReturnForEditRequest(
                                      instanceId = request.instanceId,
                                      taxYear = request.taxYear,
-                                     taxMonth = request.taxMonth
+                                     taxMonth = request.taxMonth,
+                                     isAmendment = Some(request.amendment == "Y")
                                    )
                                  )
 
@@ -177,7 +178,7 @@ class MonthlyReturnService @Inject() (
                instanceId = request.instanceId,
                taxYear = request.taxYear,
                taxMonth = request.taxMonth,
-               amendment = "N",
+               amendment = request.amendment,
                createResourceReferences = toCreate,
                deleteResourceReferences = toDelete
              )
@@ -219,6 +220,34 @@ class MonthlyReturnService @Inject() (
                resourceReference = resourceRefToDelete
              )
            )
+    } yield ()
+
+  def deleteAllMonthlyReturnItems(
+    request: DeleteAllMonthlyReturnItemsRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    for {
+      edit <- formp.getMonthlyReturnForEdit(
+                GetMonthlyReturnForEditRequest(
+                  instanceId = request.instanceId,
+                  taxYear = request.taxYear,
+                  taxMonth = request.taxMonth,
+                  isAmendment = Some(request.amendment == "Y")
+                )
+              )
+
+      toDelete = edit.monthlyReturnItems.flatMap(_.itemResourceReference).distinct.sorted
+
+      _ <- Future.traverse(toDelete) { resourceRef =>
+             formp.deleteMonthlyReturnItem(
+               DeleteMonthlyReturnItemProxyRequest(
+                 instanceId = request.instanceId,
+                 taxYear = request.taxYear,
+                 taxMonth = request.taxMonth,
+                 amendment = request.amendment,
+                 resourceReference = resourceRef
+               )
+             )
+           }
     } yield ()
 
   def updateMonthlyReturnItem(request: UpdateMonthlyReturnItemRequest)(implicit hc: HeaderCarrier): Future[Unit] =

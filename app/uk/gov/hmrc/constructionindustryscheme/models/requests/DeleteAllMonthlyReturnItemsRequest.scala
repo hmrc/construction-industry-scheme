@@ -18,14 +18,13 @@ package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
 
-case class SelectedSubcontractorsRequest(
+case class DeleteAllMonthlyReturnItemsRequest(
   instanceId: String,
   taxYear: Int,
   taxMonth: Int,
-  selectedSubcontractorIds: Seq[Long],
   amendment: String
 )
 
-object SelectedSubcontractorsRequest {
-  given format: OFormat[SelectedSubcontractorsRequest] = Json.format[SelectedSubcontractorsRequest]
+object DeleteAllMonthlyReturnItemsRequest {
+  given format: OFormat[DeleteAllMonthlyReturnItemsRequest] = Json.format[DeleteAllMonthlyReturnItemsRequest]
 }
