@@ -141,7 +141,8 @@ class MonthlyReturnService @Inject() (
                                    GetMonthlyReturnForEditRequest(
                                      instanceId = request.instanceId,
                                      taxYear = request.taxYear,
-                                     taxMonth = request.taxMonth
+                                     taxMonth = request.taxMonth,
+                                     isAmendment = request.isAmendment
                                    )
                                  )
 
