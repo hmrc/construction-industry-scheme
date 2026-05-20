@@ -611,7 +611,12 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, isAmendment = Some(false))
+      val editReq = GetMonthlyReturnForEditRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        isAmendment = Some(false)
+      )
 
       when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
         .thenReturn(Future.successful(editResponse))
@@ -655,7 +660,12 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, isAmendment = Some(false))
+      val editReq = GetMonthlyReturnForEditRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        isAmendment = Some(false)
+      )
 
       when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
         .thenReturn(Future.successful(editResponse))
@@ -693,7 +703,12 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, isAmendment = Some(false))
+      val editReq = GetMonthlyReturnForEditRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        isAmendment = Some(false)
+      )
 
       when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
         .thenReturn(Future.successful(editResponse))
@@ -921,15 +936,31 @@ class MonthlyReturnServiceSpec extends SpecBase {
       when(formpProxy.deleteMonthlyReturnItem(any[DeleteMonthlyReturnItemProxyRequest])(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
 
-      service.deleteAllMonthlyReturnItems(req).futureValue mustBe()
+      service.deleteAllMonthlyReturnItems(req).futureValue mustBe ()
 
-      verify(formpProxy).deleteMonthlyReturnItem(eqTo(DeleteMonthlyReturnItemProxyRequest(
-        cisInstanceId, 2025, 1, "N", 10L
-      )))(any[HeaderCarrier])
+      verify(formpProxy).deleteMonthlyReturnItem(
+        eqTo(
+          DeleteMonthlyReturnItemProxyRequest(
+            cisInstanceId,
+            2025,
+            1,
+            "N",
+            10L
+          )
+        )
+      )(any[HeaderCarrier])
 
-      verify(formpProxy).deleteMonthlyReturnItem(eqTo(DeleteMonthlyReturnItemProxyRequest(
-        cisInstanceId, 2025, 1, "N", 30L
-      )))(any[HeaderCarrier])
+      verify(formpProxy).deleteMonthlyReturnItem(
+        eqTo(
+          DeleteMonthlyReturnItemProxyRequest(
+            cisInstanceId,
+            2025,
+            1,
+            "N",
+            30L
+          )
+        )
+      )(any[HeaderCarrier])
 
       verify(formpProxy, times(2)).deleteMonthlyReturnItem(any[DeleteMonthlyReturnItemProxyRequest])(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
