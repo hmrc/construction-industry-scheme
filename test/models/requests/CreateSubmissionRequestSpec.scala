@@ -38,10 +38,10 @@ class CreateSubmissionRequestSpec extends SpecBase {
 
     "fail to deserialize when amendment is missing" in {
       val json = Json.obj(
-        "instanceId"      -> "123",
-        "taxYear"         -> 2026,
-        "taxMonth"        -> 7,
-        "emailRecipient"  -> "test@test.com"
+        "instanceId"     -> "123",
+        "taxYear"        -> 2026,
+        "taxMonth"       -> 7,
+        "emailRecipient" -> "test@test.com"
       )
 
       json.validate[CreateSubmissionRequest].isError mustBe true

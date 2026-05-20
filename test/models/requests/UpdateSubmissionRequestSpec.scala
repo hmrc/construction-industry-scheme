@@ -40,11 +40,11 @@ class UpdateSubmissionRequestSpec extends SpecBase {
 
     "fail to deserialize when amendment is missing" in {
       val json = Json.obj(
-        "instanceId"         -> "123",
-        "taxYear"            -> 2026,
-        "taxMonth"           -> 7,
-        "hmrcMarkGenerated"  -> "hmrc-mark",
-        "submittableStatus"  -> "SUBMITTED"
+        "instanceId"        -> "123",
+        "taxYear"           -> 2026,
+        "taxMonth"          -> 7,
+        "hmrcMarkGenerated" -> "hmrc-mark",
+        "submittableStatus" -> "SUBMITTED"
       )
 
       json.validate[UpdateSubmissionRequest].isError mustBe true
