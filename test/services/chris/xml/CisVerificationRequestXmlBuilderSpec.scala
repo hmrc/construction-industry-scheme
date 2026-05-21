@@ -18,11 +18,15 @@ package services.chris.xml
 
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import scala.xml.{Node, Utility}
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisVerificationRequest, VerificationDetails}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.xml.CisVerificationRequestXmlBuilder
 
 class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
+
+  private def normalizeXml(n: Node): Node =
+    Utility.trim(n)
 
   private val request = ChrisVerificationRequest(
     instanceId = "id-1",
@@ -281,6 +285,57 @@ class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
       }
 
       ex.getMessage must include("Invalid SubcontractorType value")
+    }
+
+    "produce the expected CISrequest structure for Partnership" in {
+
+      val partnershipSub =
+        baseSub(10).copy(
+          subcontractorType = Some("partnership"),
+          tradingName = Some("ACME"),
+          partnershipTradingName = Some("PARTNERS LTD"),
+          utr = Some("1111111111"),
+          partnerUtr = Some("2222222222")
+        )
+
+      val actual =
+        CisVerificationRequestXmlBuilder.build(request, Seq(partnershipSub))
+
+      val expected =
+        <CISrequest>
+          <Contractor>
+            <UTR>1234567890</UTR>
+            <AOref>123/AB456</AOref>
+          </Contractor>
+
+          <Subcontractor>
+            <Action>verify</Action>
+            <Type>partnership</Type>
+            <TradingName>ACME</TradingName>
+            <WorksRef>WRN123</WorksRef>
+            <UTR>2222222222</UTR>
+            <CRN>CRN123</CRN>
+            <NINO>AA123456A</NINO>
+
+            <Partnership>
+              <Name>PARTNERS LTD</Name>
+              <UTR>1111111111</UTR>
+            </Partnership>
+
+            <Address>
+              <Line>Line 1</Line>
+              <Line>Line 2</Line>
+              <Line>Line 3</Line>
+              <Line>Line 4</Line>
+              <PostCode>NE1 1AA</PostCode>
+              <Country>UK</Country>
+            </Address>
+          </Subcontractor>
+
+          <Declaration>yes</Declaration>
+        </CISrequest>
+
+      normalizeXml(actual) mustBe normalizeXml(expected)
     }
   }
 }
