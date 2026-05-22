@@ -54,7 +54,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "isAgent"               -> true,
     "clientTaxOfficeNumber" -> "123",
     "clientTaxOfficeRef"    -> "ABC456",
-    "returnType"            -> "monthlyNilReturn",
+    "returnType"            -> "MonthlyNilReturn",
     "informationCorrect"    -> "yes",
     "inactivity"            -> "no"
   )
