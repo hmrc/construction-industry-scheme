@@ -45,7 +45,7 @@ class SubmissionControllerIntegrationSpec
     "isAgent"               -> false,
     "clientTaxOfficeNumber" -> "",
     "clientTaxOfficeRef"    -> "",
-    "returnType"            -> "monthlyNilReturn"
+    "returnType"            -> "MonthlyNilReturn"
   )
 
   private val createUrl                    = s"$base/submissions/create"

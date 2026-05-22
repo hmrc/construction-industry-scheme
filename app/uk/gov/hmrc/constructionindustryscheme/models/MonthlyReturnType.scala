@@ -23,10 +23,11 @@ object MonthlyReturnType {
   case object Nil extends MonthlyReturnType
   case object Standard extends MonthlyReturnType
 
+  // TODO: align the read/write strings
   implicit val format: Format[MonthlyReturnType] = Format(
     Reads.StringReads.collect(JsonValidationError("returnType must be 'nil' or 'standard'")) {
-      case "monthlyNilReturn"      => Nil
-      case "monthlyStandardReturn" => Standard
+      case "MonthlyNilReturn"      => Nil
+      case "MonthlyStandardReturn" => Standard
     },
     Writes {
       case Nil      => JsString("nil")

@@ -25,12 +25,12 @@ class MonthlyReturnTypeSpec extends AnyWordSpec with Matchers {
 
   "MonthlyReturnType.format" should {
 
-    "read monthlyNilReturn as Nil" in {
-      Json.fromJson[MonthlyReturnType](JsString("monthlyNilReturn")) mustBe JsSuccess(MonthlyReturnType.Nil)
+    "read MonthlyNilReturn as Nil" in {
+      Json.fromJson[MonthlyReturnType](JsString("MonthlyNilReturn")) mustBe JsSuccess(MonthlyReturnType.Nil)
     }
 
-    "read monthlyStandardReturn as Standard" in {
-      Json.fromJson[MonthlyReturnType](JsString("monthlyStandardReturn")) mustBe JsSuccess(MonthlyReturnType.Standard)
+    "read MonthlyStandardReturn as Standard" in {
+      Json.fromJson[MonthlyReturnType](JsString("MonthlyStandardReturn")) mustBe JsSuccess(MonthlyReturnType.Standard)
     }
 
     "write Nil as 'nil'" in {
