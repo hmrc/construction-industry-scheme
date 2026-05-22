@@ -29,7 +29,15 @@ case class SubcontractorCurrentVerification(
   nino: Option[String],
   crn: Option[String],
   partnerUtr: Option[String],
-  partnershipTradingName: Option[String]
+  partnershipTradingName: Option[String],
+  subcontractorType: Option[String],
+  addressLine1: Option[String],
+  addressLine2: Option[String],
+  addressLine3: Option[String],
+  addressLine4: Option[String],
+  country: Option[String],
+  postcode: Option[String],
+  worksReferenceNumber: Option[String]
 )
 
 object SubcontractorCurrentVerification {

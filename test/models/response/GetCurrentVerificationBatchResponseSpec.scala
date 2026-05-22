@@ -53,14 +53,22 @@ class GetCurrentVerificationBatchResponseSpec extends AnyWordSpec with Matchers 
             subcontractorId = 1L,
             subbieResourceRef = Some(10L),
             firstName = Some("John"),
-            surname = Some("Smith"),
             secondName = None,
+            surname = Some("Smith"),
             tradingName = Some("ACME"),
             utr = Some("1111111111"),
             nino = Some("AA123456A"),
             crn = Some("AC012345"),
             partnerUtr = Some("5860920998"),
-            partnershipTradingName = Some("ACME trading")
+            partnershipTradingName = Some("ACME trading"),
+            subcontractorType = Some("soletrader"),
+            addressLine1 = Some("Line 1"),
+            addressLine2 = Some("Line 2"),
+            addressLine3 = Some("Lane"),
+            addressLine4 = Some("Line 4"),
+            country = Some("UK"),
+            postcode = Some("NE1 1AA"),
+            worksReferenceNumber = Some("WRN123")
           )
         ),
         verificationBatch = Some(
@@ -94,6 +102,14 @@ class GetCurrentVerificationBatchResponseSpec extends AnyWordSpec with Matchers 
       (sub0 \ "crn").as[String] mustBe "AC012345"
       (sub0 \ "partnerUtr").as[String] mustBe "5860920998"
       (sub0 \ "partnershipTradingName").as[String] mustBe "ACME trading"
+      (sub0 \ "subcontractorType").as[String] mustBe "soletrader"
+      (sub0 \ "addressLine1").as[String] mustBe "Line 1"
+      (sub0 \ "addressLine2").as[String] mustBe "Line 2"
+      (sub0 \ "addressLine3").as[String] mustBe "Lane"
+      (sub0 \ "addressLine4").as[String] mustBe "Line 4"
+      (sub0 \ "country").as[String] mustBe "UK"
+      (sub0 \ "postcode").as[String] mustBe "NE1 1AA"
+      (sub0 \ "worksReferenceNumber").as[String] mustBe "WRN123"
 
       val vb0 = json \ "verificationBatch"
 
