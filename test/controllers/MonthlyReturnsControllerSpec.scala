@@ -668,7 +668,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           instanceId = "abc-123",
           taxYear = 2025,
           taxMonth = 1,
-          selectedSubcontractorIds = Seq(1L, 2L, 3L)
+          selectedSubcontractorIds = Seq(1L, 2L, 3L),
+          amendment = "N"
         )
 
         when(mockMonthlyReturnService.syncMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier]))
@@ -690,7 +691,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           instanceId = "abc-123",
           taxYear = 2025,
           taxMonth = 1,
-          selectedSubcontractorIds = Seq(1L)
+          selectedSubcontractorIds = Seq(1L),
+          amendment = "N"
         )
 
         val boom = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
@@ -714,7 +716,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           instanceId = "abc-123",
           taxYear = 2025,
           taxMonth = 1,
-          selectedSubcontractorIds = Seq(1L)
+          selectedSubcontractorIds = Seq(1L),
+          amendment = "N"
         )
 
         when(mockMonthlyReturnService.syncMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier]))

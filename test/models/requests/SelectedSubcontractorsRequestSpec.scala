@@ -30,7 +30,7 @@ class SelectedSubcontractorsRequestSpec extends AnyWordSpec with Matchers {
         taxYear = 2026,
         taxMonth = 2,
         selectedSubcontractorIds = Seq(1L, 2L, 3L),
-        isAmendment = Some(true)
+        amendment = "N"
       )
 
       val json = Json.toJson(model)
