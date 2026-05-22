@@ -225,6 +225,7 @@ class FormpProxyConnectorIntegrationSpec
         instanceId = instanceId,
         taxYear = 2024,
         taxMonth = 4,
+        amendment = "N",
         emailRecipient = Some("ops@example.com")
       )
 
@@ -242,7 +243,7 @@ class FormpProxyConnectorIntegrationSpec
     }
 
     "propagates upstream error (e.g. 500) as failed Future" in {
-      val req = CreateSubmissionRequest(instanceId, 2024, 4)
+      val req = CreateSubmissionRequest(instanceId, 2024, 4, "N")
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/submissions/create"))
@@ -262,6 +263,7 @@ class FormpProxyConnectorIntegrationSpec
         instanceId = instanceId,
         taxYear = 2024,
         taxMonth = 4,
+        amendment = "N",
         hmrcMarkGenerated = Some("Dj5TVJDyRYCn9zta5EdySeY4fyA="),
         submittableStatus = "ACCEPTED"
       )
@@ -281,6 +283,7 @@ class FormpProxyConnectorIntegrationSpec
         instanceId = instanceId,
         taxYear = 2024,
         taxMonth = 4,
+        amendment = "N",
         hmrcMarkGenerated = Some("Dj5TVJDyRYCn9zta5EdySeY4fyA="),
         submittableStatus = "REJECTED"
       )

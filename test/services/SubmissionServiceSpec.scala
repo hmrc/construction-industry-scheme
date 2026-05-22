@@ -44,7 +44,7 @@ final class SubmissionServiceSpec extends SpecBase {
     "delegates to FormpProxyConnector and returns submissionId" in {
       val s = setup; import s._
 
-      val req = CreateSubmissionRequest("123", 2024, 4)
+      val req = CreateSubmissionRequest("123", 2024, 4, "N")
 
       when(formpProxyConnector.createSubmission(eqTo(req))(any[HeaderCarrier]))
         .thenReturn(Future.successful("sub-123"))
@@ -57,7 +57,7 @@ final class SubmissionServiceSpec extends SpecBase {
     "propagates failures from FormpProxyConnector" in {
       val s = setup; import s._
 
-      val req = CreateSubmissionRequest("123", 2024, 4)
+      val req = CreateSubmissionRequest("123", 2024, 4, "N")
 
       when(formpProxyConnector.createSubmission(eqTo(req))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
@@ -75,6 +75,7 @@ final class SubmissionServiceSpec extends SpecBase {
         instanceId = "123",
         taxYear = 2024,
         taxMonth = 4,
+        amendment = "N",
         hmrcMarkGenerated = Some("Dj5TVJDyRYCn9zta5EdySeY4fyA="),
         submittableStatus = "ACCEPTED"
       )
@@ -94,6 +95,7 @@ final class SubmissionServiceSpec extends SpecBase {
         instanceId = "123",
         taxYear = 2024,
         taxMonth = 4,
+        amendment = "N",
         submittableStatus = "REJECTED"
       )
 

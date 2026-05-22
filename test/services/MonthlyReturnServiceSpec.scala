@@ -857,7 +857,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         instanceId = cisInstanceId,
         taxYear = 2025,
         taxMonth = 1,
-        subcontractorId = 2L
+        subcontractorId = 2L,
+        amendment = "N"
       )
 
       val subs = Seq(
@@ -873,7 +874,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+      val editReq =
+        GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(false))
 
       when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
         .thenReturn(Future.successful(editResponse))
@@ -902,7 +904,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         instanceId = cisInstanceId,
         taxYear = 2025,
         taxMonth = 1,
-        subcontractorId = 999L
+        subcontractorId = 999L,
+        amendment = "N"
       )
 
       val editResponse = GetMonthlyReturnForEditResponse(
@@ -915,7 +918,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+      val editReq =
+        GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(false))
 
       when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
         .thenReturn(Future.successful(editResponse))
@@ -935,7 +939,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         instanceId = cisInstanceId,
         taxYear = 2025,
         taxMonth = 1,
-        subcontractorId = 2L
+        subcontractorId = 2L,
+        amendment = "N"
       )
 
       val editResponse = GetMonthlyReturnForEditResponse(
@@ -948,7 +953,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+      val editReq =
+        GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(false))
 
       when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
         .thenReturn(Future.successful(editResponse))
@@ -968,7 +974,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         instanceId = cisInstanceId,
         taxYear = 2025,
         taxMonth = 1,
-        subcontractorId = 2L
+        subcontractorId = 2L,
+        amendment = "N"
       )
 
       val subs = Seq(
@@ -983,7 +990,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+      val editReq =
+        GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(false))
 
       when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
         .thenReturn(Future.successful(editResponse))
@@ -1010,6 +1018,69 @@ class MonthlyReturnServiceSpec extends SpecBase {
     }
   }
 
+  "deleteAllMonthlyReturnItems" - {
+
+    "deletes all monthly return items from edit response" in new Setup {
+      val req = DeleteAllMonthlyReturnItemsRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N"
+      )
+
+      val editReq =
+        GetMonthlyReturnForEditRequest(cisInstanceId, 2025, 1, Some(false))
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq.empty,
+        monthlyReturnItems = Seq(
+          mkMonthlyReturnItem(itemResourceReference = Some(30L)),
+          mkMonthlyReturnItem(itemResourceReference = Some(10L)),
+          mkMonthlyReturnItem(itemResourceReference = Some(30L)),
+          mkMonthlyReturnItem(itemResourceReference = None)
+        ),
+        submission = Seq.empty
+      )
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(editResponse))
+
+      when(formpProxy.deleteMonthlyReturnItem(any[DeleteMonthlyReturnItemProxyRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.deleteAllMonthlyReturnItems(req).futureValue mustBe ()
+
+      verify(formpProxy).deleteMonthlyReturnItem(
+        eqTo(
+          DeleteMonthlyReturnItemProxyRequest(
+            cisInstanceId,
+            2025,
+            1,
+            "N",
+            10L
+          )
+        )
+      )(any[HeaderCarrier])
+
+      verify(formpProxy).deleteMonthlyReturnItem(
+        eqTo(
+          DeleteMonthlyReturnItemProxyRequest(
+            cisInstanceId,
+            2025,
+            1,
+            "N",
+            30L
+          )
+        )
+      )(any[HeaderCarrier])
+
+      verify(formpProxy, times(2)).deleteMonthlyReturnItem(any[DeleteMonthlyReturnItemProxyRequest])(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+  }
+
   "updateMonthlyReturnItem" - {
 
     "builds proxy request using resource ref + verification number and calls formp.updateMonthlyReturnItem when isAmendment = None" in new Setup {
@@ -1021,7 +1092,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         subcontractorName = "Tyne Test Ltd",
         totalPayments = "1200",
         costOfMaterials = "500",
-        totalDeducted = "240"
+        totalDeducted = "240",
+        amendment = "N"
       )
 
       val subcontractor = mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L))
@@ -1035,7 +1107,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+      val editReq =
+        GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(false))
 
       when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
         .thenReturn(Future.successful(editResponse))
@@ -1124,7 +1197,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         subcontractorName = "Tyne Test Ltd",
         totalPayments = "1200",
         costOfMaterials = "500",
-        totalDeducted = "240"
+        totalDeducted = "240",
+        amendment = "N"
       )
 
       val editResponse = GetMonthlyReturnForEditResponse(
@@ -1138,7 +1212,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+      val editReq =
+        GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(false))
 
       when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
         .thenReturn(Future.successful(editResponse))
@@ -1162,7 +1237,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         subcontractorName = "Tyne Test Ltd",
         totalPayments = "1200",
         costOfMaterials = "500",
-        totalDeducted = "240"
+        totalDeducted = "240",
+        amendment = "N"
       )
 
       val subcontractor =
@@ -1194,7 +1270,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         subcontractorName = "Tyne Test Ltd",
         totalPayments = "1200",
         costOfMaterials = "500",
-        totalDeducted = "240"
+        totalDeducted = "240",
+        amendment = "N"
       )
 
       val subcontractor =

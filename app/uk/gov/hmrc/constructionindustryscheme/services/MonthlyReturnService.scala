@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services
 
+import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
@@ -30,7 +31,8 @@ import scala.concurrent.{ExecutionContext, Future}
 class MonthlyReturnService @Inject() (
   datacache: DatacacheProxyConnector,
   formp: FormpProxyConnector
-)(implicit ec: ExecutionContext) {
+)(implicit ec: ExecutionContext)
+    extends Logging {
 
   def getCisTaxpayer(employerReference: EmployerReference)(implicit hc: HeaderCarrier): Future[CisTaxpayer] =
     datacache.getCisTaxpayer(employerReference)
@@ -190,7 +192,8 @@ class MonthlyReturnService @Inject() (
                 GetMonthlyReturnForEditRequest(
                   instanceId = request.instanceId,
                   taxYear = request.taxYear,
-                  taxMonth = request.taxMonth
+                  taxMonth = request.taxMonth,
+                  isAmendment = Some(request.amendment == "Y")
                 )
               )
 
@@ -213,10 +216,38 @@ class MonthlyReturnService @Inject() (
                instanceId = request.instanceId,
                taxYear = request.taxYear,
                taxMonth = request.taxMonth,
-               amendment = "N",
+               amendment = request.amendment,
                resourceReference = resourceRefToDelete
              )
            )
+    } yield ()
+
+  def deleteAllMonthlyReturnItems(
+    request: DeleteAllMonthlyReturnItemsRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    for {
+      edit <- formp.getMonthlyReturnForEdit(
+                GetMonthlyReturnForEditRequest(
+                  instanceId = request.instanceId,
+                  taxYear = request.taxYear,
+                  taxMonth = request.taxMonth,
+                  isAmendment = Some(request.amendment == "Y")
+                )
+              )
+
+      toDelete = edit.monthlyReturnItems.flatMap(_.itemResourceReference).distinct.sorted
+
+      _ <- Future.traverse(toDelete) { resourceRef =>
+             formp.deleteMonthlyReturnItem(
+               DeleteMonthlyReturnItemProxyRequest(
+                 instanceId = request.instanceId,
+                 taxYear = request.taxYear,
+                 taxMonth = request.taxMonth,
+                 amendment = request.amendment,
+                 resourceReference = resourceRef
+               )
+             )
+           }
     } yield ()
 
   def updateMonthlyReturnItem(request: UpdateMonthlyReturnItemRequest)(implicit hc: HeaderCarrier): Future[Unit] =
@@ -225,7 +256,8 @@ class MonthlyReturnService @Inject() (
                 GetMonthlyReturnForEditRequest(
                   instanceId = request.instanceId,
                   taxYear = request.taxYear,
-                  taxMonth = request.taxMonth
+                  taxMonth = request.taxMonth,
+                  isAmendment = Some(request.amendment == "Y")
                 )
               )
 
@@ -256,7 +288,7 @@ class MonthlyReturnService @Inject() (
                        instanceId = request.instanceId,
                        taxYear = request.taxYear,
                        taxMonth = request.taxMonth,
-                       amendment = if (request.isAmendment.contains(true)) "Y" else "N",
+                       amendment = request.amendment,
                        itemResourceReference = resourceRef,
                        totalPayments = request.totalPayments,
                        costOfMaterials = request.costOfMaterials,
