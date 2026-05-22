@@ -42,6 +42,9 @@ class ChrisConnector @Inject() (
   private val chrisCisReturnUrl: String =
     servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.submit-url")
 
+  private val chrisCisVerifyUrl: String =
+    servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.verify-submit-url")
+
   def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] =
     httpClient
       .post(url"$pollUrl")
@@ -97,9 +100,13 @@ class ChrisConnector @Inject() (
         ()
       }
 
-  def submitEnvelope(envelope: Elem, correlationId: String)(implicit hc: HeaderCarrier): Future[SubmissionResult] =
+  private def submit(
+    url: String,
+    envelope: Elem,
+    correlationId: String
+  )(implicit hc: HeaderCarrier): Future[SubmissionResult] =
     httpClient
-      .post(url"$chrisCisReturnUrl")
+      .post(url"$url")
       .setHeader(
         "Content-Type"  -> "application/xml",
         "Accept"        -> "application/xml",
@@ -109,7 +116,7 @@ class ChrisConnector @Inject() (
       .execute[HttpResponse]
       .flatMap { resp =>
         if (is2xx(resp.status)) {
-          logger.info(s"[ChrisConnector] corrId=$correlationId status=${resp.status} full-response-body:\n${resp.body}")
+          logger.info(s"[ChrisConnector] corrId=$correlationId status=${resp.status}")
           Future.successful(handle2xxResponse(resp, correlationId))
         } else if (resp.status >= 500) {
           Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
@@ -117,6 +124,12 @@ class ChrisConnector @Inject() (
           Future.successful(httpError(correlationId, resp.body, resp.status))
         }
       }
+
+  def submitEnvelope(envelope: Elem, correlationId: String)(implicit hc: HeaderCarrier) =
+    submit(chrisCisReturnUrl, envelope, correlationId)
+
+  def submitEnvelopeForVerification(envelope: Elem, correlationId: String)(implicit hc: HeaderCarrier) =
+    submit(chrisCisVerifyUrl, envelope, correlationId)
 
   private def handle2xxResponse(resp: HttpResponse, correlationId: String): SubmissionResult = {
     val body = resp.body
