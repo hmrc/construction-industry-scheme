@@ -14,18 +14,15 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.libs.json.{Json, OFormat}
 
-case class SelectedSubcontractorsRequest(
-  instanceId: String,
-  taxYear: Int,
-  taxMonth: Int,
-  selectedSubcontractorIds: Seq[Long],
-  amendment: String
+final case class DeleteVerifications(
+  verificationResourceReferences: Seq[Long]
 )
 
-object SelectedSubcontractorsRequest {
-  given format: OFormat[SelectedSubcontractorsRequest] = Json.format[SelectedSubcontractorsRequest]
+object DeleteVerifications {
+  given OFormat[DeleteVerifications] =
+    Json.format[DeleteVerifications]
 }

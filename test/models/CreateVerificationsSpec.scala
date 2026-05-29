@@ -14,27 +14,25 @@
  * limitations under the License.
  */
 
-package models.requests
+package models
 
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.Json
-import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
+import uk.gov.hmrc.constructionindustryscheme.models.CreateVerifications
 
-class GetMonthlyReturnForEditRequestSpec extends AnyWordSpec with Matchers {
+class CreateVerificationsSpec extends AnyWordSpec with Matchers {
 
-  "GetMonthlyReturnForEditRequest JSON format" should {
+  "CreateVerifications JSON format" should {
 
     "serialize and deserialize correctly" in {
-      val model = GetMonthlyReturnForEditRequest(
-        instanceId = "abc-123",
-        taxYear = 2025,
-        taxMonth = 1,
-        isAmendment = Some(true)
+      val model = CreateVerifications(
+        verificationBatchResourceRef = 10L,
+        verificationResourceReferences = Seq(333L, 444L)
       )
 
       val json = Json.toJson(model)
-      json.as[GetMonthlyReturnForEditRequest] mustBe model
+      json.as[CreateVerifications] mustBe model
     }
   }
 }

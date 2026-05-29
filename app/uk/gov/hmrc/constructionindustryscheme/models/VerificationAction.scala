@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.models
 
-import play.api.libs.json.{Json, OFormat}
+sealed trait VerificationAction
 
-case class SelectedSubcontractorsRequest(
-  instanceId: String,
-  taxYear: Int,
-  taxMonth: Int,
-  selectedSubcontractorIds: Seq[Long],
-  amendment: String
-)
+case object Verify extends VerificationAction
+case object Match extends VerificationAction
 
-object SelectedSubcontractorsRequest {
-  given format: OFormat[SelectedSubcontractorsRequest] = Json.format[SelectedSubcontractorsRequest]
+object VerificationAction {
+  def toXmlValue(action: VerificationAction): String =
+    action match {
+      case Verify => "verify"
+      case Match  => "match"
+    }
 }

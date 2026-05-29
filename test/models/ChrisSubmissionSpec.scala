@@ -127,8 +127,4 @@ class ChrisSubmissionSpec extends SpecBase with Matchers with MockitoSugar {
     thrown.getMessage should include("Invalid monthYear")
   }
 
-  "extractTaxOfficeFromCisEnrolment returns None if identifiers missing" in {
-    val enrolments = Enrolments(Set.empty)
-    ChRISSubmission.extractTaxOfficeFromCisEnrolment(enrolments) shouldBe None
-  }
 }

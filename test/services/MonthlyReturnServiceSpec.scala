@@ -582,12 +582,13 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
   "syncMonthlyReturnItems" - {
 
-    "computes create/delete diffs and calls formp sync endpoint" in new Setup {
+    "computes create/delete diffs and calls formp sync endpoint when isAmendment is None" in new Setup {
       val req = SelectedSubcontractorsRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
         taxMonth = 1,
-        selectedSubcontractorIds = Seq(1L, 2L, 3L)
+        selectedSubcontractorIds = Seq(1L, 2L, 3L),
+        amendment = "N"
       )
 
       val subs = Seq(
@@ -610,7 +611,12 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+      val editReq = GetMonthlyReturnForEditRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        isAmendment = Some(false)
+      )
 
       when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
         .thenReturn(Future.successful(editResponse))
@@ -635,12 +641,127 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verifyNoInteractions(datacacheProxy)
     }
 
+    "computes create/delete diffs and calls formp sync endpoint when isAmendment is false" in new Setup {
+      val req = SelectedSubcontractorsRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        selectedSubcontractorIds = Seq(1L, 2L, 3L),
+        amendment = "N"
+      )
+
+      val subs = Seq(
+        mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L)),
+        mkSubcontractor(subcontractorId = 2L, subbieResourceRef = Some(20L)),
+        mkSubcontractor(subcontractorId = 3L, subbieResourceRef = Some(30L))
+      )
+
+      val items = Seq(
+        mkMonthlyReturnItem(itemResourceReference = Some(10L)),
+        mkMonthlyReturnItem(itemResourceReference = Some(99L)),
+        mkMonthlyReturnItem(itemResourceReference = Some(99L)) // include duplicate to prove distinct handling
+      )
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = subs,
+        monthlyReturnItems = items,
+        submission = Seq.empty
+      )
+
+      val editReq =
+        GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(false))
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(editResponse))
+
+      val expectedSyncReq = SyncMonthlyReturnItemsRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "N",
+        createResourceReferences = Seq(20L, 30L),
+        deleteResourceReferences = Seq(99L)
+      )
+
+      when(formpProxy.syncMonthlyReturnItems(eqTo(expectedSyncReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val out = service.syncMonthlyReturnItems(req).futureValue
+      out mustBe ()
+
+      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verify(formpProxy).syncMonthlyReturnItems(eqTo(expectedSyncReq))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "computes create/delete diffs and calls formp sync endpoint when isAmendment is true" in new Setup {
+      val req = SelectedSubcontractorsRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        selectedSubcontractorIds = Seq(1L, 2L, 3L),
+        amendment = "Y"
+      )
+
+      val subs = Seq(
+        mkSubcontractor(subcontractorId = 1L, subbieResourceRef = Some(10L)),
+        mkSubcontractor(subcontractorId = 2L, subbieResourceRef = Some(20L)),
+        mkSubcontractor(subcontractorId = 3L, subbieResourceRef = Some(30L))
+      )
+
+      val items = Seq(
+        mkMonthlyReturnItem(itemResourceReference = Some(10L)),
+        mkMonthlyReturnItem(itemResourceReference = Some(99L)),
+        mkMonthlyReturnItem(itemResourceReference = Some(99L)) // include duplicate to prove distinct handling
+      )
+
+      val editResponse = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = subs,
+        monthlyReturnItems = items,
+        submission = Seq.empty
+      )
+
+      val editReq = GetMonthlyReturnForEditRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        isAmendment = Some(true)
+      )
+
+      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(editResponse))
+
+      val expectedSyncReq = SyncMonthlyReturnItemsRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        amendment = "Y",
+        createResourceReferences = Seq(20L, 30L),
+        deleteResourceReferences = Seq(99L)
+      )
+
+      when(formpProxy.syncMonthlyReturnItems(eqTo(expectedSyncReq))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val out = service.syncMonthlyReturnItems(req).futureValue
+      out mustBe ()
+
+      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verify(formpProxy).syncMonthlyReturnItems(eqTo(expectedSyncReq))(any[HeaderCarrier])
+      verifyNoInteractions(datacacheProxy)
+    }
+
     "fails with 400 when selectedSubcontractorIds contains an ID not present in edit.subcontractors" in new Setup {
       val req = SelectedSubcontractorsRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
         taxMonth = 1,
-        selectedSubcontractorIds = Seq(999L)
+        selectedSubcontractorIds = Seq(999L),
+        amendment = "N"
       )
 
       val editResponse = GetMonthlyReturnForEditResponse(
@@ -653,7 +774,12 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+      val editReq = GetMonthlyReturnForEditRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        isAmendment = Some(false)
+      )
 
       when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
         .thenReturn(Future.successful(editResponse))
@@ -673,7 +799,8 @@ class MonthlyReturnServiceSpec extends SpecBase {
         instanceId = cisInstanceId,
         taxYear = 2025,
         taxMonth = 1,
-        selectedSubcontractorIds = Seq(1L)
+        selectedSubcontractorIds = Seq(1L),
+        amendment = "N"
       )
 
       val subs = Seq(
@@ -690,7 +817,12 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1)
+      val editReq = GetMonthlyReturnForEditRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1,
+        isAmendment = Some(false)
+      )
 
       when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
         .thenReturn(Future.successful(editResponse))

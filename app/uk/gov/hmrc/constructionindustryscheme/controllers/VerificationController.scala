@@ -22,7 +22,7 @@ import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateVerificationBatchAndVerificationsRequest
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateVerificationBatchAndVerificationsRequest, ModifyVerificationsRequest}
 
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
@@ -73,4 +73,22 @@ class VerificationController @Inject() (
               }
         )
     }
+
+  def modifyVerifications(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      request.body
+        .validate[ModifyVerificationsRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          body =>
+            verificationService
+              .modifyVerifications(body)
+              .map(_ => NoContent)
+              .recover { case ex =>
+                logger.error("[modifyVerifications] formp-proxy create failed", ex)
+                BadGateway(Json.obj("message" -> "modify-verifications-failed"))
+              }
+        )
+    }
+
 }

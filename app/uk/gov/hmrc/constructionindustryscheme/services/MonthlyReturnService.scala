@@ -141,7 +141,8 @@ class MonthlyReturnService @Inject() (
                                    GetMonthlyReturnForEditRequest(
                                      instanceId = request.instanceId,
                                      taxYear = request.taxYear,
-                                     taxMonth = request.taxMonth
+                                     taxMonth = request.taxMonth,
+                                     isAmendment = Some(request.amendment == "Y")
                                    )
                                  )
 
@@ -175,7 +176,7 @@ class MonthlyReturnService @Inject() (
                instanceId = request.instanceId,
                taxYear = request.taxYear,
                taxMonth = request.taxMonth,
-               amendment = "N",
+               amendment = request.amendment,
                createResourceReferences = toCreate,
                deleteResourceReferences = toDelete
              )

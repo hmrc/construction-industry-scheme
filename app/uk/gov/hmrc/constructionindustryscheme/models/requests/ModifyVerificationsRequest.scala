@@ -17,15 +17,15 @@
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
+import uk.gov.hmrc.constructionindustryscheme.models.{CreateVerifications, DeleteVerifications}
 
-case class SelectedSubcontractorsRequest(
+final case class ModifyVerificationsRequest(
   instanceId: String,
-  taxYear: Int,
-  taxMonth: Int,
-  selectedSubcontractorIds: Seq[Long],
-  amendment: String
+  deleteVerifications: Option[DeleteVerifications],
+  createVerifications: Option[CreateVerifications]
 )
 
-object SelectedSubcontractorsRequest {
-  given format: OFormat[SelectedSubcontractorsRequest] = Json.format[SelectedSubcontractorsRequest]
+object ModifyVerificationsRequest {
+  given OFormat[ModifyVerificationsRequest] =
+    Json.format[ModifyVerificationsRequest]
 }

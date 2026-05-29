@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,36 +18,47 @@ package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.Logging
 import uk.gov.hmrc.auth.core.Enrolments
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.xml.CisReturnXmlBuilder
+import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisVerificationRequest
+import uk.gov.hmrc.constructionindustryscheme.services.chris.xml.CisVerificationRequestXmlBuilder
 import uk.gov.hmrc.constructionindustryscheme.services.chris.{EnvelopeProfile, GovTalkEnvelopeBuilder}
-import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHelper.*
+import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHelper.extractTaxOfficeIdentifiers
 import uk.gov.hmrc.constructionindustryscheme.utils.IrMarkProcessor.UpdatedPayloadWithIrMark
 
 import java.time.format.DateTimeFormatter
-import java.time.{LocalDateTime, YearMonth, ZoneOffset}
+import java.time.{LocalDate, LocalDateTime, ZoneOffset}
 import java.util.UUID
-import scala.util.Try
 import scala.xml.{Elem, PrettyPrinter}
 
-case class ChRISSubmission(
+case class CisVerificationSubmission(
   envelope: Elem,
   correlationId: String,
   irMark: String,
   irEnvelope: Elem
 )
 
-object ChRISSubmission extends Logging {
+object CisVerificationSubmission extends Logging {
+
   private val gatewayTimestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
   private val isoDateFmt                = DateTimeFormatter.ISO_LOCAL_DATE
   private val prettyPrinter             = new PrettyPrinter(120, 4)
 
-  private def buildChrisSubmission(
-    request: ChrisSubmissionRequest,
-    enrolments: Enrolments
-  ): ChRISSubmission = {
+  def buildPayload(
+    request: ChrisVerificationRequest,
+    enrolments: Enrolments,
+    subcontractors: Seq[SubcontractorCurrentVerification]
+  ): CisVerificationSubmission = {
+
     val correlationId    = UUID.randomUUID().toString.replace("-", "").toUpperCase
     val gatewayTimestamp = LocalDateTime.now(ZoneOffset.UTC).format(gatewayTimestampFormatter)
+
+    val periodEnd = LocalDate.now(ZoneOffset.UTC).format(isoDateFmt)
+    val sender    = if (request.isAgent) "Agent" else "Company"
+
+    val cisRequest: Elem =
+      CisVerificationRequestXmlBuilder.build(
+        request = request,
+        subs = subcontractors
+      )
 
     val (taxOfficeNumber, taxOfficeReference) =
       if (!request.isAgent) {
@@ -62,32 +73,27 @@ object ChRISSubmission extends Logging {
         (request.clientTaxOfficeNumber, request.clientTaxOfficeRef)
       }
 
-    val periodEnd = parsePeriodEnd(request.monthYear)
-    val sender    = if (request.isAgent) "Agent" else "Company"
-
-    val cisReturn: Elem = CisReturnXmlBuilder.build(request)
-
     val envelopeXml: Elem =
       GovTalkEnvelopeBuilder.build(
-        profile = EnvelopeProfile.Return,
+        profile = EnvelopeProfile.Verification,
         taxOfficeNumber = taxOfficeNumber,
         taxOfficeReference = taxOfficeReference,
         correlationId = correlationId,
         gatewayTimestamp = gatewayTimestamp,
         periodEnd = periodEnd,
         sender = sender,
-        payload = cisReturn
+        payload = cisRequest
       )
 
-    val (updatedXML, irMarkBase64, irMarkBase32, irEnvelope) = UpdatedPayloadWithIrMark(envelopeXml.toString)
+    val (updatedXML, irMarkBase64, irMarkBase32, irEnvelope) =
+      UpdatedPayloadWithIrMark(envelopeXml.toString)
 
-    val prettyXmlString = prettyPrinter.format(updatedXML)
+    val prettyXml = prettyPrinter.format(updatedXML)
 
-    logger.debug(s"Chris Envelope XML:\n$prettyXmlString")
-    logger.debug(s"[ChrisSubmissionEnvelopeBuilder] finalEnvelope: ${updatedXML.toString}")
-    logger.debug(s"[ChrisSubmissionEnvelopeBuilder] irMarkBase64: $irMarkBase64")
+    logger.debug(s"CIS Verification Envelope XML:\n$prettyXml")
+    logger.debug(s"[CisVerificationSubmission] irMarkBase64: $irMarkBase64")
 
-    ChRISSubmission(
+    CisVerificationSubmission(
       envelope = updatedXML,
       correlationId = correlationId,
       irMark = irMarkBase64,
@@ -95,20 +101,4 @@ object ChRISSubmission extends Logging {
     )
   }
 
-  def parsePeriodEnd(monthYear: String): String = {
-    val ymTry =
-      Try(YearMonth.parse(monthYear))
-        .orElse(Try(YearMonth.parse(monthYear.replace('/', '-'))))
-
-    val ym = ymTry.getOrElse {
-      throw new IllegalArgumentException(s"Invalid monthYear: $monthYear (expected YYYY-MM)")
-    }
-    ym.atDay(5).format(isoDateFmt)
-  }
-
-  def buildPayload(
-    submission: ChrisSubmissionRequest,
-    request: AuthenticatedRequest[_]
-  ): ChRISSubmission =
-    buildChrisSubmission(submission, request.enrolments)
 }

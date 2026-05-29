@@ -14,18 +14,21 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.utils
 
-import play.api.libs.json.{Json, OFormat}
+import uk.gov.hmrc.auth.core.Enrolments
 
-case class SelectedSubcontractorsRequest(
-  instanceId: String,
-  taxYear: Int,
-  taxMonth: Int,
-  selectedSubcontractorIds: Seq[Long],
-  amendment: String
-)
+object CisEnrolmentHelper {
 
-object SelectedSubcontractorsRequest {
-  given format: OFormat[SelectedSubcontractorsRequest] = Json.format[SelectedSubcontractorsRequest]
+  def extractTaxOfficeIdentifiers(
+    enrolments: Enrolments
+  ): Option[(String, String)] =
+    enrolments
+      .getEnrolment("HMRC-CIS-ORG")
+      .flatMap { e =>
+        for {
+          ton <- e.getIdentifier("TaxOfficeNumber")
+          tor <- e.getIdentifier("TaxOfficeReference")
+        } yield (ton.value, tor.value)
+      }
 }
