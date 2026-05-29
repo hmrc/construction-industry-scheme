@@ -114,6 +114,12 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             monthlyReturnId = 777L,
             decNoMoreSubPayments = Some("N")
           )
+        ),
+        monthlyReturnSubmission = Some(
+          MonthlyReturnSubmissionNewVerification(
+            submissionId = 888L,
+            submissionRequestDate = Some(LocalDateTime.of(2026, 2, 12, 11, 59, 0))
+          )
         )
       )
 
@@ -137,6 +143,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       (json \ "submission").\("submissionId").as[Long] mustBe 555L
       (json \ "monthlyReturn").\("monthlyReturnId").as[Long] mustBe 777L
+      (json \ "monthlyReturnSubmission").\("submissionId").as[Long] mustBe 888L
 
       json mustBe Json.toJson(response)
 
