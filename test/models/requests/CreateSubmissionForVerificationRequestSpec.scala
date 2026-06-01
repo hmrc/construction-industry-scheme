@@ -152,4 +152,3 @@ final class CreateSubmissionForVerificationRequestSpec extends AnyWordSpec with 
     }
   }
 }
-

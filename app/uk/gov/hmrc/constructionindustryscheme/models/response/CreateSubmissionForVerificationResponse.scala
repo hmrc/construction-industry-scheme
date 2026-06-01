@@ -23,4 +23,3 @@ final case class CreateSubmissionForVerificationResponse(submissionId: Long)
 object CreateSubmissionForVerificationResponse {
   given OFormat[CreateSubmissionForVerificationResponse] = Json.format[CreateSubmissionForVerificationResponse]
 }
-

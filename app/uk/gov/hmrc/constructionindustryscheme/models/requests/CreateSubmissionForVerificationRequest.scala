@@ -19,26 +19,25 @@ package uk.gov.hmrc.constructionindustryscheme.models.requests
 import play.api.libs.json.{Json, OFormat}
 
 case class VerificationToUpdate(
-                                 subcontractorName: String,
-                                 verificationResourceRef: Long,
-                                 proceedVerification: String
-                               )
+  subcontractorName: String,
+  verificationResourceRef: Long,
+  proceedVerification: String
+)
 
 object VerificationToUpdate {
   given OFormat[VerificationToUpdate] = Json.format[VerificationToUpdate]
 }
 
 case class CreateSubmissionForVerificationRequest(
-                                                   instanceId: String,
-                                                   verificationBatchId: Long,
-                                                   verificationBatchResourceRef: Long,
-                                                   emailRecipient: String,
-                                                   irMarkGenerated: Option[String] = None,
-                                                   verifications: Seq[VerificationToUpdate],
-                                                   agentId: Option[String] = None
-                                                 )
+  instanceId: String,
+  verificationBatchId: Long,
+  verificationBatchResourceRef: Long,
+  emailRecipient: String,
+  irMarkGenerated: Option[String] = None,
+  verifications: Seq[VerificationToUpdate],
+  agentId: Option[String] = None
+)
 
 object CreateSubmissionForVerificationRequest {
   given OFormat[CreateSubmissionForVerificationRequest] = Json.format[CreateSubmissionForVerificationRequest]
 }
-
