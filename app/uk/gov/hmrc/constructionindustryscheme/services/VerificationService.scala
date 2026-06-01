@@ -46,4 +46,9 @@ class VerificationService @Inject() (formpProxyConnector: FormpProxyConnector) {
     request: ModifyVerificationsRequest
   )(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.modifyVerifications(request)
+
+  def createSubmissionForVerification(
+    request: CreateSubmissionForVerificationRequest
+  )(implicit hc: HeaderCarrier): Future[CreateSubmissionForVerificationResponse] =
+    formpProxyConnector.createSubmissionForVerification(request)
 }

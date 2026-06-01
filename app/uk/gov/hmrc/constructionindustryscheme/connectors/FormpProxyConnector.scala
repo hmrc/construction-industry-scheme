@@ -369,4 +369,12 @@ class FormpProxyConnector @Inject() (
         if (response.status == 204) Future.unit
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
+
+  def createSubmissionForVerification(
+    request: CreateSubmissionForVerificationRequest
+  )(implicit hc: HeaderCarrier): Future[CreateSubmissionForVerificationResponse] =
+    http
+      .post(url"$base/cis/verification-batch/submission/create")
+      .withBody(Json.toJson(request))
+      .execute[CreateSubmissionForVerificationResponse]
 }
