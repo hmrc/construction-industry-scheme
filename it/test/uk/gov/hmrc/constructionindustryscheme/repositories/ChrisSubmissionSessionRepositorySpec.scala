@@ -39,6 +39,7 @@ class ChrisSubmissionSessionRepositorySpec
 
   private def newRepository(): ChrisSubmissionSessionRepository =
     GuiceApplicationBuilder()
+      .configure("schedules.batch-poller-job.enabled" -> false)
       .overrides(
         bind[MongoComponent].toInstance(mongoComponent)
       )
