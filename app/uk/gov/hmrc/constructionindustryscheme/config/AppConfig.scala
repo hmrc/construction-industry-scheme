@@ -61,4 +61,13 @@ class AppConfig @Inject() (
 
   lazy val govTalkStatusStageQueryParamEnabled: Boolean =
     config.getOptional[Boolean]("formpProxy.govTalkStatus.stageQueryParamEnabled").getOrElse(false)
+
+  val batchPollerJobEnabled: Boolean =
+    config.get[Boolean]("schedules.batch-poller-job.enabled")
+
+  val batchPollerJobDescription: String =
+    config.get[String]("schedules.batch-poller-job.description")
+
+  val batchPollerJobExpression: String =
+    config.get[String]("schedules.batch-poller-job.expression")
 }
