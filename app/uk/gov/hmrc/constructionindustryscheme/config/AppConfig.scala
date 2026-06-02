@@ -22,6 +22,7 @@ import uk.gov.hmrc.constructionindustryscheme.utils.SchemaLoader
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import javax.xml.validation.Schema
+import scala.concurrent.duration.Duration
 
 @Singleton
 class AppConfig @Inject() (
@@ -70,4 +71,7 @@ class AppConfig @Inject() (
 
   val batchPollerJobExpression: String =
     config.get[String]("schedules.batch-poller-job.expression")
+
+  val batchPollerJobLockTtl: Duration =
+    config.get[Duration]("schedules.batch-poller-job.lockTtl")
 }

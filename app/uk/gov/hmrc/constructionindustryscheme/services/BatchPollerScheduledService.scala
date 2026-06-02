@@ -17,15 +17,36 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
+import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.jobs.ScheduledService
+import uk.gov.hmrc.mongo.TimestampSupport
+import uk.gov.hmrc.mongo.lock.{LockRepository, ScheduledLockService}
 
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class BatchPollerScheduledService @Inject() () extends ScheduledService[Unit] with Logging {
+class BatchPollerScheduledService @Inject() (
+  lockRepository: LockRepository,
+  timestampSupport: TimestampSupport,
+  appConfig: AppConfig
+) extends ScheduledService[Unit]
+    with Logging {
 
-  override def invoke(implicit ec: ExecutionContext): Future[Unit] = {
-    logger.info("/admin/batchPoller invoked") // TODO: actual call to be implemented
-    Future.unit
-  }
+  private val lock: ScheduledLockService = ScheduledLockService(
+    lockRepository = lockRepository,
+    lockId = "batch-poller-job",
+    timestampSupport = timestampSupport,
+    schedulerInterval = appConfig.batchPollerJobLockTtl
+  )
+
+  override def invoke(implicit ec: ExecutionContext): Future[Unit] =
+    lock
+      .withLock {
+        logger.info("/admin/batchPoller invoked") // TODO: actual call to be implemented
+        Future.unit
+      }
+      .map {
+        case Some(_) => logger.info("batch-poller-job completed (lock acquired)")
+        case None    => logger.info("batch-poller-job skipped (lock held by another instance)")
+      }
 }
