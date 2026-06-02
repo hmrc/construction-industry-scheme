@@ -25,7 +25,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class BatchPollerScheduledService @Inject() () extends ScheduledService[Unit] with Logging {
 
   override def invoke(implicit ec: ExecutionContext): Future[Unit] = {
-    logger.info("/admin/batchPoller invoked")
+    logger.info("/admin/batchPoller invoked") // TODO: actual call to be implemented
     Future.unit
   }
 }
