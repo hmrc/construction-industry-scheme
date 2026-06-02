@@ -33,7 +33,7 @@ trait ScheduledJob extends Logging {
   val description: Option[String]
   val expression: String
 
-  lazy val scheduler: Any = QuartzSchedulerExtension(actorSystem)
+  lazy val scheduler = QuartzSchedulerExtension(actorSystem)
 
   private lazy val schedulingActorRef = actorSystem.actorOf(SchedulingActor.props)
 
