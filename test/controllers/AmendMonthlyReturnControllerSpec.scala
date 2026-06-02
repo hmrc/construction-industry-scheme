@@ -20,7 +20,6 @@ import base.SpecBase
 import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers.any
 import play.api.libs.json.Json
-import play.api.test.FakeRequest
 import play.api.test.Helpers.*
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.AmendMonthlyReturnController
