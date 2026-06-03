@@ -91,15 +91,15 @@ class VerificationController @Inject() (
         )
     }
 
-  def createSubmissionForVerification(): Action[JsValue] =
+  def createSubmissionAndUpdateVerifications(): Action[JsValue] =
     authorise(parse.json).async { implicit request =>
       request.body
-        .validate[CreateSubmissionForVerificationRequest]
+        .validate[CreateSubmissionAndUpdateVerificationsRequest]
         .fold(
           errs => Future.successful(BadRequest(JsError.toJson(errs))),
           body =>
             verificationService
-              .createSubmissionForVerification(body)
+              .createSubmissionAndUpdateVerifications(body)
               .map(res => Created(Json.toJson(res)))
               .recover { case ex =>
                 logger.error("[createSubmissionForVerification] formp-proxy create failed", ex)

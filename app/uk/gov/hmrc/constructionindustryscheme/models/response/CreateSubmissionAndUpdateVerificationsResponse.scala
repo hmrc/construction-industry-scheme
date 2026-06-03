@@ -18,8 +18,9 @@ package uk.gov.hmrc.constructionindustryscheme.models.response
 
 import play.api.libs.json.{Json, OFormat}
 
-final case class CreateSubmissionForVerificationResponse(submissionId: Long)
+final case class CreateSubmissionAndUpdateVerificationsResponse(submissionId: Long)
 
-object CreateSubmissionForVerificationResponse {
-  given OFormat[CreateSubmissionForVerificationResponse] = Json.format[CreateSubmissionForVerificationResponse]
+object CreateSubmissionAndUpdateVerificationsResponse {
+  given OFormat[CreateSubmissionAndUpdateVerificationsResponse] =
+    Json.format[CreateSubmissionAndUpdateVerificationsResponse]
 }

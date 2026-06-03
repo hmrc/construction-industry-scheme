@@ -1737,6 +1737,82 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector createSubmissionForVerification" should {
+
+    "POST /formp-proxy/cis/verification-batch/submission/create and return response model (201)" in {
+      val req = CreateSubmissionAndUpdateVerificationsRequest(
+        instanceId = instanceId,
+        verificationBatchId = 99L,
+        verificationBatchResourceRef = 7L,
+        emailRecipient = "ops@example.com",
+        irMarkGenerated = Some("IR_MARK"),
+        verifications = Seq(
+          VerificationToUpdate(
+            subcontractorName = "ACME LTD",
+            verificationResourceRef = 111L,
+            proceedVerification = "Y"
+          ),
+          VerificationToUpdate(
+            subcontractorName = "BOB BUILDER",
+            verificationResourceRef = 222L,
+            proceedVerification = "N"
+          )
+        ),
+        agentId = None
+      )
+
+      val responseJson = Json.obj("submissionId" -> 555L)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification-batch/submission/create"))
+          .withHeader("Content-Type", containing("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(201)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.createSubmissionForVerification(req).futureValue
+      Json.toJson(out) mustBe responseJson
+      out.submissionId mustBe 555L
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-2xx (e.g. 500)" in {
+      val req = CreateSubmissionAndUpdateVerificationsRequest(
+        instanceId = instanceId,
+        verificationBatchId = 99L,
+        verificationBatchResourceRef = 7L,
+        emailRecipient = "ops@example.com",
+        irMarkGenerated = Some("IR_MARK"),
+        verifications = Seq(
+          VerificationToUpdate(
+            subcontractorName = "ACME LTD",
+            verificationResourceRef = 111L,
+            proceedVerification = "Y"
+          )
+        ),
+        agentId = None
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification-batch/submission/create"))
+          .withHeader("Content-Type", containing("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("""{"message":"boom"}""")
+          )
+      )
+
+      val ex = connector.createSubmissionForVerification(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
   "FormpProxyConnector getSubmittedMonthlyReturnsData" should {
 
     "POST request to /formp-proxy/cis/monthly-return-edit and return payload (200)" in {

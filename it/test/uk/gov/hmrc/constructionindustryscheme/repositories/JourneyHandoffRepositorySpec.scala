@@ -30,7 +30,7 @@ import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 
 class JourneyHandoffRepositorySpec
-  extends SpecBase
+    extends SpecBase
     with DefaultPlayMongoRepositorySupport[JourneyHandoffData]
     with IntegrationPatience {
 

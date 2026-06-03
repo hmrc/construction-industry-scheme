@@ -371,10 +371,10 @@ class FormpProxyConnector @Inject() (
       }
 
   def createSubmissionForVerification(
-    request: CreateSubmissionForVerificationRequest
-  )(implicit hc: HeaderCarrier): Future[CreateSubmissionForVerificationResponse] =
+    request: CreateSubmissionAndUpdateVerificationsRequest
+  )(implicit hc: HeaderCarrier): Future[CreateSubmissionAndUpdateVerificationsResponse] =
     http
       .post(url"$base/cis/verification-batch/submission/create")
       .withBody(Json.toJson(request))
-      .execute[CreateSubmissionForVerificationResponse]
+      .execute[CreateSubmissionAndUpdateVerificationsResponse]
 }

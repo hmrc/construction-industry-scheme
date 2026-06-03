@@ -19,9 +19,9 @@ package models.requests
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.{JsSuccess, Json}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionForVerificationRequest, VerificationToUpdate}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateSubmissionAndUpdateVerificationsRequest, VerificationToUpdate}
 
-final class CreateSubmissionForVerificationRequestSpec extends AnyWordSpec with Matchers {
+final class CreateSubmissionAndUpdateVerificationsRequestSpec extends AnyWordSpec with Matchers {
 
   "CreateSubmissionForVerificationRequest JSON format" should {
 
@@ -51,7 +51,7 @@ final class CreateSubmissionForVerificationRequestSpec extends AnyWordSpec with 
           |""".stripMargin
       )
 
-      val result = json.validate[CreateSubmissionForVerificationRequest]
+      val result = json.validate[CreateSubmissionAndUpdateVerificationsRequest]
       result mustBe a[JsSuccess[?]]
 
       val out = result.get
@@ -91,13 +91,13 @@ final class CreateSubmissionForVerificationRequestSpec extends AnyWordSpec with 
           |""".stripMargin
       )
 
-      val out = json.as[CreateSubmissionForVerificationRequest]
+      val out = json.as[CreateSubmissionAndUpdateVerificationsRequest]
       out.agentId mustBe None
       out.verifications must have size 1
     }
 
     "write model to JSON (and include agentId only when defined)" in {
-      val modelWithAgent = CreateSubmissionForVerificationRequest(
+      val modelWithAgent = CreateSubmissionAndUpdateVerificationsRequest(
         instanceId = "abc-123",
         verificationBatchId = 99L,
         verificationBatchResourceRef = 10L,
@@ -134,7 +134,7 @@ final class CreateSubmissionForVerificationRequestSpec extends AnyWordSpec with 
     }
 
     "round-trip (model -> json -> model) without losing data" in {
-      val model = CreateSubmissionForVerificationRequest(
+      val model = CreateSubmissionAndUpdateVerificationsRequest(
         instanceId = "abc-123",
         verificationBatchId = 99L,
         verificationBatchResourceRef = 10L,
@@ -148,7 +148,7 @@ final class CreateSubmissionForVerificationRequestSpec extends AnyWordSpec with 
       )
 
       val json = Json.toJson(model)
-      json.validate[CreateSubmissionForVerificationRequest] mustBe JsSuccess(model)
+      json.validate[CreateSubmissionAndUpdateVerificationsRequest] mustBe JsSuccess(model)
     }
   }
 }

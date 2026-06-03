@@ -28,7 +28,7 @@ object VerificationToUpdate {
   given OFormat[VerificationToUpdate] = Json.format[VerificationToUpdate]
 }
 
-case class CreateSubmissionForVerificationRequest(
+case class CreateSubmissionAndUpdateVerificationsRequest(
   instanceId: String,
   verificationBatchId: Long,
   verificationBatchResourceRef: Long,
@@ -38,6 +38,7 @@ case class CreateSubmissionForVerificationRequest(
   agentId: Option[String] = None
 )
 
-object CreateSubmissionForVerificationRequest {
-  given OFormat[CreateSubmissionForVerificationRequest] = Json.format[CreateSubmissionForVerificationRequest]
+object CreateSubmissionAndUpdateVerificationsRequest {
+  given OFormat[CreateSubmissionAndUpdateVerificationsRequest] =
+    Json.format[CreateSubmissionAndUpdateVerificationsRequest]
 }

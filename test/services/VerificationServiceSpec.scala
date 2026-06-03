@@ -176,7 +176,7 @@ final class VerificationServiceSpec extends SpecBase {
 
   "VerificationService#createSubmissionForVerification" - {
 
-    val request = CreateSubmissionForVerificationRequest(
+    val request = CreateSubmissionAndUpdateVerificationsRequest(
       instanceId = "abc-123",
       verificationBatchId = 99L,
       verificationBatchResourceRef = 10L,
@@ -189,7 +189,7 @@ final class VerificationServiceSpec extends SpecBase {
       agentId = None
     )
 
-    val response = CreateSubmissionForVerificationResponse(submissionId = 555L)
+    val response = CreateSubmissionAndUpdateVerificationsResponse(submissionId = 555L)
 
     "delegates to FormpProxyConnector and returns response" in {
       val connector: FormpProxyConnector = mock[FormpProxyConnector]
@@ -198,7 +198,7 @@ final class VerificationServiceSpec extends SpecBase {
       when(connector.createSubmissionForVerification(eqTo(request))(any[HeaderCarrier]))
         .thenReturn(Future.successful(response))
 
-      service.createSubmissionForVerification(request).futureValue mustBe response
+      service.createSubmissionAndUpdateVerifications(request).futureValue mustBe response
 
       verify(connector).createSubmissionForVerification(eqTo(request))(any[HeaderCarrier])
     }
@@ -210,7 +210,7 @@ final class VerificationServiceSpec extends SpecBase {
       when(connector.createSubmissionForVerification(eqTo(request))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
-      service.createSubmissionForVerification(request).failed.futureValue.getMessage must include("boom")
+      service.createSubmissionAndUpdateVerifications(request).failed.futureValue.getMessage must include("boom")
     }
   }
 }

@@ -18,29 +18,29 @@ package models.response
 
 import base.SpecBase
 import play.api.libs.json.Json
-import uk.gov.hmrc.constructionindustryscheme.models.response.CreateSubmissionForVerificationResponse
+import uk.gov.hmrc.constructionindustryscheme.models.response.CreateSubmissionAndUpdateVerificationsResponse
 
-class CreateSubmissionForVerificationResponseSpec extends SpecBase {
+class CreateSubmissionAndUpdateVerificationsResponseSpec extends SpecBase {
 
   "CreateSubmissionForVerificationResponse JSON format" - {
 
     "serialises to JSON" in {
-      val model = CreateSubmissionForVerificationResponse(submissionId = 12345L)
+      val model = CreateSubmissionAndUpdateVerificationsResponse(submissionId = 12345L)
 
       Json.toJson(model) mustBe Json.obj("submissionId" -> 12345L)
     }
 
     "deserialises from JSON" in {
       val json  = Json.obj("submissionId" -> 12345L)
-      val model = json.as[CreateSubmissionForVerificationResponse]
+      val model = json.as[CreateSubmissionAndUpdateVerificationsResponse]
 
-      model mustBe CreateSubmissionForVerificationResponse(submissionId = 12345L)
+      model mustBe CreateSubmissionAndUpdateVerificationsResponse(submissionId = 12345L)
     }
 
     "round-trips (writes then reads)" in {
-      val model   = CreateSubmissionForVerificationResponse(submissionId = 999L)
+      val model   = CreateSubmissionAndUpdateVerificationsResponse(submissionId = 999L)
       val json    = Json.toJson(model)
-      val decoded = json.as[CreateSubmissionForVerificationResponse]
+      val decoded = json.as[CreateSubmissionAndUpdateVerificationsResponse]
 
       decoded mustBe model
     }
