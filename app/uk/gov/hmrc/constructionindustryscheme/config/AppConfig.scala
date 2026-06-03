@@ -70,8 +70,9 @@ class AppConfig @Inject() (
     config.get[String]("schedules.batch-poller-job.description")
 
   val batchPollerJobExpression: String =
-    config.get[String]("schedules.batch-poller-job.expression")
+    config.get[String]("schedules.batch-poller-job.expression").replaceAll("_", " ")
 
-  val batchPollerJobLockTtl: Duration =
-    config.get[Duration]("schedules.batch-poller-job.lockTtl")
+  val batchPollerJobLockTtl: Duration = Duration(
+    config.get[String]("schedules.batch-poller-job.lockTtl").replaceAll("_", " ")
+  )
 }
