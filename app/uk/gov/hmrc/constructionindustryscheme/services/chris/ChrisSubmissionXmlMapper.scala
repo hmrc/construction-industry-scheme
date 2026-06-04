@@ -77,6 +77,9 @@ object ChrisSubmissionXmlMapper extends ChrisXmlMapper {
                 err.errorType.equalsIgnoreCase("fatal") =>
             FATAL_ERROR
 
+          case Some(err) if Set("3000", "2005", "1000").contains(err.errorNumber) =>
+            STARTED
+
           case _ =>
             FATAL_ERROR
         }
