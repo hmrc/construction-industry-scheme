@@ -16,7 +16,8 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
-import play.api.libs.json.{Json, OFormat}
+import play.api.libs.json.{Json, OFormat, Writes}
+import scala.collection.immutable.Map
 
 sealed trait SendEmailRequest {
   def to: List[String]
@@ -24,7 +25,16 @@ sealed trait SendEmailRequest {
   def parameters: Map[String, String]
 }
 
-object SendEmailRequest {}
+object SendEmailRequest {
+
+  implicit val writes: Writes[SendEmailRequest] = {
+    case request: NilMonthlyReturnOrgSuccessEmail =>
+      Json.toJson(request)(NilMonthlyReturnOrgSuccessEmail.format)
+
+    case request: SubcontractorVerificationEmail =>
+      Json.toJson(request)(SubcontractorVerificationEmail.format)
+  }
+}
 
 final case class NilMonthlyReturnOrgSuccessEmail(
   to: List[String],
@@ -46,5 +56,23 @@ object NilMonthlyReturnOrgSuccessEmail {
         "month" -> month,
         "year"  -> year
       )
+    )
+}
+
+final case class SubcontractorVerificationEmail(
+  to: List[String],
+  templateId: String,
+  parameters: Map[String, String] = Map.empty[String, String]
+) extends SendEmailRequest
+
+object SubcontractorVerificationEmail {
+  private val TemplateId = "dtr_subcontractor_verification"
+
+  implicit val format: OFormat[SubcontractorVerificationEmail] = Json.format[SubcontractorVerificationEmail]
+
+  def apply(email: String): SubcontractorVerificationEmail =
+    SubcontractorVerificationEmail(
+      to = List(email),
+      templateId = TemplateId
     )
 }

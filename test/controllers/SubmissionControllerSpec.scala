@@ -1142,6 +1142,85 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
   }
 
+  "sendEmailForVerification" - {
+
+    "returns 202 when service succeeds" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+      val controller        = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      val body = Json.obj(
+        "email" -> "test@test.com"
+      )
+
+      when(submissionService.sendEmailForVerification(any[SubcontractorVerificationEmailRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val req =
+        FakeRequest(POST, "/verification-batch/send-email")
+          .withBody(body)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.sendEmailForVerification(req)
+
+      status(result) mustBe 202
+
+      verify(submissionService, times(1)).sendEmailForVerification(any[SubcontractorVerificationEmailRequest])(
+        any[HeaderCarrier]
+      )
+    }
+
+    "returns 400 when request JSON is invalid" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+      val controller        = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      val badJson = Json.obj("notEmail" -> "test@test.com")
+
+      val req =
+        FakeRequest(POST, "/verification-batch/send-email")
+          .withBody(badJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.sendEmailForVerification(req)
+
+      status(result) mustBe BAD_REQUEST
+      verifyNoInteractions(submissionService)
+    }
+
+    "returns 502 when service fails" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+      val controller        = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      val body = Json.obj(
+        "email" -> "test@test.com"
+      )
+
+      when(submissionService.sendEmailForVerification(any[SubcontractorVerificationEmailRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req =
+        FakeRequest(POST, "/verification-batch/send-email")
+          .withBody(body)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.sendEmailForVerification(req)
+
+      status(result) mustBe BAD_GATEWAY
+      (contentAsJson(result) \ "message").as[String] mustBe "send-success-email-failed"
+    }
+  }
+
   private def mkMeta(
     corrId: String = "CID123",
     pollSecs: Int = 15,
