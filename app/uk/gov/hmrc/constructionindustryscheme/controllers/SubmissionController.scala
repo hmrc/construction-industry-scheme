@@ -236,7 +236,7 @@ class SubmissionController @Inject() (
 
     auditService.monthlyNilReturnRequestEvent(createMonthlyNilReturnRequestJson(payload))
 
-    xmlValidator.validate(payload.irEnvelope) match {
+    xmlValidator.validate(payload.irEnvelope, appConfig.cisReturnSchema) match {
       case Failure(e) =>
         logger.error(s"ChRIS XML validation failed: ${e.getMessage}", e)
         Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
