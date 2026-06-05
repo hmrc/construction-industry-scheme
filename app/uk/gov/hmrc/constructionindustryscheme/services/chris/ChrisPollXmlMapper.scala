@@ -16,47 +16,16 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services.chris
 
-import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisSubmissionXmlMapper.{intAttrOptional, textOptional}
 
-import java.time.{Instant, LocalDateTime, ZoneId}
-import scala.util.Try
+import java.time.Instant
 import scala.xml.*
 
 object ChrisPollXmlMapper extends ChrisXmlMapper {
 
-  def parse(xml: String, now: Instant = Instant.now()): Either[String, ChrisPollResponse] = {
-    val doc            = XML.loadString(xml)
-    val messageDetails = doc \\ "Header" \\ "MessageDetails"
-
-    for {
-      qualifier                     <- textRequired(messageDetails, "Qualifier", "Qualifier")
-      correlationId                 <- textRequired(messageDetails, "CorrelationID", "CorrelationID")
-      endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
-      pollIntervalOpt: Option[Int]   = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
-      lastMessageDateOpt            <- gatewayTimeStampOrNow(messageDetails, now)
-      acceptedTime                   = textOptional(doc \\ "Body" \ "SuccessResponse", "AcceptedTime")
-      errOpt                        <- parseError(qualifier, doc)
-      irMark                         = textOptional(
-                                         doc \\ "Body" \ "SuccessResponse" \ "IRmarkReceipt" \ "Signature" \ "SignedInfo" \ "Reference",
-                                         "DigestValue"
-                                       )
-    } yield {
-      val status: SubmissionStatus = derivePollStatus(qualifier, errOpt, doc)
-      ChrisPollResponse(
-        status,
-        correlationId,
-        endpointUrlOpt,
-        pollIntervalOpt,
-        errOpt.map(Json.toJson(_)),
-        irMark,
-        lastMessageDateOpt,
-        acceptedTime
-      )
-    }
-  }
+  def parse(xml: String, now: Instant = Instant.now()): Either[String, ChrisPollResponse] =
+    parsePoll(xml, now)(derivePollStatus)
 
   /** Stage 2 (polling) status mapping. */
   private def derivePollStatus(
@@ -86,38 +55,4 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
         }
       case _                 => FATAL_ERROR
     }
-
-  /** Detects IRMark mismatch error inside the <Body> ErrorResponse. */
-  private def isIrmarkMismatch(doc: Elem): Boolean = {
-    val bodyErrors = (doc \\ "Body") \\ "Error"
-
-    bodyErrors.exists { e =>
-      val number    = (e \ "Number").text.trim
-      val errorType = (e \ "Type").text.trim
-      val text      = (e \ "Text").text.trim.toLowerCase
-
-      number == "2021" &&
-      errorType.equalsIgnoreCase("business") &&
-      text.contains("irmark") &&
-      text.contains("incorrect")
-    }
-  }
-
-  private def gatewayTimeStampOrNow(messageDetails: NodeSeq, now: Instant): Either[String, Option[String]] =
-    textOptional(messageDetails, "GatewayTimestamp") match {
-      case Some(raw) => normaliseGatewayTimestamp(raw).map(ts => Some(ts): Option[String])
-      case None      => Right(Some(now.toString): Option[String])
-    }
-
-  private val UkZone = ZoneId.of("Europe/London")
-
-  private def normaliseGatewayTimestamp(raw: String): Either[String, String] = {
-    val instant =
-      Try(LocalDateTime.parse(raw).atZone(UkZone).toInstant).toEither
-
-    instant match {
-      case Right(value) => Right(value.toString)
-      case Left(err)    => Left(s"Failed to parse GatewayTimestamp '$raw': ${err.getMessage}")
-    }
-  }
 }
