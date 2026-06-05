@@ -17,71 +17,16 @@
 package uk.gov.hmrc.constructionindustryscheme.services.chris
 
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisPollXmlMapper.textOptional
-
-import scala.xml.*
 
 object ChrisSubmissionXmlMapper extends ChrisXmlMapper {
 
-  def parse(xml: String): Either[String, SubmissionResult] = {
-    val doc               = XML.loadString(xml)
-    val messageDetails    = doc \\ "Header" \\ "MessageDetails"
-    val bodyErrorResponse = doc \\ "Body" \\ "ErrorResponse" \\ "Error"
-
-    for {
-      qualifier                     <- textRequired(messageDetails, "Qualifier", "Qualifier")
-      function                      <- textRequired(messageDetails, "Function", "Function")
-      className                     <- textRequired(messageDetails, "Class", "Class")
-      correlationId                 <- textRequired(messageDetails, "CorrelationID", "CorrelationID")
-      gatewayTimestampOpt            = textOptional(messageDetails, "GatewayTimestamp")
-      acceptedTime                   = textOptional(doc \\ "Body" \ "SuccessResponse", "AcceptedTime")
-      pollIntervalOpt: Option[Int]   = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
-      endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
-      errOpt                        <- parseError(qualifier, doc)
-      bodyErrorNumber                = textOptional(bodyErrorResponse, "Number")
-      bodyErrorType                  = textOptional(bodyErrorResponse, "Type")
-    } yield {
-      val status: SubmissionStatus = deriveInitialStatus(qualifier, errOpt)
-
-      val pollInt = pollIntervalOpt.getOrElse(0)
-      val epUrl   = endpointUrlOpt.getOrElse("")
-
-      val meta = GovTalkMeta(
-        qualifier = qualifier,
-        function = function,
-        className = className,
-        correlationId = correlationId,
-        gatewayTimestamp = gatewayTimestampOpt,
-        responseEndPoint = ResponseEndPoint(epUrl, pollInt),
-        error = errOpt,
-        acceptedTime = acceptedTime
-      )
-
-      SubmissionResult(status, xml, meta)
-    }
-  }
+  def parse(xml: String): Either[String, SubmissionResult] =
+    parseSubmission(xml)(deriveInitialStatus)
 
   /** Stage 1 (initial submit) status mapping – ACK or FATAL only. */
-  private def deriveInitialStatus(
-    qualifier: String,
-    errOpt: Option[GovTalkError]
-  ): SubmissionStatus =
+  private def deriveInitialStatus(qualifier: String): SubmissionStatus =
     qualifier.toLowerCase match {
-      case "acknowledgement" =>
-        ACCEPTED
-
-      case "error" =>
-        errOpt match {
-          case Some(err)
-              if err.errorNumber == "3000" &&
-                err.errorType.equalsIgnoreCase("fatal") =>
-            FATAL_ERROR
-
-          case _ =>
-            FATAL_ERROR
-        }
-
-      case _ =>
-        FATAL_ERROR
+      case "acknowledgement" => ACCEPTED
+      case _                 => FATAL_ERROR
     }
 }
