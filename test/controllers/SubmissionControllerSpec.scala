@@ -54,7 +54,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "isAgent"               -> true,
     "clientTaxOfficeNumber" -> "123",
     "clientTaxOfficeRef"    -> "ABC456",
-    "returnType"            -> "monthlyNilReturn",
+    "returnType"            -> "MonthlyNilReturn",
     "informationCorrect"    -> "yes",
     "inactivity"            -> "no"
   )
@@ -626,7 +626,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     val validCreateJson = Json.obj(
       "instanceId" -> "123",
       "taxYear"    -> 2024,
-      "taxMonth"   -> 4
+      "taxMonth"   -> 4,
+      "amendment"  -> "N"
     )
 
     "returns 201 with submissionId when service returns id" in {
@@ -720,6 +721,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       "instanceId"        -> "123",
       "taxYear"           -> 2024,
       "taxMonth"          -> 4,
+      "amendment"         -> "N",
       "submittableStatus" -> "REJECTED"
     )
 

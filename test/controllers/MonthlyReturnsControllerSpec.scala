@@ -668,7 +668,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           instanceId = "abc-123",
           taxYear = 2025,
           taxMonth = 1,
-          selectedSubcontractorIds = Seq(1L, 2L, 3L)
+          selectedSubcontractorIds = Seq(1L, 2L, 3L),
+          amendment = "Y"
         )
 
         when(mockMonthlyReturnService.syncMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier]))
@@ -690,7 +691,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           instanceId = "abc-123",
           taxYear = 2025,
           taxMonth = 1,
-          selectedSubcontractorIds = Seq(1L)
+          selectedSubcontractorIds = Seq(1L),
+          amendment = "Y"
         )
 
         val boom = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
@@ -714,7 +716,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           instanceId = "abc-123",
           taxYear = 2025,
           taxMonth = 1,
-          selectedSubcontractorIds = Seq(1L)
+          selectedSubcontractorIds = Seq(1L),
+          amendment = "Y"
         )
 
         when(mockMonthlyReturnService.syncMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier]))
@@ -739,7 +742,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           instanceId = "abc-123",
           taxYear = 2025,
           taxMonth = 1,
-          subcontractorId = 123L
+          subcontractorId = 123L,
+          amendment = "N"
         )
 
         when(mockMonthlyReturnService.deleteMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier]))
@@ -761,7 +765,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           instanceId = "abc-123",
           taxYear = 2025,
           taxMonth = 1,
-          subcontractorId = 123L
+          subcontractorId = 123L,
+          amendment = "N"
         )
 
         val boom = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
@@ -785,7 +790,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           instanceId = "abc-123",
           taxYear = 2025,
           taxMonth = 1,
-          subcontractorId = 123L
+          subcontractorId = 123L,
+          amendment = "N"
         )
 
         when(mockMonthlyReturnService.deleteMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier]))
@@ -803,6 +809,77 @@ class MonthlyReturnsControllerSpec extends SpecBase {
       }
     }
 
+    "POST /monthly-return-items/delete-all (deleteAllMonthlyReturnItems)" - {
+
+      "return 204 NoContent when service succeeds" in new SetupAuthOnly {
+        val reqBody = DeleteAllMonthlyReturnItemsRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          amendment = "N"
+        )
+
+        when(mockMonthlyReturnService.deleteAllMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.successful(()))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result: Future[Result] = call(controller.deleteAllMonthlyReturnItems(), request)
+
+        status(result) mustBe NO_CONTENT
+        verify(mockMonthlyReturnService).deleteAllMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier])
+      }
+
+      "return upstream status + message when service fails with UpstreamErrorResponse" in new SetupAuthOnly {
+        val reqBody = DeleteAllMonthlyReturnItemsRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          amendment = "N"
+        )
+
+        val boom = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
+
+        when(mockMonthlyReturnService.deleteAllMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(boom))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result: Future[Result] = call(controller.deleteAllMonthlyReturnItems(), request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
+      }
+
+      "return 502 BadGateway with fixed message when service fails with NonFatal" in new SetupAuthOnly {
+        val reqBody = DeleteAllMonthlyReturnItemsRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          amendment = "N"
+        )
+
+        when(mockMonthlyReturnService.deleteAllMonthlyReturnItems(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(new RuntimeException("boom")))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result: Future[Result] = call(controller.deleteAllMonthlyReturnItems(), request)
+
+        status(result) mustBe BAD_GATEWAY
+        contentAsJson(result) mustBe Json.obj("message" -> "delete-all-monthly-return-items-failed")
+      }
+    }
+
     "POST /cis/monthly-return-item/update (updateMonthlyReturnItem)" - {
 
       "return 204 NoContent when service succeeds" in new SetupAuthOnly {
@@ -814,7 +891,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           subcontractorName = "Tyne Test Ltd",
           totalPayments = "1200",
           costOfMaterials = "500",
-          totalDeducted = "240"
+          totalDeducted = "240",
+          amendment = "N"
         )
 
         when(mockMonthlyReturnService.updateMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier]))
@@ -840,7 +918,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           subcontractorName = "Tyne Test Ltd",
           totalPayments = "1200",
           costOfMaterials = "500",
-          totalDeducted = "240"
+          totalDeducted = "240",
+          amendment = "N"
         )
 
         val boom = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
@@ -868,7 +947,8 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           subcontractorName = "Tyne Test Ltd",
           totalPayments = "1200",
           costOfMaterials = "500",
-          totalDeducted = "240"
+          totalDeducted = "240",
+          amendment = "N"
         )
 
         when(mockMonthlyReturnService.updateMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier]))

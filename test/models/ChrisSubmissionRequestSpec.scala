@@ -59,7 +59,7 @@ class ChrisSubmissionRequestSpec extends AnyWordSpec with Matchers {
     "isAgent"               -> false,
     "clientTaxOfficeNumber" -> "",
     "clientTaxOfficeRef"    -> "",
-    "returnType"            -> "monthlyNilReturn",
+    "returnType"            -> "MonthlyNilReturn",
     "informationCorrect"    -> "yes",
     "inactivity"            -> "no"
   )

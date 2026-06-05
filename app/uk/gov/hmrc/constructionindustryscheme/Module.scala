@@ -19,6 +19,9 @@ package uk.gov.hmrc.constructionindustryscheme
 import com.google.inject.AbstractModule
 import uk.gov.hmrc.constructionindustryscheme.actions.{AgentAction, AuthAction, DefaultAgentAction, DefaultAuthAction}
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
+import uk.gov.hmrc.constructionindustryscheme.jobs.BatchPollerJob
+import uk.gov.hmrc.mongo.{CurrentTimestampSupport, TimestampSupport}
+import uk.gov.hmrc.mongo.lock.{LockRepository, MongoLockRepository}
 
 import java.time.{Clock, ZoneOffset}
 
@@ -29,5 +32,8 @@ class Module extends AbstractModule {
     bind(classOf[AgentAction]).to(classOf[DefaultAgentAction]).asEagerSingleton()
     bind(classOf[AppConfig]).asEagerSingleton()
     bind(classOf[Clock]).toInstance(Clock.systemDefaultZone.withZone(ZoneOffset.UTC))
+    bind(classOf[TimestampSupport]).to(classOf[CurrentTimestampSupport])
+    bind(classOf[LockRepository]).to(classOf[MongoLockRepository])
+    bind(classOf[BatchPollerJob]).asEagerSingleton()
   }
 }

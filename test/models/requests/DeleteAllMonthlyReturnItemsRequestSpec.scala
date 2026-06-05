@@ -16,25 +16,31 @@
 
 package models.requests
 
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
+import base.SpecBase
 import play.api.libs.json.*
-import uk.gov.hmrc.constructionindustryscheme.models.requests.SelectedSubcontractorsRequest
+import uk.gov.hmrc.constructionindustryscheme.models.requests.DeleteAllMonthlyReturnItemsRequest
 
-class SelectedSubcontractorsRequestSpec extends AnyWordSpec with Matchers {
+class DeleteAllMonthlyReturnItemsRequestSpec extends SpecBase {
 
-  "SelectedSubcontractorsRequest JSON format" should {
-    "serialize and deserialize" in {
-      val model = SelectedSubcontractorsRequest(
-        instanceId = "instance-1",
-        taxYear = 2026,
-        taxMonth = 2,
-        selectedSubcontractorIds = Seq(1L, 2L, 3L),
+  "DeleteAllMonthlyReturnItemsRequest" - {
+
+    "serialize and deserialize JSON" in {
+      val model = DeleteAllMonthlyReturnItemsRequest(
+        instanceId = "test-instance-id",
+        taxYear = 2024,
+        taxMonth = 5,
         amendment = "N"
       )
 
-      val json = Json.toJson(model)
-      json.validate[SelectedSubcontractorsRequest].asOpt shouldBe Some(model)
+      val json = Json.obj(
+        "instanceId" -> "test-instance-id",
+        "taxYear"    -> 2024,
+        "taxMonth"   -> 5,
+        "amendment"  -> "N"
+      )
+
+      Json.toJson(model) mustBe json
+      json.as[DeleteAllMonthlyReturnItemsRequest] mustBe model
     }
   }
 }

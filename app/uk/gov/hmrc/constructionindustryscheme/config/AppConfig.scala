@@ -22,6 +22,7 @@ import uk.gov.hmrc.constructionindustryscheme.utils.SchemaLoader
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import javax.xml.validation.Schema
+import scala.concurrent.duration.Duration
 
 @Singleton
 class AppConfig @Inject() (
@@ -61,4 +62,17 @@ class AppConfig @Inject() (
 
   lazy val govTalkStatusStageQueryParamEnabled: Boolean =
     config.getOptional[Boolean]("formpProxy.govTalkStatus.stageQueryParamEnabled").getOrElse(false)
+
+  val batchPollerJobEnabled: Boolean =
+    config.get[Boolean]("schedules.batch-poller-job.enabled")
+
+  val batchPollerJobDescription: String =
+    config.get[String]("schedules.batch-poller-job.description")
+
+  val batchPollerJobExpression: String =
+    config.get[String]("schedules.batch-poller-job.expression").replaceAll("_", " ")
+
+  val batchPollerJobLockTtl: Duration = Duration(
+    config.get[String]("schedules.batch-poller-job.lockTtl").replaceAll("_", " ")
+  )
 }

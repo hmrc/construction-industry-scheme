@@ -55,7 +55,8 @@ trait SpecBase
         "microservice.services.auth.host"                -> "localhost",
         "microservice.services.auth.port"                -> 11111,
         "microservice.services.rds-datacache-proxy.host" -> "localhost",
-        "microservice.services.rds-datacache-proxy.port" -> 11111
+        "microservice.services.rds-datacache-proxy.port" -> 11111,
+        "schedules.batch-poller-job.enabled"             -> false
       )
       .build()
 

@@ -45,7 +45,7 @@ class SubmissionControllerIntegrationSpec
     "isAgent"               -> false,
     "clientTaxOfficeNumber" -> "",
     "clientTaxOfficeRef"    -> "",
-    "returnType"            -> "monthlyNilReturn"
+    "returnType"            -> "MonthlyNilReturn"
   )
 
   private val createUrl                    = s"$base/submissions/create"
@@ -61,6 +61,7 @@ class SubmissionControllerIntegrationSpec
         "instanceId"        -> "123",
         "taxYear"           -> 2024,
         "taxMonth"          -> 4,
+        "amendment"         -> "N",
         "hmrcMarkGenerated" -> "Y"
       )
 
@@ -161,6 +162,7 @@ class SubmissionControllerIntegrationSpec
         "instanceId"        -> "123",
         "taxYear"           -> 2024,
         "taxMonth"          -> 4,
+        "amendment"         -> "N",
         "submittableStatus" -> "ACCEPTED"
       )
 
@@ -215,6 +217,7 @@ class SubmissionControllerIntegrationSpec
         "instanceId"        -> "123",
         "taxYear"           -> 2024,
         "taxMonth"          -> 4,
+        "amendment"         -> "N",
         "submittableStatus" -> "REJECTED"
       )
 

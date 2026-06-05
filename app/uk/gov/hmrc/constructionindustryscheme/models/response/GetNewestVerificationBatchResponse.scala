@@ -25,7 +25,8 @@ final case class GetNewestVerificationBatchResponse(
   verificationBatch: Option[VerificationBatch],
   verifications: Seq[Verification],
   submission: Option[SubmissionNewVerification],
-  monthlyReturn: Option[MonthlyReturnNewVerification]
+  monthlyReturn: Option[MonthlyReturnNewVerification],
+  monthlyReturnSubmission: Option[MonthlyReturnSubmissionNewVerification]
 )
 
 object GetNewestVerificationBatchResponse {

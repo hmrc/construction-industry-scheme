@@ -14,18 +14,10 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.jobs
 
-import play.api.libs.json.{Json, OFormat}
+import scala.concurrent.{ExecutionContext, Future}
 
-case class SelectedSubcontractorsRequest(
-  instanceId: String,
-  taxYear: Int,
-  taxMonth: Int,
-  selectedSubcontractorIds: Seq[Long],
-  amendment: String
-)
-
-object SelectedSubcontractorsRequest {
-  given format: OFormat[SelectedSubcontractorsRequest] = Json.format[SelectedSubcontractorsRequest]
+trait ScheduledService[R] {
+  def invoke(implicit ec: ExecutionContext): Future[R]
 }
