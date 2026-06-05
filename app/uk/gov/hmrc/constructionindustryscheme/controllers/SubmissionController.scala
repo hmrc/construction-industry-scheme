@@ -163,24 +163,7 @@ class SubmissionController @Inject() (
               }
         )
     }
-
-  def sendEmailForVerification: Action[JsValue] =
-    authorise(parse.json).async { implicit req =>
-      req.body
-        .validate[SubcontractorVerificationEmailRequest]
-        .fold(
-          errs => Future.successful(BadRequest(JsError.toJson(errs))),
-          params =>
-            submissionService
-              .sendEmailForVerification(params)
-              .map(_ => Accepted)
-              .recover { case ex =>
-                logger.error("[sendSuccessfulEmail] failed", ex)
-                BadGateway(Json.obj("message" -> "send-success-email-failed"))
-              }
-        )
-    }
-
+  
   def createMonthlyNilReturnRequestJson(payload: ChRISSubmission): JsValue =
     XmlToJsonConvertor.convertXmlToJson(payload.envelope.toString) match {
       case XmlConversionResult(true, Some(json), _)   => json
