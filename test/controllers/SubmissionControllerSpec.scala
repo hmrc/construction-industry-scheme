@@ -518,7 +518,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
-        .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
+        .thenReturn(Future.successful(mkSubmissionResult(DEPARTMENTAL_ERROR)))
       when(xmlValidator.validate(any())).thenReturn(Failure(new Exception("invalid!")))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -530,7 +530,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       status(result) mustBe OK
       val js = contentAsJson(result)
       (js \ "submissionId").as[String] mustBe submissionId
-      (js \ "status").as[String] mustBe "SUBMITTED_NO_RECEIPT"
+      (js \ "status").as[String] mustBe "DEPARTMENTAL_ERROR"
 
       verify(submissionService).submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
