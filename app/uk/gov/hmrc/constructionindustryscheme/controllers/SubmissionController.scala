@@ -163,7 +163,7 @@ class SubmissionController @Inject() (
               }
         )
     }
-  
+
   def createMonthlyNilReturnRequestJson(payload: ChRISSubmission): JsValue =
     XmlToJsonConvertor.convertXmlToJson(payload.envelope.toString) match {
       case XmlConversionResult(true, Some(json), _)   => json

@@ -1141,7 +1141,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (contentAsJson(result) \ "message").as[String] mustBe "send-success-email-failed"
     }
   }
-  
+
   private def mkMeta(
     corrId: String = "CID123",
     pollSecs: Int = 15,
