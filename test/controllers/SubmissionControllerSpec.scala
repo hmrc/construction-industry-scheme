@@ -493,7 +493,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
-    "returns RuntimeException if xmlValidator.validate fails" in {
+    "not return RuntimeException and allow the user to continue if xmlValidator.validate fails" in {
       val submissionService = mock[SubmissionService]
       val xmlValidator      = mock[XmlValidator]
       val controller        = mkController(
@@ -505,6 +505,18 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
+      when(
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
       when(xmlValidator.validate(any())).thenReturn(Failure(new Exception("invalid!")))
@@ -515,9 +527,12 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val result = controller.submitToChris(submissionId)(req)
 
-      intercept[RuntimeException] {
-        await(result)
-      }
+      status(result) mustBe OK
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "SUBMITTED_NO_RECEIPT"
+
+      verify(submissionService).submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
     "returns 500 InternalServerError when GovTalk initialisation/update fails in recoverable ChRIS failure flow" in {

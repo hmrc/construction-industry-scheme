@@ -239,19 +239,19 @@ class SubmissionController @Inject() (
     xmlValidator.validate(payload.irEnvelope) match {
       case Failure(e) =>
         logger.error(s"ChRIS XML validation failed: ${e.getMessage}", e)
-        Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
 
       case Success(_) =>
         logger.info(
           s"ChRIS XML validation successful. Sending ChRIS submission for a correlationId = ${payload.correlationId}."
         )
-        submissionService
-          .submitToChris(payload)
-          .flatMap(res => handleChrisResponse(submissionId, csr, payload, res))
-          .recoverWith { case NonFatal(ex) =>
-            handleChrisFailure(submissionId, csr, payload, ex)
-          }
     }
+
+    submissionService
+      .submitToChris(payload)
+      .flatMap(res => handleChrisResponse(submissionId, csr, payload, res))
+      .recoverWith { case NonFatal(ex) =>
+        handleChrisFailure(submissionId, csr, payload, ex)
+      }
   }
 
   private def handleChrisResponse(
