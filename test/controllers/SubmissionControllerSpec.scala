@@ -493,7 +493,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
-    "not return RuntimeException and allow the user to continue if xmlValidator.validate fails" in {
+    "allow the user to continue if xmlValidator.validate fails" in {
       val submissionService = mock[SubmissionService]
       val xmlValidator      = mock[XmlValidator]
       val controller        = mkController(
