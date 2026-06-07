@@ -21,7 +21,6 @@ import org.mockito.Mockito.when
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
-import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.utils.{SchemaValidator, XmlValidator}
 
 import javax.xml.validation.Schema
@@ -98,33 +97,45 @@ class XmlValidatorSpec extends AnyWordSpec with Matchers with MockitoSugar {
 
   "XmlValidator" should {
 
-    val mockSchemaValidator = mock[SchemaValidator]
-    val mockConfig          = mock[AppConfig]
-    val mockSchema          = mock[Schema]
-
-    when(mockConfig.schema).thenReturn(mockSchema)
-    val validator = new XmlValidator(mockConfig, mockSchemaValidator)
-
     "validate returns Success(Unit) if schema validation returns true" in {
-      when(mockSchemaValidator.validate(any[String], any[Schema])).thenReturn(true)
-      val result = validator.validate(validXml)
-      assert(result == Success(()))
+      val mockSchemaValidator = mock[SchemaValidator]
+      val mockSchema          = mock[Schema]
+      val validator           = new XmlValidator(mockSchemaValidator)
+
+      when(mockSchemaValidator.validate(any[String], any[Schema]))
+        .thenReturn(true)
+
+      val result = validator.validate(validXml, mockSchema)
+
+      result shouldBe Success(())
     }
 
     "validate returns Failure(RuntimeException) if schema validation returns false" in {
-      when(mockSchemaValidator.validate(any[String], any[Schema])).thenReturn(false)
-      val result = validator.validate(invalidXml)
-      assert(result.isFailure)
-      assert(result.failed.get.getMessage.contains("XML validation failed against schema"))
+      val mockSchemaValidator = mock[SchemaValidator]
+      val mockSchema          = mock[Schema]
+      val validator           = new XmlValidator(mockSchemaValidator)
+
+      when(mockSchemaValidator.validate(any[String], any[Schema]))
+        .thenReturn(false)
+
+      val result = validator.validate(invalidXml, mockSchema)
+
+      result.isFailure           shouldBe true
+      result.failed.get.getMessage should include("XML validation failed against schema")
     }
 
     "validate returns Failure if an exception is thrown" in {
+      val mockSchemaValidator = mock[SchemaValidator]
+      val mockSchema          = mock[Schema]
+      val validator           = new XmlValidator(mockSchemaValidator)
+
       when(mockSchemaValidator.validate(any[String], any[Schema]))
         .thenThrow(new RuntimeException("Boom!"))
-      val result = validator.validate(invalidXml)
-      assert(result.isFailure)
-      assert(result.failed.get.getMessage.contains("Boom!"))
-    }
 
+      val result = validator.validate(invalidXml, mockSchema)
+
+      result.isFailure           shouldBe true
+      result.failed.get.getMessage should include("Boom!")
+    }
   }
 }

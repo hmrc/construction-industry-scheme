@@ -39,6 +39,7 @@ import uk.gov.hmrc.play.audit.http.connector.AuditResult
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl
 
 import java.time.{Clock, Instant}
+import javax.xml.validation.Schema
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 import scala.xml.NodeSeq
@@ -103,7 +104,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
-      when(xmlValidator.validate(any[NodeSeq]))
+      when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
       when(
         submissionService.processInitialChrisAck(
@@ -151,7 +152,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(xmlValidator.validate(any[NodeSeq]))
+      when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
       when(
         submissionService.processInitialChrisAck(
@@ -200,7 +201,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(xmlValidator.validate(any[NodeSeq]))
+      when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
       when(
         submissionService.processInitialChrisAck(
@@ -251,7 +252,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(xmlValidator.validate(any[NodeSeq]))
+      when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
       when(
         submissionService.processInitialChrisAck(
@@ -309,7 +310,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
-      when(xmlValidator.validate(any[NodeSeq]))
+      when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
 
       when(
@@ -375,7 +376,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
-      when(xmlValidator.validate(any[NodeSeq]))
+      when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
 
       when(
@@ -432,7 +433,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(xmlValidator.validate(any[NodeSeq])).thenReturn(Success(()))
+      when(xmlValidator.validate(any[NodeSeq], any[Schema])).thenReturn(Success(()))
 
       val badJson = Json.obj("utr" -> 123)
 
@@ -462,7 +463,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(xmlValidator.validate(any[NodeSeq]))
+      when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
@@ -507,7 +508,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
-      when(xmlValidator.validate(any())).thenReturn(Failure(new Exception("invalid!")))
+      when(xmlValidator.validate(any(), any())).thenReturn(Failure(new Exception("invalid!")))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
         .withBody(validJson)
@@ -533,7 +534,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(xmlValidator.validate(any[NodeSeq]))
+      when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
 
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
@@ -578,7 +579,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
-      when(xmlValidator.validate(any[NodeSeq]))
+      when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
 
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
