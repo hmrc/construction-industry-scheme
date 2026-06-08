@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,25 +18,13 @@ package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
 
-import java.time.LocalDateTime
-
-case class UpdateSubmissionRequest(
+case class DeleteAllMonthlyReturnItemsRequest(
   instanceId: String,
   taxYear: Int,
   taxMonth: Int,
-  hmrcMarkGenerated: Option[String] = None,
-  submittableStatus: String,
-  amendment: String,
-  hmrcMarkGgis: Option[String] = None,
-  submissionRequestDate: Option[LocalDateTime] = None,
-  acceptedTime: Option[String] = None,
-  emailRecipient: Option[String] = None,
-  agentId: Option[String] = None,
-  govtalkErrorCode: Option[String] = None,
-  govtalkErrorType: Option[String] = None,
-  govtalkErrorMessage: Option[String] = None
+  amendment: String
 )
 
-object UpdateSubmissionRequest {
-  implicit val format: OFormat[UpdateSubmissionRequest] = Json.format[UpdateSubmissionRequest]
+object DeleteAllMonthlyReturnItemsRequest {
+  given format: OFormat[DeleteAllMonthlyReturnItemsRequest] = Json.format[DeleteAllMonthlyReturnItemsRequest]
 }

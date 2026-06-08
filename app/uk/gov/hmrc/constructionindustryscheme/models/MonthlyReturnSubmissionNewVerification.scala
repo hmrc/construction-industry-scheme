@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.libs.json.{Json, OFormat}
 
-case class DeleteMonthlyReturnItemRequest(
-  instanceId: String,
-  taxYear: Int,
-  taxMonth: Int,
-  subcontractorId: Long,
-  amendment: String
+import java.time.LocalDateTime
+
+case class MonthlyReturnSubmissionNewVerification(
+  submissionId: Long,
+  submissionRequestDate: Option[LocalDateTime]
 )
 
-object DeleteMonthlyReturnItemRequest {
-  given format: OFormat[DeleteMonthlyReturnItemRequest] = Json.format[DeleteMonthlyReturnItemRequest]
+object MonthlyReturnSubmissionNewVerification {
+  given format: OFormat[MonthlyReturnSubmissionNewVerification] = Json.format[MonthlyReturnSubmissionNewVerification]
 }

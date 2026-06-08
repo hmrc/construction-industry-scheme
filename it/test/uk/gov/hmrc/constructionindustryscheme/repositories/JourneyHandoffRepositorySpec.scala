@@ -38,6 +38,7 @@ class JourneyHandoffRepositorySpec
 
   private def newRepository(): JourneyHandoffRepository =
     GuiceApplicationBuilder()
+      .configure("schedules.batch-poller-job.enabled" -> false)
       .overrides(
         bind[MongoComponent].toInstance(mongoComponent)
       )

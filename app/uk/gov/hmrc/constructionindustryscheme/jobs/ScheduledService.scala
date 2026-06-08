@@ -14,18 +14,10 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.jobs
 
-import play.api.libs.json.{Json, OFormat}
+import scala.concurrent.{ExecutionContext, Future}
 
-case class DeleteMonthlyReturnItemRequest(
-  instanceId: String,
-  taxYear: Int,
-  taxMonth: Int,
-  subcontractorId: Long,
-  amendment: String
-)
-
-object DeleteMonthlyReturnItemRequest {
-  given format: OFormat[DeleteMonthlyReturnItemRequest] = Json.format[DeleteMonthlyReturnItemRequest]
+trait ScheduledService[R] {
+  def invoke(implicit ec: ExecutionContext): Future[R]
 }
