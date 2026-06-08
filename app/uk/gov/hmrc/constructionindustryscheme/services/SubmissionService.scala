@@ -97,6 +97,9 @@ class SubmissionService @Inject() (
   def updateGovTalkStatus(request: UpdateGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.updateGovTalkStatus(request)
 
+  def resetGovTalkStatus(request: ResetGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    formpProxyConnector.resetGovTalkStatus(request)
+
   def initialiseGovTalkStatus(
     employerReference: EmployerReference,
     submissionId: String,
