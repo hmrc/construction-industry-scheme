@@ -36,13 +36,16 @@ trait ChrisXmlMapper {
   protected def textOptional(scope: NodeSeq, tagName: String): Option[String] =
     Option((scope \\ tagName).text.trim).filter(_.nonEmpty)
 
+  private def normalizeErrorText(text: String): String =
+    text.replaceAll("\\s+", " ").trim
+
   protected def parseError(qualifier: String, doc: Elem): Either[String, Option[GovTalkError]] =
     if (qualifier.equalsIgnoreCase("error")) {
       val e = doc \\ "GovTalkErrors" \\ "Error"
       for {
         errorNumber <- textRequired(e, "Number", "GovTalkErrors/Error/Number")
         errorType   <- textRequired(e, "Type", "GovTalkErrors/Error/Type")
-        errorText   <- textRequired(e, "Text", "GovTalkErrors/Error/Text")
+        errorText   <- textRequired(e, "Text", "GovTalkErrors/Error/Text").map(normalizeErrorText)
       } yield Some(GovTalkError(errorNumber = errorNumber, errorType = errorType, errorText = errorText))
     } else Right(None)
 

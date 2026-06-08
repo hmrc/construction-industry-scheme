@@ -52,5 +52,6 @@ final case class GovTalkMeta(
 final case class SubmissionResult(
   status: SubmissionStatus,
   rawXml: String,
-  meta: GovTalkMeta
+  meta: GovTalkMeta,
+  govTalkErrorStatus: Option[GovTalkErrorStatus] = None
 )
