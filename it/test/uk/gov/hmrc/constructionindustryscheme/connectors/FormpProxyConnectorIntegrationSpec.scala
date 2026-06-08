@@ -1742,7 +1742,7 @@ class FormpProxyConnectorIntegrationSpec
 
   "FormpProxyConnector createSubmissionForVerification" should {
 
-    "POST /formp-proxy/cis/verification-batch/submission/create and return response model (201)" in {
+    "POST /formp-proxy/cis/verification/submission/create and return response model (201)" in {
       val req = CreateSubmissionAndUpdateVerificationsRequest(
         instanceId = instanceId,
         verificationBatchId = 99L,
@@ -1767,7 +1767,7 @@ class FormpProxyConnectorIntegrationSpec
       val responseJson = Json.obj("submissionId" -> 555L)
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/verification-batch/submission/create"))
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission/create"))
           .withHeader("Content-Type", containing("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
@@ -1800,7 +1800,7 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/verification-batch/submission/create"))
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission/create"))
           .withHeader("Content-Type", containing("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
