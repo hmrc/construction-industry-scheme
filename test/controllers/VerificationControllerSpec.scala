@@ -28,7 +28,7 @@ import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, cont
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateVerificationBatchAndVerificationsRequest, ModifyVerificationsRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.{ContractorSchemeNewVerification, CreateVerifications, DeleteVerifications, MonthlyReturnNewVerification, SubcontractorCurrentVerification, SubcontractorNewVerification, SubmissionNewVerification, Verification, VerificationBatch, VerificationBatchCurrentVerification, VerificationCurrentVerification}
+import uk.gov.hmrc.constructionindustryscheme.models.{ContractorSchemeNewVerification, CreateVerifications, DeleteVerifications, MonthlyReturnNewVerification, MonthlyReturnSubmissionNewVerification, SubcontractorCurrentVerification, SubcontractorNewVerification, SubmissionNewVerification, Verification, VerificationBatch, VerificationBatchCurrentVerification, VerificationCurrentVerification}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -114,6 +114,12 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             monthlyReturnId = 777L,
             decNoMoreSubPayments = Some("N")
           )
+        ),
+        monthlyReturnSubmission = Some(
+          MonthlyReturnSubmissionNewVerification(
+            submissionId = 888L,
+            submissionRequestDate = Some(LocalDateTime.of(2026, 2, 12, 11, 59, 0))
+          )
         )
       )
 
@@ -137,6 +143,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       (json \ "submission").\("submissionId").as[Long] mustBe 555L
       (json \ "monthlyReturn").\("monthlyReturnId").as[Long] mustBe 777L
+      (json \ "monthlyReturnSubmission").\("submissionId").as[Long] mustBe 888L
 
       json mustBe Json.toJson(response)
 

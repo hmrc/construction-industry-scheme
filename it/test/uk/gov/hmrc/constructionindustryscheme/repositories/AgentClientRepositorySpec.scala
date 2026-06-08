@@ -43,8 +43,9 @@ class AgentClientRepositorySpec
   private def newRepository(toggle: Boolean): AgentClientRepository = {
     val app = GuiceApplicationBuilder()
       .configure(
-        "encryptionToggle"      -> toggle,
-        "agentClientCrypto.key" -> "Bk/WzqlUJk4/M279rO+BJYVtLkRq4lxH9Wn2A0k9lqo="
+        "encryptionToggle"                   -> toggle,
+        "agentClientCrypto.key"              -> "Bk/WzqlUJk4/M279rO+BJYVtLkRq4lxH9Wn2A0k9lqo=",
+        "schedules.batch-poller-job.enabled" -> false
       )
       .overrides(
         bind[MongoComponent].toInstance(mongoComponent)
