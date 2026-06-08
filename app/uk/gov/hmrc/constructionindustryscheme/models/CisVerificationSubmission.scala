@@ -44,8 +44,7 @@ object CisVerificationSubmission extends Logging {
 
   def buildPayload(
     request: ChrisVerificationRequest,
-    enrolments: Enrolments,
-    subcontractors: Seq[SubcontractorCurrentVerification]
+    enrolments: Enrolments
   ): CisVerificationSubmission = {
 
     val correlationId    = UUID.randomUUID().toString.replace("-", "").toUpperCase
@@ -57,7 +56,7 @@ object CisVerificationSubmission extends Logging {
     val cisRequest: Elem =
       CisVerificationRequestXmlBuilder.build(
         request = request,
-        subs = subcontractors
+        subs = request.subcontractors
       )
 
     val (taxOfficeNumber, taxOfficeReference) =

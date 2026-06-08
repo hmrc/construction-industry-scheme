@@ -1143,6 +1143,348 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
   }
 
+  "submitVerificationToChris" - {
+
+    val validVerificationJson: JsValue = Json.obj(
+      "instanceId"                   -> "id-1",
+      "isAgent"                      -> true,
+      "clientTaxOfficeNumber"        -> "999",
+      "clientTaxOfficeRef"           -> "XYZ123",
+      "contractorUTR"                -> "1234567890",
+      "contractorAORef"              -> "123/AB456",
+      "verificationBatchId"          -> "batch-1",
+      "verificationBatchResourceRef" -> "batch-ref",
+      "emailRecipient"               -> "test@test.com",
+      "subcontractors"               -> Json.arr(
+        Json.obj(
+          "subcontractorId"        -> 1L,
+          "subbieResourceRef"      -> 10L,
+          "firstName"              -> "John",
+          "secondName"             -> "Q",
+          "surname"                -> "Smith",
+          "tradingName"            -> "ACME",
+          "utr"                    -> "1111111111",
+          "nino"                   -> "AA123456A",
+          "crn"                    -> "AC012345",
+          "partnerUtr"             -> "5860920998",
+          "partnershipTradingName" -> "ACME trading",
+          "subcontractorType"      -> "soletrader",
+          "addressLine1"           -> "Line 1",
+          "addressLine2"           -> "Line 2",
+          "addressLine3"           -> "Line 3",
+          "addressLine4"           -> "Line 4",
+          "country"                -> "UK",
+          "postcode"               -> "NE1 1AA",
+          "worksReferenceNumber"   -> "WRN123"
+        )
+      ),
+      "verifications"                -> Json.arr(
+        Json.obj(
+          "subcontractorName"       -> "John Smith",
+          "verificationResourceRef" -> "ref-1",
+          "proceedVerification"     -> true
+        )
+      )
+    )
+
+    "returns 200 with SUBMITTED when service returns SubmittedStatus" in {
+      val submissionService  = mock[SubmissionService]
+      val xmlValidator       = mock[XmlValidator]
+      val verificationSchema = mock[Schema]
+
+      when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
+      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(xmlValidator.validate(any[NodeSeq], eqTo(verificationSchema)))
+        .thenReturn(Success(()))
+
+      when(
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
+
+      when(submissionService.submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[CisVerificationSubmission])
+          val result  = mkSubmissionResult(SUBMITTED)
+
+          Future.successful(
+            result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
+          )
+        }
+
+      val request =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-verification-to-chris")
+          .withBody(validVerificationJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitVerificationToChris(submissionId)(request)
+
+      status(result) mustBe OK
+
+      val js = contentAsJson(result)
+
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "SUBMITTED"
+      (js \ "correlationId").as[String]     must not be empty
+      (js \ "hmrcMarkGenerated").as[String] must not be empty
+
+      verify(xmlValidator).validate(any[NodeSeq], eqTo(verificationSchema))
+      verify(submissionService, times(1))
+        .submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier])
+      verify(submissionService, times(1))
+        .processInitialChrisAck(
+          eqTo(EmployerReference("999", "XYZ123")),
+          eqTo(submissionId),
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          eqTo("http://chris.example/gateway"),
+          any[Instant]
+        )(any[HeaderCarrier])
+    }
+
+    "returns 202 with ACCEPTED when service returns AcceptedStatus" in {
+      val submissionService  = mock[SubmissionService]
+      val xmlValidator       = mock[XmlValidator]
+      val verificationSchema = mock[Schema]
+
+      when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
+      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(xmlValidator.validate(any[NodeSeq], eqTo(verificationSchema)))
+        .thenReturn(Success(()))
+
+      when(
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
+
+      when(submissionService.submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[CisVerificationSubmission])
+          val result  = mkSubmissionResult(ACCEPTED)
+
+          Future.successful(
+            result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
+          )
+        }
+
+      val request =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-verification-to-chris")
+          .withBody(validVerificationJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitVerificationToChris(submissionId)(request)
+
+      status(result) mustBe 202
+
+      val js = contentAsJson(result)
+
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "ACCEPTED"
+      (js \ "responseEndPoint" \ "pollIntervalSeconds").as[Int] mustBe 15
+
+      verify(submissionService, times(1))
+        .submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier])
+    }
+
+    "returns 400 when request JSON is invalid" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      val badJson = Json.obj(
+        "instanceId" -> "id-1"
+      )
+
+      val request =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-verification-to-chris")
+          .withBody(badJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitVerificationToChris(submissionId)(request)
+
+      status(result) mustBe BAD_REQUEST
+      (contentAsJson(result) \ "message").isDefined mustBe true
+
+      verifyNoInteractions(submissionService)
+      verifyNoInteractions(xmlValidator)
+    }
+
+    "returns RuntimeException if verification XML validation fails" in {
+      val submissionService  = mock[SubmissionService]
+      val xmlValidator       = mock[XmlValidator]
+      val verificationSchema = mock[Schema]
+
+      when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(xmlValidator.validate(any[NodeSeq], eqTo(verificationSchema)))
+        .thenReturn(Failure(new Exception("invalid verification xml")))
+
+      val request =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-verification-to-chris")
+          .withBody(validVerificationJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitVerificationToChris(submissionId)(request)
+
+      intercept[RuntimeException] {
+        await(result)
+      }
+
+      verifyNoInteractions(submissionService)
+    }
+
+    "returns 200 with STARTED when ChRIS verification submit fails but failure is recoverable" in {
+      val submissionService  = mock[SubmissionService]
+      val xmlValidator       = mock[XmlValidator]
+      val verificationSchema = mock[Schema]
+
+      when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
+      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(xmlValidator.validate(any[NodeSeq], eqTo(verificationSchema)))
+        .thenReturn(Success(()))
+
+      when(submissionService.submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      when(
+        submissionService.processInitialChrisFailure(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
+
+      val request =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-verification-to-chris")
+          .withBody(validVerificationJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitVerificationToChris(submissionId)(request)
+
+      status(result) mustBe OK
+
+      val js = contentAsJson(result)
+
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "STARTED"
+      (js \ "error" \ "text").as[String] mustBe "Chris verification failure"
+
+      verify(submissionService, times(1))
+        .submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier])
+      verify(submissionService, times(1))
+        .processInitialChrisFailure(
+          eqTo(EmployerReference("999", "XYZ123")),
+          eqTo(submissionId),
+          any[String],
+          eqTo("http://chris.example/gateway")
+        )(any[HeaderCarrier])
+    }
+
+    "returns 502 BadGateway when handling initial ChRIS verification response fails" in {
+      val submissionService  = mock[SubmissionService]
+      val xmlValidator       = mock[XmlValidator]
+      val verificationSchema = mock[Schema]
+
+      when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
+      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(xmlValidator.validate(any[NodeSeq], eqTo(verificationSchema)))
+        .thenReturn(Success(()))
+
+      when(submissionService.submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[CisVerificationSubmission])
+          val result  = mkSubmissionResult(ACCEPTED)
+
+          Future.successful(
+            result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
+          )
+        }
+
+      when(
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.failed(new RuntimeException("verification ack persistence failed")))
+
+      val request =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-verification-to-chris")
+          .withBody(validVerificationJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitVerificationToChris(submissionId)(request)
+
+      status(result) mustBe BAD_GATEWAY
+
+      val js = contentAsJson(result)
+
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "FATAL_ERROR"
+      (js \ "error" \ "text").as[String] must include("verification ack persistence failed")
+
+      verify(submissionService, times(1))
+        .submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier])
+    }
+  }
+
   private def mkMeta(
     corrId: String = "CID123",
     pollSecs: Int = 15,
