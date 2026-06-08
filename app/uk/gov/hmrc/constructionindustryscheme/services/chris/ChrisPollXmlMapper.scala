@@ -53,7 +53,8 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
         errOpt.map(Json.toJson(_)),
         irMark,
         lastMessageDateOpt,
-        acceptedTime
+        acceptedTime,
+        Some(GovTalkErrorStatusClassifier.fromXmlOutcome(status, errOpt))
       )
     }
   }

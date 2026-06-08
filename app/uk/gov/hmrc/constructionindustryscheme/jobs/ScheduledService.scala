@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,10 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.response
+package uk.gov.hmrc.constructionindustryscheme.jobs
 
-import play.api.libs.json.JsValue
-import uk.gov.hmrc.constructionindustryscheme.models.{GovTalkErrorStatus, SubmissionStatus}
+import scala.concurrent.{ExecutionContext, Future}
 
-case class ChrisPollResponse(
-  status: SubmissionStatus,
-  correlationId: String,
-  pollUrl: Option[String],
-  pollInterval: Option[Int],
-  error: Option[JsValue],
-  irMarkReceived: Option[String],
-  lastMessageDate: Option[String],
-  acceptedTime: Option[String],
-  govTalkErrorStatus: Option[GovTalkErrorStatus] = None
-)
+trait ScheduledService[R] {
+  def invoke(implicit ec: ExecutionContext): Future[R]
+}
