@@ -102,6 +102,16 @@ class SubmissionController @Inject() (
   private lazy val redirectUrlPolicy = AbsoluteWithHostnameFromAllowlist(appConfig.chrisHost.toSet)
 
   def pollSubmission(pollUrl: RedirectUrl, submissionId: String): Action[AnyContent] =
+    pollChris(pollUrl, submissionId, "submission")
+
+  def pollVerificationSubmission(pollUrl: RedirectUrl, submissionId: String): Action[AnyContent] =
+    pollChris(pollUrl, submissionId, "verification")
+
+  private def pollChris(
+    pollUrl: RedirectUrl,
+    submissionId: String,
+    journey: String
+  ): Action[AnyContent] =
     authorise.async { implicit req =>
       pollUrl.getEither(redirectUrlPolicy) match {
         case Right(safeUrl) =>
@@ -111,9 +121,9 @@ class SubmissionController @Inject() (
             } else None
           ).getOrElse(safeUrl.url)
 
-          logger.info(s"useOverridePollResponseEndPoint: $appConfig.useOverridePollResponseEndPoint")
-          logger.info(s"safeUrl.url: $safeUrl.url")
-          logger.info(s"overridePollUrl: $overridePollUrl")
+          logger.info(s"[$journey poll] useOverridePollResponseEndPoint: $appConfig.useOverridePollResponseEndPoint")
+          logger.info(s"[$journey poll] safeUrl.url: $safeUrl.url")
+          logger.info(s"[$journey poll] overridePollUrl: $overridePollUrl")
 
           submissionService
             .pollSubmissionAndUpdateGovTalkStatus(submissionId, overridePollUrl)
@@ -131,6 +141,7 @@ class SubmissionController @Inject() (
                 Ok(
                   Json.obj(
                     "status"          -> status.toString,
+                    "correlationId"   -> correlationId,
                     "pollUrl"         -> overridePollUrl,
                     "intervalSeconds" -> interval,
                     "error"           -> error,
@@ -140,11 +151,11 @@ class SubmissionController @Inject() (
                   )
                 )
             }
-        case Left(value)    =>
+
+        case Left(value) =>
           logger.warn(s"could not poll the pollUrl provided as the host is not recognised: $value ")
           Future.successful(BadRequest(Json.obj("error" -> "pollUrl does not have the right host")))
       }
-
     }
 
   def sendSuccessfulEmail(submissionId: String): Action[JsValue] =
