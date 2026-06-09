@@ -24,9 +24,10 @@ import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
-import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkErrorStatus, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.services.chris.GovTalkErrorStatusClassifier
+import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.constructionindustryscheme.utils.{UriHelper, XmlToJsonConvertor, XmlValidator}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -117,28 +118,19 @@ class SubmissionController @Inject() (
 
           submissionService
             .pollSubmissionAndUpdateGovTalkStatus(submissionId, overridePollUrl)
-            .map {
-              case ChrisPollResponse(
-                    status,
-                    correlationId,
-                    overridePollUrl,
-                    interval,
-                    error,
-                    irMarkReceived,
-                    lastMessageDate,
-                    acceptedTime
-                  ) =>
-                Ok(
-                  Json.obj(
-                    "status"          -> status.toString,
-                    "pollUrl"         -> overridePollUrl,
-                    "intervalSeconds" -> interval,
-                    "error"           -> error,
-                    "irMarkReceived"  -> irMarkReceived,
-                    "lastMessageDate" -> lastMessageDate,
-                    "acceptedTime"    -> acceptedTime
-                  )
+            .map { resp =>
+              Ok(
+                Json.obj(
+                  "status"             -> resp.status.toString,
+                  "pollUrl"            -> resp.pollUrl,
+                  "intervalSeconds"    -> resp.pollInterval,
+                  "error"              -> resp.error,
+                  "irMarkReceived"     -> resp.irMarkReceived,
+                  "lastMessageDate"    -> resp.lastMessageDate,
+                  "acceptedTime"       -> resp.acceptedTime,
+                  "govTalkErrorStatus" -> resp.govTalkErrorStatus
                 )
+              )
             }
         case Left(value)    =>
           logger.warn(s"could not poll the pollUrl provided as the host is not recognised: $value ")
@@ -187,11 +179,12 @@ class SubmissionController @Inject() (
     }
 
     val base = Json.obj(
-      "submissionId"      -> submissionId,
-      "hmrcMarkGenerated" -> payload.irMark,
-      "correlationId"     -> res.meta.correlationId,
-      "gatewayTimestamp"  -> gatewayTimestamp,
-      "acceptedTime"      -> res.meta.acceptedTime
+      "submissionId"       -> submissionId,
+      "hmrcMarkGenerated"  -> payload.irMark,
+      "correlationId"      -> res.meta.correlationId,
+      "gatewayTimestamp"   -> gatewayTimestamp,
+      "acceptedTime"       -> res.meta.acceptedTime,
+      "govTalkErrorStatus" -> res.govTalkErrorStatus
     )
 
     def withStatus(s: String): JsObject = base ++ Json.obj("status" -> s)
@@ -236,22 +229,20 @@ class SubmissionController @Inject() (
 
     auditService.monthlyNilReturnRequestEvent(createMonthlyNilReturnRequestJson(payload))
 
-    xmlValidator.validate(payload.irEnvelope) match {
-      case Failure(e) =>
-        logger.error(s"ChRIS XML validation failed: ${e.getMessage}", e)
-        Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
+    // ChRIS performs authoritative XSD validation, we validate locally for observability only
+    xmlValidator
+      .validate(payload.irEnvelope)
+      .fold(
+        e => logger.error(s"ChRIS XML validation failed: ${e.getMessage}", e),
+        _ => logger.info(s"ChRIS XML validation successful for correlationId = ${payload.correlationId}.")
+      )
 
-      case Success(_) =>
-        logger.info(
-          s"ChRIS XML validation successful. Sending ChRIS submission for a correlationId = ${payload.correlationId}."
-        )
-        submissionService
-          .submitToChris(payload)
-          .flatMap(res => handleChrisResponse(submissionId, csr, payload, res))
-          .recoverWith { case NonFatal(ex) =>
-            handleChrisFailure(submissionId, csr, payload, ex)
-          }
-    }
+    submissionService
+      .submitToChris(payload)
+      .flatMap(res => handleChrisResponse(submissionId, csr, payload, res))
+      .recoverWith { case NonFatal(ex) =>
+        handleChrisFailure(submissionId, csr, payload, ex)
+      }
   }
 
   private def handleChrisResponse(
@@ -290,6 +281,8 @@ class SubmissionController @Inject() (
   )(implicit hc: HeaderCarrier): Future[Result] = {
     logger.error(s"Received 5xx/Exception from ChRIS, treating as RESUBMIT for submissionId=$submissionId", ex)
 
+    val classified: GovTalkErrorStatus = classifyChrisFailure(ex)
+
     submissionService
       .processInitialChrisFailure(
         EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef),
@@ -299,32 +292,44 @@ class SubmissionController @Inject() (
       )
       .map { _ =>
         Ok(
-          withError(baseSubmissionResponseJson(submissionId, payload, "STARTED"), "Chris failure")
+          withError(
+            baseSubmissionResponseJson(submissionId, payload, "STARTED", Some(classified)),
+            "Chris failure"
+          )
         )
       }
       .recover { case ex =>
         logger.error(s"Failed to initialise/update GovTalk status after 5xx", ex)
         InternalServerError(
           withError(
-            baseSubmissionResponseJson(submissionId, payload, "FATAL_ERROR"),
+            baseSubmissionResponseJson(submissionId, payload, "FATAL_ERROR", Some(classified)),
             "GovTalk status already exists"
           )
         )
       }
   }
 
+  private def classifyChrisFailure(ex: Throwable): GovTalkErrorStatus = ex match {
+    case err: UpstreamErrorResponse if err.statusCode >= 500 && err.statusCode < 600 =>
+      GovTalkErrorStatusClassifier.fromHttpStatus(err.statusCode)
+    case _                                                                           =>
+      GovTalkErrorStatusClassifier.noResponse
+  }
+
   private def baseSubmissionResponseJson(
     submissionId: String,
     payload: ChRISSubmission,
     status: String,
+    govTalkErrorStatus: Option[GovTalkErrorStatus] = None,
     gatewayTimestamp: String = Instant.now(clock).toString
   ): JsObject =
     Json.obj(
-      "submissionId"      -> submissionId,
-      "hmrcMarkGenerated" -> payload.irMark,
-      "correlationId"     -> payload.correlationId,
-      "gatewayTimestamp"  -> gatewayTimestamp,
-      "status"            -> status
+      "submissionId"       -> submissionId,
+      "hmrcMarkGenerated"  -> payload.irMark,
+      "correlationId"      -> payload.correlationId,
+      "gatewayTimestamp"   -> gatewayTimestamp,
+      "status"             -> status,
+      "govTalkErrorStatus" -> govTalkErrorStatus
     )
 
   private def withError(json: JsObject, text: String): JsObject =

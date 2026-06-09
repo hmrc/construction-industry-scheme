@@ -367,6 +367,38 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
         res.pollUrl mustBe Some("/recoverable/2005")
       }
 
+      "2005 stub XML with multiline Text is parsed as a single-line message" in {
+        val xml =
+          envelope(
+            s"""
+               |${headerXml(qualifier = "error")}
+               |<GovTalkDetails>
+               |  <GovTalkErrors>
+               |    <Error>
+               |      <Number>2005</Number>
+               |      <Type>business</Type>
+               |      <Text>
+               |        The Transaction Engine has not received an acknowledgement of your submission from
+               |        the back-end system within the permitted timescale. Either resubmit or contact the
+               |        appropriate organisation directly to determine if your submission has been accepted.
+               |      </Text>
+               |    </Error>
+               |  </GovTalkErrors>
+               |</GovTalkDetails>
+               |""".stripMargin
+          )
+
+        val res          = ChrisPollXmlMapper.parse(xml).value
+        val expectedText =
+          "The Transaction Engine has not received an acknowledgement of your submission from the back-end system within the permitted timescale. Either resubmit or contact the appropriate organisation directly to determine if your submission has been accepted."
+
+        res.status mustBe STARTED
+        res.govTalkErrorStatus mustBe Some(GovTalkErrorStatus.RecoverableError("2005", expectedText))
+        (res.error.get \ "errorText").as[String] mustBe expectedText
+        (res.error.get \ "errorText").as[String]        must not include "\n"
+        (res.error.get \ "errorText").as[String].length must be <= 250
+      }
+
       "1000 maps to STARTED" in {
         val xml =
           envelope(
