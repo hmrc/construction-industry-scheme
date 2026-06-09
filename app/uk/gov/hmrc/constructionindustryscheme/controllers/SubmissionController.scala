@@ -38,7 +38,7 @@ import java.time.{Clock, Instant}
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 class SubmissionController @Inject() (
   authorise: AuthAction,
