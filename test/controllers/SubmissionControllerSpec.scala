@@ -24,7 +24,7 @@ import org.scalatest.EitherValues
 import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, INTERNAL_SERVER_ERROR, NO_CONTENT, OK, UNAUTHORIZED}
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.test.FakeRequest
-import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, status}
+import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, await, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
@@ -507,7 +507,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(xmlValidator.validate(any[NodeSeq]))
+      when(xmlValidator.validate(any(), any()))
         .thenReturn(Success(()))
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenReturn(Future.failed(UpstreamErrorResponse("ChRIS unavailable", 503, 503)))
@@ -565,7 +565,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       ).thenReturn(Future.successful(()))
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(DEPARTMENTAL_ERROR)))
-      when(xmlValidator.validate(any())).thenReturn(Failure(new Exception("invalid!")))
+      when(xmlValidator.validate(any(), any())).thenReturn(Failure(new Exception("invalid!")))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
         .withBody(validJson)
