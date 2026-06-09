@@ -32,9 +32,9 @@ object GovTalkErrorMapper {
         GovTalkError(error.errorNumber, "systemError", error.errorText)
     }
 
-  def fromHttpTimeout(statusCode: Int): GovTalkError =
+  def fromHttpTimeout(): GovTalkError =
     GovTalkError("500", "timeOut", "timeOut")
 
-  lazy val fromConnectionRefused: GovTalkError =
+  def fromConnectionRefused(): GovTalkError =
     GovTalkError("500", "timeOut", "timed out")
 }

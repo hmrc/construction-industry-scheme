@@ -72,21 +72,16 @@ final class GovTalkErrorMapperSpec extends AnyFreeSpec with Matchers {
 
     "fromHttpTimeout" - {
       "returns code 500, type timeOut, message timeOut" in {
-        val result = GovTalkErrorMapper.fromHttpTimeout(500)
+        val result = GovTalkErrorMapper.fromHttpTimeout()
 
         result mustBe GovTalkError("500", "timeOut", "timeOut")
       }
 
-      "returns the same result regardless of HTTP status code passed" in {
-        val result = GovTalkErrorMapper.fromHttpTimeout(503)
-
-        result mustBe GovTalkError("500", "timeOut", "timeOut")
-      }
     }
 
     "fromConnectionRefused" - {
       "returns code 500, type timeOut, message 'timed out'" in {
-        val result = GovTalkErrorMapper.fromConnectionRefused
+        val result = GovTalkErrorMapper.fromConnectionRefused()
 
         result mustBe GovTalkError("500", "timeOut", "timed out")
       }
