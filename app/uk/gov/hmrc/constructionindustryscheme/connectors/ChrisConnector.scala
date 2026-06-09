@@ -127,10 +127,10 @@ class ChrisConnector @Inject() (
         }
       }
 
-  def submitEnvelope(envelope: Elem, correlationId: String)(implicit hc: HeaderCarrier) =
+  def submitEnvelope(envelope: Elem, correlationId: String)(implicit hc: HeaderCarrier): Future[SubmissionResult]  =
     submit(chrisCisReturnUrl, envelope, correlationId)
 
-  def submitEnvelopeForVerification(envelope: Elem, correlationId: String)(implicit hc: HeaderCarrier) =
+  def submitEnvelopeForVerification(envelope: Elem, correlationId: String)(implicit hc: HeaderCarrier): Future[SubmissionResult] =
     submit(chrisCisVerifyUrl, envelope, correlationId)
 
   private def handle2xxResponse(resp: HttpResponse, correlationId: String): SubmissionResult = {
