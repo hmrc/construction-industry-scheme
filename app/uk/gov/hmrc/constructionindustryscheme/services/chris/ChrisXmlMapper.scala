@@ -40,13 +40,16 @@ trait ChrisXmlMapper {
   protected def textOptional(scope: NodeSeq, tagName: String): Option[String] =
     Option((scope \\ tagName).text.trim).filter(_.nonEmpty)
 
+  private def normalizeErrorText(text: String): String =
+    text.replaceAll("\\s+", " ").trim
+
   protected def parseError(qualifier: String, doc: Elem): Either[String, Option[GovTalkError]] =
     if (qualifier.equalsIgnoreCase("error")) {
       val e = doc \\ "GovTalkErrors" \\ "Error"
       for {
         errorNumber <- textRequired(e, "Number", "GovTalkErrors/Error/Number")
         errorType   <- textRequired(e, "Type", "GovTalkErrors/Error/Type")
-        errorText   <- textRequired(e, "Text", "GovTalkErrors/Error/Text")
+        errorText   <- textRequired(e, "Text", "GovTalkErrors/Error/Text").map(normalizeErrorText)
       } yield Some(GovTalkError(errorNumber = errorNumber, errorType = errorType, errorText = errorText))
     } else Right(None)
 
@@ -54,7 +57,7 @@ trait ChrisXmlMapper {
     * to their flow.
     */
   protected def parseSubmission(xml: String)(
-    deriveStatus: String => SubmissionStatus
+    deriveStatus: (String, Option[GovTalkError]) => SubmissionStatus
   ): Either[String, SubmissionResult] = {
     val doc            = XML.loadString(xml)
     val messageDetails = doc \\ "Header" \\ "MessageDetails"
@@ -70,7 +73,8 @@ trait ChrisXmlMapper {
       endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
       errOpt                        <- parseError(qualifier, doc)
     } yield {
-      val meta = GovTalkMeta(
+      val status = deriveStatus(qualifier, errOpt)
+      val meta   = GovTalkMeta(
         qualifier = qualifier,
         function = function,
         className = className,
@@ -81,7 +85,7 @@ trait ChrisXmlMapper {
         acceptedTime = acceptedTime
       )
 
-      SubmissionResult(deriveStatus(qualifier), xml, meta)
+      SubmissionResult(status, xml, meta, Some(GovTalkErrorStatusClassifier.fromXmlOutcome(status, errOpt)))
     }
   }
 
@@ -105,16 +109,20 @@ trait ChrisXmlMapper {
                                          doc \\ "Body" \ "SuccessResponse" \ "IRmarkReceipt" \ "Signature" \ "SignedInfo" \ "Reference",
                                          "DigestValue"
                                        )
-    } yield ChrisPollResponse(
-      deriveStatus(qualifier, errOpt, doc),
-      correlationId,
-      endpointUrlOpt,
-      pollIntervalOpt,
-      errOpt.map(Json.toJson(_)),
-      irMark,
-      lastMessageDateOpt,
-      acceptedTime
-    )
+    } yield {
+      val status = deriveStatus(qualifier, errOpt, doc)
+      ChrisPollResponse(
+        status,
+        correlationId,
+        endpointUrlOpt,
+        pollIntervalOpt,
+        errOpt.map(Json.toJson(_)),
+        irMark,
+        lastMessageDateOpt,
+        acceptedTime,
+        Some(GovTalkErrorStatusClassifier.fromXmlOutcome(status, errOpt))
+      )
+    }
   }
 
   /** Detects an IRMark mismatch error inside the <Body> ErrorResponse. */

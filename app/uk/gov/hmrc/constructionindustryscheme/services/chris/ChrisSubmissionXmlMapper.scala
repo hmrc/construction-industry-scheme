@@ -24,9 +24,22 @@ object ChrisSubmissionXmlMapper extends ChrisXmlMapper {
     parseSubmission(xml)(deriveInitialStatus)
 
   /** Stage 1 (initial submit) status mapping – ACK or FATAL only. */
-  private def deriveInitialStatus(qualifier: String): SubmissionStatus =
+  private def deriveInitialStatus(qualifier: String, errOpt: Option[GovTalkError]): SubmissionStatus =
     qualifier.toLowerCase match {
       case "acknowledgement" => ACCEPTED
+      case "error"           =>
+        errOpt match {
+          case Some(err)
+              if err.errorNumber == "3000" &&
+                err.errorType.equalsIgnoreCase("fatal") =>
+            FATAL_ERROR
+
+          case Some(err) if Set("3000", "2005", "1000").contains(err.errorNumber) =>
+            STARTED
+
+          case _ =>
+            FATAL_ERROR
+        }
       case _                 => FATAL_ERROR
     }
 }

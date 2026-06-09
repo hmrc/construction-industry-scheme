@@ -21,7 +21,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 object ChrisVerificationSubmissionXmlMapper extends ChrisXmlMapper {
 
   def parse(xml: String): Either[String, SubmissionResult] =
-    parseSubmission(xml)(deriveInitialStatus)
+    parseSubmission(xml)((status: String, _: Option[GovTalkError]) => deriveInitialStatus(status))
 
   private def deriveInitialStatus(qualifier: String): SubmissionStatus =
     qualifier.toLowerCase match {
