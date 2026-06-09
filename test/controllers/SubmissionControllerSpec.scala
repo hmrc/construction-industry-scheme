@@ -24,7 +24,7 @@ import org.scalatest.EitherValues
 import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, INTERNAL_SERVER_ERROR, NO_CONTENT, OK, UNAUTHORIZED}
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.test.FakeRequest
-import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, await, contentAsJson, status}
+import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
@@ -538,7 +538,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
-    "returns RuntimeException if xmlValidator.validate fails" in {
+    "allow the user to continue if xmlValidator.validate fails" in {
       val submissionService = mock[SubmissionService]
       val xmlValidator      = mock[XmlValidator]
       val controller        = mkController(
@@ -550,8 +550,20 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
+      when(
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
-        .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
+        .thenReturn(Future.successful(mkSubmissionResult(DEPARTMENTAL_ERROR)))
       when(xmlValidator.validate(any())).thenReturn(Failure(new Exception("invalid!")))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -560,9 +572,12 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val result = controller.submitToChris(submissionId)(req)
 
-      intercept[RuntimeException] {
-        await(result)
-      }
+      status(result) mustBe OK
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "DEPARTMENTAL_ERROR"
+
+      verify(submissionService).submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
     "returns 500 InternalServerError when GovTalk initialisation/update fails in recoverable ChRIS failure flow" in {
