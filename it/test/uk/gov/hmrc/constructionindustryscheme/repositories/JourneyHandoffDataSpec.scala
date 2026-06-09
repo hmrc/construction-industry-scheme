@@ -46,7 +46,7 @@ class JourneyHandoffDataSpec extends SpecBase {
         "id"          -> "handoff-123",
         "userId"      -> "cred-123",
         "journeyType" -> "amend-monthly-return",
-        "data" -> Json.obj(
+        "data"        -> Json.obj(
           "instanceId" -> "1",
           "taxYear"    -> 2026,
           "taxMonth"   -> 4

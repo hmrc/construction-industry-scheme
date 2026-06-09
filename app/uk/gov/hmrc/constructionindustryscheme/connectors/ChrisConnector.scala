@@ -22,7 +22,7 @@ import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisPollXmlMapper, ChrisSubmissionXmlMapper}
+import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisPollXmlMapper, ChrisSubmissionXmlMapper, GovTalkErrorStatusClassifier}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps, UpstreamErrorResponse}
@@ -63,7 +63,19 @@ class ChrisConnector @Inject() (
               logger.error(
                 s"[ChrisConnector] Failed to parse 2xx polling response corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
               )
-              Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None, None, None, None))
+              Future.successful(
+                ChrisPollResponse(
+                  FATAL_ERROR,
+                  correlationId,
+                  None,
+                  None,
+                  None,
+                  None,
+                  None,
+                  None,
+                  Some(GovTalkErrorStatus.OtherStatus)
+                )
+              )
             case Right(parsed) =>
               Future.successful(parsed)
           }
@@ -71,19 +83,53 @@ class ChrisConnector @Inject() (
           logger.error(
             s"[ChrisConnector] 5xx polling corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
           )
-          Future.successful(ChrisPollResponse(ACCEPTED, correlationId, None, None, None, None, None, None))
+          Future.successful(
+            ChrisPollResponse(
+              ACCEPTED,
+              correlationId,
+              None,
+              None,
+              None,
+              None,
+              None,
+              None,
+              Some(GovTalkErrorStatusClassifier.fromHttpStatus(resp.status))
+            )
+          )
         } else {
           logger.error(
             s"[ChrisConnector] Non-2xx/Non-5xx polling corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
           )
-          Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None, None, None, None))
+          Future.successful(
+            ChrisPollResponse(
+              FATAL_ERROR,
+              correlationId,
+              None,
+              None,
+              None,
+              None,
+              None,
+              None,
+              Some(GovTalkErrorStatus.OtherStatus)
+            )
+          )
         }
       }
       .recover { case NonFatal(e) =>
         logger.error(
           s"[ChrisConnector] Transport exception calling $pollUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${e.getMessage}"
         )
-        ChrisPollResponse(ACCEPTED, correlationId, None, None, None, None, None, None)
+        ChrisPollResponse(
+          ACCEPTED,
+          correlationId,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          Some(GovTalkErrorStatus.NoResponse)
+        )
       }
 
   def deleteSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[Unit] =
@@ -180,6 +226,7 @@ class ChrisConnector @Inject() (
         gatewayTimestamp = None,
         responseEndPoint = ResponseEndPoint("", 0),
         error = Some(GovTalkError(errorNumber, errorType, errorText))
-      )
+      ),
+      govTalkErrorStatus = Some(GovTalkErrorStatus.OtherStatus)
     )
 }
