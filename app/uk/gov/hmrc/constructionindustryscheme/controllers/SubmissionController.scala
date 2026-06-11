@@ -400,6 +400,8 @@ class SubmissionController @Inject() (
           s"Chris verification XML validation failed, but continuing with ChRIS submission for correlationId=${payload.correlationId}: ${e.getMessage}",
           e
         )
+        // todo: for testing purposes,  remove before marging
+        logger.info(s"full chris xml envelope:${payload.envelope}")
 
       case Success(_) =>
         logger.info(
