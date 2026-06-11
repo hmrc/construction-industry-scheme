@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
-import play.api.http.Status.{NOT_FOUND, NO_CONTENT}
+import play.api.http.Status.{CREATED, NOT_FOUND, NO_CONTENT}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
@@ -58,10 +58,7 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/submissions/update")
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
-      .flatMap { resp =>
-        if (resp.status / 100 == 2) Future.unit
-        else Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
-      }
+      .flatMap(acceptResponse(NO_CONTENT))
 
   def createNilMonthlyReturn(
     req: NilMonthlyReturnRequest
@@ -86,20 +83,14 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/monthly-return/update")
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
-      .flatMap { resp =>
-        if (resp.status == 204) Future.unit
-        else Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
-      }
+      .flatMap(acceptResponse(NO_CONTENT))
 
   def createMonthlyReturn(req: MonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/monthly-return/standard/create")
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
-      .map { response =>
-        if (response.status == 201) ()
-        else throw UpstreamErrorResponse(response.body, response.status, response.status)
-      }
+      .flatMap(acceptResponse(CREATED))
 
   def getSchemeEmail(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[String]] =
     http
@@ -129,10 +120,7 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/scheme/update")
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
-      .flatMap { resp =>
-        if (resp.status / 100 == 2) Future.unit
-        else Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
-      }
+      .flatMap(acceptResponse(status => status / 100 == 2))
 
   def updateSchemeVersion(req: UpdateSchemeVersionRequest)(implicit hc: HeaderCarrier): Future[Int] =
     http
@@ -167,17 +155,7 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/subcontractor/create-and-update")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status == NO_CONTENT) {
-          Future.successful(())
-        } else {
-          Future.failed(
-            new RuntimeException(
-              s"Update subcontractor failed, returned ${response.status}"
-            )
-          )
-        }
-      }
+      .flatMap(acceptResponse(NO_CONTENT))
 
   def getMonthlyReturnForEdit(
     request: GetMonthlyReturnForEditRequest
@@ -214,30 +192,21 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/monthly-return-item/sync")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status == 204) Future.unit
-        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-      }
+      .flatMap(acceptResponse(NO_CONTENT))
 
   def deleteMonthlyReturnItem(request: DeleteMonthlyReturnItemProxyRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/monthly-return-item/delete")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status == 204) Future.unit
-        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-      }
+      .flatMap(acceptResponse(NO_CONTENT))
 
   def updateMonthlyReturnItem(request: UpdateMonthlyReturnItemProxyRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/monthly-return-item/update")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status == 204) Future.unit
-        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-      }
+      .flatMap(acceptResponse(NO_CONTENT))
 
   def getGovTalkStatus(
     request: GetGovTalkStatusRequest,
@@ -265,20 +234,14 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/govtalkstatus/create")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status == 201) Future.unit
-        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-      }
+      .flatMap(acceptResponse(CREATED))
 
   def updateGovTalkStatus(request: UpdateGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/govtalkstatus/update-status")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status == 204) Future.unit
-        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-      }
+      .flatMap(acceptResponse(NO_CONTENT))
 
   def updateGovTalkStatusCorrelationId(
     request: UpdateGovTalkStatusCorrelationIdRequest
@@ -287,10 +250,7 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/govtalkstatus/update-correlationID")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status == 204) Future.unit
-        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-      }
+      .flatMap(acceptResponse(NO_CONTENT))
 
   def updateGovTalkStatusStatistics(
     request: UpdateGovTalkStatusStatisticsRequest
@@ -299,10 +259,7 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/govtalkstatus/update-statistics")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status == 204) Future.unit
-        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-      }
+      .flatMap(acceptResponse(NO_CONTENT))
 
   def getNewestVerificationBatch(
     instanceId: String
@@ -325,12 +282,7 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/monthly-returns/unsubmitted/delete")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap { response =>
-        response.status match {
-          case NO_CONTENT => Future.unit
-          case status     => Future.failed(UpstreamErrorResponse(response.body, status, status))
-        }
-      }
+      .flatMap(acceptResponse(NO_CONTENT))
 
   def createVerificationBatchAndVerifications(
     request: CreateVerificationBatchAndVerificationsRequest
@@ -345,10 +297,7 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/amend-monthly-return/create")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status == 201) Future.unit
-        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-      }
+      .flatMap(acceptResponse(CREATED))
 
   def getSubmittedMonthlyReturnsData(
     request: GetSubmittedMonthlyReturnsDataRequest
@@ -365,10 +314,7 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/verification-batch/modify")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status == 204) Future.unit
-        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-      }
+      .flatMap(acceptResponse(NO_CONTENT))
 
   def updateVerificationSubmission(
     request: UpdateVerificationSubmissionRequest
@@ -377,10 +323,7 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/verification/submission/update")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status / 100 == 2) Future.unit
-        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-      }
+      .flatMap(acceptResponse(status => status / 100 == 2))
 
   def createSubmissionForVerification(
     request: CreateSubmissionAndUpdateVerificationsRequest
@@ -389,4 +332,12 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/verification/submission/create")
       .withBody(Json.toJson(request))
       .execute[CreateSubmissionAndUpdateVerificationsResponse]
+
+  private def acceptResponse(acceptedStatuses: Int*)(response: HttpResponse): Future[Unit] =
+    acceptResponse(status => acceptedStatuses.contains(status))(response)
+
+  private def acceptResponse(fn: Int => Boolean)(response: HttpResponse): Future[Unit] =
+    if (fn(response.status)) Future.unit
+    else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+
 }

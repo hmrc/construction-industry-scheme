@@ -766,7 +766,7 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = intercept[Throwable](connector.createAndUpdateSubcontractor(request).futureValue)
-      ex.getMessage.toLowerCase must include("500")
+      ex.getMessage.toLowerCase must include("boom")
     }
   }
 
