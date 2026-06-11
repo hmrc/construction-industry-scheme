@@ -40,7 +40,8 @@ final class VerificationServiceSpec extends SpecBase {
       verificationBatch = None,
       verifications = Seq.empty,
       submission = None,
-      monthlyReturn = None
+      monthlyReturn = None,
+      monthlyReturnSubmission = None
     )
 
     "delegates to FormpProxyConnector and returns response" in {
@@ -171,6 +172,46 @@ final class VerificationServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.modifyVerifications(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "VerificationService#createSubmissionForVerification" - {
+
+    val request = CreateSubmissionAndUpdateVerificationsRequest(
+      instanceId = "abc-123",
+      verificationBatchId = 99L,
+      verificationBatchResourceRef = 10L,
+      emailRecipient = "ops@example.com",
+      irMarkGenerated = Some("IR_MARK"),
+      verifications = Seq(
+        VerificationToUpdate("ACME", 111L, "Y"),
+        VerificationToUpdate("BETA", 222L, "N")
+      ),
+      agentId = None
+    )
+
+    val response = CreateSubmissionAndUpdateVerificationsResponse(submissionId = 555L)
+
+    "delegates to FormpProxyConnector and returns response" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.createSubmissionForVerification(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      service.createSubmissionAndUpdateVerifications(request).futureValue mustBe response
+
+      verify(connector).createSubmissionForVerification(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.createSubmissionForVerification(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.createSubmissionAndUpdateVerifications(request).failed.futureValue.getMessage must include("boom")
     }
   }
 }

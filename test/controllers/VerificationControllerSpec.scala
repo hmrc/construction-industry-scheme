@@ -27,8 +27,8 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, contentType, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateVerificationBatchAndVerificationsRequest, ModifyVerificationsRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.{ContractorSchemeNewVerification, CreateVerifications, DeleteVerifications, MonthlyReturnNewVerification, SubcontractorCurrentVerification, SubcontractorNewVerification, SubmissionNewVerification, Verification, VerificationBatch, VerificationBatchCurrentVerification, VerificationCurrentVerification}
+import uk.gov.hmrc.constructionindustryscheme.models.requests._
+import uk.gov.hmrc.constructionindustryscheme.models._
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -114,6 +114,12 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             monthlyReturnId = 777L,
             decNoMoreSubPayments = Some("N")
           )
+        ),
+        monthlyReturnSubmission = Some(
+          MonthlyReturnSubmissionNewVerification(
+            submissionId = 888L,
+            submissionRequestDate = Some(LocalDateTime.of(2026, 2, 12, 11, 59, 0))
+          )
         )
       )
 
@@ -137,6 +143,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       (json \ "submission").\("submissionId").as[Long] mustBe 555L
       (json \ "monthlyReturn").\("monthlyReturnId").as[Long] mustBe 777L
+      (json \ "monthlyReturnSubmission").\("submissionId").as[Long] mustBe 888L
 
       json mustBe Json.toJson(response)
 
@@ -399,6 +406,84 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentAsJson(result) mustBe Json.obj("message" -> "modify-verifications-failed")
 
       verify(service).modifyVerifications(eqTo(validRequest))(any[HeaderCarrier])
+    }
+  }
+
+  "createSubmissionForVerification" - {
+
+    val url = "/cis/verification-batch/submission/create"
+
+    val validRequest = CreateSubmissionAndUpdateVerificationsRequest(
+      instanceId = "abc-123",
+      verificationBatchId = 99L,
+      verificationBatchResourceRef = 10L,
+      emailRecipient = "ops@example.com",
+      irMarkGenerated = Some("IR_MARK"),
+      verifications = Seq(
+        VerificationToUpdate("ACME", 111L, "Y"),
+        VerificationToUpdate("BETA", 222L, "N")
+      ),
+      agentId = None
+    )
+
+    val validJson: JsValue = Json.toJson(validRequest)
+
+    val response = CreateSubmissionAndUpdateVerificationsResponse(submissionId = 555L)
+
+    "returns 201 Created with JSON body when service succeeds" in {
+      val service    = mock[VerificationService]
+      val controller = mockController(service)
+
+      when(service.createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      val req = FakeRequest(POST, url)
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.createSubmissionAndUpdateVerifications()(req)
+
+      status(result) mustBe CREATED
+      contentType(result) mustBe Some(JSON)
+      contentAsJson(result) mustBe Json.toJson(response)
+
+      verify(service).createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier])
+    }
+
+    "returns 400 BadRequest when JSON is invalid" in {
+      val service    = mock[VerificationService]
+      val controller = mockController(service)
+
+      val badJson = Json.obj("instanceId" -> "abc-123")
+
+      val req = FakeRequest(POST, url)
+        .withBody(badJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.createSubmissionAndUpdateVerifications()(req)
+
+      status(result) mustBe BAD_REQUEST
+      verifyNoInteractions(service)
+    }
+
+    "returns 502 BadGateway with error body when service fails" in {
+      val service    = mock[VerificationService]
+      val controller = mockController(service)
+
+      when(service.createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req = FakeRequest(POST, url)
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.createSubmissionAndUpdateVerifications()(req)
+
+      status(result) mustBe BAD_GATEWAY
+      contentType(result) mustBe Some(JSON)
+      contentAsJson(result) mustBe Json.obj("message" -> "create-submission-for-verification-failed")
+
+      verify(service).createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier])
     }
   }
 }

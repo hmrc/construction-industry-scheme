@@ -225,6 +225,7 @@ class FormpProxyConnectorIntegrationSpec
         instanceId = instanceId,
         taxYear = 2024,
         taxMonth = 4,
+        amendment = "N",
         emailRecipient = Some("ops@example.com")
       )
 
@@ -242,7 +243,7 @@ class FormpProxyConnectorIntegrationSpec
     }
 
     "propagates upstream error (e.g. 500) as failed Future" in {
-      val req = CreateSubmissionRequest(instanceId, 2024, 4)
+      val req = CreateSubmissionRequest(instanceId, 2024, 4, "N")
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/submissions/create"))
@@ -262,6 +263,7 @@ class FormpProxyConnectorIntegrationSpec
         instanceId = instanceId,
         taxYear = 2024,
         taxMonth = 4,
+        amendment = "N",
         hmrcMarkGenerated = Some("Dj5TVJDyRYCn9zta5EdySeY4fyA="),
         submittableStatus = "ACCEPTED"
       )
@@ -281,6 +283,7 @@ class FormpProxyConnectorIntegrationSpec
         instanceId = instanceId,
         taxYear = 2024,
         taxMonth = 4,
+        amendment = "N",
         hmrcMarkGenerated = Some("Dj5TVJDyRYCn9zta5EdySeY4fyA="),
         submittableStatus = "REJECTED"
       )
@@ -1732,6 +1735,82 @@ class FormpProxyConnectorIntegrationSpec
 
       val ex = connector.createAmendedMonthlyReturn(req).failed.futureValue
 
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector createSubmissionForVerification" should {
+
+    "POST /formp-proxy/cis/verification/submission/create and return response model (201)" in {
+      val req = CreateSubmissionAndUpdateVerificationsRequest(
+        instanceId = instanceId,
+        verificationBatchId = 99L,
+        verificationBatchResourceRef = 7L,
+        emailRecipient = "ops@example.com",
+        irMarkGenerated = Some("IR_MARK"),
+        verifications = Seq(
+          VerificationToUpdate(
+            subcontractorName = "ACME LTD",
+            verificationResourceRef = 111L,
+            proceedVerification = "Y"
+          ),
+          VerificationToUpdate(
+            subcontractorName = "BOB BUILDER",
+            verificationResourceRef = 222L,
+            proceedVerification = "N"
+          )
+        ),
+        agentId = None
+      )
+
+      val responseJson = Json.obj("submissionId" -> 555L)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission/create"))
+          .withHeader("Content-Type", containing("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(201)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.createSubmissionForVerification(req).futureValue
+      Json.toJson(out) mustBe responseJson
+      out.submissionId mustBe 555L
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-2xx (e.g. 500)" in {
+      val req = CreateSubmissionAndUpdateVerificationsRequest(
+        instanceId = instanceId,
+        verificationBatchId = 99L,
+        verificationBatchResourceRef = 7L,
+        emailRecipient = "ops@example.com",
+        irMarkGenerated = Some("IR_MARK"),
+        verifications = Seq(
+          VerificationToUpdate(
+            subcontractorName = "ACME LTD",
+            verificationResourceRef = 111L,
+            proceedVerification = "Y"
+          )
+        ),
+        agentId = None
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission/create"))
+          .withHeader("Content-Type", containing("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("""{"message":"boom"}""")
+          )
+      )
+
+      val ex = connector.createSubmissionForVerification(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }

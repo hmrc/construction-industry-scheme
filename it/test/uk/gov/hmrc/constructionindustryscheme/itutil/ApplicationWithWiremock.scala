@@ -53,7 +53,8 @@ trait ApplicationWithWiremock
       "microservice.services.email.host"                 -> WireMockConstants.stubHost,
       "microservice.services.email.port"                 -> WireMockConstants.stubPort,
       "microservice.services.client-exchange-proxy.host" -> WireMockConstants.stubHost,
-      "microservice.services.client-exchange-proxy.port" -> WireMockConstants.stubPort
+      "microservice.services.client-exchange-proxy.port" -> WireMockConstants.stubPort,
+      "schedules.batch-poller-job.enabled"               -> false
     )
 
   override lazy val app: Application = new GuiceApplicationBuilder()

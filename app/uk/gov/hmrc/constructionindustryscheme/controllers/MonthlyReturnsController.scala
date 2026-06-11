@@ -270,6 +270,21 @@ class MonthlyReturnsController @Inject() (
         }
     }
 
+  def deleteAllMonthlyReturnItems(): Action[DeleteAllMonthlyReturnItemsRequest] =
+    authorise.async(parse.json[DeleteAllMonthlyReturnItemsRequest]) { implicit request =>
+      service
+        .deleteAllMonthlyReturnItems(request.body)
+        .map(_ => NoContent)
+        .recover {
+          case u: UpstreamErrorResponse =>
+            logger.error("[deleteAllMonthlyReturnItems] formp-proxy delete all failed", u)
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t)              =>
+            logger.error("[deleteAllMonthlyReturnItems] formp-proxy delete all failed", t)
+            BadGateway(Json.obj("message" -> "delete-all-monthly-return-items-failed"))
+        }
+    }
+
   def updateMonthlyReturnItem(): Action[UpdateMonthlyReturnItemRequest] =
     authorise.async(parse.json[UpdateMonthlyReturnItemRequest]) { implicit request =>
       service

@@ -37,7 +37,8 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
           |  "verificationBatch": null,
           |  "verifications": [],
           |  "submission": null,
-          |  "monthlyReturn": null
+          |  "monthlyReturn": null,
+          |  "monthlyReturnSubmission": null
           |}
           |""".stripMargin
       )
@@ -52,6 +53,7 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
       out.verifications mustBe empty
       out.submission mustBe None
       out.monthlyReturn mustBe None
+      out.monthlyReturnSubmission mustBe None
     }
 
     "write a response to JSON" in {
@@ -116,6 +118,12 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
             monthlyReturnId = 777L,
             decNoMoreSubPayments = Some("N")
           )
+        ),
+        monthlyReturnSubmission = Some(
+          MonthlyReturnSubmissionNewVerification(
+            submissionId = 888L,
+            submissionRequestDate = Some(LocalDateTime.of(2026, 2, 12, 11, 59, 0))
+          )
         )
       )
 
@@ -176,6 +184,10 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
       (mr0 \ "monthlyReturnId").as[Long] mustBe 777L
       (mr0 \ "decNoMoreSubPayments").as[String] mustBe "N"
 
+      val mrs0 = json \ "monthlyReturnSubmission"
+
+      (mrs0 \ "submissionId").as[Long] mustBe 888L
+      (mrs0 \ "submissionRequestDate").as[String] mustBe "2026-02-12T11:59:00"
     }
 
     "round-trip (model -> json -> model) without losing data" in {
@@ -190,7 +202,8 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
             monthlyReturnId = 777L,
             decNoMoreSubPayments = Some("N")
           )
-        )
+        ),
+        monthlyReturnSubmission = None
       )
 
       val json = Json.toJson(model)
