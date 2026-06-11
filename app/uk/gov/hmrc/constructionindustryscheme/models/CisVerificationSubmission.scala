@@ -25,7 +25,7 @@ import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHelper.extractTa
 import uk.gov.hmrc.constructionindustryscheme.utils.IrMarkProcessor.UpdatedPayloadWithIrMark
 
 import java.time.format.DateTimeFormatter
-import java.time.{Clock, LocalDate, LocalDateTime, YearMonth, ZoneId, ZoneOffset}
+import java.time.{Clock, LocalDate, LocalDateTime, YearMonth, ZoneId}
 import java.util.UUID
 import scala.xml.{Elem, PrettyPrinter}
 

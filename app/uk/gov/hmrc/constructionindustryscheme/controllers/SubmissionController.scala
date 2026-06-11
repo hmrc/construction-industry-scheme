@@ -234,12 +234,14 @@ class SubmissionController @Inject() (
 
     xmlValidator.validate(payload.irEnvelope, appConfig.cisReturnSchema) match {
       case Failure(e) =>
-        logger.error(s"ChRIS XML validation failed: ${e.getMessage}", e)
-        Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
+        logger.error(
+          s"ChRIS monthly return XML validation failed, but continuing with ChRIS submission for correlationId=${payload.correlationId}: ${e.getMessage}",
+          e
+        )
 
       case Success(_) =>
         logger.info(
-          s"ChRIS XML validation successful. Sending ChRIS submission for a correlationId = ${payload.correlationId}."
+          s"ChRIS monthly return XML validation successful. Sending ChRIS submission for correlationId=${payload.correlationId}."
         )
     }
 
@@ -394,42 +396,43 @@ class SubmissionController @Inject() (
 
     xmlValidator.validate(payload.irEnvelope, appConfig.cisVerificationSchema) match {
       case Failure(e) =>
-        logger.error(s"Chris verification XML validation failed: ${e.getMessage}", e)
-        Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
+        logger.error(
+          s"Chris verification XML validation failed, but continuing with ChRIS submission for correlationId=${payload.correlationId}: ${e.getMessage}",
+          e
+        )
 
       case Success(_) =>
         logger.info(
-          s"Chris verification XML validation successful. Sending Chris verification submission for correlationId=${payload.correlationId}."
+          s"Chris verification XML validation successful. Sending ChRIS verification submission for correlationId=${payload.correlationId}."
         )
-        // todo: for testing purposes,  remove before marging
-        logger.info(s"full chris xml envelope:${payload.envelope}")
-
-        val employerRef = EmployerReference(cvr.clientTaxOfficeNumber, cvr.clientTaxOfficeRef)
-        submissionService
-          .submitVerificationToChris(payload)
-          .flatMap(res =>
-            handleInitialChrisAck(
-              submissionId,
-              employerRef,
-              payload.irMark,
-              payload.correlationId,
-              res,
-              r => renderChrisResponse(submissionId, payload.irMark, r),
-              errorLabel = " verification"
-            )
-          )
-          .recoverWith { case NonFatal(ex) =>
-            handleInitialChrisFailure(
-              submissionId,
-              employerRef,
-              payload.irMark,
-              payload.correlationId,
-              ex,
-              errorLabel = " verification",
-              startedErrorText = "Chris verification failure"
-            )
-          }
     }
+
+    val employerRef = EmployerReference(cvr.clientTaxOfficeNumber, cvr.clientTaxOfficeRef)
+
+    submissionService
+      .submitVerificationToChris(payload)
+      .flatMap(res =>
+        handleInitialChrisAck(
+          submissionId,
+          employerRef,
+          payload.irMark,
+          payload.correlationId,
+          res,
+          r => renderChrisResponse(submissionId, payload.irMark, r),
+          errorLabel = " verification"
+        )
+      )
+      .recoverWith { case NonFatal(ex) =>
+        handleInitialChrisFailure(
+          submissionId,
+          employerRef,
+          payload.irMark,
+          payload.correlationId,
+          ex,
+          errorLabel = " verification",
+          startedErrorText = "Chris verification failure"
+        )
+      }
   }
 
 }

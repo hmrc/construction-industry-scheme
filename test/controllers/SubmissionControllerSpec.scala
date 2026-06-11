@@ -24,7 +24,7 @@ import org.scalatest.EitherValues
 import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, INTERNAL_SERVER_ERROR, NO_CONTENT, OK, UNAUTHORIZED}
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.test.FakeRequest
-import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, await, contentAsJson, status}
+import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
@@ -1403,20 +1403,44 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       verifyNoInteractions(xmlValidator)
     }
 
-    "returns RuntimeException if verification XML validation fails" in {
+    "continues to submit to ChRIS when verification XML validation fails" in {
       val submissionService  = mock[SubmissionService]
       val xmlValidator       = mock[XmlValidator]
       val verificationSchema = mock[Schema]
 
       when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
+      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
 
       val controller = mkController(
         submissionService = submissionService,
         xmlValidator = xmlValidator
       )
 
-      when(xmlValidator.validate(any[NodeSeq], eqTo(verificationSchema)))
+      when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Failure(new Exception("invalid verification xml")))
+
+      when(
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
+
+      when(submissionService.submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[CisVerificationSubmission])
+          val result  = mkSubmissionResult(SUBMITTED)
+
+          Future.successful(
+            result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
+          )
+        }
 
       val request =
         FakeRequest(POST, s"/cis/submissions/$submissionId/submit-verification-to-chris")
@@ -1425,11 +1449,29 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val result = controller.submitVerificationToChris(submissionId)(request)
 
-      intercept[RuntimeException] {
-        await(result)
-      }
+      status(result) mustBe OK
 
-      verifyNoInteractions(submissionService)
+      val js = contentAsJson(result)
+
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "SUBMITTED"
+
+      verify(xmlValidator).validate(any[NodeSeq], any[Schema])
+
+      verify(submissionService, times(1))
+        .submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier])
+
+      verify(submissionService, times(1))
+        .processInitialChrisAck(
+          eqTo(EmployerReference("999", "XYZ123")),
+          eqTo(submissionId),
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          eqTo("http://chris.example/gateway"),
+          any[Instant]
+        )(any[HeaderCarrier])
     }
 
     "returns 200 with STARTED when ChRIS verification submit fails but failure is recoverable" in {
