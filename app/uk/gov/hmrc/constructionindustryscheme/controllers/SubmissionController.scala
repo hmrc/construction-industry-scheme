@@ -401,7 +401,6 @@ class SubmissionController @Inject() (
           e
         )
 
-
       case Success(_) =>
         logger.info(
           s"Chris verification XML validation successful. Sending ChRIS verification submission for correlationId=${payload.correlationId}."
