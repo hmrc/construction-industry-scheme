@@ -234,10 +234,8 @@ class SubmissionController @Inject() (
 
     xmlValidator.validate(payload.irEnvelope, appConfig.cisReturnSchema) match {
       case Failure(e) =>
-        logger.warn(
-          s"ChRIS XML validation failed, continuing with submission for correlationId=${payload.correlationId}: ${e.getMessage}",
-          e
-        )
+        logger.error(s"ChRIS XML validation failed: ${e.getMessage}", e)
+        Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
 
       case Success(_) =>
         logger.info(

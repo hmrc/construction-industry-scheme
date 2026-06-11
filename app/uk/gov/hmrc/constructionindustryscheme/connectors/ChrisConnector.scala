@@ -162,7 +162,7 @@ class ChrisConnector @Inject() (
       .withBody(envelope.toString)
       .execute[HttpResponse]
       .flatMap { resp =>
-        logger.info("[ChrisConnector] pollSubmission response:\n" + resp.body)
+        logger.info("[ChrisConnector] submit response:\n" + resp.body)
         if (is2xx(resp.status)) {
           logger.info(s"[ChrisConnector] corrId=$correlationId status=${resp.status}")
           Future.successful(handle2xxResponse(resp, correlationId))
