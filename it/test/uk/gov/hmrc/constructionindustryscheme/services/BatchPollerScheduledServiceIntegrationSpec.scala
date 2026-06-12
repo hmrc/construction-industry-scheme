@@ -64,7 +64,7 @@ class BatchPollerScheduledServiceIntegrationSpec
 
       // the lock is still owned by the other instance - our service did not acquire or steal it
       repository.isLocked(lockId, otherOwner).futureValue shouldBe true
-      lockDocFor(lockId).map(_.owner) shouldBe Some(otherOwner)
+      lockDocFor(lockId).map(_.owner)                     shouldBe Some(otherOwner)
     }
 
     "acquire the lock and run when no other instance holds it" in {

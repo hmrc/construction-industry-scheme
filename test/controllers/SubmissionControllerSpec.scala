@@ -1587,6 +1587,161 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
   }
 
+  "pollVerificationSubmission" - {
+
+    "returns 200 with ACCEPTED status and override pollUrl when service returns ACCEPTED with pollUrl" in {
+      val submissionService = mock[SubmissionService]
+      val config            = mock[AppConfig]
+      val xmlValidator      = mock[XmlValidator]
+
+      when(config.chrisHost).thenReturn(Seq("chris.test"))
+      when(config.useOverridePollResponseEndPoint).thenReturn(true)
+      when(config.overridePollResponseEndPoint).thenReturn("override.chris.test")
+
+      val controller = mkController(
+        submissionService = submissionService,
+        appConfig = config,
+        xmlValidator = xmlValidator
+      )
+
+      val pollUrl         = "http://chris.test/poll"
+      val overridePollUrl = "https://override.chris.test/poll"
+
+      when(
+        submissionService.pollSubmissionAndUpdateGovTalkStatus(
+          eqTo(submissionId),
+          eqTo(overridePollUrl)
+        )(any[HeaderCarrier])
+      ).thenReturn(
+        Future.successful(
+          ChrisPollResponse(
+            status = ACCEPTED,
+            correlationId = "corr-123",
+            pollUrl = Some(overridePollUrl),
+            pollInterval = Some(10),
+            error = None,
+            irMarkReceived = None,
+            lastMessageDate = None,
+            acceptedTime = None
+          )
+        )
+      )
+
+      val req =
+        FakeRequest(GET, s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=$pollUrl")
+
+      val result = controller.pollVerificationSubmission(RedirectUrl(pollUrl), submissionId)(req)
+
+      status(result) mustBe OK
+
+      val js = contentAsJson(result)
+
+      (js \ "status").as[String] mustBe "ACCEPTED"
+      (js \ "correlationId").as[String] mustBe "corr-123"
+      (js \ "pollUrl").as[String] mustBe overridePollUrl
+      (js \ "intervalSeconds").as[Int] mustBe 10
+
+      verify(submissionService)
+        .pollSubmissionAndUpdateGovTalkStatus(eqTo(submissionId), eqTo(overridePollUrl))(any[HeaderCarrier])
+    }
+
+    "returns 200 with SUBMITTED status when service returns SUBMITTED" in {
+      val submissionService = mock[SubmissionService]
+      val config            = mock[AppConfig]
+      val xmlValidator      = mock[XmlValidator]
+
+      when(config.chrisHost).thenReturn(Seq("chris.test"))
+      when(config.useOverridePollResponseEndPoint).thenReturn(false)
+
+      val controller = mkController(
+        submissionService = submissionService,
+        appConfig = config,
+        xmlValidator = xmlValidator
+      )
+
+      val pollUrl = "http://chris.test/poll"
+
+      when(
+        submissionService.pollSubmissionAndUpdateGovTalkStatus(eqTo(submissionId), eqTo(pollUrl))(any[HeaderCarrier])
+      ).thenReturn(
+        Future.successful(
+          ChrisPollResponse(
+            status = SUBMITTED,
+            correlationId = "corr-123",
+            pollUrl = None,
+            pollInterval = None,
+            error = None,
+            irMarkReceived = Some("ir-mark-receipt"),
+            lastMessageDate = Some("2026-04-02T10:15:30Z"),
+            acceptedTime = Some("2026-04-02T10:16:30Z")
+          )
+        )
+      )
+
+      val req =
+        FakeRequest(GET, s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=$pollUrl")
+
+      val result = controller.pollVerificationSubmission(RedirectUrl(pollUrl), submissionId)(req)
+
+      status(result) mustBe OK
+
+      val js = contentAsJson(result)
+
+      (js \ "status").as[String] mustBe "SUBMITTED"
+      (js \ "correlationId").as[String] mustBe "corr-123"
+      (js \ "pollUrl").asOpt[String] mustBe None
+      (js \ "intervalSeconds").asOpt[Int] mustBe None
+      (js \ "irMarkReceived").as[String] mustBe "ir-mark-receipt"
+      (js \ "lastMessageDate").as[String] mustBe "2026-04-02T10:15:30Z"
+      (js \ "acceptedTime").as[String] mustBe "2026-04-02T10:16:30Z"
+    }
+
+    "returns 400 when pollUrl host is not allowed" in {
+      val submissionService = mock[SubmissionService]
+      val config            = mock[AppConfig]
+      val xmlValidator      = mock[XmlValidator]
+
+      when(config.chrisHost).thenReturn(Seq("chris.test"))
+
+      val controller = mkController(
+        submissionService = submissionService,
+        appConfig = config,
+        xmlValidator = xmlValidator
+      )
+
+      val req =
+        FakeRequest(GET, s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=http://bad.host/poll")
+
+      val result = controller.pollVerificationSubmission(RedirectUrl("http://bad.host/poll"), submissionId)(req)
+
+      status(result) mustBe BAD_REQUEST
+      (contentAsJson(result) \ "error").as[String] mustBe "pollUrl does not have the right host"
+
+      verifyNoInteractions(submissionService)
+    }
+
+    "returns 401 when unauthorised" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+
+      val controller = mkController(
+        submissionService = submissionService,
+        auth = rejectingAuthAction,
+        xmlValidator = xmlValidator
+      )
+
+      val pollUrl = "http://chris.test/poll"
+
+      val req =
+        FakeRequest(GET, s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=$pollUrl")
+
+      val result = controller.pollVerificationSubmission(RedirectUrl(pollUrl), submissionId)(req)
+
+      status(result) mustBe UNAUTHORIZED
+      verifyNoInteractions(submissionService)
+    }
+  }
+
   private def mkMeta(
     corrId: String = "CID123",
     pollSecs: Int = 15,
