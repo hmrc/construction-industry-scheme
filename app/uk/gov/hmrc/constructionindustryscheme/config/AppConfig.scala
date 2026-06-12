@@ -48,10 +48,11 @@ class AppConfig @Inject() (
   lazy val overridePollResponseEndPoint: String =
     config.get[String]("cis.overridePollResponseEndPoint")
 
-  private val schemaNames: Seq[String] =
-    config.get[Seq[String]]("xsd.schemaNames")
+  private val cisReturnSchemaNames: Seq[String]       = config.get[Seq[String]]("xsd.return.schemaNames")
+  private val cisVerificationSchemaNames: Seq[String] = config.get[Seq[String]]("xsd.verification.schemaNames")
 
-  lazy val schema: Schema = SchemaLoader.loadSchemas(schemaNames, environment)
+  lazy val cisReturnSchema: Schema       = SchemaLoader.loadSchemas(cisReturnSchemaNames, environment)
+  lazy val cisVerificationSchema: Schema = SchemaLoader.loadSchemas(cisVerificationSchemaNames, environment)
 
   lazy val cacheTtl: Long          = config.get[Int]("mongodb.timeToLiveInSeconds")
   val agentClientCryptoKey: String = config.get[String]("agentClientCrypto.key")
