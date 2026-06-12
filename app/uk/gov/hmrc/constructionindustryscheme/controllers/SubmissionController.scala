@@ -122,7 +122,7 @@ class SubmissionController @Inject() (
             } else None
           ).getOrElse(safeUrl.url)
 
-          logger.info(s"[$journey poll] useOverridePollResponseEndPoint: $appConfig.useOverridePollResponseEndPoint")
+          logger.info(s"[$journey poll] useOverridePollResponseEndPoint: ${appConfig.useOverridePollResponseEndPoint}")
           logger.info(s"[$journey poll] safeUrl.url: $safeUrl.url")
           logger.info(s"[$journey poll] overridePollUrl: $overridePollUrl")
 
