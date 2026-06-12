@@ -25,7 +25,7 @@ import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHelper.extractTa
 import uk.gov.hmrc.constructionindustryscheme.utils.IrMarkProcessor.UpdatedPayloadWithIrMark
 
 import java.time.format.DateTimeFormatter
-import java.time.{LocalDate, LocalDateTime, ZoneOffset}
+import java.time.{Clock, LocalDate, LocalDateTime, YearMonth, ZoneId}
 import java.util.UUID
 import scala.xml.{Elem, PrettyPrinter}
 
@@ -44,13 +44,17 @@ object CisVerificationSubmission extends Logging {
 
   def buildPayload(
     request: ChrisVerificationRequest,
-    enrolments: Enrolments
+    enrolments: Enrolments,
+    clock: Clock = Clock.systemUTC()
   ): CisVerificationSubmission = {
 
     val correlationId    = UUID.randomUUID().toString.replace("-", "").toUpperCase
-    val gatewayTimestamp = LocalDateTime.now(ZoneOffset.UTC).format(gatewayTimestampFormatter)
+    val gatewayTimestamp = LocalDateTime.now(ZoneId.of("Europe/London")).format(gatewayTimestampFormatter)
 
-    val periodEnd = LocalDate.now(ZoneOffset.UTC).format(isoDateFmt)
+    val periodEnd = YearMonth
+      .from(LocalDate.now(clock))
+      .atEndOfMonth()
+      .format(isoDateFmt)
     val sender    = if (request.isAgent) "Agent" else "Company"
 
     val cisRequest: Elem =

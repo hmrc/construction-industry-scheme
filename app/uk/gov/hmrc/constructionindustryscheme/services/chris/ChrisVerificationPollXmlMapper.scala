@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,12 +22,12 @@ import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import java.time.Instant
 import scala.xml.*
 
-object ChrisPollXmlMapper extends ChrisXmlMapper {
+object ChrisVerificationPollXmlMapper extends ChrisXmlMapper {
 
   def parse(xml: String, now: Instant = Instant.now()): Either[String, ChrisPollResponse] =
     parsePoll(xml, now)(derivePollStatus)
 
-  /** Stage 2 (polling) status mapping. */
+  /** Verification poll status mapping per F18. */
   private def derivePollStatus(
     qualifier: String,
     errOpt: Option[GovTalkError],
@@ -37,19 +37,16 @@ object ChrisPollXmlMapper extends ChrisXmlMapper {
       case "acknowledgement" => ACCEPTED
       case "response"        => SUBMITTED
       case "error"           =>
-        // Special case: IRMark mismatch ⇒ SUBMITTED_NO_RECEIPT
         if (isIrmarkMismatch(doc)) {
           SUBMITTED_NO_RECEIPT
         } else {
           errOpt match {
-            // 3001 + business => DEPARTMENTAL_ERROR
             case Some(err) if err.errorNumber == "3001" && err.errorType.equalsIgnoreCase("business") =>
               DEPARTMENTAL_ERROR
 
-            // recoverable errors (3000, 2005, 1000) => STARTED
-            case Some(err) if Set("3000", "2005", "1000").contains(err.errorNumber)                   => STARTED
+            case Some(err) if err.errorNumber == "3000" && err.errorType.equalsIgnoreCase("fatal") =>
+              DEPARTMENTAL_ERROR
 
-            // all other errors => FATAL_ERROR
             case _ => FATAL_ERROR
           }
         }

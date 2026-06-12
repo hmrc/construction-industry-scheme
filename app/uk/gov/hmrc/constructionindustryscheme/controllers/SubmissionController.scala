@@ -24,9 +24,10 @@ import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
-import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkErrorStatus, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.services.chris.GovTalkErrorStatusClassifier
+import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.constructionindustryscheme.utils.{UriHelper, XmlToJsonConvertor, XmlValidator}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -127,29 +128,20 @@ class SubmissionController @Inject() (
 
           submissionService
             .pollSubmissionAndUpdateGovTalkStatus(submissionId, overridePollUrl)
-            .map {
-              case ChrisPollResponse(
-                    status,
-                    correlationId,
-                    overridePollUrl,
-                    interval,
-                    error,
-                    irMarkReceived,
-                    lastMessageDate,
-                    acceptedTime
-                  ) =>
-                Ok(
-                  Json.obj(
-                    "status"          -> status.toString,
-                    "correlationId"   -> correlationId,
-                    "pollUrl"         -> overridePollUrl,
-                    "intervalSeconds" -> interval,
-                    "error"           -> error,
-                    "irMarkReceived"  -> irMarkReceived,
-                    "lastMessageDate" -> lastMessageDate,
-                    "acceptedTime"    -> acceptedTime
-                  )
+            .map { resp =>
+              Ok(
+                Json.obj(
+                  "status"             -> resp.status.toString,
+                  "pollUrl"            -> resp.pollUrl,
+                  "correlationId"      -> resp.correlationId,
+                  "intervalSeconds"    -> resp.pollInterval,
+                  "error"              -> resp.error,
+                  "irMarkReceived"     -> resp.irMarkReceived,
+                  "lastMessageDate"    -> resp.lastMessageDate,
+                  "acceptedTime"       -> resp.acceptedTime,
+                  "govTalkErrorStatus" -> resp.govTalkErrorStatus
                 )
+              )
             }
 
         case Left(value) =>
@@ -196,11 +188,12 @@ class SubmissionController @Inject() (
     }
 
     val base = Json.obj(
-      "submissionId"      -> submissionId,
-      "hmrcMarkGenerated" -> irMark,
-      "correlationId"     -> res.meta.correlationId,
-      "gatewayTimestamp"  -> gatewayTimestamp,
-      "acceptedTime"      -> res.meta.acceptedTime
+      "submissionId"       -> submissionId,
+      "hmrcMarkGenerated"  -> irMark,
+      "correlationId"      -> res.meta.correlationId,
+      "gatewayTimestamp"   -> gatewayTimestamp,
+      "acceptedTime"       -> res.meta.acceptedTime,
+      "govTalkErrorStatus" -> res.govTalkErrorStatus
     )
 
     def withStatus(s: String): JsObject = base ++ Json.obj("status" -> s)
@@ -252,39 +245,43 @@ class SubmissionController @Inject() (
 
     xmlValidator.validate(payload.irEnvelope, appConfig.cisReturnSchema) match {
       case Failure(e) =>
-        logger.error(s"ChRIS XML validation failed: ${e.getMessage}", e)
-        Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
+        logger.error(
+          s"ChRIS monthly return XML validation failed, but continuing with ChRIS submission for correlationId=${payload.correlationId}: ${e.getMessage}",
+          e
+        )
 
       case Success(_) =>
         logger.info(
-          s"ChRIS XML validation successful. Sending ChRIS submission for a correlationId = ${payload.correlationId}."
+          s"ChRIS monthly return XML validation successful. Sending ChRIS submission for correlationId=${payload.correlationId}."
         )
-        val employerRef = EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef)
-        submissionService
-          .submitToChris(payload)
-          .flatMap(res =>
-            handleInitialChrisAck(
-              submissionId,
-              employerRef,
-              payload.irMark,
-              payload.correlationId,
-              res,
-              r => renderSubmissionResponse(submissionId, payload)(r),
-              errorLabel = ""
-            )
-          )
-          .recoverWith { case NonFatal(ex) =>
-            handleInitialChrisFailure(
-              submissionId,
-              employerRef,
-              payload.irMark,
-              payload.correlationId,
-              ex,
-              errorLabel = "",
-              startedErrorText = "Chris failure"
-            )
-          }
     }
+
+    val employerRef = EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef)
+
+    submissionService
+      .submitToChris(payload)
+      .flatMap(res =>
+        handleInitialChrisAck(
+          submissionId,
+          employerRef,
+          payload.irMark,
+          payload.correlationId,
+          res,
+          r => renderSubmissionResponse(submissionId, payload)(r),
+          errorLabel = ""
+        )
+      )
+      .recoverWith { case NonFatal(ex) =>
+        handleInitialChrisFailure(
+          submissionId,
+          employerRef,
+          payload.irMark,
+          payload.correlationId,
+          ex,
+          errorLabel = "",
+          startedErrorText = "Chris failure"
+        )
+      }
   }
 
   private def handleInitialChrisAck(
@@ -332,6 +329,8 @@ class SubmissionController @Inject() (
       ex
     )
 
+    val classified: GovTalkErrorStatus = classifyChrisFailure(ex)
+
     submissionService
       .processInitialChrisFailure(
         employerRef,
@@ -341,18 +340,28 @@ class SubmissionController @Inject() (
       )
       .map { _ =>
         Ok(
-          withError(baseSubmissionResponseJson(submissionId, irMark, correlationId, "STARTED"), startedErrorText)
+          withError(
+            baseSubmissionResponseJson(submissionId, irMark, correlationId, "STARTED", Some(classified)),
+            startedErrorText
+          )
         )
       }
       .recover { case e =>
         logger.error(s"Failed to initialise/update GovTalk status after ChRIS$errorLabel 5xx", e)
         InternalServerError(
           withError(
-            baseSubmissionResponseJson(submissionId, irMark, correlationId, "FATAL_ERROR"),
+            baseSubmissionResponseJson(submissionId, irMark, correlationId, "FATAL_ERROR", Some(classified)),
             "GovTalk status already exists"
           )
         )
       }
+  }
+
+  private def classifyChrisFailure(ex: Throwable): GovTalkErrorStatus = ex match {
+    case err: UpstreamErrorResponse if err.statusCode >= 500 && err.statusCode < 600 =>
+      GovTalkErrorStatusClassifier.fromHttpStatus(err.statusCode)
+    case _                                                                           =>
+      GovTalkErrorStatusClassifier.noResponse
   }
 
   private def baseSubmissionResponseJson(
@@ -360,14 +369,16 @@ class SubmissionController @Inject() (
     irMark: String,
     correlationId: String,
     status: String,
+    govTalkErrorStatus: Option[GovTalkErrorStatus] = None,
     gatewayTimestamp: String = Instant.now(clock).toString
   ): JsObject =
     Json.obj(
-      "submissionId"      -> submissionId,
-      "hmrcMarkGenerated" -> irMark,
-      "correlationId"     -> correlationId,
-      "gatewayTimestamp"  -> gatewayTimestamp,
-      "status"            -> status
+      "submissionId"       -> submissionId,
+      "hmrcMarkGenerated"  -> irMark,
+      "correlationId"      -> correlationId,
+      "gatewayTimestamp"   -> gatewayTimestamp,
+      "status"             -> status,
+      "govTalkErrorStatus" -> govTalkErrorStatus
     )
 
   private def withError(json: JsObject, text: String): JsObject =
@@ -396,40 +407,45 @@ class SubmissionController @Inject() (
 
     xmlValidator.validate(payload.irEnvelope, appConfig.cisVerificationSchema) match {
       case Failure(e) =>
-        logger.error(s"Chris verification XML validation failed: ${e.getMessage}", e)
-        Future.failed(new RuntimeException(s"XML validation failed: ${e.getMessage}", e))
+        logger.error(
+          s"Chris verification XML validation failed, but continuing with ChRIS submission for correlationId=${payload.correlationId}: ${e.getMessage}",
+          e
+        )
 
       case Success(_) =>
         logger.info(
-          s"Chris verification XML validation successful. Sending Chris verification submission for correlationId=${payload.correlationId}."
+          s"Chris verification XML validation successful. Sending ChRIS verification submission for correlationId=${payload.correlationId}."
         )
-
-        val employerRef = EmployerReference(cvr.clientTaxOfficeNumber, cvr.clientTaxOfficeRef)
-        submissionService
-          .submitVerificationToChris(payload)
-          .flatMap(res =>
-            handleInitialChrisAck(
-              submissionId,
-              employerRef,
-              payload.irMark,
-              payload.correlationId,
-              res,
-              r => renderChrisResponse(submissionId, payload.irMark, r),
-              errorLabel = " verification"
-            )
-          )
-          .recoverWith { case NonFatal(ex) =>
-            handleInitialChrisFailure(
-              submissionId,
-              employerRef,
-              payload.irMark,
-              payload.correlationId,
-              ex,
-              errorLabel = " verification",
-              startedErrorText = "Chris verification failure"
-            )
-          }
+        // todo: for testing purposes,  remove before marging
+        logger.info(s"full chris xml envelope:${payload.envelope}")
     }
+
+    val employerRef = EmployerReference(cvr.clientTaxOfficeNumber, cvr.clientTaxOfficeRef)
+
+    submissionService
+      .submitVerificationToChris(payload)
+      .flatMap(res =>
+        handleInitialChrisAck(
+          submissionId,
+          employerRef,
+          payload.irMark,
+          payload.correlationId,
+          res,
+          r => renderChrisResponse(submissionId, payload.irMark, r),
+          errorLabel = " verification"
+        )
+      )
+      .recoverWith { case NonFatal(ex) =>
+        handleInitialChrisFailure(
+          submissionId,
+          employerRef,
+          payload.irMark,
+          payload.correlationId,
+          ex,
+          errorLabel = " verification",
+          startedErrorText = "Chris verification failure"
+        )
+      }
   }
 
 }

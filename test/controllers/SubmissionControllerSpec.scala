@@ -24,7 +24,7 @@ import org.scalatest.EitherValues
 import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, INTERNAL_SERVER_ERROR, NO_CONTENT, OK, UNAUTHORIZED}
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.test.FakeRequest
-import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, await, contentAsJson, status}
+import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController
@@ -34,7 +34,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlValidator
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl
 
@@ -494,7 +494,52 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
-    "returns RuntimeException if xmlValidator.validate fails" in {
+    "returns 200 OK with STARTED and ServerError govTalkErrorStatus when ChRIS submit fails with a 5xx UpstreamErrorResponse" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+
+      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(xmlValidator.validate(any(), any()))
+        .thenReturn(Success(()))
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(UpstreamErrorResponse("ChRIS unavailable", 503, 503)))
+      when(
+        submissionService.processInitialChrisFailure(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
+
+      val req =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(req)
+
+      status(result) mustBe OK
+
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "STARTED"
+      (js \ "govTalkErrorStatus" \ "kind").as[String] mustBe "ServerError"
+      (js \ "govTalkErrorStatus" \ "httpStatus").as[Int] mustBe 503
+
+      verify(submissionService, times(1))
+        .submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
+    }
+
+    "allow the user to continue if xmlValidator.validate fails" in {
       val submissionService = mock[SubmissionService]
       val xmlValidator      = mock[XmlValidator]
       val controller        = mkController(
@@ -506,8 +551,20 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
+      when(
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
-        .thenReturn(Future.successful(mkSubmissionResult(SUBMITTED_NO_RECEIPT)))
+        .thenReturn(Future.successful(mkSubmissionResult(DEPARTMENTAL_ERROR)))
       when(xmlValidator.validate(any(), any())).thenReturn(Failure(new Exception("invalid!")))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -516,9 +573,12 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val result = controller.submitToChris(submissionId)(req)
 
-      intercept[RuntimeException] {
-        await(result)
-      }
+      status(result) mustBe OK
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "DEPARTMENTAL_ERROR"
+
+      verify(submissionService).submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
     "returns 500 InternalServerError when GovTalk initialisation/update fails in recoverable ChRIS failure flow" in {
@@ -1343,20 +1403,44 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       verifyNoInteractions(xmlValidator)
     }
 
-    "returns RuntimeException if verification XML validation fails" in {
+    "continues to submit to ChRIS when verification XML validation fails" in {
       val submissionService  = mock[SubmissionService]
       val xmlValidator       = mock[XmlValidator]
       val verificationSchema = mock[Schema]
 
       when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
+      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
 
       val controller = mkController(
         submissionService = submissionService,
         xmlValidator = xmlValidator
       )
 
-      when(xmlValidator.validate(any[NodeSeq], eqTo(verificationSchema)))
+      when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Failure(new Exception("invalid verification xml")))
+
+      when(
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
+
+      when(submissionService.submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[CisVerificationSubmission])
+          val result  = mkSubmissionResult(SUBMITTED)
+
+          Future.successful(
+            result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
+          )
+        }
 
       val request =
         FakeRequest(POST, s"/cis/submissions/$submissionId/submit-verification-to-chris")
@@ -1365,11 +1449,29 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val result = controller.submitVerificationToChris(submissionId)(request)
 
-      intercept[RuntimeException] {
-        await(result)
-      }
+      status(result) mustBe OK
 
-      verifyNoInteractions(submissionService)
+      val js = contentAsJson(result)
+
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "SUBMITTED"
+
+      verify(xmlValidator).validate(any[NodeSeq], any[Schema])
+
+      verify(submissionService, times(1))
+        .submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier])
+
+      verify(submissionService, times(1))
+        .processInitialChrisAck(
+          eqTo(EmployerReference("999", "XYZ123")),
+          eqTo(submissionId),
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          eqTo("http://chris.example/gateway"),
+          any[Instant]
+        )(any[HeaderCarrier])
     }
 
     "returns 200 with STARTED when ChRIS verification submit fails but failure is recoverable" in {
