@@ -49,6 +49,14 @@ class SubmissionService @Inject() (
   def submitToChris(payload: ChRISSubmission)(implicit hc: HeaderCarrier): Future[SubmissionResult] =
     chrisConnector.submitEnvelope(payload.envelope, payload.correlationId)
 
+  def submitVerificationToChris(payload: CisVerificationSubmission)(implicit
+    hc: HeaderCarrier
+  ): Future[SubmissionResult] =
+    chrisConnector.submitEnvelopeForVerification(
+      payload.envelope,
+      payload.correlationId
+    )
+
   def sendSuccessfulEmail(submissionId: String, request: SendSuccessEmailRequest)(implicit
     hc: HeaderCarrier
   ): Future[Unit] = {

@@ -22,7 +22,7 @@ import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisPollXmlMapper, ChrisSubmissionXmlMapper}
+import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisPollXmlMapper, ChrisSubmissionXmlMapper, GovTalkErrorStatusClassifier}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps, UpstreamErrorResponse}
@@ -42,6 +42,9 @@ class ChrisConnector @Inject() (
   private val chrisCisReturnUrl: String =
     servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.submit-url")
 
+  private val chrisCisVerifyUrl: String =
+    servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.verify-submit-url")
+
   def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] =
     httpClient
       .post(url"$pollUrl")
@@ -60,7 +63,19 @@ class ChrisConnector @Inject() (
               logger.error(
                 s"[ChrisConnector] Failed to parse 2xx polling response corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
               )
-              Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None, None, None, None))
+              Future.successful(
+                ChrisPollResponse(
+                  FATAL_ERROR,
+                  correlationId,
+                  None,
+                  None,
+                  None,
+                  None,
+                  None,
+                  None,
+                  Some(GovTalkErrorStatus.OtherStatus)
+                )
+              )
             case Right(parsed) =>
               Future.successful(parsed)
           }
@@ -68,19 +83,53 @@ class ChrisConnector @Inject() (
           logger.error(
             s"[ChrisConnector] 5xx polling corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
           )
-          Future.successful(ChrisPollResponse(ACCEPTED, correlationId, None, None, None, None, None, None))
+          Future.successful(
+            ChrisPollResponse(
+              ACCEPTED,
+              correlationId,
+              None,
+              None,
+              None,
+              None,
+              None,
+              None,
+              Some(GovTalkErrorStatusClassifier.fromHttpStatus(resp.status))
+            )
+          )
         } else {
           logger.error(
             s"[ChrisConnector] Non-2xx/Non-5xx polling corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
           )
-          Future.successful(ChrisPollResponse(FATAL_ERROR, correlationId, None, None, None, None, None, None))
+          Future.successful(
+            ChrisPollResponse(
+              FATAL_ERROR,
+              correlationId,
+              None,
+              None,
+              None,
+              None,
+              None,
+              None,
+              Some(GovTalkErrorStatus.OtherStatus)
+            )
+          )
         }
       }
       .recover { case NonFatal(e) =>
         logger.error(
           s"[ChrisConnector] Transport exception calling $pollUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${e.getMessage}"
         )
-        ChrisPollResponse(ACCEPTED, correlationId, None, None, None, None, None, None)
+        ChrisPollResponse(
+          ACCEPTED,
+          correlationId,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          Some(GovTalkErrorStatus.NoResponse)
+        )
       }
 
   def deleteSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[Unit] =
@@ -98,9 +147,13 @@ class ChrisConnector @Inject() (
         ()
       }
 
-  def submitEnvelope(envelope: Elem, correlationId: String)(implicit hc: HeaderCarrier): Future[SubmissionResult] =
+  private def submit(
+    url: String,
+    envelope: Elem,
+    correlationId: String
+  )(implicit hc: HeaderCarrier): Future[SubmissionResult] =
     httpClient
-      .post(url"$chrisCisReturnUrl")
+      .post(url"$url")
       .setHeader(
         "Content-Type"  -> "application/xml",
         "Accept"        -> "application/xml",
@@ -109,9 +162,9 @@ class ChrisConnector @Inject() (
       .withBody(envelope.toString)
       .execute[HttpResponse]
       .flatMap { resp =>
-        logger.info("[ChrisConnector] pollSubmission response:\n" + resp.body)
+        logger.info("[ChrisConnector] submit response:\n" + resp.body)
         if (is2xx(resp.status)) {
-          logger.info(s"[ChrisConnector] corrId=$correlationId status=${resp.status} full-response-body:\n${resp.body}")
+          logger.info(s"[ChrisConnector] corrId=$correlationId status=${resp.status}")
           Future.successful(handle2xxResponse(resp, correlationId))
         } else if (resp.status >= 500) {
           Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
@@ -119,6 +172,14 @@ class ChrisConnector @Inject() (
           Future.successful(httpError(correlationId, resp.body, resp.status))
         }
       }
+
+  def submitEnvelope(envelope: Elem, correlationId: String)(implicit hc: HeaderCarrier): Future[SubmissionResult] =
+    submit(chrisCisReturnUrl, envelope, correlationId)
+
+  def submitEnvelopeForVerification(envelope: Elem, correlationId: String)(implicit
+    hc: HeaderCarrier
+  ): Future[SubmissionResult] =
+    submit(chrisCisVerifyUrl, envelope, correlationId)
 
   private def handle2xxResponse(resp: HttpResponse, correlationId: String): SubmissionResult = {
     val body = resp.body
@@ -165,6 +226,7 @@ class ChrisConnector @Inject() (
         gatewayTimestamp = None,
         responseEndPoint = ResponseEndPoint("", 0),
         error = Some(GovTalkError(errorNumber, errorType, errorText))
-      )
+      ),
+      govTalkErrorStatus = Some(GovTalkErrorStatus.OtherStatus)
     )
 }

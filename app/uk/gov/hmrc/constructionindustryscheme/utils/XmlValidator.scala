@@ -17,18 +17,17 @@
 package uk.gov.hmrc.constructionindustryscheme.utils
 
 import play.api.Logging
-import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
-
 import javax.inject.{Inject, Singleton}
+import javax.xml.validation.Schema
 import scala.util.{Failure, Try}
 import scala.xml.NodeSeq
 
 @Singleton
-class XmlValidator @Inject() (appConfig: AppConfig, schemaValidator: SchemaValidator) extends Logging {
+class XmlValidator @Inject() (schemaValidator: SchemaValidator) extends Logging {
 
-  def validate(xml: NodeSeq): Try[Unit] = Try {
+  def validate(xml: NodeSeq, schema: Schema): Try[Unit] = Try {
     val envelope = xml.mkString
-    val isValid  = schemaValidator.validate(envelope, appConfig.schema)
+    val isValid  = schemaValidator.validate(envelope, schema)
 
     if (!isValid) {
       logger.error("XML validation failed against schema")

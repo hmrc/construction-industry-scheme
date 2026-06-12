@@ -23,6 +23,7 @@ POST       /submissions/:submissionId/submit-to-chris                    uk.gov.
 POST       /submissions/:submissionId/update                             uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.updateSubmission(submissionId: String)
 GET        /submissions/poll                                             uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.pollSubmission(pollUrl: RedirectUrl, submissionId: String)
 POST       /submissions/:submissionId/send-success-email                 uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.sendSuccessfulEmail(submissionId: String)
+POST       /submissions/:submissionId/submit-verification-to-chris       uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.submitVerificationToChris(submissionId: String)
 POST       /submissions/:submissionId/reset-govtalk                      uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.resetGovTalk(submissionId: String)
 
 POST       /agent/client-list/retrieval/start                            uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.start
@@ -48,6 +49,7 @@ GET           /verification-batch/current/:instanceId             uk.gov.hmrc.co
 POST          /verification-batch/modify                          uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.modifyVerifications()
 
 POST          /verification-batch/create                          uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createVerificationBatchAndVerifications()
+POST          /verification/submission/create               uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createSubmissionAndUpdateVerifications()
 
 GET          /journey-handoffs/:journeyType/:id                      uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.get(journeyType: String, id: String)
 POST         /journey-handoffs/:journeyType                          uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.create(journeyType: String)

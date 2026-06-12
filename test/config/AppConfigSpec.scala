@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,25 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.response
+package config
 
-import play.api.libs.json.JsValue
-import uk.gov.hmrc.constructionindustryscheme.models.{GovTalkErrorStatus, SubmissionStatus}
+import base.SpecBase
+import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 
-case class ChrisPollResponse(
-  status: SubmissionStatus,
-  correlationId: String,
-  pollUrl: Option[String],
-  pollInterval: Option[Int],
-  error: Option[JsValue],
-  irMarkReceived: Option[String],
-  lastMessageDate: Option[String],
-  acceptedTime: Option[String],
-  govTalkErrorStatus: Option[GovTalkErrorStatus] = None
-)
+class AppConfigSpec extends SpecBase {
+
+  "AppConfig" - {
+
+    "cisVerificationSchema" - {
+
+      "must load schema using xsd.verification.schemaNames config" in {
+        val appConfig = app.injector.instanceOf[AppConfig]
+
+        val schema = appConfig.cisVerificationSchema
+
+        schema                  must not be null
+        schema.getClass.getName must include("Schema")
+      }
+    }
+  }
+}

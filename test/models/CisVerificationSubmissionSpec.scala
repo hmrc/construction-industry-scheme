@@ -17,13 +17,13 @@
 package models
 
 import base.SpecBase
-import org.mockito.Mockito.*
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.should.Matchers.{should, shouldBe}
 import org.scalatestplus.mockito.MockitoSugar
 import uk.gov.hmrc.auth.core.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisVerificationRequest
+import java.time.{Clock, Instant, ZoneOffset}
 
 class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoSugar {
 
@@ -69,6 +69,7 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
       verificationBatchId = "batch-1",
       verificationBatchResourceRef = "batch-ref",
       emailRecipient = Some("test@test.com"),
+      subcontractors = Seq(subcontractor),
       verifications = Seq.empty,
       isAgent = false,
       clientTaxOfficeNumber = "999",
@@ -76,7 +77,7 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
     )
 
     val payload =
-      CisVerificationSubmission.buildPayload(request, enrolments, Seq(subcontractor))
+      CisVerificationSubmission.buildPayload(request, enrolments)
 
     payload.irMark.length should be > 0
 
@@ -99,6 +100,7 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
       verificationBatchId = "batch-1",
       verificationBatchResourceRef = "batch-ref",
       emailRecipient = Some("test@test.com"),
+      subcontractors = Seq(subcontractor),
       verifications = Seq.empty,
       isAgent = true,
       clientTaxOfficeNumber = "999",
@@ -106,7 +108,7 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
     )
 
     val payload =
-      CisVerificationSubmission.buildPayload(request, fakeEnrolments("ignored", "ignored"), Seq(subcontractor))
+      CisVerificationSubmission.buildPayload(request, fakeEnrolments("ignored", "ignored"))
 
     payload.irMark.length should be > 0
 
@@ -123,6 +125,7 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
       verificationBatchId = "batch-1",
       verificationBatchResourceRef = "batch-ref",
       emailRecipient = None,
+      subcontractors = Seq(subcontractor),
       verifications = Seq.empty,
       isAgent = false,
       clientTaxOfficeNumber = "",
@@ -130,9 +133,38 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
     )
 
     val thrown = intercept[IllegalStateException] {
-      CisVerificationSubmission.buildPayload(request, Enrolments(Set.empty), Seq(subcontractor))
+      CisVerificationSubmission.buildPayload(request, Enrolments(Set.empty))
     }
 
     thrown.getMessage should include("Missing CIS enrolment identifiers")
+  }
+
+  "buildPayload uses last day of current month as PeriodEnd" in {
+
+    val fixedClock =
+      Clock.fixed(Instant.parse("2026-06-08T10:15:30Z"), ZoneOffset.UTC)
+
+    val request = ChrisVerificationRequest(
+      instanceId = "id-1",
+      contractorUTR = "1234567890",
+      contractorAORef = "123/AB456",
+      verificationBatchId = "batch-1",
+      verificationBatchResourceRef = "batch-ref",
+      emailRecipient = Some("test@test.com"),
+      subcontractors = Seq(subcontractor),
+      verifications = Seq.empty,
+      isAgent = true,
+      clientTaxOfficeNumber = "999",
+      clientTaxOfficeRef = "XYZ123"
+    )
+
+    val payload =
+      CisVerificationSubmission.buildPayload(
+        request,
+        fakeEnrolments("ignored", "ignored"),
+        fixedClock
+      )
+
+    (payload.envelope \\ "PeriodEnd").text shouldBe "2026-06-30"
   }
 }
