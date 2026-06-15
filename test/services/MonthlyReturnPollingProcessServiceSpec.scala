@@ -64,8 +64,13 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
         status = "Started",
         taxOfficeNumber = "123",
         taxOfficeReference = "AZ123",
+<<<<<<< HEAD
         taxYear = 2026,
         taxMonth = 4,
+=======
+        taxYear = "2026",
+        taxMonth = "4",
+>>>>>>> 7717c6b (DTR-5742: bug fix)
         instanceId = "1",
         agentId = None
       )
@@ -76,8 +81,13 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
         status = "Started",
         taxOfficeNumber = "123",
         taxOfficeReference = "AZ123",
+<<<<<<< HEAD
         taxYear = 2026,
         taxMonth = 5,
+=======
+        taxYear = "2026",
+        taxMonth = "5",
+>>>>>>> 7717c6b (DTR-5742: bug fix)
         instanceId = "2",
         agentId = None
       )
