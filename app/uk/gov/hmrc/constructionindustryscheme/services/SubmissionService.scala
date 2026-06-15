@@ -61,7 +61,14 @@ class SubmissionService @Inject() (
     hc: HeaderCarrier
   ): Future[Unit] = {
     val emailPayload = NilMonthlyReturnOrgSuccessEmail(request.email, request.month, request.year)
-    emailConnector.sendSuccessfulEmail(emailPayload).map(_ => ())
+    emailConnector.sendEmail(emailPayload).map(_ => ())
+  }
+
+  def sendEmailForVerification(
+    request: SubcontractorVerificationEmailRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
+    val emailPayload = SubcontractorVerificationEmail(request.email)
+    emailConnector.sendEmail(emailPayload).map(_ => ())
   }
 
   private def deleteChrisResourcesIfNeeded(
