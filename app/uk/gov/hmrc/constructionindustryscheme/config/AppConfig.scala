@@ -22,6 +22,7 @@ import uk.gov.hmrc.constructionindustryscheme.utils.SchemaLoader
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import javax.xml.validation.Schema
+import scala.concurrent.duration.Duration
 
 @Singleton
 class AppConfig @Inject() (
@@ -47,10 +48,11 @@ class AppConfig @Inject() (
   lazy val overridePollResponseEndPoint: String =
     config.get[String]("cis.overridePollResponseEndPoint")
 
-  private val schemaNames: Seq[String] =
-    config.get[Seq[String]]("xsd.schemaNames")
+  private val cisReturnSchemaNames: Seq[String]       = config.get[Seq[String]]("xsd.return.schemaNames")
+  private val cisVerificationSchemaNames: Seq[String] = config.get[Seq[String]]("xsd.verification.schemaNames")
 
-  lazy val schema: Schema = SchemaLoader.loadSchemas(schemaNames, environment)
+  lazy val cisReturnSchema: Schema       = SchemaLoader.loadSchemas(cisReturnSchemaNames, environment)
+  lazy val cisVerificationSchema: Schema = SchemaLoader.loadSchemas(cisVerificationSchemaNames, environment)
 
   lazy val cacheTtl: Long          = config.get[Int]("mongodb.timeToLiveInSeconds")
   val agentClientCryptoKey: String = config.get[String]("agentClientCrypto.key")
@@ -61,4 +63,17 @@ class AppConfig @Inject() (
 
   lazy val govTalkStatusStageQueryParamEnabled: Boolean =
     config.getOptional[Boolean]("formpProxy.govTalkStatus.stageQueryParamEnabled").getOrElse(false)
+
+  val batchPollerJobEnabled: Boolean =
+    config.get[Boolean]("schedules.batch-poller-job.enabled")
+
+  val batchPollerJobDescription: String =
+    config.get[String]("schedules.batch-poller-job.description")
+
+  val batchPollerJobExpression: String =
+    config.get[String]("schedules.batch-poller-job.expression").replaceAll("_", " ")
+
+  val batchPollerJobLockTtl: Duration = Duration(
+    config.get[String]("schedules.batch-poller-job.lockTtl").replaceAll("_", " ")
+  )
 }

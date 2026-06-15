@@ -37,8 +37,17 @@ class SchemaLoaderSpec extends AnyWordSpec with Matchers {
       schema.getClass.getName must include("Schema")
     }
 
+    "load CIS verification XSD schema successfully" in {
+      val schema: Schema =
+        SchemaLoader.loadSchemas(Seq("CISverification-v1-2.xsd"), env)
+
+      schema                  must not be null
+      schema.getClass.getName must include("Schema")
+    }
+
     "load multiple valid XSD schemas successfully" in {
-      val schema: Schema = SchemaLoader.loadSchemas(Seq("CISreturn-v1-2.xsd", "core-v2-0.xsd"), env)
+      val schema: Schema =
+        SchemaLoader.loadSchemas(Seq("CISreturn-v1-2.xsd", "CISverification-v1-2.xsd", "core-v2-0.xsd"), env)
 
       schema                  must not be null
       schema.getClass.getName must include("Schema")

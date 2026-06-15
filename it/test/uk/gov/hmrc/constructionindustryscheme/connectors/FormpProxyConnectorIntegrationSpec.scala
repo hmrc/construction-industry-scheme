@@ -1740,6 +1740,82 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector createSubmissionForVerification" should {
+
+    "POST /formp-proxy/cis/verification/submission/create and return response model (201)" in {
+      val req = CreateSubmissionAndUpdateVerificationsRequest(
+        instanceId = instanceId,
+        verificationBatchId = 99L,
+        verificationBatchResourceRef = 7L,
+        emailRecipient = "ops@example.com",
+        irMarkGenerated = Some("IR_MARK"),
+        verifications = Seq(
+          VerificationToUpdate(
+            subcontractorName = "ACME LTD",
+            verificationResourceRef = 111L,
+            proceedVerification = "Y"
+          ),
+          VerificationToUpdate(
+            subcontractorName = "BOB BUILDER",
+            verificationResourceRef = 222L,
+            proceedVerification = "N"
+          )
+        ),
+        agentId = None
+      )
+
+      val responseJson = Json.obj("submissionId" -> 555L)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission/create"))
+          .withHeader("Content-Type", containing("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(201)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.createSubmissionForVerification(req).futureValue
+      Json.toJson(out) mustBe responseJson
+      out.submissionId mustBe 555L
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-2xx (e.g. 500)" in {
+      val req = CreateSubmissionAndUpdateVerificationsRequest(
+        instanceId = instanceId,
+        verificationBatchId = 99L,
+        verificationBatchResourceRef = 7L,
+        emailRecipient = "ops@example.com",
+        irMarkGenerated = Some("IR_MARK"),
+        verifications = Seq(
+          VerificationToUpdate(
+            subcontractorName = "ACME LTD",
+            verificationResourceRef = 111L,
+            proceedVerification = "Y"
+          )
+        ),
+        agentId = None
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission/create"))
+          .withHeader("Content-Type", containing("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("""{"message":"boom"}""")
+          )
+      )
+
+      val ex = connector.createSubmissionForVerification(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
   "FormpProxyConnector getSubmittedMonthlyReturnsData" should {
 
     "POST request to /formp-proxy/cis/monthly-return-edit and return payload (200)" in {
@@ -1855,6 +1931,65 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = connector.modifyVerifications(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector getSchemeEmail" should {
+
+    "POST to /formp-proxy/scheme/email and return Some(email) when upstream returns 200 with email JSON" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/email"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withHeader("Content-Type", "application/json")
+              .withBody("""{ "email": "contractor@example.com" }""")
+          )
+      )
+
+      val result = connector.getSchemeEmail(instanceId).futureValue
+      result mustBe Some("contractor@example.com")
+    }
+
+    "return None when the email field is absent from the 200 response body" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/email"))
+          .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withHeader("Content-Type", "application/json")
+              .withBody("""{ "someOtherField": "value" }""")
+          )
+      )
+
+      val result = connector.getSchemeEmail(instanceId).futureValue
+      result mustBe None
+    }
+
+    "return None when upstream responds with 404" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/email"))
+          .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
+          .willReturn(aResponse().withStatus(404).withBody("""{"message":"not found"}"""))
+      )
+
+      val result = connector.getSchemeEmail(instanceId).futureValue
+      result mustBe None
+    }
+
+    "fail the future with UpstreamErrorResponse when upstream returns 500" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/email"))
+          .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.getSchemeEmail(instanceId).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }

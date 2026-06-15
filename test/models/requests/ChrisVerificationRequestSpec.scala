@@ -18,9 +18,33 @@ package models.requests
 
 import base.SpecBase
 import play.api.libs.json.Json
+import uk.gov.hmrc.constructionindustryscheme.models.SubcontractorCurrentVerification
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisVerificationRequest, VerificationDetails}
 
 class ChrisVerificationRequestSpec extends SpecBase {
+
+  private val subcontractor: SubcontractorCurrentVerification =
+    SubcontractorCurrentVerification(
+      subcontractorId = 1L,
+      subbieResourceRef = Some(1001L),
+      firstName = Some("John"),
+      secondName = None,
+      surname = Some("Smith"),
+      tradingName = None,
+      utr = Some("1234567890"),
+      nino = Some("AB123456C"),
+      crn = None,
+      partnerUtr = None,
+      partnershipTradingName = None,
+      subcontractorType = Some("individual"),
+      addressLine1 = Some("1 Test Street"),
+      addressLine2 = Some("Test Area"),
+      addressLine3 = None,
+      addressLine4 = None,
+      country = Some("GB"),
+      postcode = Some("AA1 1AA"),
+      worksReferenceNumber = Some("WRN123")
+    )
 
   "ChrisVerificationRequest" - {
 
@@ -36,6 +60,7 @@ class ChrisVerificationRequestSpec extends SpecBase {
         verificationBatchId = "batch-1",
         verificationBatchResourceRef = "batch-ref",
         emailRecipient = Some("test@test.com"),
+        subcontractors = Seq(subcontractor),
         verifications = Seq(
           VerificationDetails(
             subcontractorName = "John Smith",
@@ -56,6 +81,19 @@ class ChrisVerificationRequestSpec extends SpecBase {
       (json \ "verificationBatchId").as[String] mustBe "batch-1"
       (json \ "verificationBatchResourceRef").as[String] mustBe "batch-ref"
       (json \ "emailRecipient").as[String] mustBe "test@test.com"
+
+      val subcontractorJson = (json \ "subcontractors")(0)
+
+      (subcontractorJson \ "subcontractorId").as[Long] mustBe 1L
+      (subcontractorJson \ "subbieResourceRef").as[Long] mustBe 1001L
+      (subcontractorJson \ "firstName").as[String] mustBe "John"
+      (subcontractorJson \ "surname").as[String] mustBe "Smith"
+      (subcontractorJson \ "utr").as[String] mustBe "1234567890"
+      (subcontractorJson \ "nino").as[String] mustBe "AB123456C"
+      (subcontractorJson \ "subcontractorType").as[String] mustBe "individual"
+      (subcontractorJson \ "addressLine1").as[String] mustBe "1 Test Street"
+      (subcontractorJson \ "postcode").as[String] mustBe "AA1 1AA"
+      (subcontractorJson \ "worksReferenceNumber").as[String] mustBe "WRN123"
 
       val verificationJson = (json \ "verifications")(0)
 
@@ -78,6 +116,29 @@ class ChrisVerificationRequestSpec extends SpecBase {
           |  "verificationBatchId": "batch-1",
           |  "verificationBatchResourceRef": "batch-ref",
           |  "emailRecipient": "test@test.com",
+          |  "subcontractors": [
+          |    {
+          |      "subcontractorId": 1,
+          |      "subbieResourceRef": 1001,
+          |      "firstName": "John",
+          |      "secondName": null,
+          |      "surname": "Smith",
+          |      "tradingName": null,
+          |      "utr": "1234567890",
+          |      "nino": "AB123456C",
+          |      "crn": null,
+          |      "partnerUtr": null,
+          |      "partnershipTradingName": null,
+          |      "subcontractorType": "individual",
+          |      "addressLine1": "1 Test Street",
+          |      "addressLine2": "Test Area",
+          |      "addressLine3": null,
+          |      "addressLine4": null,
+          |      "country": "GB",
+          |      "postcode": "AA1 1AA",
+          |      "worksReferenceNumber": "WRN123"
+          |    }
+          |  ],
           |  "verifications": [
           |    {
           |      "subcontractorName": "John Smith",
@@ -103,6 +164,8 @@ class ChrisVerificationRequestSpec extends SpecBase {
       result.verificationBatchResourceRef mustBe "batch-ref"
       result.emailRecipient mustBe Some("test@test.com")
 
+      result.subcontractors must contain only subcontractor
+
       val verification = result.verifications.head
       verification.subcontractorName mustBe "John Smith"
       verification.verificationResourceRef mustBe "ref-1"
@@ -121,6 +184,7 @@ class ChrisVerificationRequestSpec extends SpecBase {
         verificationBatchId = "batch-1",
         verificationBatchResourceRef = "batch-ref",
         emailRecipient = None,
+        subcontractors = Seq(subcontractor),
         verifications = Seq.empty
       )
 
@@ -143,6 +207,7 @@ class ChrisVerificationRequestSpec extends SpecBase {
           |  "contractorAORef": "123/AB456",
           |  "verificationBatchId": "batch-1",
           |  "verificationBatchResourceRef": "batch-ref",
+          |  "subcontractors": [],
           |  "verifications": [],
           |  "action": "verify",
           |  "declaration": "yes"
@@ -153,6 +218,7 @@ class ChrisVerificationRequestSpec extends SpecBase {
       val result = json.as[ChrisVerificationRequest]
 
       result.emailRecipient mustBe None
+      result.subcontractors mustBe empty
       result.verifications mustBe empty
     }
   }

@@ -39,6 +39,7 @@ final class ChrisConnectorIntegrationSpec
 
   private lazy val connector = app.injector.instanceOf[ChrisConnector]
   private val path           = "/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+  private val verificationPath = "/submission/ChRIS/CISR/Filing/sync/CISVERIFY"
 
   private lazy val xmlString: String = ItResources.read("chris/envelopes/nil_monthly_return.xml")
   private lazy val envelope: Elem    = XML.loadString(xmlString)
@@ -110,6 +111,130 @@ final class ChrisConnectorIntegrationSpec
       val result = connector.submitEnvelope(envelope, correlationId).futureValue
 
       result.status mustBe FATAL_ERROR
+      result.meta.error.value.errorNumber mustBe "http404"
+    }
+  }
+
+
+  "ChrisConnector.submitEnvelopeForVerification" should {
+
+    "post verification envelope to CISVERIFY endpoint and return parsed ACCEPTED response" in {
+      val correlationId = "verify-cid-123"
+
+      val responseXml =
+        s"""<GovTalkMessage>
+           |  <EnvelopeVersion>2.0</EnvelopeVersion>
+           |  <Header>
+           |    <MessageDetails>
+           |      <Class>IR-CIS-VERIFY</Class>
+           |      <Qualifier>acknowledgement</Qualifier>
+           |      <Function>submit</Function>
+           |      <CorrelationID>$correlationId</CorrelationID>
+           |      <GatewayTimestamp>2025-01-01T00:00:00</GatewayTimestamp>
+           |      <ResponseEndPoint PollInterval="15">/submission/ChRIS/poll/IR-CIS-VERIFY/1</ResponseEndPoint>
+           |    </MessageDetails>
+           |  </Header>
+           |  <Body/>
+           |</GovTalkMessage>""".stripMargin
+
+      stubFor(
+        post(urlPathEqualTo(verificationPath))
+          .withHeader("Content-Type", equalTo("application/xml"))
+          .withHeader("Accept", equalTo("application/xml"))
+          .withHeader("CorrelationId", equalTo(correlationId))
+          .withRequestBody(equalToXml(xmlString))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withHeader("Content-Type", "application/xml")
+              .withBody(responseXml)
+          )
+      )
+
+      val result = connector.submitEnvelopeForVerification(envelope, correlationId).futureValue
+
+      result.status mustBe ACCEPTED
+      result.meta.correlationId mustBe correlationId
+      result.meta.qualifier mustBe "acknowledgement"
+      result.meta.function mustBe "submit"
+      result.meta.className mustBe "IR-CIS-VERIFY"
+      result.meta.responseEndPoint.url mustBe "/submission/ChRIS/poll/IR-CIS-VERIFY/1"
+      result.meta.responseEndPoint.pollIntervalSeconds mustBe 15
+
+      verify(
+        postRequestedFor(urlPathEqualTo(verificationPath))
+          .withHeader("CorrelationId", equalTo(correlationId))
+          .withHeader("Content-Type", equalTo("application/xml"))
+          .withHeader("Accept", equalTo("application/xml"))
+          .withRequestBody(equalToXml(xmlString))
+      )
+    }
+
+    "on 2xx but unparsable XML returns FATAL_ERROR(parse) and preserves correlationId" in {
+      val correlationId = "verify-cid-parse"
+
+      stubFor(
+        post(urlPathEqualTo(verificationPath))
+          .withHeader("Content-Type", equalTo("application/xml"))
+          .withHeader("Accept", equalTo("application/xml"))
+          .withHeader("CorrelationId", equalTo(correlationId))
+          .withRequestBody(equalToXml(xmlString))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withHeader("Content-Type", "application/xml")
+              .withBody("<Ack>OK</Ack>")
+          )
+      )
+
+      val result = connector.submitEnvelopeForVerification(envelope, correlationId).futureValue
+
+      result.status mustBe FATAL_ERROR
+      result.rawXml mustBe "<Ack>OK</Ack>"
+      result.meta.correlationId mustBe correlationId
+      result.meta.error.value.errorNumber mustBe "parse"
+
+      verify(
+        postRequestedFor(urlPathEqualTo(verificationPath))
+          .withHeader("CorrelationId", equalTo(correlationId))
+          .withHeader("Content-Type", equalTo("application/xml"))
+          .withHeader("Accept", equalTo("application/xml"))
+      )
+    }
+
+    "on 500 fails with UpstreamErrorResponse" in {
+      val correlationId = "verify-cid-500"
+
+      stubFor(
+        post(urlPathEqualTo(verificationPath))
+          .withRequestBody(equalToXml(xmlString))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withHeader("Content-Type", "application/xml")
+              .withBody("verification boom")
+          )
+      )
+
+      val ex = connector.submitEnvelopeForVerification(envelope, correlationId).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+
+    "on 404 returns FATAL_ERROR(http404)" in {
+      val correlationId = "verify-cid-404"
+
+      stubFor(
+        post(urlPathEqualTo(verificationPath))
+          .withRequestBody(equalToXml(xmlString))
+          .willReturn(aResponse().withStatus(404))
+      )
+
+      val result = connector.submitEnvelopeForVerification(envelope, correlationId).futureValue
+
+      result.status mustBe FATAL_ERROR
+      result.meta.correlationId mustBe correlationId
       result.meta.error.value.errorNumber mustBe "http404"
     }
   }

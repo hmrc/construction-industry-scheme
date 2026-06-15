@@ -284,7 +284,7 @@ class MonthlyReturnsControllerIntegrationSpec
     "return 200 with UnsubmittedMonthlyReturnsResponse when FormP succeeds" in {
       AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
 
-      val instanceId = "123"
+      val instanceId   = "123"
       val responseJson = Json.parse(
         s"""
            |{
@@ -323,7 +323,7 @@ class MonthlyReturnsControllerIntegrationSpec
     "return 200 with SubmittedMonthlyReturnsResponse when FormP succeeds" in {
       AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "111", taxOfficeReference = "test111")
 
-      val instanceId = "123"
+      val instanceId   = "123"
       val responseJson = Json.parse(
         s"""
            |{

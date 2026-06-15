@@ -46,6 +46,8 @@ trait ApplicationWithWiremock
       "microservice.services.chris.host"                 -> WireMockConstants.stubHost,
       "microservice.services.chris.port"                 -> WireMockConstants.stubPort,
       "microservice.services.chris.affix-url"            -> "/submission/ChRIS/CISR/Filing/sync/CIS300MR",
+      "microservice.services.chris.submit-url"           -> "/submission/ChRIS/CISR/Filing/sync/CIS300MR",
+      "microservice.services.chris.verify-submit-url"    -> "/submission/ChRIS/CISR/Filing/sync/CISVERIFY",
       "microservice.services.rds-datacache-proxy.host"   -> WireMockConstants.stubHost,
       "microservice.services.rds-datacache-proxy.port"   -> WireMockConstants.stubPort,
       "microservice.services.formp-proxy.host"           -> WireMockConstants.stubHost,
@@ -53,7 +55,8 @@ trait ApplicationWithWiremock
       "microservice.services.email.host"                 -> WireMockConstants.stubHost,
       "microservice.services.email.port"                 -> WireMockConstants.stubPort,
       "microservice.services.client-exchange-proxy.host" -> WireMockConstants.stubHost,
-      "microservice.services.client-exchange-proxy.port" -> WireMockConstants.stubPort
+      "microservice.services.client-exchange-proxy.port" -> WireMockConstants.stubPort,
+      "schedules.batch-poller-job.enabled"               -> false
     )
 
   override lazy val app: Application = new GuiceApplicationBuilder()
@@ -97,6 +100,16 @@ trait ApplicationWithWiremock
       .post(url"$url")
       .setHeader(("Content-Type" -> "application/json") +: headers: _*)
       .withBody(body)
+      .execute[Either[UpstreamErrorResponse, HttpResponse]]
+      .futureValue
+
+  protected def getEither(
+    url: String,
+    headers: (String, String)*
+  )(implicit hc: HeaderCarrier): Either[UpstreamErrorResponse, HttpResponse] =
+    httpClient
+      .get(url"$url")
+      .setHeader(("Accept" -> "application/json") +: headers.toList: _*)
       .execute[Either[UpstreamErrorResponse, HttpResponse]]
       .futureValue
 
