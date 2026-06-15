@@ -36,17 +36,23 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
       verifyNoInteractions(monthlyReturnService)
     }
 
-//    "must fail when getMonthlyReturnForEdit fails" in {
-//      val submission = MonthlyReturnSubmissionToPoll(
-//        instanceId = "instance-1",
-//        taxMonth = "4",
-//        taxYear = "2026"
-//      )
-//
-//      when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
-//        .thenReturn(Future.failed(new RuntimeException("failed")))
-//
-//      service.process(Seq(submission)).failed.futureValue.getMessage mustBe "failed"
-//    }
+    "must fail when getMonthlyReturnForEdit fails" in {
+      val submission = MonthlyReturnSubmissionToPoll(
+        submissionId = 100,
+        submissionType = "type",
+        status = "Started",
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AZ123",
+        taxYear = "2026",
+        taxMonth = "2",
+        instanceId = "1",
+        agentId = None
+      )
+
+      when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
+        .thenReturn(Future.failed(new RuntimeException("failed")))
+
+      service.process(Seq(submission)).failed.futureValue.getMessage mustBe "failed"
+    }
   }
 }
