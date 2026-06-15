@@ -19,6 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.jobs.ScheduledService
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.TimestampSupport
 import uk.gov.hmrc.mongo.lock.{LockRepository, ScheduledLockService}
 
@@ -26,11 +27,12 @@ import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
 class BatchPollerScheduledService @Inject() (
-  lockRepository: LockRepository,
-  timestampSupport: TimestampSupport,
-  appConfig: AppConfig
-) extends ScheduledService[Unit]
-    with Logging {
+                                              lockRepository: LockRepository,
+                                              timestampSupport: TimestampSupport,
+                                              appConfig: AppConfig,
+                                              batchPollerService: BatchPollerService
+                                            ) extends ScheduledService[Unit]
+  with Logging {
 
   private val lock: ScheduledLockService = ScheduledLockService(
     lockRepository = lockRepository,
@@ -39,14 +41,18 @@ class BatchPollerScheduledService @Inject() (
     schedulerInterval = appConfig.batchPollerJobLockTtl
   )
 
-  override def invoke(implicit ec: ExecutionContext): Future[Unit] =
+  override def invoke(implicit ec: ExecutionContext): Future[Unit] = {
+    implicit val hc: HeaderCarrier = HeaderCarrier()
+
+    logger.info("[BatchPollerScheduledService][invoke] Batch poller job invoked")
+
     lock
       .withLock {
-        logger.info("/admin/batchPoller invoked") // TODO: actual call to be implemented
-        Future.unit
+        batchPollerService.run()
       }
       .map {
         case Some(_) => logger.info("batch-poller-job completed (lock acquired)")
         case None    => logger.info("batch-poller-job skipped (lock held by another instance)")
       }
+  }
 }
