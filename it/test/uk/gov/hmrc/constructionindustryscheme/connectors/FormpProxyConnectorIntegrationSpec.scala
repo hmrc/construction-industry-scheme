@@ -1936,6 +1936,65 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector getSchemeEmail" should {
+
+    "POST to /formp-proxy/scheme/email and return Some(email) when upstream returns 200 with email JSON" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/email"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withHeader("Content-Type", "application/json")
+              .withBody("""{ "email": "contractor@example.com" }""")
+          )
+      )
+
+      val result = connector.getSchemeEmail(instanceId).futureValue
+      result mustBe Some("contractor@example.com")
+    }
+
+    "return None when the email field is absent from the 200 response body" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/email"))
+          .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withHeader("Content-Type", "application/json")
+              .withBody("""{ "someOtherField": "value" }""")
+          )
+      )
+
+      val result = connector.getSchemeEmail(instanceId).futureValue
+      result mustBe None
+    }
+
+    "return None when upstream responds with 404" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/email"))
+          .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
+          .willReturn(aResponse().withStatus(404).withBody("""{"message":"not found"}"""))
+      )
+
+      val result = connector.getSchemeEmail(instanceId).futureValue
+      result mustBe None
+    }
+
+    "fail the future with UpstreamErrorResponse when upstream returns 500" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/email"))
+          .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.getSchemeEmail(instanceId).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
   "FormpProxyConnector resetGovTalkStatus" should {
 
     "POST /formp-proxy/cis/govtalkstatus/reset and return Unit on 204" in {

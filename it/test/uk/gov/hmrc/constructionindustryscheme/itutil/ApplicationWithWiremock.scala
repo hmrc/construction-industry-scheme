@@ -103,6 +103,16 @@ trait ApplicationWithWiremock
       .execute[Either[UpstreamErrorResponse, HttpResponse]]
       .futureValue
 
+  protected def getEither(
+    url: String,
+    headers: (String, String)*
+  )(implicit hc: HeaderCarrier): Either[UpstreamErrorResponse, HttpResponse] =
+    httpClient
+      .get(url"$url")
+      .setHeader(("Accept" -> "application/json") +: headers.toList: _*)
+      .execute[Either[UpstreamErrorResponse, HttpResponse]]
+      .futureValue
+
   override protected def beforeAll(): Unit =
     wireMock.start()
     super.beforeAll()
