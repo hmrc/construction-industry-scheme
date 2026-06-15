@@ -1935,4 +1935,61 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
+
+  "FormpProxyConnector updateVerificationSubmission" should {
+
+    "POST request to /formp-proxy/cis/verification/submission/update and return Unit when upstream returns 204" in {
+      val request = UpdateVerificationSubmissionRequest(
+        instanceId = "1",
+        verificationBatchId = 1001L,
+        verificationBatchResourceRef = 2001L,
+        submittableStatus = "SUBMITTED",
+        hmrcMarkGenerated = Some("hmrc-mark"),
+        hmrcMarkGgis = Some("ggis-mark"),
+        emailRecipient = Some("test@test.com"),
+        submissionRequestDate = Some(LocalDateTime.parse("2026-06-15T03:30:52")),
+        acceptedTime = Some("2026-06-15T03:30:53")
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission/update"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(request).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(204)
+          )
+      )
+
+      connector.updateVerificationSubmission(request).futureValue mustBe()
+    }
+
+    "fail the future when upstream returns non-204" in {
+      val request = UpdateVerificationSubmissionRequest(
+        instanceId = "1",
+        verificationBatchId = 1001L,
+        verificationBatchResourceRef = 2001L,
+        submittableStatus = "SUBMITTED",
+        hmrcMarkGenerated = Some("hmrc-mark")
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission/update"))
+          .withRequestBody(equalToJson(Json.toJson(request).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("formp error")
+          )
+      )
+
+      val ex = connector.updateVerificationSubmission(request).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+
+      val upstream = ex.asInstanceOf[UpstreamErrorResponse]
+      upstream.statusCode mustBe 500
+      upstream.message mustBe "formp error"
+    }
+  }
 }

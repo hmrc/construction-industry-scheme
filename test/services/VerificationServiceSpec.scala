@@ -26,6 +26,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
 import uk.gov.hmrc.http.HeaderCarrier
 
+import java.time.LocalDateTime
 import scala.concurrent.Future
 
 final class VerificationServiceSpec extends SpecBase {
@@ -212,6 +213,43 @@ final class VerificationServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.createSubmissionAndUpdateVerifications(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "VerificationService#updateVerificationSubmission" - {
+
+    val request = UpdateVerificationSubmissionRequest(
+      instanceId = "abc-123",
+      verificationBatchId = 99L,
+      verificationBatchResourceRef = 10L,
+      submittableStatus = "SUBMITTED",
+      hmrcMarkGenerated = Some("hmrc-mark"),
+      hmrcMarkGgis = Some("ggis-mark"),
+      emailRecipient = Some("ops@example.com"),
+      submissionRequestDate = Some(LocalDateTime.parse("2026-06-15T03:30:52")),
+      acceptedTime = Some("2026-06-15T03:30:53")
+    )
+
+    "delegates to FormpProxyConnector and returns Unit" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.updateVerificationSubmission(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.updateVerificationSubmission(request).futureValue mustBe ()
+
+      verify(connector).updateVerificationSubmission(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.updateVerificationSubmission(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.updateVerificationSubmission(request).failed.futureValue.getMessage must include("boom")
     }
   }
 }

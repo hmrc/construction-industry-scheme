@@ -895,7 +895,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         when(
           submissionService.pollSubmissionAndUpdateGovTalkStatus(
             eqTo(submissionId),
-            eqTo(overridePollUrl)
+            eqTo(overridePollUrl),
+            eqTo(ChrisPollJourney.MonthlyReturn)
           )(any[HeaderCarrier])
         ).thenReturn(
           Future.successful(
@@ -923,7 +924,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         (js \ "intervalSeconds").as[Int] mustBe 10
 
         verify(submissionService)
-          .pollSubmissionAndUpdateGovTalkStatus(eqTo(submissionId), eqTo(overridePollUrl))(any[HeaderCarrier])
+          .pollSubmissionAndUpdateGovTalkStatus(
+            eqTo(submissionId),
+            eqTo(overridePollUrl),
+            eqTo(ChrisPollJourney.MonthlyReturn)
+          )(any[HeaderCarrier])
       }
     }
 
@@ -944,7 +949,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val pollUrl = "http://chris.test/poll"
 
       when(
-        submissionService.pollSubmissionAndUpdateGovTalkStatus(eqTo(submissionId), eqTo(pollUrl))(any[HeaderCarrier])
+        submissionService.pollSubmissionAndUpdateGovTalkStatus(
+          eqTo(submissionId),
+          eqTo(pollUrl),
+          eqTo(ChrisPollJourney.MonthlyReturn)
+        )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
           ChrisPollResponse(
@@ -1610,7 +1619,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(
         submissionService.pollSubmissionAndUpdateGovTalkStatus(
           eqTo(submissionId),
-          eqTo(overridePollUrl)
+          eqTo(overridePollUrl),
+          eqTo(ChrisPollJourney.Verification)
         )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
@@ -1642,7 +1652,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "intervalSeconds").as[Int] mustBe 10
 
       verify(submissionService)
-        .pollSubmissionAndUpdateGovTalkStatus(eqTo(submissionId), eqTo(overridePollUrl))(any[HeaderCarrier])
+        .pollSubmissionAndUpdateGovTalkStatus(
+          eqTo(submissionId),
+          eqTo(overridePollUrl),
+          eqTo(ChrisPollJourney.Verification)
+        )(any[HeaderCarrier])
     }
 
     "returns 200 with SUBMITTED status when service returns SUBMITTED" in {
@@ -1662,7 +1676,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val pollUrl = "http://chris.test/poll"
 
       when(
-        submissionService.pollSubmissionAndUpdateGovTalkStatus(eqTo(submissionId), eqTo(pollUrl))(any[HeaderCarrier])
+        submissionService.pollSubmissionAndUpdateGovTalkStatus(
+          eqTo(submissionId),
+          eqTo(pollUrl),
+          eqTo(ChrisPollJourney.Verification)
+        )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
           ChrisPollResponse(

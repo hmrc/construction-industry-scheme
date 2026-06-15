@@ -18,7 +18,7 @@ package controllers
 
 import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
-import org.mockito.Mockito.{verify, verifyNoInteractions, when}
+import org.mockito.Mockito.{never, verify, verifyNoInteractions, when}
 import org.scalatest.EitherValues
 import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, NO_CONTENT, OK}
 import play.api.libs.json.{JsValue, Json}
@@ -27,8 +27,8 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, contentType, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController
-import uk.gov.hmrc.constructionindustryscheme.models.requests._
-import uk.gov.hmrc.constructionindustryscheme.models._
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
+import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -484,6 +484,85 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentAsJson(result) mustBe Json.obj("message" -> "create-submission-for-verification-failed")
 
       verify(service).createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier])
+    }
+  }
+
+  "updateVerificationSubmission" - {
+
+    val url = "/cis/verification/submission/update"
+
+    val validRequest = UpdateVerificationSubmissionRequest(
+      instanceId = "1",
+      verificationBatchId = 1001L,
+      verificationBatchResourceRef = 2001L,
+      submittableStatus = "SUBMITTED"
+    )
+
+    val validJson = Json.obj(
+      "instanceId"                   -> "1",
+      "verificationBatchId"          -> 1001L,
+      "verificationBatchResourceRef" -> 2001L,
+      "submittableStatus"            -> "SUBMITTED"
+    )
+
+    "returns 204 NoContent when service succeeds" in {
+      val service    = mock[VerificationService]
+      val controller = mockController(service)
+
+      when(service.updateVerificationSubmission(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val req = FakeRequest(POST, url)
+        .withHeaders(CONTENT_TYPE -> JSON)
+        .withBody(validJson)
+
+      val result = controller.updateVerificationSubmission()(req)
+
+      status(result) mustBe NO_CONTENT
+
+      verify(service).updateVerificationSubmission(eqTo(validRequest))(any[HeaderCarrier])
+    }
+
+    "returns 400 BadRequest when JSON is invalid" in {
+      val service    = mock[VerificationService]
+      val controller = mockController(service)
+
+      val invalidJson = Json.obj(
+        "instanceId" -> "1"
+      )
+
+      val req = FakeRequest(POST, url)
+        .withHeaders(CONTENT_TYPE -> JSON)
+        .withBody(invalidJson)
+
+      val result = controller.updateVerificationSubmission()(req)
+
+      status(result) mustBe BAD_REQUEST
+      contentType(result) mustBe Some(JSON)
+
+      verify(service, never()).updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(
+        any[HeaderCarrier]
+      )
+    }
+
+    "returns 502 BadGateway when service fails" in {
+      val service    = mock[VerificationService]
+      val controller = mockController(service)
+
+      when(service.updateVerificationSubmission(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req = FakeRequest(POST, url)
+        .withHeaders(CONTENT_TYPE -> JSON)
+        .withBody(validJson)
+
+      val result = controller.updateVerificationSubmission()(req)
+
+      status(result) mustBe BAD_GATEWAY
+      contentType(result) mustBe Some(JSON)
+      contentAsJson(result) mustBe Json.obj("message" -> "update-verification-submission-failed")
+
+      verify(service).updateVerificationSubmission(eqTo(validRequest))(any[HeaderCarrier])
     }
   }
 }

@@ -24,7 +24,7 @@ POST       /submissions/:submissionId/update                             uk.gov.
 GET        /submissions/poll                                             uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.pollSubmission(pollUrl: RedirectUrl, submissionId: String)
 POST       /submissions/:submissionId/send-success-email                 uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.sendSuccessfulEmail(submissionId: String)
 POST       /submissions/:submissionId/submit-verification-to-chris       uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.submitVerificationToChris(submissionId: String)
-GET        /submissions/verification/poll                               uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.pollVerificationSubmission(pollUrl: RedirectUrl, submissionId: String)
+GET        /submissions/verification/poll                                uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.pollVerificationSubmission(pollUrl: RedirectUrl, submissionId: String)
 
 POST       /agent/client-list/retrieval/start                            uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.start
 POST       /agent/client-list/retrieval/status                           uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.status
@@ -48,8 +48,9 @@ GET           /verification-batch/newest/:instanceId              uk.gov.hmrc.co
 GET           /verification-batch/current/:instanceId             uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getCurrentVerificationBatch(instanceId: String)
 POST          /verification-batch/modify                          uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.modifyVerifications()
 
-POST          /verification-batch/create                          uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createVerificationBatchAndVerifications()
-POST          /verification/submission/create               uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createSubmissionAndUpdateVerifications()
+POST          /verification-batch/create                             uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createVerificationBatchAndVerifications()
+POST          /verification/submission/create                        uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createSubmissionAndUpdateVerifications()
+POST          /verification/submission/update                        uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.updateVerificationSubmission()
 
 GET          /journey-handoffs/:journeyType/:id                      uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.get(journeyType: String, id: String)
 POST         /journey-handoffs/:journeyType                          uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.create(journeyType: String)

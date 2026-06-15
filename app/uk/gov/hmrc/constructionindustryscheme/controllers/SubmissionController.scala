@@ -22,9 +22,10 @@ import play.api.mvc.*
 import play.api.mvc.Results.*
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
+import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.*
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkErrorStatus, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, ChrisPollJourney, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkErrorStatus, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.GovTalkErrorStatusClassifier
 import uk.gov.hmrc.http.UpstreamErrorResponse
@@ -103,15 +104,15 @@ class SubmissionController @Inject() (
   private lazy val redirectUrlPolicy = AbsoluteWithHostnameFromAllowlist(appConfig.chrisHost.toSet)
 
   def pollSubmission(pollUrl: RedirectUrl, submissionId: String): Action[AnyContent] =
-    pollChris(pollUrl, submissionId, "submission")
+    pollChris(pollUrl, submissionId, MonthlyReturn)
 
   def pollVerificationSubmission(pollUrl: RedirectUrl, submissionId: String): Action[AnyContent] =
-    pollChris(pollUrl, submissionId, "verification")
+    pollChris(pollUrl, submissionId, Verification)
 
   private def pollChris(
     pollUrl: RedirectUrl,
     submissionId: String,
-    journey: String
+    journey: ChrisPollJourney
   ): Action[AnyContent] =
     authorise.async { implicit req =>
       pollUrl.getEither(redirectUrlPolicy) match {
@@ -122,12 +123,14 @@ class SubmissionController @Inject() (
             } else None
           ).getOrElse(safeUrl.url)
 
-          logger.info(s"[$journey poll] useOverridePollResponseEndPoint: ${appConfig.useOverridePollResponseEndPoint}")
-          logger.info(s"[$journey poll] safeUrl.url: ${safeUrl.url}")
-          logger.info(s"[$journey poll] overridePollUrl: $overridePollUrl")
+          logger.info(
+            s"[${journey.logName} poll] useOverridePollResponseEndPoint: ${appConfig.useOverridePollResponseEndPoint}"
+          )
+          logger.info(s"[${journey.logName} poll] safeUrl.url: ${safeUrl.url}")
+          logger.info(s"[${journey.logName} poll] overridePollUrl: $overridePollUrl")
 
           submissionService
-            .pollSubmissionAndUpdateGovTalkStatus(submissionId, overridePollUrl)
+            .pollSubmissionAndUpdateGovTalkStatus(submissionId, overridePollUrl, journey)
             .map { resp =>
               Ok(
                 Json.obj(

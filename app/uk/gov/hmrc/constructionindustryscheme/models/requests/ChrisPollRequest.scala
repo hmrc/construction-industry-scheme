@@ -16,15 +16,17 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
+import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney
+
 import scala.xml.Elem
 
-case class ChrisPollRequest(correlationId: String) {
+case class ChrisPollRequest(correlationId: String, journey: ChrisPollJourney) {
 
-  def paylaod: Elem = <GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
+  def payload: Elem = <GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
     <EnvelopeVersion>2.0</EnvelopeVersion>
     <Header>
       <MessageDetails>
-        <Class>IR-CIS-CIS300MR</Class>
+        <Class>{journey.govTalkClass}</Class>
         <Qualifier>poll</Qualifier>
         <Function>submit</Function>
         <CorrelationID>{correlationId}</CorrelationID>

@@ -23,7 +23,7 @@ import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers.eq as eqTo
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.{ChrisPollJourney, *}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
@@ -211,7 +211,11 @@ final class SubmissionServiceSpec extends SpecBase {
       when(chrisSubmissionSessionRepository.upsert(eqTo(sessionWithGovTalk)))
         .thenReturn(Future.unit)
 
-      when(chrisConnector.pollSubmission(eqTo(correlation), eqTo(pollUrl))(using any[HeaderCarrier]))
+      when(
+        chrisConnector.pollSubmission(eqTo(correlation), eqTo(pollUrl), eqTo(ChrisPollJourney.MonthlyReturn))(using
+          any[HeaderCarrier]
+        )
+      )
         .thenReturn(Future.successful(pollResponse))
 
       when(
@@ -269,7 +273,9 @@ final class SubmissionServiceSpec extends SpecBase {
       when(chrisSubmissionSessionRepository.upsert(eqTo(updatedSessionWithGovTalk)))
         .thenReturn(Future.unit)
 
-      service.pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl).futureValue mustBe pollResponse
+      service
+        .pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl, ChrisPollJourney.MonthlyReturn)
+        .futureValue mustBe pollResponse
     }
 
     "fails when no session exists" in {
@@ -280,7 +286,7 @@ final class SubmissionServiceSpec extends SpecBase {
         .thenReturn(Future.successful(None))
 
       service
-        .pollSubmissionAndUpdateGovTalkStatus("sub-123", "/poll/123")
+        .pollSubmissionAndUpdateGovTalkStatus("sub-123", "/poll/123", ChrisPollJourney.MonthlyReturn)
         .failed
         .futureValue
         .getMessage mustBe "No session found for submissionId: sub-123"
@@ -336,11 +342,15 @@ final class SubmissionServiceSpec extends SpecBase {
       when(chrisSubmissionSessionRepository.upsert(eqTo(sessionWithGovTalk)))
         .thenReturn(Future.unit)
 
-      when(chrisConnector.pollSubmission(eqTo("corr-expected"), eqTo(pollUrl))(using any[HeaderCarrier]))
+      when(
+        chrisConnector.pollSubmission(eqTo("corr-expected"), eqTo(pollUrl), eqTo(ChrisPollJourney.MonthlyReturn))(using
+          any[HeaderCarrier]
+        )
+      )
         .thenReturn(Future.successful(pollResponse))
 
       service
-        .pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl)
+        .pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl, ChrisPollJourney.MonthlyReturn)
         .failed
         .futureValue
         .getMessage must include("CorrelationId mismatch")
@@ -377,7 +387,10 @@ final class SubmissionServiceSpec extends SpecBase {
       ).thenReturn(Future.successful(None))
 
       val ex =
-        service.pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl).failed.futureValue
+        service
+          .pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl, ChrisPollJourney.MonthlyReturn)
+          .failed
+          .futureValue
 
       ex.getMessage mustBe s"No GovTalk status found for instanceId: $instanceId, submissionId: $submissionId"
 
