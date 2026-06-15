@@ -17,8 +17,10 @@
 package services
 
 import base.SpecBase
-import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.{verifyNoInteractions, when}
+import org.mockito.ArgumentMatchers.{any, eq as eqTo}
+import org.mockito.Mockito.{verify, verifyNoInteractions, when}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetMonthlyReturnForEditResponse, MonthlyReturnSubmissionToPoll}
 import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnPollingProcessService, MonthlyReturnService}
 
 import scala.concurrent.Future
@@ -53,6 +55,66 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("failed")))
 
       service.process(Seq(submission)).failed.futureValue.getMessage mustBe "failed"
+    }
+
+    "must call getMonthlyReturnForEdit for each monthly return submission" in {
+      val submission1 = MonthlyReturnSubmissionToPoll(
+        submissionId = 100,
+        submissionType = "type",
+        status = "Started",
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AZ123",
+        taxYear = "2026",
+        taxMonth = "4",
+        instanceId = "1",
+        agentId = None
+      )
+
+      val submission2 = MonthlyReturnSubmissionToPoll(
+        submissionId = 101,
+        submissionType = "type",
+        status = "Started",
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AZ123",
+        taxYear = "2026",
+        taxMonth = "5",
+        instanceId = "2",
+        agentId = None
+      )
+
+      val response = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq.empty,
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      when(monthlyReturnService.getMonthlyReturnForEdit(any())(any())).thenReturn(Future.successful(response))
+
+      service.process(Seq(submission1, submission2)).futureValue mustBe ()
+
+      verify(monthlyReturnService).getMonthlyReturnForEdit(
+        eqTo(
+          GetMonthlyReturnForEditRequest(
+            "1",
+            taxYear = 2026,
+            taxMonth = 4,
+            isAmendment = Some(false)
+          )
+        )
+      )(any())
+
+      verify(monthlyReturnService).getMonthlyReturnForEdit(
+        eqTo(
+          GetMonthlyReturnForEditRequest(
+            "2",
+            taxYear = 2026,
+            taxMonth = 5,
+            isAmendment = Some(false)
+          )
+        )
+      )(any())
     }
   }
 }
