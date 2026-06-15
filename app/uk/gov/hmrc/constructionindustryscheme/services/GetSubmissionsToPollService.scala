@@ -26,8 +26,8 @@ import scala.concurrent.Future
 
 @Singleton
 class GetSubmissionsToPollService @Inject() (
-                                              formpProxyConnector: FormpProxyConnector
-                                            ) extends Logging {
+  formpProxyConnector: FormpProxyConnector
+) extends Logging {
 
   def getSubmissionsToPoll()(implicit hc: HeaderCarrier): Future[GetBatchPollSubmissionsResponse] = {
     logger.info("[GetSubmissionsToPollService][getSubmissionsToPoll] Calling GetBatchPollSubmissions")

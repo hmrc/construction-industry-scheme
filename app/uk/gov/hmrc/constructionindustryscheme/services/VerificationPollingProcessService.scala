@@ -24,12 +24,11 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class VerificationPollingProcessService @Inject() ()(implicit ec: ExecutionContext)
-  extends Logging {
+class VerificationPollingProcessService @Inject() ()(implicit ec: ExecutionContext) extends Logging {
 
   def process(
-               verificationSubmissions: Seq[VerificationSubmissionToPoll]
-             )(implicit hc: HeaderCarrier): Future[Unit] = {
+    verificationSubmissions: Seq[VerificationSubmissionToPoll]
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
 
     logger.info(
       s"[VerificationPollingProcessService][process] Calling F6 - Verification Polling Process for ${verificationSubmissions.size} submissions"

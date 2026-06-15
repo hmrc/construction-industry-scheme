@@ -24,12 +24,11 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class MonthlyReturnPollingProcessService @Inject() ()(implicit ec: ExecutionContext)
-  extends Logging {
+class MonthlyReturnPollingProcessService @Inject() ()(implicit ec: ExecutionContext) extends Logging {
 
   def process(
-               monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll]
-             )(implicit hc: HeaderCarrier): Future[Unit] = {
+    monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll]
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
 
     logger.info(
       s"[MonthlyReturnPollingProcessService][process] Calling F2 - Monthly Return Polling Process for ${monthlyReturnSubmissions.size} submissions"

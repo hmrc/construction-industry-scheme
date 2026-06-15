@@ -19,15 +19,15 @@ package uk.gov.hmrc.constructionindustryscheme.models.response
 import play.api.libs.json.{Json, OFormat}
 
 case class VerificationSubmissionToPoll(
-                                         submissionId: Long,
-                                         submissionType: String,
-                                         agentId: Option[String],
-                                         taxOfficeNumber: String,
-                                         taxOfficeReference: String,
-                                         instanceId: String,
-                                         status: String,
-                                         verificationBatchResourceRef: Long
-                                       )
+  submissionId: Long,
+  submissionType: String,
+  agentId: Option[String],
+  taxOfficeNumber: String,
+  taxOfficeReference: String,
+  instanceId: String,
+  status: String,
+  verificationBatchResourceRef: Long
+)
 
 object VerificationSubmissionToPoll {
   given format: OFormat[VerificationSubmissionToPoll] =
@@ -35,16 +35,16 @@ object VerificationSubmissionToPoll {
 }
 
 case class MonthlyReturnSubmissionToPoll(
-                                          submissionId: Long,
-                                          submissionType: String,
-                                          status: String,
-                                          taxOfficeNumber: String,
-                                          taxOfficeReference: String,
-                                          taxYear: String,
-                                          taxMonth: String,
-                                          instanceId: String,
-                                          agentId: Option[String]
-                                        )
+  submissionId: Long,
+  submissionType: String,
+  status: String,
+  taxOfficeNumber: String,
+  taxOfficeReference: String,
+  taxYear: String,
+  taxMonth: String,
+  instanceId: String,
+  agentId: Option[String]
+)
 
 object MonthlyReturnSubmissionToPoll {
   given format: OFormat[MonthlyReturnSubmissionToPoll] =
@@ -52,9 +52,9 @@ object MonthlyReturnSubmissionToPoll {
 }
 
 case class GetBatchPollSubmissionsResponse(
-                                            verificationSubmissions: Seq[VerificationSubmissionToPoll],
-                                            monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll]
-                                          )
+  verificationSubmissions: Seq[VerificationSubmissionToPoll],
+  monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll]
+)
 
 object GetBatchPollSubmissionsResponse {
   given format: OFormat[GetBatchPollSubmissionsResponse] =

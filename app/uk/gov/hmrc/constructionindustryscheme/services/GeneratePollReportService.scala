@@ -23,8 +23,7 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class GeneratePollReportService @Inject() ()(implicit ec: ExecutionContext)
-  extends Logging {
+class GeneratePollReportService @Inject() ()(implicit ec: ExecutionContext) extends Logging {
 
   def generatePollReport()(implicit hc: HeaderCarrier): Future[Unit] = {
     logger.info("[GeneratePollReportService][generatePollReport] Calling F8 - Generate Poll Report")

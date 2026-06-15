@@ -24,8 +24,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class BatchPollerService @Inject() (
-                                     getSubmissionsToPollService: GetSubmissionsToPollService
-                                   ) extends Logging {
+  getSubmissionsToPollService: GetSubmissionsToPollService
+) extends Logging {
 
   def run()(implicit ec: ExecutionContext, hc: HeaderCarrier): Future[Unit] = {
     logger.info("[BatchPollerService][run] Calling F1 - Get Submissions To Poll")
@@ -39,11 +39,11 @@ class BatchPollerService @Inject() (
             s"monthlyReturnSubmissions=${submissions.monthlyReturnSubmissions.size}"
         )
 
-        // TODO:
-        // Future tickets:
-        // - If both lists are empty, call F8 - Generate Poll Report
-        // - If verificationSubmissions is non-empty, call F6 - Verification Polling Process
-        // - If monthlyReturnSubmissions is non-empty, call F2 - Monthly Return Polling Process
+      // TODO:
+      // Future tickets:
+      // - If both lists are empty, call F8 - Generate Poll Report
+      // - If verificationSubmissions is non-empty, call F6 - Verification Polling Process
+      // - If monthlyReturnSubmissions is non-empty, call F2 - Monthly Return Polling Process
       }
       .recover { case exception =>
         logger.error(

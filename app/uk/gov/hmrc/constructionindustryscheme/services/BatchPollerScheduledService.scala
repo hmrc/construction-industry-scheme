@@ -27,12 +27,12 @@ import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
 class BatchPollerScheduledService @Inject() (
-                                              lockRepository: LockRepository,
-                                              timestampSupport: TimestampSupport,
-                                              appConfig: AppConfig,
-                                              batchPollerService: BatchPollerService
-                                            ) extends ScheduledService[Unit]
-  with Logging {
+  lockRepository: LockRepository,
+  timestampSupport: TimestampSupport,
+  appConfig: AppConfig,
+  batchPollerService: BatchPollerService
+) extends ScheduledService[Unit]
+    with Logging {
 
   private val lock: ScheduledLockService = ScheduledLockService(
     lockRepository = lockRepository,
