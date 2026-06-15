@@ -512,10 +512,11 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
     val response = CreateSubmissionAndUpdateVerificationsResponse(submissionId = 555L)
 
     "returns 201 Created with JSON body when service succeeds" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
-      when(service.createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier]))
+      when(verificationService.createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier]))
         .thenReturn(Future.successful(response))
 
       val req = FakeRequest(POST, url)
@@ -528,12 +529,13 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentType(result) mustBe Some(JSON)
       contentAsJson(result) mustBe Json.toJson(response)
 
-      verify(service).createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier])
+      verify(verificationService).createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier])
     }
 
     "returns 400 BadRequest when JSON is invalid" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
       val badJson = Json.obj("instanceId" -> "abc-123")
 
@@ -544,14 +546,15 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       val result = controller.createSubmissionAndUpdateVerifications()(req)
 
       status(result) mustBe BAD_REQUEST
-      verifyNoInteractions(service)
+      verifyNoInteractions(verificationService)
     }
 
     "returns 502 BadGateway with error body when service fails" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
-      when(service.createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier]))
+      when(verificationService.createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       val req = FakeRequest(POST, url)
@@ -564,7 +567,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentType(result) mustBe Some(JSON)
       contentAsJson(result) mustBe Json.obj("message" -> "create-submission-for-verification-failed")
 
-      verify(service).createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier])
+      verify(verificationService).createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier])
     }
   }
 }
