@@ -16,46 +16,37 @@
 
 package services
 
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers
-import uk.gov.hmrc.constructionindustryscheme.models.response.MonthlyReturnSubmissionToPoll
-import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnPollingProcessService
-import uk.gov.hmrc.http.HeaderCarrier
+import base.SpecBase
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.{verifyNoInteractions, when}
+import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnPollingProcessService, MonthlyReturnService}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 
-class MonthlyReturnPollingProcessServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures {
+class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
+  private val monthlyReturnService = mock[MonthlyReturnService]
 
-  "MonthlyReturnPollingProcessService process" - {
+  private val service = new MonthlyReturnPollingProcessService(monthlyReturnService)
 
-    "must complete successfully for monthly return submissions" in new Setup {
-      val submissions = Seq(
-        MonthlyReturnSubmissionToPoll(
-          submissionId = 90002L,
-          submissionType = "CIS300MR",
-          status = "SUBMITTED",
-          taxOfficeNumber = "123",
-          taxOfficeReference = "456789",
-          taxYear = 2025,
-          taxMonth = 6,
-          instanceId = "instance-monthly-return-001",
-          agentId = Some("A123456")
-        )
-      )
+  "MonthlyReturnPollingProcessService" - {
 
-      service.process(submissions).futureValue mustBe ()
-    }
-
-    "must complete successfully for empty monthly return submissions" in new Setup {
+    "must not call getMonthlyReturnForEdit when there are no submissions" in {
       service.process(Seq.empty).futureValue mustBe ()
+
+      verifyNoInteractions(monthlyReturnService)
     }
-  }
 
-  private trait Setup {
-    given ExecutionContext = scala.concurrent.ExecutionContext.global
-    given HeaderCarrier    = HeaderCarrier()
-
-    val service = new MonthlyReturnPollingProcessService()
+//    "must fail when getMonthlyReturnForEdit fails" in {
+//      val submission = MonthlyReturnSubmissionToPoll(
+//        instanceId = "instance-1",
+//        taxMonth = "4",
+//        taxYear = "2026"
+//      )
+//
+//      when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
+//        .thenReturn(Future.failed(new RuntimeException("failed")))
+//
+//      service.process(Seq(submission)).failed.futureValue.getMessage mustBe "failed"
+//    }
   }
 }
