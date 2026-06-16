@@ -17,15 +17,20 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import base.SpecBase
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.{never, verify, when}
 import org.mongodb.scala.model.Filters
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers.shouldBe
 import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.{CurrentTimestampSupport, MongoComponent}
 import uk.gov.hmrc.mongo.lock.{Lock, MongoLockRepository}
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
+
+import scala.concurrent.{ExecutionContext, Future}
 
 class BatchPollerScheduledServiceIntegrationSpec
     extends SpecBase
@@ -45,8 +50,10 @@ class BatchPollerScheduledServiceIntegrationSpec
 
   private val lockId = "batch-poller-job"
 
+  private val batchPollerService = mock[BatchPollerService]
+
   private val service =
-    new BatchPollerScheduledService(repository, new CurrentTimestampSupport(), appConfig)
+    new BatchPollerScheduledService(repository, new CurrentTimestampSupport(), appConfig, batchPollerService)
 
   private def lockDocFor(id: String): Option[Lock] =
     repository.collection.find(Filters.equal("_id", id)).headOption().futureValue
@@ -65,15 +72,22 @@ class BatchPollerScheduledServiceIntegrationSpec
       // the lock is still owned by the other instance - our service did not acquire or steal it
       repository.isLocked(lockId, otherOwner).futureValue shouldBe true
       lockDocFor(lockId).map(_.owner)                     shouldBe Some(otherOwner)
+
+      verify(batchPollerService, never()).run()(any[ExecutionContext], any[HeaderCarrier])
     }
 
     "acquire the lock and run when no other instance holds it" in {
+      when(batchPollerService.run()(any[ExecutionContext], any[HeaderCarrier]))
+        .thenReturn(Future.unit)
+
       lockDocFor(lockId) shouldBe None
 
       service.invoke.futureValue // completes without failing
 
       // a lock has been created for the job (held/disowned to expire naturally, not released)
       lockDocFor(lockId) shouldBe defined
+
+      verify(batchPollerService).run()(any[ExecutionContext], any[HeaderCarrier])
     }
   }
 }

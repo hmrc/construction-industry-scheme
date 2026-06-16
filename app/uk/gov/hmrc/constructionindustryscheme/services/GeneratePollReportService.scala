@@ -20,10 +20,10 @@ import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 @Singleton
-class GeneratePollReportService @Inject() ()(implicit ec: ExecutionContext) extends Logging {
+class GeneratePollReportService @Inject() () extends Logging {
 
   def generatePollReport()(implicit hc: HeaderCarrier): Future[Unit] = {
     logger.info("[GeneratePollReportService][generatePollReport] Calling F8 - Generate Poll Report")

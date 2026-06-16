@@ -21,10 +21,10 @@ import uk.gov.hmrc.constructionindustryscheme.models.response.MonthlyReturnSubmi
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 @Singleton
-class MonthlyReturnPollingProcessService @Inject() ()(implicit ec: ExecutionContext) extends Logging {
+class MonthlyReturnPollingProcessService @Inject() () extends Logging {
 
   def process(
     monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll]

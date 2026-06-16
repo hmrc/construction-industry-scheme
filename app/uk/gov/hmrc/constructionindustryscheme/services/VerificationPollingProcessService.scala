@@ -21,10 +21,10 @@ import uk.gov.hmrc.constructionindustryscheme.models.response.VerificationSubmis
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 @Singleton
-class VerificationPollingProcessService @Inject() ()(implicit ec: ExecutionContext) extends Logging {
+class VerificationPollingProcessService @Inject() () extends Logging {
 
   def process(
     verificationSubmissions: Seq[VerificationSubmissionToPoll]
