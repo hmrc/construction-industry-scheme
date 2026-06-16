@@ -49,4 +49,3 @@ object ProcessVerificationResponseFromChrisRequest {
   implicit val format: OFormat[ProcessVerificationResponseFromChrisRequest] =
     Json.format[ProcessVerificationResponseFromChrisRequest]
 }
-
