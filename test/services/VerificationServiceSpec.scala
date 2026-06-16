@@ -214,4 +214,54 @@ final class VerificationServiceSpec extends SpecBase {
       service.createSubmissionAndUpdateVerifications(request).failed.futureValue.getMessage must include("boom")
     }
   }
+
+  "VerificationService#processVerificationResponseFromChris" - {
+
+    val request = ProcessVerificationResponseFromChrisRequest(
+      instanceId = "abc-123",
+      submissionType = "VERIFICATIONS",
+      activeObjectId = 10L,
+      hmrcMarkGenerated = Some("IR_MARK"),
+      hmrcMarkGgis = None,
+      emailRecipient = Some("ops@example.com"),
+      submissionRequestDate = None,
+      acceptedTime = Some("12:00:00"),
+      agentId = Some("agent-123"),
+      submittableStatus = "ACCEPTED",
+      govTalkErrorCode = None,
+      govTalkErrorType = None,
+      govTalkErrorMessage = None,
+      verifBatchResourceRef = 77L,
+      verificationResourceRef = 111L,
+      subbieResourceRef = 222L,
+      matched = Some("Y"),
+      verificationNumber = Some("V123456"),
+      taxTreatment = Some("NET"),
+      actionIndicator = Some("VERIFY"),
+      proceed = Some("Y"),
+      subcontractorName = "ACME LTD"
+    )
+
+    "delegates to FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.processVerificationResponseFromChris(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.processVerificationResponseFromChris(request).futureValue mustBe ()
+
+      verify(connector).processVerificationResponseFromChris(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.processVerificationResponseFromChris(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.processVerificationResponseFromChris(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
 }

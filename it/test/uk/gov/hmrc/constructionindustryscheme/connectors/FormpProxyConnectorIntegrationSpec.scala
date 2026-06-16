@@ -2034,4 +2034,80 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
+
+  "FormpProxyConnector processVerificationResponseFromChris" should {
+
+    "POST /formp-proxy/cis/verification/response/process and return Unit on 204" in {
+      val req = ProcessVerificationResponseFromChrisRequest(
+        instanceId = instanceId,
+        submissionType = "VERIFICATIONS",
+        activeObjectId = 10L,
+        hmrcMarkGenerated = Some("IR_MARK"),
+        hmrcMarkGgis = None,
+        emailRecipient = Some("ops@example.com"),
+        submissionRequestDate = None,
+        acceptedTime = Some("12:00:00"),
+        agentId = Some("agent-123"),
+        submittableStatus = "ACCEPTED",
+        govTalkErrorCode = None,
+        govTalkErrorType = None,
+        govTalkErrorMessage = None,
+        verifBatchResourceRef = 77L,
+        verificationResourceRef = 111L,
+        subbieResourceRef = 222L,
+        matched = Some("Y"),
+        verificationNumber = Some("V123456"),
+        taxTreatment = Some("NET"),
+        actionIndicator = Some("VERIFY"),
+        proceed = Some("Y"),
+        subcontractorName = "ACME LTD"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(NO_CONTENT))
+      )
+
+      connector.processVerificationResponseFromChris(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-204" in {
+      val req = ProcessVerificationResponseFromChrisRequest(
+        instanceId = instanceId,
+        submissionType = "VERIFICATIONS",
+        activeObjectId = 10L,
+        hmrcMarkGenerated = None,
+        hmrcMarkGgis = None,
+        emailRecipient = None,
+        submissionRequestDate = None,
+        acceptedTime = None,
+        agentId = None,
+        submittableStatus = "FAILED",
+        govTalkErrorCode = Some("500"),
+        govTalkErrorType = Some("SERVER_ERROR"),
+        govTalkErrorMessage = Some("Unexpected error"),
+        verifBatchResourceRef = 77L,
+        verificationResourceRef = 111L,
+        subbieResourceRef = 222L,
+        matched = None,
+        verificationNumber = None,
+        taxTreatment = None,
+        actionIndicator = Some("VERIFY"),
+        proceed = Some("Y"),
+        subcontractorName = "ACME LTD"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.processVerificationResponseFromChris(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
 }

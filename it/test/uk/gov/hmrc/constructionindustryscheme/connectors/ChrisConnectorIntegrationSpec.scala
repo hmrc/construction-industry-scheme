@@ -37,8 +37,8 @@ final class ChrisConnectorIntegrationSpec
     with OptionValues
     with ApplicationWithWiremock {
 
-  private lazy val connector = app.injector.instanceOf[ChrisConnector]
-  private val path           = "/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+  private lazy val connector   = app.injector.instanceOf[ChrisConnector]
+  private val path             = "/submission/ChRIS/CISR/Filing/sync/CIS300MR"
   private val verificationPath = "/submission/ChRIS/CISR/Filing/sync/CISVERIFY"
 
   private lazy val xmlString: String = ItResources.read("chris/envelopes/nil_monthly_return.xml")
@@ -114,7 +114,6 @@ final class ChrisConnectorIntegrationSpec
       result.meta.error.value.errorNumber mustBe "http404"
     }
   }
-
 
   "ChrisConnector.submitEnvelopeForVerification" should {
 
