@@ -21,14 +21,16 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, verifyNoInteractions, when}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.{GetMonthlyReturnForEditResponse, MonthlyReturnSubmissionToPoll}
-import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnPollingProcessService, MonthlyReturnService}
+import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnPollingProcessService, MonthlyReturnService, SubmissionService}
 
 import scala.concurrent.Future
 
 class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
   private val monthlyReturnService = mock[MonthlyReturnService]
 
-  private val service = new MonthlyReturnPollingProcessService(monthlyReturnService)
+  private val submissionService = mock[SubmissionService]
+
+  private val service = new MonthlyReturnPollingProcessService(monthlyReturnService, submissionService)
 
   "MonthlyReturnPollingProcessService" - {
 
@@ -101,6 +103,9 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
       )
 
       when(monthlyReturnService.getMonthlyReturnForEdit(any())(any())).thenReturn(Future.successful(response))
+
+      when(submissionService.processMonthlyReturnScheduleAck(any(), any(), any())(any()))
+        .thenReturn(Future.successful(()))
 
       service.process(Seq(submission1, submission2)).futureValue mustBe ()
 
