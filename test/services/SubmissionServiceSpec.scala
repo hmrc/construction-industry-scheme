@@ -106,6 +106,43 @@ final class SubmissionServiceSpec extends SpecBase {
     }
   }
 
+  "resetGovTalkStatus" - {
+
+    "delegates to FormpProxyConnector and completes" in {
+      val s = setup; import s._
+
+      val req = ResetGovTalkStatusRequest(
+        userIdentifier = "123",
+        formResultID = "sub-123",
+        oldProtocolStatus = "dataRequest",
+        gatewayURL = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      )
+
+      when(formpProxyConnector.resetGovTalkStatus(eqTo(req))(any[HeaderCarrier]))
+        .thenReturn(Future.unit)
+
+      service.resetGovTalkStatus(req).futureValue
+      verify(formpProxyConnector).resetGovTalkStatus(eqTo(req))(any[HeaderCarrier])
+      verifyNoInteractions(chrisConnector)
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val s = setup; import s._
+
+      val req = ResetGovTalkStatusRequest(
+        userIdentifier = "123",
+        formResultID = "sub-123",
+        oldProtocolStatus = "dataRequest",
+        gatewayURL = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      )
+
+      when(formpProxyConnector.resetGovTalkStatus(eqTo(req))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("reset failed")))
+
+      service.resetGovTalkStatus(req).failed.futureValue.getMessage must include("reset failed")
+    }
+  }
+
   "submitToChris" - {
 
     "passes envelope + correlationId to ChrisConnector and returns SubmissionResult" in {

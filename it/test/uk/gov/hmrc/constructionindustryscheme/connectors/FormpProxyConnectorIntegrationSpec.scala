@@ -1994,4 +1994,44 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
+
+  "FormpProxyConnector resetGovTalkStatus" should {
+
+    "POST /formp-proxy/cis/govtalkstatus/reset and return Unit on 204" in {
+      val req = ResetGovTalkStatusRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-123",
+        oldProtocolStatus = "dataRequest",
+        gatewayURL = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/reset"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(204))
+      )
+
+      connector.resetGovTalkStatus(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-204 (e.g. 500)" in {
+      val req = ResetGovTalkStatusRequest(
+        userIdentifier = instanceId,
+        formResultID = "sub-123",
+        oldProtocolStatus = "dataRequest",
+        gatewayURL = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/reset"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("formp error"))
+      )
+
+      val ex = connector.resetGovTalkStatus(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
 }
