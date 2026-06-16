@@ -181,42 +181,6 @@ class SubmissionService @Inject() (
         } yield ()
     }
 
-  def processMonthlyReturnScheduleAck(
-    instanceId: String,
-    submissionId: String,
-    lastMessageDate: Instant = Instant.now
-  )(implicit hc: HeaderCarrier): Future[Unit] =
-    for {
-      statusResponseOpt <- getInitialGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId))
-      statusResponse    <- Future.fromTry(
-                             statusResponseOpt
-                               .toRight(new RuntimeException("GovTalk status not found"))
-                               .toTry
-                           )
-      statusRecord      <- Future.fromTry(
-                             statusResponse.govtalk_status.headOption
-                               .toRight(new RuntimeException("No GovTalk status records found"))
-                               .toTry
-                           )
-      _                 <- saveInitialChrisSession(
-                             submissionId,
-                             instanceId,
-                             statusRecord.correlationID,
-                             statusRecord.pollInterval,
-                             statusRecord.gatewayURL,
-                             lastMessageDate
-                           )
-      _                 <- runGovTalkStatusUpdateSteps(
-                             instanceId,
-                             submissionId,
-                             statusRecord.correlationID,
-                             lastMessageDate,
-                             0,
-                             statusRecord.pollInterval,
-                             statusRecord.gatewayURL
-                           )
-    } yield ()
-
   def processInitialChrisFailure(
     employerReference: EmployerReference,
     submissionId: String,
@@ -266,6 +230,42 @@ class SubmissionService @Inject() (
                             )
       _                  <- fetchAndStoreGovTalkStatus(session.instanceId, submissionId)
     } yield result
+
+  def processMonthlyReturnGovTalkStatusCheck(
+    instanceId: String,
+    submissionId: String,
+    lastMessageDate: Instant = Instant.now
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    for {
+      statusResponseOpt <- getInitialGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId))
+      statusResponse    <- Future.fromTry(
+                             statusResponseOpt
+                               .toRight(new RuntimeException("GovTalk status not found"))
+                               .toTry
+                           )
+      statusRecord      <- Future.fromTry(
+                             statusResponse.govtalk_status.headOption
+                               .toRight(new RuntimeException("No GovTalk status records found"))
+                               .toTry
+                           )
+      _                 <- saveInitialChrisSession(
+                             submissionId,
+                             instanceId,
+                             statusRecord.correlationID,
+                             statusRecord.pollInterval,
+                             statusRecord.gatewayURL,
+                             lastMessageDate
+                           )
+      _                 <- runGovTalkStatusUpdateSteps(
+                             instanceId,
+                             submissionId,
+                             statusRecord.correlationID,
+                             lastMessageDate,
+                             0,
+                             statusRecord.pollInterval,
+                             statusRecord.gatewayURL
+                           )
+    } yield ()
 
   private def fetchAndStoreGovTalkStatus(instanceId: String, submissionId: String)(implicit
     hc: HeaderCarrier

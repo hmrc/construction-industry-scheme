@@ -64,6 +64,6 @@ class MonthlyReturnPollingProcessService @Inject() (
                      s"taxMonth=${submission.taxMonth}, " +
                      s"taxYear=${submission.taxYear}"
                  )
-      _       <- submissionService.processMonthlyReturnScheduleAck(submission.instanceId, submission.submissionId.toString)
+      _       <- submissionService.processMonthlyReturnGovTalkStatusCheck(submission.instanceId, submission.submissionId.toString)
     } yield ()
 }

@@ -104,7 +104,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
 
       when(monthlyReturnService.getMonthlyReturnForEdit(any())(any())).thenReturn(Future.successful(response))
 
-      when(submissionService.processMonthlyReturnScheduleAck(any(), any(), any())(any()))
+      when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
         .thenReturn(Future.successful(()))
 
       service.process(Seq(submission1, submission2)).futureValue mustBe ()
