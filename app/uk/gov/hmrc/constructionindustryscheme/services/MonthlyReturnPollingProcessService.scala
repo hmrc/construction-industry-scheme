@@ -25,7 +25,10 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class MonthlyReturnPollingProcessService @Inject() (monthlyReturnService: MonthlyReturnService)(implicit
+class MonthlyReturnPollingProcessService @Inject() (
+  monthlyReturnService: MonthlyReturnService,
+  submissionService: SubmissionService
+)(implicit
   ec: ExecutionContext
 ) extends Logging {
 
@@ -37,13 +40,6 @@ class MonthlyReturnPollingProcessService @Inject() (monthlyReturnService: Monthl
       s"[MonthlyReturnPollingProcessService][process] Calling F2 - Monthly Return Polling Process for ${monthlyReturnSubmissions.size} submissions"
     )
 
-    /*
-     * TODO:
-     * Implement F2 - Monthly Return Polling Process here.
-     *
-     * Expected next step:
-     * For each monthly return submission, call the monthly return polling logic.
-     */
     Future
       .traverse(monthlyReturnSubmissions)(processSubmission)
       .map(_ => ())
@@ -61,13 +57,13 @@ class MonthlyReturnPollingProcessService @Inject() (monthlyReturnService: Monthl
                      isAmendment = Some(false)
                    )
                  )
-
-      _ = logger.info(
-            s"[MonthlyReturnPollingProcessService][processSubmission] " +
-              s"getMonthlyReturnForEdit called with " +
-              s"instanceId=${submission.instanceId}, " +
-              s"taxMonth=${submission.taxMonth}, " +
-              s"taxYear=${submission.taxYear}"
-          )
+      _        = logger.info(
+                   s"[MonthlyReturnPollingProcessService][processSubmission] " +
+                     s"getMonthlyReturnForEdit called with " +
+                     s"instanceId=${submission.instanceId}, " +
+                     s"taxMonth=${submission.taxMonth}, " +
+                     s"taxYear=${submission.taxYear}"
+                 )
+      _       <- submissionService.processMonthlyReturnScheduleAck(submission.instanceId, submission.submissionId.toString)
     } yield ()
 }
