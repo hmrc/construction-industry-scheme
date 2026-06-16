@@ -18,7 +18,7 @@ package controllers
 
 import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
-import org.mockito.Mockito.{verify, verifyNoInteractions, when}
+import org.mockito.Mockito.{times, verify, verifyNoInteractions, when}
 import org.scalatest.EitherValues
 import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, NO_CONTENT, OK}
 import play.api.libs.json.{JsValue, Json}
@@ -27,10 +27,10 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, contentType, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController
-import uk.gov.hmrc.constructionindustryscheme.models.requests._
-import uk.gov.hmrc.constructionindustryscheme.models._
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
+import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
+import uk.gov.hmrc.constructionindustryscheme.services.{SubmissionService, VerificationService}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import java.time.LocalDateTime
@@ -40,9 +40,10 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
   private def mockController(
     verificationService: VerificationService,
+    submissionService: SubmissionService,
     auth: AuthAction = fakeAuthAction()
   ): VerificationController =
-    new VerificationController(auth, verificationService, cc)
+    new VerificationController(auth, verificationService, submissionService, cc)
 
   "getNewestVerificationBatch" - {
 
@@ -50,8 +51,9 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
     val url        = s"/cis/verification-batch/newest/$instanceId"
 
     "returns 200 OK with JSON body when service succeeds (full payload)" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
       val response = GetNewestVerificationBatchResponse(
         scheme = Some(
@@ -123,7 +125,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
         )
       )
 
-      when(service.getNewestVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+      when(verificationService.getNewestVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
         .thenReturn(Future.successful(response))
 
       val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, url)
@@ -147,14 +149,15 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       json mustBe Json.toJson(response)
 
-      verify(service).getNewestVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+      verify(verificationService).getNewestVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
     }
 
     "returns 502 BadGateway with error body when service fails" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
-      when(service.getNewestVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+      when(verificationService.getNewestVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, url)
@@ -164,7 +167,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentType(result) mustBe Some(JSON)
       contentAsJson(result) mustBe Json.obj("message" -> "get-newest-verification-batch-failed")
 
-      verify(service).getNewestVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+      verify(verificationService).getNewestVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
     }
   }
 
@@ -174,8 +177,9 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
     val url        = s"/cis/verification-batch/current/$instanceId"
 
     "returns 200 OK with JSON body when service succeeds (full payload)" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
       val response = GetCurrentVerificationBatchResponse(
         subcontractors = Seq(
@@ -217,7 +221,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
         )
       )
 
-      when(service.getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+      when(verificationService.getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
         .thenReturn(Future.successful(response))
 
       val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, url)
@@ -237,14 +241,15 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       json mustBe Json.toJson(response)
 
-      verify(service).getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+      verify(verificationService).getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
     }
 
     "returns 502 BadGateway with error body when service fails" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
-      when(service.getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+      when(verificationService.getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, url)
@@ -254,7 +259,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentType(result) mustBe Some(JSON)
       contentAsJson(result) mustBe Json.obj("message" -> "get-current-verification-batch-failed")
 
-      verify(service).getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+      verify(verificationService).getCurrentVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
     }
   }
 
@@ -277,10 +282,11 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       )
 
     "returns 201 Created with JSON body when service succeeds" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
-      when(service.createVerificationBatchAndVerifications(eqTo(validRequest))(any[HeaderCarrier]))
+      when(verificationService.createVerificationBatchAndVerifications(eqTo(validRequest))(any[HeaderCarrier]))
         .thenReturn(Future.successful(response))
 
       val req = FakeRequest(POST, url)
@@ -293,12 +299,13 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentType(result) mustBe Some(JSON)
       contentAsJson(result) mustBe Json.toJson(response)
 
-      verify(service).createVerificationBatchAndVerifications(eqTo(validRequest))(any[HeaderCarrier])
+      verify(verificationService).createVerificationBatchAndVerifications(eqTo(validRequest))(any[HeaderCarrier])
     }
 
     "returns 400 BadRequest when JSON is invalid" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
       val badJson = Json.obj("bad" -> "json")
 
@@ -309,14 +316,15 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       val result = controller.createVerificationBatchAndVerifications()(req)
 
       status(result) mustBe BAD_REQUEST
-      verifyNoInteractions(service)
+      verifyNoInteractions(verificationService)
     }
 
     "returns 502 BadGateway with error body when service fails" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
-      when(service.createVerificationBatchAndVerifications(eqTo(validRequest))(any[HeaderCarrier]))
+      when(verificationService.createVerificationBatchAndVerifications(eqTo(validRequest))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       val req = FakeRequest(POST, url)
@@ -329,7 +337,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentType(result) mustBe Some(JSON)
       contentAsJson(result) mustBe Json.obj("message" -> "create-verification-batch-and-verifications-failed")
 
-      verify(service).createVerificationBatchAndVerifications(eqTo(validRequest))(any[HeaderCarrier])
+      verify(verificationService).createVerificationBatchAndVerifications(eqTo(validRequest))(any[HeaderCarrier])
     }
   }
 
@@ -356,10 +364,11 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
     val validJson: JsValue = Json.toJson(validRequest)
 
     "returns 204 NoContent when service succeeds" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
-      when(service.modifyVerifications(eqTo(validRequest))(any[HeaderCarrier]))
+      when(verificationService.modifyVerifications(eqTo(validRequest))(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
 
       val req = FakeRequest(POST, url)
@@ -369,12 +378,13 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       val result = controller.modifyVerifications()(req)
 
       status(result) mustBe NO_CONTENT
-      verify(service).modifyVerifications(eqTo(validRequest))(any[HeaderCarrier])
+      verify(verificationService).modifyVerifications(eqTo(validRequest))(any[HeaderCarrier])
     }
 
     "returns 400 BadRequest when JSON is invalid" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
       val badJson = Json.obj("bad" -> "json")
 
@@ -385,14 +395,15 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       val result = controller.modifyVerifications()(req)
 
       status(result) mustBe BAD_REQUEST
-      verifyNoInteractions(service)
+      verifyNoInteractions(verificationService)
     }
 
     "returns 502 BadGateway with error body when service fails" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
-      when(service.modifyVerifications(eqTo(validRequest))(any[HeaderCarrier]))
+      when(verificationService.modifyVerifications(eqTo(validRequest))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       val req = FakeRequest(POST, url)
@@ -405,7 +416,77 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentType(result) mustBe Some(JSON)
       contentAsJson(result) mustBe Json.obj("message" -> "modify-verifications-failed")
 
-      verify(service).modifyVerifications(eqTo(validRequest))(any[HeaderCarrier])
+      verify(verificationService).modifyVerifications(eqTo(validRequest))(any[HeaderCarrier])
+    }
+  }
+
+  "sendEmailForVerification" - {
+
+    "returns 202 when service succeeds" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      val body = Json.obj(
+        "email" -> "test@test.com"
+      )
+
+      when(submissionService.sendEmailForVerification(any[SubcontractorVerificationEmailRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val req =
+        FakeRequest(POST, "/verification-batch/send-email")
+          .withBody(body)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.sendEmailForVerification(req)
+
+      status(result) mustBe 202
+
+      verify(submissionService, times(1)).sendEmailForVerification(any[SubcontractorVerificationEmailRequest])(
+        any[HeaderCarrier]
+      )
+    }
+
+    "returns 400 when request JSON is invalid" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      val badJson = Json.obj("notEmail" -> "test@test.com")
+
+      val req =
+        FakeRequest(POST, "/verification-batch/send-email")
+          .withBody(badJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.sendEmailForVerification(req)
+
+      status(result) mustBe BAD_REQUEST
+      verifyNoInteractions(submissionService)
+    }
+
+    "returns 502 when service fails" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      val body = Json.obj(
+        "email" -> "test@test.com"
+      )
+
+      when(submissionService.sendEmailForVerification(any[SubcontractorVerificationEmailRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req =
+        FakeRequest(POST, "/verification-batch/send-email")
+          .withBody(body)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.sendEmailForVerification(req)
+
+      status(result) mustBe BAD_GATEWAY
+      (contentAsJson(result) \ "message").as[String] mustBe "send-email-for-verification-failed"
     }
   }
 
@@ -431,10 +512,11 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
     val response = CreateSubmissionAndUpdateVerificationsResponse(submissionId = 555L)
 
     "returns 201 Created with JSON body when service succeeds" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
-      when(service.createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier]))
+      when(verificationService.createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier]))
         .thenReturn(Future.successful(response))
 
       val req = FakeRequest(POST, url)
@@ -447,12 +529,13 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentType(result) mustBe Some(JSON)
       contentAsJson(result) mustBe Json.toJson(response)
 
-      verify(service).createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier])
+      verify(verificationService).createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier])
     }
 
     "returns 400 BadRequest when JSON is invalid" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
       val badJson = Json.obj("instanceId" -> "abc-123")
 
@@ -463,14 +546,15 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       val result = controller.createSubmissionAndUpdateVerifications()(req)
 
       status(result) mustBe BAD_REQUEST
-      verifyNoInteractions(service)
+      verifyNoInteractions(verificationService)
     }
 
     "returns 502 BadGateway with error body when service fails" in {
-      val service    = mock[VerificationService]
-      val controller = mockController(service)
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
 
-      when(service.createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier]))
+      when(verificationService.createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       val req = FakeRequest(POST, url)
@@ -483,7 +567,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentType(result) mustBe Some(JSON)
       contentAsJson(result) mustBe Json.obj("message" -> "create-submission-for-verification-failed")
 
-      verify(service).createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier])
+      verify(verificationService).createSubmissionAndUpdateVerifications(eqTo(validRequest))(any[HeaderCarrier])
     }
   }
 }

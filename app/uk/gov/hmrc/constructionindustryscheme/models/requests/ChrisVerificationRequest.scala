@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
+import uk.gov.hmrc.constructionindustryscheme.models.SubcontractorCurrentVerification
 
 case class ChrisVerificationRequest(
   instanceId: String,
@@ -28,6 +29,7 @@ case class ChrisVerificationRequest(
   verificationBatchId: String,
   verificationBatchResourceRef: String,
   emailRecipient: Option[String],
+  subcontractors: Seq[SubcontractorCurrentVerification],
   verifications: Seq[VerificationDetails]
 )
 
@@ -38,6 +40,9 @@ case class VerificationDetails(
 )
 
 object ChrisVerificationRequest {
-  implicit val verificationFormat: OFormat[VerificationDetails] = Json.format[VerificationDetails]
-  implicit val format: OFormat[ChrisVerificationRequest]        = Json.format[ChrisVerificationRequest]
+  implicit val verificationFormat: OFormat[VerificationDetails] =
+    Json.format[VerificationDetails]
+
+  implicit val format: OFormat[ChrisVerificationRequest] =
+    Json.format[ChrisVerificationRequest]
 }

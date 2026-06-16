@@ -20,9 +20,9 @@ import play.api.Logging
 import play.api.libs.json.{JsError, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
+import uk.gov.hmrc.constructionindustryscheme.services.{SubmissionService, VerificationService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import uk.gov.hmrc.constructionindustryscheme.models.requests._
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
@@ -30,6 +30,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class VerificationController @Inject() (
   authorise: AuthAction,
   verificationService: VerificationService,
+  submissionService: SubmissionService,
   cc: ControllerComponents
 )(implicit ec: ExecutionContext)
     extends BackendController(cc)
@@ -87,6 +88,23 @@ class VerificationController @Inject() (
               .recover { case ex =>
                 logger.error("[modifyVerifications] formp-proxy create failed", ex)
                 BadGateway(Json.obj("message" -> "modify-verifications-failed"))
+              }
+        )
+    }
+
+  def sendEmailForVerification: Action[JsValue] =
+    authorise(parse.json).async { implicit req =>
+      req.body
+        .validate[SubcontractorVerificationEmailRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          params =>
+            submissionService
+              .sendEmailForVerification(params)
+              .map(_ => Accepted)
+              .recover { case ex =>
+                logger.error("[sendEmailForVerification] failed", ex)
+                BadGateway(Json.obj("message" -> "send-email-for-verification-failed"))
               }
         )
     }

@@ -48,9 +48,56 @@ class SubmissionControllerIntegrationSpec
     "returnType"            -> "MonthlyNilReturn"
   )
 
-  private val createUrl                    = s"$base/submissions/create"
-  private def submitToChrisUrl(id: String) = s"$base/submissions/$id/submit-to-chris"
-  private def updateUrl(id: String)        = s"$base/submissions/$id/update"
+  private val validVerificationRequestJson: JsValue = Json.obj(
+    "instanceId"                   -> "id-1",
+    "isAgent"                      -> true,
+    "clientTaxOfficeNumber"        -> "999",
+    "clientTaxOfficeRef"           -> "XYZ123",
+    "contractorUTR"                -> "1234567890",
+    "contractorAORef"              -> "123/AB456",
+    "verificationBatchId"          -> "batch-1",
+    "verificationBatchResourceRef" -> "batch-ref",
+    "emailRecipient"               -> "test@test.com",
+    "subcontractors"               -> Json.arr(
+      Json.obj(
+        "subcontractorId"        -> 1L,
+        "subbieResourceRef"      -> 10L,
+        "firstName"              -> "John",
+        "secondName"             -> "Q",
+        "surname"                -> "Smith",
+        "tradingName"            -> "ACME",
+        "utr"                    -> "1111111111",
+        "nino"                   -> "AA123456A",
+        "crn"                    -> "AC012345",
+        "partnerUtr"             -> "5860920998",
+        "partnershipTradingName" -> "ACME trading",
+        "subcontractorType"      -> "soletrader",
+        "addressLine1"           -> "Line 1",
+        "addressLine2"           -> "Line 2",
+        "addressLine3"           -> "Line 3",
+        "addressLine4"           -> "Line 4",
+        "country"                -> "UK",
+        "postcode"               -> "NE1 1AA",
+        "worksReferenceNumber"   -> "WRN123"
+      )
+    ),
+    "verifications"                -> Json.arr(
+      Json.obj(
+        "subcontractorName"       -> "John Smith",
+        "verificationResourceRef" -> "10",
+        "proceedVerification"     -> true
+      )
+    )
+  )
+
+  private val createUrl                                = s"$base/submissions/create"
+  private def submitToChrisUrl(id: String)             = s"$base/submissions/$id/submit-to-chris"
+  private def updateUrl(id: String)                    = s"$base/submissions/$id/update"
+  private def submitVerificationToChrisUrl(id: String) =
+    s"$base/submissions/$id/submit-verification-to-chris"
+
+  private def pollVerificationUrl(id: String, pollUrl: String) =
+    s"$base/submissions/verification/poll?submissionId=$id&pollUrl=$pollUrl"
 
   "POST /cis/submissions/create" should {
 
@@ -231,4 +278,62 @@ class SubmissionControllerIntegrationSpec
       response.swap.value.statusCode mustBe BAD_GATEWAY
     }
   }
+
+  "POST /cis/submissions/:id/submit-verification-to-chris" should {
+
+    "return 400 when request JSON is invalid" in {
+      AuthStub.authorisedWithCisEnrolment(taxOfficeNumber = "123", taxOfficeReference = "AB456")
+
+      val invalidJson = Json.obj(
+        "instanceId" -> "id-1",
+        "isAgent"    -> true
+      )
+
+      val response = postJsonEither(
+        submitVerificationToChrisUrl(submissionId),
+        invalidJson,
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
+
+      response.swap.value.statusCode mustBe BAD_REQUEST
+    }
+
+    "return 401 when unauthorised" in {
+      AuthStub.noActiveSession()
+
+      val response = postJsonEither(
+        submitVerificationToChrisUrl(submissionId),
+        validVerificationRequestJson
+      )
+
+      response.swap.value.statusCode mustBe UNAUTHORIZED
+    }
+  }
+
+  "GET /cis/submissions/verification/poll" should {
+
+    "return 401 when unauthorised" in {
+      AuthStub.noActiveSession()
+
+      val response = getEither(
+        pollVerificationUrl(submissionId, "http://chris.test/poll")
+      )
+
+      response.swap.value.statusCode mustBe UNAUTHORIZED
+    }
+
+    "return 400 when pollUrl host is not allowed" in {
+      AuthStub.authorisedWithoutCisEnrolment()
+
+      val response = getEither(
+        pollVerificationUrl(submissionId, "http://bad.host/poll"),
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
+
+      response.swap.value.statusCode mustBe BAD_REQUEST
+    }
+  }
+  
 }

@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
-import play.api.http.Status.{CREATED, NOT_FOUND, NO_CONTENT}
+import play.api.http.Status.{CREATED, NOT_FOUND, NO_CONTENT, OK}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
@@ -96,7 +96,14 @@ class FormpProxyConnector @Inject() (
     http
       .post(url"$base/scheme/email")
       .withBody(Json.obj("instanceId" -> instanceId))
-      .execute[Option[String]]
+      .execute[HttpResponse]
+      .map { response =>
+        response.status match {
+          case OK        => (response.json \ "email").asOpt[String]
+          case NOT_FOUND => None
+          case status    => throw UpstreamErrorResponse(response.body, status, status)
+        }
+      }
 
   def getContractorScheme(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[ContractorScheme]] =
     http
@@ -260,6 +267,16 @@ class FormpProxyConnector @Inject() (
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap(acceptResponse(NO_CONTENT))
+
+  def resetGovTalkStatus(request: ResetGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/govtalkstatus/reset")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == 204) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+      }
 
   def getNewestVerificationBatch(
     instanceId: String

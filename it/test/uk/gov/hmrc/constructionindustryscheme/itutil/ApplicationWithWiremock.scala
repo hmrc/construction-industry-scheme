@@ -46,6 +46,8 @@ trait ApplicationWithWiremock
       "microservice.services.chris.host"                 -> WireMockConstants.stubHost,
       "microservice.services.chris.port"                 -> WireMockConstants.stubPort,
       "microservice.services.chris.affix-url"            -> "/submission/ChRIS/CISR/Filing/sync/CIS300MR",
+      "microservice.services.chris.submit-url"           -> "/submission/ChRIS/CISR/Filing/sync/CIS300MR",
+      "microservice.services.chris.verify-submit-url"    -> "/submission/ChRIS/CISR/Filing/sync/CISVERIFY",
       "microservice.services.rds-datacache-proxy.host"   -> WireMockConstants.stubHost,
       "microservice.services.rds-datacache-proxy.port"   -> WireMockConstants.stubPort,
       "microservice.services.formp-proxy.host"           -> WireMockConstants.stubHost,
@@ -98,6 +100,16 @@ trait ApplicationWithWiremock
       .post(url"$url")
       .setHeader(("Content-Type" -> "application/json") +: headers: _*)
       .withBody(body)
+      .execute[Either[UpstreamErrorResponse, HttpResponse]]
+      .futureValue
+
+  protected def getEither(
+    url: String,
+    headers: (String, String)*
+  )(implicit hc: HeaderCarrier): Either[UpstreamErrorResponse, HttpResponse] =
+    httpClient
+      .get(url"$url")
+      .setHeader(("Accept" -> "application/json") +: headers.toList: _*)
       .execute[Either[UpstreamErrorResponse, HttpResponse]]
       .futureValue
 
