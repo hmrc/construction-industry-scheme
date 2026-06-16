@@ -21,8 +21,9 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatestplus.mockito.MockitoSugar
+import org.mockito.ArgumentMatchers.any
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.services.{BatchPollerService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.services.{BatchPollerService, MonthlyReturnPollingProcessService, SubmissionService}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -69,8 +70,14 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
     val mockSubmissionService: SubmissionService =
       mock[SubmissionService]
 
+    val mockMonthlyReturnPollingProcessService: MonthlyReturnPollingProcessService =
+      mock[MonthlyReturnPollingProcessService]
+
+    when(mockMonthlyReturnPollingProcessService.process(any())(using hc)).thenReturn(Future.unit)
+
     val service = new BatchPollerService(
-      submissionService = mockSubmissionService
+      submissionService = mockSubmissionService,
+      monthlyReturnPollingProcessService = mockMonthlyReturnPollingProcessService
     )
 
     val verificationSubmission: VerificationSubmissionToPoll =
