@@ -315,6 +315,75 @@ final class SubmissionServiceSpec extends SpecBase {
         .futureValue mustBe pollResponse
     }
 
+    "passes Verification journey to Chris connector" in {
+      val s = setup
+      import s._
+
+      val submissionId = "sub-123"
+      val instanceId   = "instance-123"
+      val correlation  = "corr-expected"
+      val pollUrl      = "/poll/123"
+
+      val session = ChrisSubmissionSessionData(
+        submissionId = submissionId,
+        instanceId = instanceId,
+        correlationId = correlation,
+        lastMessageDate = Instant.parse("2025-01-01T00:00:00Z"),
+        numPolls = 0,
+        pollInterval = 10,
+        pollUrl = pollUrl,
+        govTalkStatus = None
+      )
+
+      val govTalk = GetGovTalkStatusResponse(Seq.empty)
+
+      when(chrisSubmissionSessionRepository.get(eqTo(submissionId)))
+        .thenReturn(Future.successful(Some(session)))
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(govTalk)))
+
+      when(chrisSubmissionSessionRepository.upsert(eqTo(session.copy(govTalkStatus = Some(govTalk)))))
+        .thenReturn(Future.unit)
+
+      when(
+        chrisConnector.pollSubmission(
+          eqTo(correlation),
+          eqTo(pollUrl),
+          eqTo(ChrisPollJourney.Verification)
+        )(using any[HeaderCarrier])
+      ).thenReturn(
+        Future.successful(
+          ChrisPollResponse(
+            status = SUBMITTED,
+            correlationId = "different-correlation",
+            pollUrl = None,
+            pollInterval = None,
+            error = None,
+            irMarkReceived = None,
+            lastMessageDate = None,
+            acceptedTime = None
+          )
+        )
+      )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl, ChrisPollJourney.Verification)
+        .failed
+        .futureValue
+        .getMessage must include("CorrelationId mismatch")
+
+      verify(chrisConnector).pollSubmission(
+        eqTo(correlation),
+        eqTo(pollUrl),
+        eqTo(ChrisPollJourney.Verification)
+      )(using any[HeaderCarrier])
+    }
+
     "fails when no session exists" in {
       val s = setup
       import s._
