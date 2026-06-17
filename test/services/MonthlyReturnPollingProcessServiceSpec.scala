@@ -32,6 +32,12 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
 
   "MonthlyReturnPollingProcessService" - {
 
+    "must not call getMonthlyReturnForEdit when there are no submissions" in {
+      service.process(Seq.empty).futureValue mustBe ()
+
+      verifyNoInteractions(monthlyReturnService)
+    }
+
     "must fail when getMonthlyReturnForEdit fails" in {
       val submission = MonthlyReturnSubmissionToPoll(
         submissionId = 100,
