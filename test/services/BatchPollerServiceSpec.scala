@@ -16,12 +16,12 @@
 
 package services
 
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatestplus.mockito.MockitoSugar
-import org.mockito.ArgumentMatchers.any
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.services.{BatchPollerService, MonthlyReturnPollingProcessService, SubmissionService}
 import uk.gov.hmrc.http.HeaderCarrier
@@ -39,6 +39,7 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       service.run().futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+      verify(mockMonthlyReturnPollingProcessService).process(any())(any())
       verifyNoMoreInteractions(mockSubmissionService)
     }
 
@@ -49,7 +50,9 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       service.run().futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+      verify(mockMonthlyReturnPollingProcessService).process(Seq.empty)(using hc)
       verifyNoMoreInteractions(mockSubmissionService)
+      verifyNoMoreInteractions(mockMonthlyReturnPollingProcessService)
     }
 
     "must recover and complete successfully when SubmissionService fails" in new Setup {
@@ -60,6 +63,7 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
       verifyNoMoreInteractions(mockSubmissionService)
+      verifyNoMoreInteractions(mockMonthlyReturnPollingProcessService)
     }
   }
 
