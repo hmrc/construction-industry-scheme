@@ -58,6 +58,8 @@ class ChrisConnector @Inject() (
       .withBody(ChrisPollRequest(correlationId, journey).payload.toString)
       .execute[HttpResponse]
       .flatMap { resp =>
+        logger.info("[ChrisConnector] poll Journey:" + journey)
+        logger.info("[ChrisConnector] pollSubmission request:\n" + ChrisPollRequest(correlationId, journey).payload)
         logger.info("[ChrisConnector] pollSubmission response:\n" + resp.body)
         if (is2xx(resp.status)) {
           ChrisPollXmlMapper.parse(resp.body) match {
