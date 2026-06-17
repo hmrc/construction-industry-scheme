@@ -24,6 +24,7 @@ import org.scalatest.matchers.must.Matchers.mustBe
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.OptionValues
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, ItResources, WireMockConstants}
+import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.{MonthlyReturn, Verification}
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, ChrisDeleteRequest, DEPARTMENTAL_ERROR, FATAL_ERROR, SUBMITTED}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
 import uk.gov.hmrc.http.UpstreamErrorResponse
@@ -241,6 +242,54 @@ final class ChrisConnectorIntegrationSpec
 
   "ChrisConnector.pollSubmission" should {
 
+    "send IR-CIS-VERIFY class in request body when journey is Verification" in {
+      val correlationId = "poll-cid-verification"
+      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/verification"
+
+      val ackXml =
+        s"""<GovTalkMessage>
+           |  <Header>
+           |    <MessageDetails>
+           |      <Qualifier>acknowledgement</Qualifier>
+           |      <CorrelationID>$correlationId</CorrelationID>
+           |      <GatewayTimestamp>2025-01-06T00:00:00</GatewayTimestamp>
+           |      <ResponseEndPoint PollInterval="10">/poll/verification-next</ResponseEndPoint>
+           |    </MessageDetails>
+           |  </Header>
+           |</GovTalkMessage>""".stripMargin
+
+      val expectedRequestXml = ChrisPollRequest(correlationId, Verification).payload.toString
+
+      stubFor(
+        post(urlPathEqualTo("/poll/verification"))
+          .withHeader("Content-Type", equalTo("application/xml"))
+          .withHeader("Accept", equalTo("application/xml"))
+          .withHeader("CorrelationId", equalTo(correlationId))
+          .withRequestBody(equalToXml(expectedRequestXml))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withHeader("Content-Type", "application/xml")
+              .withBody(ackXml)
+          )
+      )
+
+      val result = connector.pollSubmission(correlationId, pollUrl, Verification).futureValue
+
+      result.status mustBe ACCEPTED
+      result.correlationId mustBe correlationId
+      result.pollUrl mustBe Some("/poll/verification-next")
+      result.pollInterval mustBe Some(10)
+      result.lastMessageDate mustBe Some("2025-01-06T00:00:00Z")
+
+      verify(
+        postRequestedFor(urlPathEqualTo("/poll/verification"))
+          .withRequestBody(matchingXPath(
+            "//*[local-name()='Class' and text()='IR-CIS-VERIFY']"
+          ))
+      )
+    }
+
     "successfully parse acknowledgement response and return ACCEPTED" in {
       val correlationId = "poll-cid-ack"
       val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/endpoint"
@@ -256,7 +305,7 @@ final class ChrisConnectorIntegrationSpec
            |  </Header>
            |</GovTalkMessage>""".stripMargin
 
-      val expectedRequestXml = ChrisPollRequest(correlationId).paylaod.toString
+      val expectedRequestXml = ChrisPollRequest(correlationId, MonthlyReturn).payload.toString
 
       stubFor(
         post(urlPathEqualTo("/poll/endpoint"))
@@ -272,7 +321,7 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
+      val result = connector.pollSubmission(correlationId, pollUrl, MonthlyReturn).futureValue
 
       result.status mustBe ACCEPTED
       result.correlationId mustBe correlationId
@@ -305,7 +354,7 @@ final class ChrisConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/poll/response"))
-          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId, MonthlyReturn).payload.toString))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -314,7 +363,7 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
+      val result = connector.pollSubmission(correlationId, pollUrl, MonthlyReturn).futureValue
 
       result.status mustBe SUBMITTED
       result.correlationId mustBe correlationId
@@ -349,7 +398,7 @@ final class ChrisConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/poll/fatal"))
-          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId, MonthlyReturn).payload.toString))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -358,7 +407,7 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
+      val result = connector.pollSubmission(correlationId, pollUrl, MonthlyReturn).futureValue
 
       result.status mustBe FATAL_ERROR
       result.correlationId mustBe correlationId
@@ -393,7 +442,7 @@ final class ChrisConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/poll/business"))
-          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId, MonthlyReturn).payload.toString))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -402,7 +451,7 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
+      val result = connector.pollSubmission(correlationId, pollUrl, MonthlyReturn).futureValue
 
       result.status mustBe DEPARTMENTAL_ERROR
       result.correlationId mustBe correlationId
@@ -417,7 +466,7 @@ final class ChrisConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/poll/bad"))
-          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId, MonthlyReturn).payload.toString))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -426,7 +475,7 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
+      val result = connector.pollSubmission(correlationId, pollUrl, MonthlyReturn).futureValue
 
       result.status mustBe FATAL_ERROR
       result.correlationId mustBe correlationId
@@ -441,7 +490,7 @@ final class ChrisConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/poll/500"))
-          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId, MonthlyReturn).payload.toString))
           .willReturn(
             aResponse()
               .withStatus(500)
@@ -449,7 +498,7 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
+      val result = connector.pollSubmission(correlationId, pollUrl, MonthlyReturn).futureValue
 
       result.status mustBe ACCEPTED
       result.correlationId mustBe correlationId
@@ -464,7 +513,7 @@ final class ChrisConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/poll/404"))
-          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId, MonthlyReturn).payload.toString))
           .willReturn(
             aResponse()
               .withStatus(404)
@@ -472,7 +521,7 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
+      val result = connector.pollSubmission(correlationId, pollUrl, MonthlyReturn).futureValue
 
       result.status mustBe FATAL_ERROR
       result.correlationId mustBe correlationId
@@ -487,11 +536,11 @@ final class ChrisConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/poll/conn"))
-          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId, MonthlyReturn).payload.toString))
           .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER))
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
+      val result = connector.pollSubmission(correlationId, pollUrl, MonthlyReturn).futureValue
 
       result.status mustBe ACCEPTED
       result.correlationId mustBe correlationId
@@ -517,7 +566,7 @@ final class ChrisConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/poll/no-url"))
-          .withRequestBody(equalToXml(ChrisPollRequest(correlationId).paylaod.toString))
+          .withRequestBody(equalToXml(ChrisPollRequest(correlationId, MonthlyReturn).payload.toString))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -526,7 +575,7 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl).futureValue
+      val result = connector.pollSubmission(correlationId, pollUrl, MonthlyReturn).futureValue
 
       result.status mustBe SUBMITTED
       result.correlationId mustBe correlationId
