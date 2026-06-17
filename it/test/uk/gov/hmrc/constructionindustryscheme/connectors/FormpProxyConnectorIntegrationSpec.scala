@@ -2031,8 +2031,8 @@ class FormpProxyConnectorIntegrationSpec
       when(rsMonthlyReturn.getString("status")).thenReturn("SUBMITTED")
       when(rsMonthlyReturn.getString("tax_office_number")).thenReturn("123")
       when(rsMonthlyReturn.getString("tax_office_reference")).thenReturn("456789")
-      when(rsMonthlyReturn.getString("tax_year")).thenReturn("2025")
-      when(rsMonthlyReturn.getString("tax_month")).thenReturn("06")
+      when(rsMonthlyReturn.getInt("tax_year")).thenReturn(2025)
+      when(rsMonthlyReturn.getInt("tax_month")).thenReturn(6)
       when(rsMonthlyReturn.getString("instance_id")).thenReturn("instance-monthly-return-001")
       when(rsMonthlyReturn.getString("agent_id")).thenReturn("A123456")
 
@@ -2049,8 +2049,8 @@ class FormpProxyConnectorIntegrationSpec
 
       out.monthlyReturnSubmissions.head.submissionId mustBe 90002L
       out.monthlyReturnSubmissions.head.submissionType mustBe "CIS300MR"
-      out.monthlyReturnSubmissions.head.taxYear mustBe "2025"
-      out.monthlyReturnSubmissions.head.taxMonth mustBe "06"
+      out.monthlyReturnSubmissions.head.taxYear mustBe 2025
+      out.monthlyReturnSubmissions.head.taxMonth mustBe 6
 
       verify(conn).prepareCall("{ call SUBMISSION_PROCS.GET_SUBMISSIONS_FOR_POLLING(?, ?) }")
       verify(cs).registerOutParameter(1, OracleTypes.CURSOR)
