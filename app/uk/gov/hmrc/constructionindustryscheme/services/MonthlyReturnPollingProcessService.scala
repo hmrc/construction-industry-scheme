@@ -39,7 +39,7 @@ class MonthlyReturnPollingProcessService @Inject() (
       .traverse(monthlyReturnSubmissions) { sub =>
         processSubmission(sub).recover { case ex =>
           logger.error(
-            s"[MonthlyReturnPollingProcessService] Failed for instanceId=${sub.instanceId}, submissionId=${sub.submissionId}",
+            s"[MonthlyReturnPollingProcessService][process] Failed for instanceId=${sub.instanceId}, submissionId=${sub.submissionId}",
             ex
           )
         }
@@ -49,6 +49,11 @@ class MonthlyReturnPollingProcessService @Inject() (
   private def processSubmission(
     submission: MonthlyReturnSubmissionToPoll
   )(implicit hc: HeaderCarrier): Future[Unit] =
+    logger.info(
+      s"[MonthlyReturnPollingProcessService][processSubmission] " +
+        s"instanceId=${submission.instanceId}, " +
+        s"submissionId=${submission.submissionId}"
+    )
     for {
       details <- monthlyReturnService.getMonthlyReturnForEdit(
                    GetMonthlyReturnForEditRequest(
@@ -58,13 +63,8 @@ class MonthlyReturnPollingProcessService @Inject() (
                      isAmendment = Some(false)
                    )
                  )
-      _        = logger.info(
-                   s"[MonthlyReturnPollingProcessService][processSubmission] " +
-                     s"getMonthlyReturnForEdit called with " +
-                     s"instanceId=${submission.instanceId}, " +
-                     s"taxMonth=${submission.taxMonth}, " +
-                     s"taxYear=${submission.taxYear}"
-                 )
+
+      // TODO: At the moment above call is not used. But We will require getMonthlyReturnForEdit in DTR-5744
       _       <- submissionService.processMonthlyReturnGovTalkStatusCheck(
                    submission.instanceId,
                    submission.submissionId.toString
