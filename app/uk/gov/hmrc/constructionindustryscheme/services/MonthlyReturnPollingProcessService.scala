@@ -34,16 +34,17 @@ class MonthlyReturnPollingProcessService @Inject() (
 
   def process(
     monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll]
-  )(implicit hc: HeaderCarrier): Future[Unit] = {
-
-    logger.info(
-      s"[MonthlyReturnPollingProcessService][process] Calling F2 - Monthly Return Polling Process for ${monthlyReturnSubmissions.size} submissions"
-    )
-
+  )(implicit hc: HeaderCarrier): Future[Unit] =
     Future
-      .traverse(monthlyReturnSubmissions)(processSubmission)
+      .traverse(monthlyReturnSubmissions) { sub =>
+        processSubmission(sub).recover { case ex =>
+          logger.error(
+            s"[MonthlyReturnPollingProcessService] Failed for instanceId=${sub.instanceId}, submissionId=${sub.submissionId}",
+            ex
+          )
+        }
+      }
       .map(_ => ())
-  }
 
   private def processSubmission(
     submission: MonthlyReturnSubmissionToPoll
