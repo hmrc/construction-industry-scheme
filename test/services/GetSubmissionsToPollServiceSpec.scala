@@ -83,7 +83,7 @@ class GetSubmissionsToPollServiceSpec extends AnyFreeSpec with Matchers with Sca
             status = "SUBMITTED",
             taxOfficeNumber = "123",
             taxOfficeReference = "456789",
-            taxYear = "2025-26",
+            taxYear = "2025",
             taxMonth = "06",
             instanceId = "instance-monthly-return-001",
             agentId = Some("A123456")

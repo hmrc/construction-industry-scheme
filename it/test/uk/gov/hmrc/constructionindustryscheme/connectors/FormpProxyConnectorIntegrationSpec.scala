@@ -1994,4 +1994,68 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
+
+  "getBatchPollSubmissions" - {
+
+    "return verification and monthly return submissions" in {
+      val db                   = mock[Database]
+      val conn                 = mock[Connection]
+      val cs                   = mock[CallableStatement]
+      val rsVerification       = mock[ResultSet]
+      val rsMonthlyReturn      = mock[ResultSet]
+
+      when(db.withConnection(anyArg[Connection => Any])).thenAnswer { invocation =>
+        val function = invocation.getArgument(0, classOf[Connection => Any])
+        function(conn)
+      }
+
+      when(conn.prepareCall("{ call SUBMISSION_PROCS.GET_SUBMISSIONS_FOR_POLLING(?, ?) }"))
+        .thenReturn(cs)
+
+      when(cs.getObject(1, classOf[ResultSet])).thenReturn(rsVerification)
+      when(cs.getObject(2, classOf[ResultSet])).thenReturn(rsMonthlyReturn)
+
+      when(rsVerification.next()).thenReturn(true, false)
+      when(rsVerification.getLong("submission_id")).thenReturn(90001L)
+      when(rsVerification.getString("submission_type")).thenReturn("CISVERIFY")
+      when(rsVerification.getString("agent_id")).thenReturn("A123456")
+      when(rsVerification.getString("tax_office_number")).thenReturn("123")
+      when(rsVerification.getString("tax_office_reference")).thenReturn("ABC123")
+      when(rsVerification.getString("instance_id")).thenReturn("instance-verification-001")
+      when(rsVerification.getString("status")).thenReturn("SUBMITTED")
+      when(rsVerification.getLong("verification_batch_resource_ref")).thenReturn(70001L)
+
+      when(rsMonthlyReturn.next()).thenReturn(true, false)
+      when(rsMonthlyReturn.getLong("submission_id")).thenReturn(90002L)
+      when(rsMonthlyReturn.getString("submission_type")).thenReturn("CIS300MR")
+      when(rsMonthlyReturn.getString("status")).thenReturn("SUBMITTED")
+      when(rsMonthlyReturn.getString("tax_office_number")).thenReturn("123")
+      when(rsMonthlyReturn.getString("tax_office_reference")).thenReturn("456789")
+      when(rsMonthlyReturn.getString("tax_year")).thenReturn("2025")
+      when(rsMonthlyReturn.getString("tax_month")).thenReturn("06")
+      when(rsMonthlyReturn.getString("instance_id")).thenReturn("instance-monthly-return-001")
+      when(rsMonthlyReturn.getString("agent_id")).thenReturn("A123456")
+
+      val repo = new CisFormpRepository(db)
+      val out  = repo.getBatchPollSubmissions().futureValue
+
+      out.verificationSubmissions must have size 1
+      out.monthlyReturnSubmissions must have size 1
+
+      out.verificationSubmissions.head.submissionId mustBe 90001L
+      out.verificationSubmissions.head.submissionType mustBe "CISVERIFY"
+      out.verificationSubmissions.head.agentId mustBe Some("A123456")
+      out.verificationSubmissions.head.verificationBatchResourceRef mustBe 70001L
+
+      out.monthlyReturnSubmissions.head.submissionId mustBe 90002L
+      out.monthlyReturnSubmissions.head.submissionType mustBe "CIS300MR"
+      out.monthlyReturnSubmissions.head.taxYear mustBe "2025"
+      out.monthlyReturnSubmissions.head.taxMonth mustBe "06"
+
+      verify(conn).prepareCall("{ call SUBMISSION_PROCS.GET_SUBMISSIONS_FOR_POLLING(?, ?) }")
+      verify(cs).registerOutParameter(1, OracleTypes.CURSOR)
+      verify(cs).registerOutParameter(2, OracleTypes.CURSOR)
+      verify(cs).execute()
+    }
+  }
 }
