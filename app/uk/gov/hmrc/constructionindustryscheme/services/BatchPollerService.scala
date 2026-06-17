@@ -44,10 +44,13 @@ class BatchPollerService @Inject() (
         // Future tickets:
         // - If both lists are empty, call F8 - Generate Poll Report
         // - If verificationSubmissions is non-empty, call F6 - Verification Polling Process
-        // - If monthlyReturnSubmissions is non-empty, call F2 - Monthly Return Polling Process
-        monthlyReturnPollingProcessService.process(
-          submissions.monthlyReturnSubmissions
-        )
+        if (submissions.monthlyReturnSubmissions.nonEmpty) {
+          monthlyReturnPollingProcessService.process(
+            submissions.monthlyReturnSubmissions
+          )
+        } else {
+          Future.unit
+        }
       }
       .recover { case exception =>
         logger.error(
