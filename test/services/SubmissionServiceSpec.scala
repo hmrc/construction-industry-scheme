@@ -893,6 +893,35 @@ final class SubmissionServiceSpec extends SpecBase {
     }
   }
 
+  "getSubmissionsToPoll" - {
+
+    "must return submissions from FormpProxyConnector" in new Setup {
+      val response =
+        GetBatchPollSubmissionsResponse(
+          verificationSubmissions = Seq.empty,
+          monthlyReturnSubmissions = Seq.empty
+        )
+
+      when(formpProxyConnector.getBatchPollSubmissions())
+        .thenReturn(Future.successful(response))
+
+      service.getSubmissionsToPoll().futureValue mustBe response
+
+      verify(formpProxyConnector).getBatchPollSubmissions()
+    }
+
+    "must propagate error from FormpProxyConnector" in new Setup {
+      val exception = new RuntimeException("formp-proxy failed")
+
+      when(formpProxyConnector.getBatchPollSubmissions())
+        .thenReturn(Future.failed(exception))
+
+      service.getSubmissionsToPoll().failed.futureValue mustBe exception
+
+      verify(formpProxyConnector).getBatchPollSubmissions()
+    }
+  }
+
   trait Setup {
     val chrisConnector: ChrisConnector                                     = mock[ChrisConnector]
     val formpProxyConnector: FormpProxyConnector                           = mock[FormpProxyConnector]

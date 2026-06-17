@@ -24,13 +24,13 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class BatchPollerService @Inject() (
-  getSubmissionsToPollService: GetSubmissionsToPollService
-) extends Logging {
+  submissionService: SubmissionService
+)(implicit ec: ExecutionContext)
+    extends Logging {
 
-  def run()(implicit ec: ExecutionContext, hc: HeaderCarrier): Future[Unit] = {
+  def run()(implicit hc: HeaderCarrier): Future[Unit] = {
     logger.info("[BatchPollerService][run] Calling F1 - Get Submissions To Poll")
-
-    getSubmissionsToPollService
+    submissionService
       .getSubmissionsToPoll()
       .map { submissions =>
         logger.info(

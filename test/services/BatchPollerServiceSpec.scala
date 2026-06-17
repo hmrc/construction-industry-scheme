@@ -22,7 +22,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.services.{BatchPollerService, GetSubmissionsToPollService}
+import uk.gov.hmrc.constructionindustryscheme.services.{BatchPollerService, SubmissionService}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -31,34 +31,34 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
 
   "BatchPollerService run" - {
 
-    "must call GetSubmissionsToPollService and complete successfully when submissions are returned" in new Setup {
-      when(mockGetSubmissionsToPollService.getSubmissionsToPoll()(using hc))
+    "must call SubmissionService and complete successfully when submissions are returned" in new Setup {
+      when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(nonEmptyResponse))
 
       service.run().futureValue mustBe ()
 
-      verify(mockGetSubmissionsToPollService).getSubmissionsToPoll()(using hc)
-      verifyNoMoreInteractions(mockGetSubmissionsToPollService)
+      verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+      verifyNoMoreInteractions(mockSubmissionService)
     }
 
-    "must call GetSubmissionsToPollService and complete successfully when empty lists are returned" in new Setup {
-      when(mockGetSubmissionsToPollService.getSubmissionsToPoll()(using hc))
+    "must call SubmissionService and complete successfully when empty lists are returned" in new Setup {
+      when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(emptyResponse))
 
       service.run().futureValue mustBe ()
 
-      verify(mockGetSubmissionsToPollService).getSubmissionsToPoll()(using hc)
-      verifyNoMoreInteractions(mockGetSubmissionsToPollService)
+      verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+      verifyNoMoreInteractions(mockSubmissionService)
     }
 
-    "must recover and complete successfully when GetSubmissionsToPollService fails" in new Setup {
-      when(mockGetSubmissionsToPollService.getSubmissionsToPoll()(using hc))
+    "must recover and complete successfully when SubmissionService fails" in new Setup {
+      when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.failed(new RuntimeException("formp-proxy failed")))
 
       service.run().futureValue mustBe ()
 
-      verify(mockGetSubmissionsToPollService).getSubmissionsToPoll()(using hc)
-      verifyNoMoreInteractions(mockGetSubmissionsToPollService)
+      verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+      verifyNoMoreInteractions(mockSubmissionService)
     }
   }
 
@@ -66,11 +66,11 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
     given ExecutionContext  = scala.concurrent.ExecutionContext.global
     given hc: HeaderCarrier = HeaderCarrier()
 
-    val mockGetSubmissionsToPollService: GetSubmissionsToPollService =
-      mock[GetSubmissionsToPollService]
+    val mockSubmissionService: SubmissionService =
+      mock[SubmissionService]
 
     val service = new BatchPollerService(
-      getSubmissionsToPollService = mockGetSubmissionsToPollService
+      submissionService = mockSubmissionService
     )
 
     val verificationSubmission: VerificationSubmissionToPoll =
@@ -92,8 +92,8 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
         status = "SUBMITTED",
         taxOfficeNumber = "123",
         taxOfficeReference = "456789",
-        taxYear = "2025",
-        taxMonth = "06",
+        taxYear = 2025,
+        taxMonth = 6,
         instanceId = "instance-monthly-return-001",
         agentId = Some("A123456")
       )

@@ -46,8 +46,8 @@ class GetBatchPollSubmissionsResponseSpec extends AnyFreeSpec with Matchers {
             "status"             -> "SUBMITTED",
             "taxOfficeNumber"    -> "123",
             "taxOfficeReference" -> "456789",
-            "taxYear"            -> "2025",
-            "taxMonth"           -> "06",
+            "taxYear"            -> 2025,
+            "taxMonth"           -> 6,
             "instanceId"         -> "instance-monthly-return-001",
             "agentId"            -> "A123456"
           )
@@ -74,8 +74,8 @@ class GetBatchPollSubmissionsResponseSpec extends AnyFreeSpec with Matchers {
             status = "SUBMITTED",
             taxOfficeNumber = "123",
             taxOfficeReference = "456789",
-            taxYear = "2025",
-            taxMonth = "06",
+            taxYear = 2025,
+            taxMonth = 6,
             instanceId = "instance-monthly-return-001",
             agentId = Some("A123456")
           )
@@ -104,8 +104,8 @@ class GetBatchPollSubmissionsResponseSpec extends AnyFreeSpec with Matchers {
             status = "SUBMITTED",
             taxOfficeNumber = "123",
             taxOfficeReference = "456789",
-            taxYear = "2025",
-            taxMonth = "06",
+            taxYear = 2025,
+            taxMonth = 6,
             instanceId = "instance-monthly-return-001",
             agentId = Some("A123456")
           )
@@ -132,8 +132,8 @@ class GetBatchPollSubmissionsResponseSpec extends AnyFreeSpec with Matchers {
             "status"             -> "SUBMITTED",
             "taxOfficeNumber"    -> "123",
             "taxOfficeReference" -> "456789",
-            "taxYear"            -> "2025",
-            "taxMonth"           -> "06",
+            "taxYear"            -> 2025,
+            "taxMonth"           -> 6,
             "instanceId"         -> "instance-monthly-return-001",
             "agentId"            -> "A123456"
           )
