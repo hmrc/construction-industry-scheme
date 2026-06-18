@@ -2040,27 +2040,20 @@ class FormpProxyConnectorIntegrationSpec
     "POST /formp-proxy/cis/verification/response/process and return Unit on 204" in {
       val req = ProcessVerificationResponseFromChrisRequest(
         instanceId = instanceId,
-        submissionType = "VERIFICATIONS",
-        activeObjectId = 10L,
-        hmrcMarkGenerated = Some("IR_MARK"),
-        hmrcMarkGgis = None,
-        emailRecipient = Some("ops@example.com"),
-        submissionRequestDate = None,
-        acceptedTime = Some("12:00:00"),
-        agentId = Some("agent-123"),
-        submittableStatus = "ACCEPTED",
-        govTalkErrorCode = None,
-        govTalkErrorType = None,
-        govTalkErrorMessage = None,
-        verifBatchResourceRef = 77L,
-        verificationResourceRef = 111L,
-        subbieResourceRef = 222L,
-        matched = Some("Y"),
-        verificationNumber = Some("V123456"),
-        taxTreatment = Some("NET"),
-        actionIndicator = Some("VERIFY"),
-        proceed = Some("Y"),
-        subcontractorName = "ACME LTD"
+        verificationBatchResourceRef = 77L,
+        acceptedTime = "2026-06-15T10:05:00Z",
+        submissionStatus = "ACCEPTED",
+        irMarkReceived = "IR_MARK_RECEIVED",
+        verificationResults = Seq(
+          VerificationResult(
+            resourceRef = 111L,
+            matched = Some("Y"),
+            verified = Some("Y"),
+            verificationNumber = "V123456",
+            taxTreatment = "NET",
+            verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 5, 0)
+          )
+        )
       )
 
       stubFor(
@@ -2076,27 +2069,20 @@ class FormpProxyConnectorIntegrationSpec
     "fail with UpstreamErrorResponse when upstream returns non-204" in {
       val req = ProcessVerificationResponseFromChrisRequest(
         instanceId = instanceId,
-        submissionType = "VERIFICATIONS",
-        activeObjectId = 10L,
-        hmrcMarkGenerated = None,
-        hmrcMarkGgis = None,
-        emailRecipient = None,
-        submissionRequestDate = None,
-        acceptedTime = None,
-        agentId = None,
-        submittableStatus = "FAILED",
-        govTalkErrorCode = Some("500"),
-        govTalkErrorType = Some("SERVER_ERROR"),
-        govTalkErrorMessage = Some("Unexpected error"),
-        verifBatchResourceRef = 77L,
-        verificationResourceRef = 111L,
-        subbieResourceRef = 222L,
-        matched = None,
-        verificationNumber = None,
-        taxTreatment = None,
-        actionIndicator = Some("VERIFY"),
-        proceed = Some("Y"),
-        subcontractorName = "ACME LTD"
+        verificationBatchResourceRef = 77L,
+        acceptedTime = "2026-06-15T10:05:00Z",
+        submissionStatus = "FAILED",
+        irMarkReceived = "IR_MARK_RECEIVED",
+        verificationResults = Seq(
+          VerificationResult(
+            resourceRef = 111L,
+            matched = Some("N"),
+            verified = Some("N"),
+            verificationNumber = "V123456",
+            taxTreatment = "GROSS",
+            verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 5, 0)
+          )
+        )
       )
 
       stubFor(

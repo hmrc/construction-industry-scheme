@@ -29,54 +29,40 @@ class ProcessVerificationResponseFromChrisRequestSpec extends PlaySpec {
     "serialize to JSON" in {
       val model = ProcessVerificationResponseFromChrisRequest(
         instanceId = "abc-123",
-        submissionType = "VERIFICATIONS",
-        activeObjectId = 10L,
-        hmrcMarkGenerated = Some("hmrc-mark-generated"),
-        hmrcMarkGgis = Some("hmrc-mark-ggis"),
-        emailRecipient = Some("test@example.com"),
-        submissionRequestDate = Some(LocalDateTime.parse("2026-06-15T10:00:00")),
-        acceptedTime = Some("2026-06-15T10:05:00Z"),
-        agentId = Some("agent-123"),
-        submittableStatus = "ACCEPTED",
-        govTalkErrorCode = Some("001"),
-        govTalkErrorType = Some("business"),
-        govTalkErrorMessage = Some("error message"),
-        verifBatchResourceRef = 222L,
-        verificationResourceRef = 333L,
-        subbieResourceRef = 456L,
-        matched = Some("Y"),
-        verificationNumber = Some("V123456"),
-        taxTreatment = Some("NET"),
-        actionIndicator = Some("VERIFY"),
-        proceed = Some("Y"),
-        subcontractorName = "John Smith"
+        verificationBatchResourceRef = 222L,
+        acceptedTime = "2026-06-15T10:05:00Z",
+        submissionStatus = "SUBMITTED",
+        irMarkReceived = "IR_MARK_RECEIVED",
+        verificationResults = Seq(
+          VerificationResult(
+            resourceRef = 456L,
+            matched = Some("Y"),
+            verified = Some("Y"),
+            verificationNumber = "V123456",
+            taxTreatment = "NET",
+            verifiedDate = LocalDateTime.parse("2026-06-15T10:05:00")
+          )
+        )
       )
 
       Json.toJson(model) mustBe Json.parse(
         """
           |{
           |  "instanceId": "abc-123",
-          |  "submissionType": "VERIFICATIONS",
-          |  "activeObjectId": 10,
-          |  "hmrcMarkGenerated": "hmrc-mark-generated",
-          |  "hmrcMarkGgis": "hmrc-mark-ggis",
-          |  "emailRecipient": "test@example.com",
-          |  "submissionRequestDate": "2026-06-15T10:00:00",
+          |  "verificationBatchResourceRef": 222,
           |  "acceptedTime": "2026-06-15T10:05:00Z",
-          |  "agentId": "agent-123",
-          |  "submittableStatus": "ACCEPTED",
-          |  "govTalkErrorCode": "001",
-          |  "govTalkErrorType": "business",
-          |  "govTalkErrorMessage": "error message",
-          |  "verifBatchResourceRef": 222,
-          |  "verificationResourceRef": 333,
-          |  "subbieResourceRef": 456,
-          |  "matched": "Y",
-          |  "verificationNumber": "V123456",
-          |  "taxTreatment": "NET",
-          |  "actionIndicator": "VERIFY",
-          |  "proceed": "Y",
-          |  "subcontractorName": "John Smith"
+          |  "submissionStatus": "SUBMITTED",
+          |  "irMarkReceived": "IR_MARK_RECEIVED",
+          |  "verificationResults": [
+          |    {
+          |      "resourceRef": 456,
+          |      "matched": "Y",
+          |      "verified": "Y",
+          |      "verificationNumber": "V123456",
+          |      "taxTreatment": "NET",
+          |      "verifiedDate": "2026-06-15T10:05:00"
+          |    }
+          |  ]
           |}
           |""".stripMargin
       )
@@ -87,97 +73,82 @@ class ProcessVerificationResponseFromChrisRequestSpec extends PlaySpec {
         """
           |{
           |  "instanceId": "abc-123",
-          |  "submissionType": "VERIFICATIONS",
-          |  "activeObjectId": 10,
-          |  "hmrcMarkGenerated": "hmrc-mark-generated",
-          |  "hmrcMarkGgis": "hmrc-mark-ggis",
-          |  "emailRecipient": "test@example.com",
-          |  "submissionRequestDate": "2026-06-15T10:00:00",
+          |  "verificationBatchResourceRef": 222,
           |  "acceptedTime": "2026-06-15T10:05:00Z",
-          |  "agentId": "agent-123",
-          |  "submittableStatus": "ACCEPTED",
-          |  "govTalkErrorCode": "001",
-          |  "govTalkErrorType": "business",
-          |  "govTalkErrorMessage": "error message",
-          |  "verifBatchResourceRef": 222,
-          |  "verificationResourceRef": 333,
-          |  "subbieResourceRef": 456,
-          |  "matched": "Y",
-          |  "verificationNumber": "V123456",
-          |  "taxTreatment": "NET",
-          |  "actionIndicator": "VERIFY",
-          |  "proceed": "Y",
-          |  "subcontractorName": "John Smith"
+          |  "submissionStatus": "SUBMITTED",
+          |  "irMarkReceived": "IR_MARK_RECEIVED",
+          |  "verificationResults": [
+          |    {
+          |      "resourceRef": 456,
+          |      "matched": "Y",
+          |      "verified": "Y",
+          |      "verificationNumber": "V123456",
+          |      "taxTreatment": "NET",
+          |      "verifiedDate": "2026-06-15T10:05:00"
+          |    }
+          |  ]
           |}
           |""".stripMargin
       )
 
       val expected = ProcessVerificationResponseFromChrisRequest(
         instanceId = "abc-123",
-        submissionType = "VERIFICATIONS",
-        activeObjectId = 10L,
-        hmrcMarkGenerated = Some("hmrc-mark-generated"),
-        hmrcMarkGgis = Some("hmrc-mark-ggis"),
-        emailRecipient = Some("test@example.com"),
-        submissionRequestDate = Some(LocalDateTime.parse("2026-06-15T10:00:00")),
-        acceptedTime = Some("2026-06-15T10:05:00Z"),
-        agentId = Some("agent-123"),
-        submittableStatus = "ACCEPTED",
-        govTalkErrorCode = Some("001"),
-        govTalkErrorType = Some("business"),
-        govTalkErrorMessage = Some("error message"),
-        verifBatchResourceRef = 222L,
-        verificationResourceRef = 333L,
-        subbieResourceRef = 456L,
-        matched = Some("Y"),
-        verificationNumber = Some("V123456"),
-        taxTreatment = Some("NET"),
-        actionIndicator = Some("VERIFY"),
-        proceed = Some("Y"),
-        subcontractorName = "John Smith"
+        verificationBatchResourceRef = 222L,
+        acceptedTime = "2026-06-15T10:05:00Z",
+        submissionStatus = "SUBMITTED",
+        irMarkReceived = "IR_MARK_RECEIVED",
+        verificationResults = Seq(
+          VerificationResult(
+            resourceRef = 456L,
+            matched = Some("Y"),
+            verified = Some("Y"),
+            verificationNumber = "V123456",
+            taxTreatment = "NET",
+            verifiedDate = LocalDateTime.parse("2026-06-15T10:05:00")
+          )
+        )
       )
 
       json.validate[ProcessVerificationResponseFromChrisRequest] mustBe JsSuccess(expected)
     }
 
-    "deserialize when optional fields are missing" in {
+    "deserialize when optional verification result fields are missing" in {
       val json = Json.parse(
         """
           |{
           |  "instanceId": "abc-123",
-          |  "activeObjectId": 10,
-          |  "submittableStatus": "ACCEPTED",
-          |  "verifBatchResourceRef": 222,
-          |  "verificationResourceRef": 333,
-          |  "subbieResourceRef": 456,
-          |  "subcontractorName": "John Smith"
+          |  "verificationBatchResourceRef": 222,
+          |  "acceptedTime": "2026-06-15T10:05:00Z",
+          |  "submissionStatus": "SUBMITTED",
+          |  "irMarkReceived": "IR_MARK_RECEIVED",
+          |  "verificationResults": [
+          |    {
+          |      "resourceRef": 456,
+          |      "verificationNumber": "V123456",
+          |      "taxTreatment": "NET",
+          |      "verifiedDate": "2026-06-15T10:05:00"
+          |    }
+          |  ]
           |}
           |""".stripMargin
       )
 
       val expected = ProcessVerificationResponseFromChrisRequest(
         instanceId = "abc-123",
-        submissionType = "VERIFICATIONS",
-        activeObjectId = 10L,
-        hmrcMarkGenerated = None,
-        hmrcMarkGgis = None,
-        emailRecipient = None,
-        submissionRequestDate = None,
-        acceptedTime = None,
-        agentId = None,
-        submittableStatus = "ACCEPTED",
-        govTalkErrorCode = None,
-        govTalkErrorType = None,
-        govTalkErrorMessage = None,
-        verifBatchResourceRef = 222L,
-        verificationResourceRef = 333L,
-        subbieResourceRef = 456L,
-        matched = None,
-        verificationNumber = None,
-        taxTreatment = None,
-        actionIndicator = None,
-        proceed = None,
-        subcontractorName = "John Smith"
+        verificationBatchResourceRef = 222L,
+        acceptedTime = "2026-06-15T10:05:00Z",
+        submissionStatus = "SUBMITTED",
+        irMarkReceived = "IR_MARK_RECEIVED",
+        verificationResults = Seq(
+          VerificationResult(
+            resourceRef = 456L,
+            matched = None,
+            verified = None,
+            verificationNumber = "V123456",
+            taxTreatment = "NET",
+            verifiedDate = LocalDateTime.parse("2026-06-15T10:05:00")
+          )
+        )
       )
 
       json.validate[ProcessVerificationResponseFromChrisRequest] mustBe JsSuccess(expected)

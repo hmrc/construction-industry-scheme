@@ -577,27 +577,28 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
     val validRequest = ProcessVerificationResponseFromChrisRequest(
       instanceId = "abc-123",
-      submissionType = "VERIFICATIONS",
-      activeObjectId = 10L,
-      hmrcMarkGenerated = Some("IR_MARK"),
-      hmrcMarkGgis = None,
-      emailRecipient = Some("ops@example.com"),
-      submissionRequestDate = None,
-      acceptedTime = Some("12:00:00"),
-      agentId = Some("agent-123"),
-      submittableStatus = "ACCEPTED",
-      govTalkErrorCode = None,
-      govTalkErrorType = None,
-      govTalkErrorMessage = None,
-      verifBatchResourceRef = 77L,
-      verificationResourceRef = 111L,
-      subbieResourceRef = 222L,
-      matched = Some("Y"),
-      verificationNumber = Some("V123456"),
-      taxTreatment = Some("NET"),
-      actionIndicator = Some("VERIFY"),
-      proceed = Some("Y"),
-      subcontractorName = "ACME LTD"
+      verificationBatchResourceRef = 77L,
+      acceptedTime = "2026-06-15T10:05:00Z",
+      submissionStatus = "ACCEPTED",
+      irMarkReceived = "IR_MARK_RECEIVED",
+      verificationResults = Seq(
+        VerificationResult(
+          resourceRef = 111L,
+          matched = Some("Y"),
+          verified = Some("Y"),
+          verificationNumber = "V123456",
+          taxTreatment = "NET",
+          verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 5, 0)
+        ),
+        VerificationResult(
+          resourceRef = 222L,
+          matched = Some("N"),
+          verified = Some("N"),
+          verificationNumber = "V654321",
+          taxTreatment = "GROSS",
+          verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 6, 0)
+        )
+      )
     )
 
     val validJson: JsValue = Json.toJson(validRequest)

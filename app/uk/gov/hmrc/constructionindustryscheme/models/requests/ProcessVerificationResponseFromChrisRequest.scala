@@ -22,30 +22,28 @@ import java.time.LocalDateTime
 
 final case class ProcessVerificationResponseFromChrisRequest(
   instanceId: String,
-  submissionType: String = "VERIFICATIONS",
-  activeObjectId: Long,
-  hmrcMarkGenerated: Option[String],
-  hmrcMarkGgis: Option[String],
-  emailRecipient: Option[String],
-  submissionRequestDate: Option[LocalDateTime],
-  acceptedTime: Option[String],
-  agentId: Option[String],
-  submittableStatus: String,
-  govTalkErrorCode: Option[String],
-  govTalkErrorType: Option[String],
-  govTalkErrorMessage: Option[String],
-  verifBatchResourceRef: Long,
-  verificationResourceRef: Long,
-  subbieResourceRef: Long,
-  matched: Option[String],
-  verificationNumber: Option[String],
-  taxTreatment: Option[String],
-  actionIndicator: Option[String],
-  proceed: Option[String],
-  subcontractorName: String
+  verificationBatchResourceRef: Long,
+  acceptedTime: String,
+  submissionStatus: String,
+  irMarkReceived: String,
+  verificationResults: Seq[VerificationResult]
 )
 
 object ProcessVerificationResponseFromChrisRequest {
   implicit val format: OFormat[ProcessVerificationResponseFromChrisRequest] =
     Json.format[ProcessVerificationResponseFromChrisRequest]
+}
+
+final case class VerificationResult(
+  resourceRef: Long,
+  matched: Option[String],
+  verified: Option[String],
+  verificationNumber: String,
+  taxTreatment: String,
+  verifiedDate: LocalDateTime
+)
+
+object VerificationResult {
+  implicit val format: OFormat[VerificationResult] =
+    Json.format[VerificationResult]
 }
