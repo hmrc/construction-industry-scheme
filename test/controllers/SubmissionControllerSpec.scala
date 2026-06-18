@@ -870,6 +870,87 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
   }
 
+  "resetGovTalk" - {
+
+    val validResetJson = Json.obj(
+      "userIdentifier"    -> "123",
+      "formResultID"      -> "sub-123",
+      "oldProtocolStatus" -> "dataRequest",
+      "gatewayURL"        -> "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+    )
+
+    "returns 204 NoContent when service resets ok" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+      val controller        = mkController(submissionService = submissionService, xmlValidator = xmlValidator)
+
+      when(submissionService.resetGovTalkStatus(any[ResetGovTalkStatusRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.unit)
+
+      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/reset-govtalk")
+        .withBody(validResetJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.resetGovTalk(submissionId)(req)
+
+      status(result) mustBe NO_CONTENT
+      verify(submissionService).resetGovTalkStatus(any[ResetGovTalkStatusRequest])(any[HeaderCarrier])
+    }
+
+    "returns 400 when JSON is invalid" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+      val controller        = mkController(submissionService = submissionService, xmlValidator = xmlValidator)
+
+      val bad = Json.obj("userIdentifier" -> "123")
+
+      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/reset-govtalk")
+        .withBody(bad)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.resetGovTalk(submissionId)(req)
+
+      status(result) mustBe BAD_REQUEST
+      verifyNoInteractions(submissionService)
+    }
+
+    "returns 502 BadGateway when service fails" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+      val controller        = mkController(submissionService = submissionService, xmlValidator = xmlValidator)
+
+      when(submissionService.resetGovTalkStatus(any[ResetGovTalkStatusRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("formp reset failed")))
+
+      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/reset-govtalk")
+        .withBody(validResetJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.resetGovTalk(submissionId)(req)
+
+      status(result) mustBe BAD_GATEWAY
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "message").as[String] mustBe "reset-govtalk-failed"
+    }
+
+    "returns 401 when unauthorised" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+      val controller        =
+        mkController(submissionService = submissionService, auth = rejectingAuthAction, xmlValidator = xmlValidator)
+
+      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/reset-govtalk")
+        .withBody(validResetJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.resetGovTalk(submissionId)(req)
+
+      status(result) mustBe UNAUTHORIZED
+      verifyNoInteractions(submissionService)
+    }
+  }
+
   "pollSubmission" - {
 
     "override polling url is true" - {
@@ -895,7 +976,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         when(
           submissionService.pollSubmissionAndUpdateGovTalkStatus(
             eqTo(submissionId),
-            eqTo(overridePollUrl)
+            eqTo(overridePollUrl),
+            eqTo(ChrisPollJourney.MonthlyReturn)
           )(any[HeaderCarrier])
         ).thenReturn(
           Future.successful(
@@ -923,7 +1005,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         (js \ "intervalSeconds").as[Int] mustBe 10
 
         verify(submissionService)
-          .pollSubmissionAndUpdateGovTalkStatus(eqTo(submissionId), eqTo(overridePollUrl))(any[HeaderCarrier])
+          .pollSubmissionAndUpdateGovTalkStatus(
+            eqTo(submissionId),
+            eqTo(overridePollUrl),
+            eqTo(ChrisPollJourney.MonthlyReturn)
+          )(any[HeaderCarrier])
       }
     }
 
@@ -944,7 +1030,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val pollUrl = "http://chris.test/poll"
 
       when(
-        submissionService.pollSubmissionAndUpdateGovTalkStatus(eqTo(submissionId), eqTo(pollUrl))(any[HeaderCarrier])
+        submissionService.pollSubmissionAndUpdateGovTalkStatus(
+          eqTo(submissionId),
+          eqTo(pollUrl),
+          eqTo(ChrisPollJourney.MonthlyReturn)
+        )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
           ChrisPollResponse(
@@ -1610,7 +1700,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(
         submissionService.pollSubmissionAndUpdateGovTalkStatus(
           eqTo(submissionId),
-          eqTo(overridePollUrl)
+          eqTo(overridePollUrl),
+          eqTo(ChrisPollJourney.Verification)
         )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
@@ -1642,7 +1733,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "intervalSeconds").as[Int] mustBe 10
 
       verify(submissionService)
-        .pollSubmissionAndUpdateGovTalkStatus(eqTo(submissionId), eqTo(overridePollUrl))(any[HeaderCarrier])
+        .pollSubmissionAndUpdateGovTalkStatus(
+          eqTo(submissionId),
+          eqTo(overridePollUrl),
+          eqTo(ChrisPollJourney.Verification)
+        )(any[HeaderCarrier])
     }
 
     "returns 200 with SUBMITTED status when service returns SUBMITTED" in {
@@ -1662,7 +1757,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val pollUrl = "http://chris.test/poll"
 
       when(
-        submissionService.pollSubmissionAndUpdateGovTalkStatus(eqTo(submissionId), eqTo(pollUrl))(any[HeaderCarrier])
+        submissionService.pollSubmissionAndUpdateGovTalkStatus(
+          eqTo(submissionId),
+          eqTo(pollUrl),
+          eqTo(ChrisPollJourney.Verification)
+        )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
           ChrisPollResponse(

@@ -45,7 +45,9 @@ class ChrisConnector @Inject() (
   private val chrisCisVerifyUrl: String =
     servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.verify-submit-url")
 
-  def pollSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[ChrisPollResponse] =
+  def pollSubmission(correlationId: String, pollUrl: String, journey: ChrisPollJourney)(using
+    HeaderCarrier
+  ): Future[ChrisPollResponse] =
     httpClient
       .post(url"$pollUrl")
       .setHeader(
@@ -53,9 +55,11 @@ class ChrisConnector @Inject() (
         "Accept"        -> "application/xml",
         "CorrelationId" -> correlationId
       )
-      .withBody(ChrisPollRequest(correlationId).paylaod.toString)
+      .withBody(ChrisPollRequest(correlationId, journey).payload.toString)
       .execute[HttpResponse]
       .flatMap { resp =>
+        logger.info("[ChrisConnector] poll Journey:" + journey)
+        logger.info("[ChrisConnector] pollSubmission request:\n" + ChrisPollRequest(correlationId, journey).payload)
         logger.info("[ChrisConnector] pollSubmission response:\n" + resp.body)
         if (is2xx(resp.status)) {
           ChrisPollXmlMapper.parse(resp.body) match {

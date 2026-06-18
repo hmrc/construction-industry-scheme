@@ -115,6 +115,9 @@ class SubmissionService @Inject() (
   def updateGovTalkStatus(request: UpdateGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.updateGovTalkStatus(request)
 
+  def resetGovTalkStatus(request: ResetGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    formpProxyConnector.resetGovTalkStatus(request)
+
   def initialiseGovTalkStatus(
     employerReference: EmployerReference,
     submissionId: String,
@@ -191,12 +194,13 @@ class SubmissionService @Inject() (
 
   def pollSubmissionAndUpdateGovTalkStatus(
     submissionId: String,
-    pollUrl: String
+    pollUrl: String,
+    journey: ChrisPollJourney
   )(implicit hc: HeaderCarrier): Future[ChrisPollResponse] =
     for {
       session            <- getChrisSubmissionSession(submissionId)
       _                  <- fetchAndStoreGovTalkStatus(session.instanceId, submissionId)
-      result             <- chrisConnector.pollSubmission(session.correlationId, pollUrl)
+      result             <- chrisConnector.pollSubmission(session.correlationId, pollUrl, journey)
       _                  <- validateCorrelationId(session.correlationId, result.correlationId) match {
                               case Right(_)     => Future.unit
                               case Left(reason) => Future.failed(new RuntimeException(reason))
