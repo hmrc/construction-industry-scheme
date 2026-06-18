@@ -1994,68 +1994,6 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
-
-  "getBatchPollSubmissions" - {
-
-    "return verification and monthly return submissions" in {
-      val db                   = mock[Database]
-      val conn                 = mock[Connection]
-      val cs                   = mock[CallableStatement]
-      val rsVerification       = mock[ResultSet]
-      val rsMonthlyReturn      = mock[ResultSet]
-
-      when(db.withConnection(anyArg[Connection => Any])).thenAnswer { invocation =>
-        val function = invocation.getArgument(0, classOf[Connection => Any])
-        function(conn)
-      }
-
-      when(conn.prepareCall("{ call SUBMISSION_PROCS.GET_SUBMISSIONS_FOR_POLLING(?, ?) }"))
-        .thenReturn(cs)
-
-      when(cs.getObject(1, classOf[ResultSet])).thenReturn(rsVerification)
-      when(cs.getObject(2, classOf[ResultSet])).thenReturn(rsMonthlyReturn)
-
-      when(rsVerification.next()).thenReturn(true, false)
-      when(rsVerification.getLong("submission_id")).thenReturn(90001L)
-      when(rsVerification.getString("submission_type")).thenReturn("CISVERIFY")
-      when(rsVerification.getString("agent_id")).thenReturn("A123456")
-      when(rsVerification.getString("tax_office_number")).thenReturn("123")
-      when(rsVerification.getString("tax_office_reference")).thenReturn("ABC123")
-      when(rsVerification.getString("instance_id")).thenReturn("instance-verification-001")
-      when(rsVerification.getString("status")).thenReturn("SUBMITTED")
-      when(rsVerification.getLong("verification_batch_resource_ref")).thenReturn(70001L)
-
-      when(rsMonthlyReturn.next()).thenReturn(true, false)
-      when(rsMonthlyReturn.getLong("submission_id")).thenReturn(90002L)
-      when(rsMonthlyReturn.getString("submission_type")).thenReturn("CIS300MR")
-      when(rsMonthlyReturn.getString("status")).thenReturn("SUBMITTED")
-      when(rsMonthlyReturn.getString("tax_office_number")).thenReturn("123")
-      when(rsMonthlyReturn.getString("tax_office_reference")).thenReturn("456789")
-      when(rsMonthlyReturn.getInt("tax_year")).thenReturn(2025)
-      when(rsMonthlyReturn.getInt("tax_month")).thenReturn(6)
-      when(rsMonthlyReturn.getString("instance_id")).thenReturn("instance-monthly-return-001")
-      when(rsMonthlyReturn.getString("agent_id")).thenReturn("A123456")
-
-      val repo = new CisFormpRepository(db)
-      val out  = repo.getBatchPollSubmissions().futureValue
-
-      out.verificationSubmissions must have size 1
-      out.monthlyReturnSubmissions must have size 1
-
-      out.verificationSubmissions.head.submissionId mustBe 90001L
-      out.verificationSubmissions.head.submissionType mustBe "CISVERIFY"
-      out.verificationSubmissions.head.agentId mustBe Some("A123456")
-      out.verificationSubmissions.head.verificationBatchResourceRef mustBe 70001L
-
-      out.monthlyReturnSubmissions.head.submissionId mustBe 90002L
-      out.monthlyReturnSubmissions.head.submissionType mustBe "CIS300MR"
-      out.monthlyReturnSubmissions.head.taxYear mustBe 2025
-      out.monthlyReturnSubmissions.head.taxMonth mustBe 6
-
-      verify(conn).prepareCall("{ call SUBMISSION_PROCS.GET_SUBMISSIONS_FOR_POLLING(?, ?) }")
-      verify(cs).registerOutParameter(1, OracleTypes.CURSOR)
-      verify(cs).registerOutParameter(2, OracleTypes.CURSOR)
-      verify(cs).execute()
   "FormpProxyConnector resetGovTalkStatus" should {
 
     "POST /formp-proxy/cis/govtalkstatus/reset and return Unit on 204" in {
@@ -2091,6 +2029,72 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = connector.resetGovTalkStatus(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector getBatchPollSubmissions" should {
+
+    "GET /formp-proxy/cis/batchpoll-submissions and return wrapper (200)" in {
+      val responseJson = Json.parse(
+        """
+        {
+          "verificationSubmissions": [
+            {
+              "submissionId": 90001,
+              "submissionType": "CISVERIFY",
+              "agentId": "A123456",
+              "taxOfficeNumber": "123",
+              "taxOfficeReference": "ABC123",
+              "instanceId": "instance-verification-001",
+              "status": "SUBMITTED",
+              "verificationBatchResourceRef": 70001
+            }
+          ],
+          "monthlyReturnSubmissions": [
+            {
+              "submissionId": 90002,
+              "submissionType": "CIS300MR",
+              "status": "SUBMITTED",
+              "taxOfficeNumber": "123",
+              "taxOfficeReference": "456789",
+              "taxYear": 2025,
+              "taxMonth": 6,
+              "instanceId": "instance-monthly-return-001",
+              "agentId": "A123456"
+            }
+          ]
+        }
+      """
+      )
+
+      stubFor(
+        get(urlPathEqualTo("/formp-proxy/cis/batchpoll-submissions"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.getBatchPollSubmissions().futureValue
+
+      Json.toJson(out) mustBe responseJson
+    }
+
+    "fail the future when upstream returns a non-2xx (e.g. 500)" in {
+      stubFor(
+        get(urlPathEqualTo("/formp-proxy/cis/batchpoll-submissions"))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("""{"message":"boom"}""")
+          )
+      )
+
+      val ex = connector.getBatchPollSubmissions().failed.futureValue
+
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }

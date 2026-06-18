@@ -30,7 +30,7 @@ import uk.gov.hmrc.mongo.{CurrentTimestampSupport, MongoComponent}
 import uk.gov.hmrc.mongo.lock.{Lock, MongoLockRepository}
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class BatchPollerScheduledServiceIntegrationSpec
     extends SpecBase
