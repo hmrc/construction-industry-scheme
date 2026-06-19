@@ -45,8 +45,8 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
         status = "Started",
         taxOfficeNumber = "123",
         taxOfficeReference = "AZ123",
-        taxYear = "2026",
-        taxMonth = "2",
+        taxYear = 2026,
+        taxMonth = 2,
         instanceId = "1",
         agentId = None
       )
@@ -64,8 +64,8 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
         status = "Started",
         taxOfficeNumber = "123",
         taxOfficeReference = "AZ123",
-        taxYear = "2026",
-        taxMonth = "4",
+        taxYear = 2026,
+        taxMonth = 4,
         instanceId = "1",
         agentId = None
       )
@@ -76,8 +76,8 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
         status = "Started",
         taxOfficeNumber = "123",
         taxOfficeReference = "AZ123",
-        taxYear = "2026",
-        taxMonth = "5",
+        taxYear = 2026,
+        taxMonth = 5,
         instanceId = "2",
         agentId = None
       )
