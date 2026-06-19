@@ -35,6 +35,7 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
     "must call SubmissionService and complete successfully when submissions are returned" in new Setup {
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(nonEmptyResponse))
+      when(mockMonthlyReturnPollingProcessService.process(any())(any())).thenReturn(Future.unit)
 
       service.run().futureValue mustBe ()
 
@@ -50,9 +51,8 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       service.run().futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
-      verify(mockMonthlyReturnPollingProcessService).process(Seq.empty)(using hc)
       verifyNoMoreInteractions(mockSubmissionService)
-      verifyNoMoreInteractions(mockMonthlyReturnPollingProcessService)
+      verifyNoInteractions(mockMonthlyReturnPollingProcessService)
     }
 
     "must recover and complete successfully when SubmissionService fails" in new Setup {
@@ -76,8 +76,6 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
 
     val mockMonthlyReturnPollingProcessService: MonthlyReturnPollingProcessService =
       mock[MonthlyReturnPollingProcessService]
-
-    when(mockMonthlyReturnPollingProcessService.process(any())(using hc)).thenReturn(Future.unit)
 
     val service = new BatchPollerService(
       submissionService = mockSubmissionService,
