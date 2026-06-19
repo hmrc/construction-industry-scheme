@@ -16,19 +16,13 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
-sealed trait ChrisPollJourney {
-  def logName: String
-  def govTalkClass: String
-}
+import play.api.libs.json.*
 
-object ChrisPollJourney {
-  case object MonthlyReturn extends ChrisPollJourney {
-    override val logName: String      = "monthlyReturn"
-    override val govTalkClass: String = "IR-CIS-CIS300MR"
-  }
+case class VerificationActionIndicator(
+  verificationResourceRef: Long,
+  actionIndicator: String
+)
 
-  case object Verification extends ChrisPollJourney {
-    override val logName: String      = "verification"
-    override val govTalkClass: String = "IR-CIS-VERIFY"
-  }
+object VerificationActionIndicator {
+  given format: OFormat[VerificationActionIndicator] = Json.format[VerificationActionIndicator]
 }

@@ -29,15 +29,10 @@ class UpdateVerificationSubmissionRequestSpec extends SpecBase {
     "must read from JSON" in {
       val json = Json.obj(
         "instanceId"                   -> "1",
-        "verificationBatchId"          -> 1001L,
         "verificationBatchResourceRef" -> 2001L,
         "submittableStatus"            -> "SUBMITTED",
-        "hmrcMarkGenerated"            -> "hmrc-mark",
-        "hmrcMarkGgis"                 -> "hmrc-mark-received",
-        "emailRecipient"               -> "test@test.com",
         "submissionRequestDate"        -> "2026-06-15T03:30:52",
-        "acceptedTime"                 -> "2026-06-15T03:30:53",
-        "agentId"                      -> "agent-id",
+        "hmrcMarkGenerated"            -> "hmrc-mark",
         "govtalkErrorCode"             -> JsNull,
         "govtalkErrorType"             -> JsNull,
         "govtalkErrorMessage"          -> JsNull
@@ -46,32 +41,30 @@ class UpdateVerificationSubmissionRequestSpec extends SpecBase {
       val result = json.as[UpdateVerificationSubmissionRequest]
 
       result.instanceId mustBe "1"
-      result.verificationBatchId mustBe 1001L
       result.verificationBatchResourceRef mustBe 2001L
       result.submittableStatus mustBe "SUBMITTED"
       result.hmrcMarkGenerated mustBe Some("hmrc-mark")
       result.submissionRequestDate.value mustBe LocalDateTime.parse("2026-06-15T03:30:52")
+      result.govtalkErrorCode mustBe None
+      result.govtalkErrorType mustBe None
+      result.govtalkErrorMessage mustBe None
     }
 
     "must write to JSON" in {
       val model = UpdateVerificationSubmissionRequest(
         instanceId = "1",
-        verificationBatchId = 1001L,
         verificationBatchResourceRef = 2001L,
         submittableStatus = "SUBMITTED",
-        hmrcMarkGenerated = Some("hmrc-mark"),
-        hmrcMarkGgis = Some("hmrc-mark-received"),
-        emailRecipient = Some("test@test.com"),
         submissionRequestDate = Some(LocalDateTime.parse("2026-06-15T03:30:52")),
-        acceptedTime = Some("2026-06-15T03:30:53")
+        hmrcMarkGenerated = Some("hmrc-mark")
       )
 
       val json = Json.toJson(model)
 
       (json \ "instanceId").as[String] mustBe "1"
-      (json \ "verificationBatchId").as[Long] mustBe 1001L
       (json \ "verificationBatchResourceRef").as[Long] mustBe 2001L
       (json \ "submittableStatus").as[String] mustBe "SUBMITTED"
+      (json \ "submissionRequestDate").as[LocalDateTime] mustBe LocalDateTime.parse("2026-06-15T03:30:52")
       (json \ "hmrcMarkGenerated").as[String] mustBe "hmrc-mark"
     }
   }

@@ -220,14 +220,10 @@ final class VerificationServiceSpec extends SpecBase {
 
     val request = UpdateVerificationSubmissionRequest(
       instanceId = "abc-123",
-      verificationBatchId = 99L,
       verificationBatchResourceRef = 10L,
       submittableStatus = "SUBMITTED",
-      hmrcMarkGenerated = Some("hmrc-mark"),
-      hmrcMarkGgis = Some("ggis-mark"),
-      emailRecipient = Some("ops@example.com"),
       submissionRequestDate = Some(LocalDateTime.parse("2026-06-15T03:30:52")),
-      acceptedTime = Some("2026-06-15T03:30:53")
+      hmrcMarkGenerated = Some("hmrc-mark")
     )
 
     "delegates to FormpProxyConnector and returns Unit" in {

@@ -493,9 +493,10 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
     val validRequest = UpdateVerificationSubmissionRequest(
       instanceId = "1",
-      verificationBatchId = 1001L,
       verificationBatchResourceRef = 2001L,
-      submittableStatus = "SUBMITTED"
+      submittableStatus = "SUBMITTED",
+      submissionRequestDate = None,
+      hmrcMarkGenerated = None
     )
 
     val validJson = Json.obj(

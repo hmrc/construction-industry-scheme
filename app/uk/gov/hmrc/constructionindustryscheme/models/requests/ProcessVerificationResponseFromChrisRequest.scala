@@ -17,20 +17,18 @@
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
+import uk.gov.hmrc.constructionindustryscheme.models.VerificationResults
 
-import java.time.LocalDateTime
-
-case class UpdateVerificationSubmissionRequest(
+final case class ProcessVerificationResponseFromChrisRequest(
   instanceId: String,
-  verificationBatchResourceRef: Long,
+  verifBatchResourceRef: Long,
   submittableStatus: String,
-  submissionRequestDate: Option[LocalDateTime],
-  hmrcMarkGenerated: Option[String],
-  govtalkErrorCode: Option[String] = None,
-  govtalkErrorType: Option[String] = None,
-  govtalkErrorMessage: Option[String] = None
+  acceptedTime: Option[String],
+  hmrcMarkGgis: Option[String],
+  verificationResults: Seq[VerificationResults]
 )
 
-object UpdateVerificationSubmissionRequest {
-  implicit val format: OFormat[UpdateVerificationSubmissionRequest] = Json.format[UpdateVerificationSubmissionRequest]
+object ProcessVerificationResponseFromChrisRequest {
+  implicit val format: OFormat[ProcessVerificationResponseFromChrisRequest] =
+    Json.format[ProcessVerificationResponseFromChrisRequest]
 }

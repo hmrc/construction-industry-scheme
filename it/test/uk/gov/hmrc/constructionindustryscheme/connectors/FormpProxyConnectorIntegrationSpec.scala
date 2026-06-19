@@ -1941,14 +1941,10 @@ class FormpProxyConnectorIntegrationSpec
     "POST request to /formp-proxy/cis/verification/submission/update and return Unit when upstream returns 204" in {
       val request = UpdateVerificationSubmissionRequest(
         instanceId = "1",
-        verificationBatchId = 1001L,
         verificationBatchResourceRef = 2001L,
         submittableStatus = "SUBMITTED",
-        hmrcMarkGenerated = Some("hmrc-mark"),
-        hmrcMarkGgis = Some("ggis-mark"),
-        emailRecipient = Some("test@test.com"),
         submissionRequestDate = Some(LocalDateTime.parse("2026-06-15T03:30:52")),
-        acceptedTime = Some("2026-06-15T03:30:53")
+        hmrcMarkGenerated = Some("hmrc-mark")
       )
 
       stubFor(
@@ -1967,10 +1963,10 @@ class FormpProxyConnectorIntegrationSpec
     "fail the future when upstream returns non-204" in {
       val request = UpdateVerificationSubmissionRequest(
         instanceId = "1",
-        verificationBatchId = 1001L,
         verificationBatchResourceRef = 2001L,
         submittableStatus = "SUBMITTED",
-        hmrcMarkGenerated = Some("hmrc-mark")
+        submissionRequestDate = None,
+        hmrcMarkGenerated = None
       )
 
       stubFor(
@@ -1984,6 +1980,73 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = connector.updateVerificationSubmission(request).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+
+      val upstream = ex.asInstanceOf[UpstreamErrorResponse]
+      upstream.statusCode mustBe 500
+      upstream.message mustBe "formp error"
+    }
+  }
+
+  "FormpProxyConnector processVerificationResponseFromChris" should {
+
+    "POST request to /formp-proxy/cis/verification/response/process and return Unit when upstream returns 204" in {
+      val request = ProcessVerificationResponseFromChrisRequest(
+        instanceId = "1",
+        verifBatchResourceRef = 5L,
+        submittableStatus = "SUBMITTED",
+        acceptedTime = Some("2017-04-06T08:46:08.081"),
+        hmrcMarkGgis = Some("hmrc-mark"),
+        verificationResults = Seq(
+          VerificationResults(
+            subbieResourceRef = 13L,
+            matched = Some("Y"),
+            verified = Some("N"),
+            verificationNumber = Some("V1000000007"),
+            taxTreatment = Some("net")
+          )
+        )
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(
+            equalToJson(Json.toJson[ProcessVerificationResponseFromChrisRequest](request).toString(), true, true)
+          )
+          .willReturn(
+            aResponse()
+              .withStatus(204)
+          )
+      )
+
+      connector.processVerificationResponseFromChris(request).futureValue mustBe()
+    }
+
+    "fail the future when upstream returns non-204" in {
+      val request = ProcessVerificationResponseFromChrisRequest(
+        instanceId = "1",
+        verifBatchResourceRef = 5L,
+        submittableStatus = "SUBMITTED",
+        acceptedTime = Some("2017-04-06T08:46:08.081"),
+        hmrcMarkGgis = Some("hmrc-mark"),
+        verificationResults = Seq.empty
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
+          .withRequestBody(
+            equalToJson(Json.toJson[ProcessVerificationResponseFromChrisRequest](request).toString(), true, true)
+          )
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("formp error")
+          )
+      )
+
+      val ex = connector.processVerificationResponseFromChris(request).failed.futureValue
 
       ex mustBe a[UpstreamErrorResponse]
 

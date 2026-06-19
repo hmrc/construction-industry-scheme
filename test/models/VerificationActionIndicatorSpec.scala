@@ -14,21 +14,22 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models
+package models
 
-sealed trait ChrisPollJourney {
-  def logName: String
-  def govTalkClass: String
-}
+import base.SpecBase
+import uk.gov.hmrc.constructionindustryscheme.models.VerificationActionIndicator
 
-object ChrisPollJourney {
-  case object MonthlyReturn extends ChrisPollJourney {
-    override val logName: String      = "monthlyReturn"
-    override val govTalkClass: String = "IR-CIS-CIS300MR"
-  }
+class VerificationActionIndicatorSpec extends SpecBase {
 
-  case object Verification extends ChrisPollJourney {
-    override val logName: String      = "verification"
-    override val govTalkClass: String = "IR-CIS-VERIFY"
+  "VerificationActionIndicator" - {
+    "create an instance with the expected values" in {
+      val actionIndicator = VerificationActionIndicator(
+        verificationResourceRef = 13L,
+        actionIndicator = "Y"
+      )
+
+      actionIndicator.verificationResourceRef mustBe 13L
+      actionIndicator.actionIndicator mustBe "Y"
+    }
   }
 }
