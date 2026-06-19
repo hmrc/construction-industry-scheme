@@ -14,25 +14,12 @@
  * limitations under the License.
  */
 
-package models
+package uk.gov.hmrc.constructionindustryscheme.models.requests
 
-import base.SpecBase
-import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney
-import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.*
+import play.api.libs.json.{Json, OFormat}
 
-class ChrisPollJourneySpec extends SpecBase {
+case class SubcontractorVerificationEmailRequest(email: String)
 
-  "ChrisPollJourney" - {
-
-    "must define monthly return values" in {
-      MonthlyReturn.logName mustBe "monthlyReturn"
-      MonthlyReturn.govTalkClass mustBe "IR-CIS-CIS300MR"
-    }
-
-    "must define verification values" in {
-      Verification.logName mustBe "verification"
-      Verification.govTalkClass mustBe "IR-CIS-VERIFY"
-    }
-
-  }
+object SubcontractorVerificationEmailRequest {
+  given OFormat[SubcontractorVerificationEmailRequest] = Json.format[SubcontractorVerificationEmailRequest]
 }

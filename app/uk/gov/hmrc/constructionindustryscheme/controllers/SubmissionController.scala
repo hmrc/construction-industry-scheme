@@ -101,6 +101,23 @@ class SubmissionController @Inject() (
         )
     }
 
+  def resetGovTalk(submissionId: String): Action[JsValue] =
+    authorise(parse.json).async { implicit req =>
+      req.body
+        .validate[ResetGovTalkStatusRequest]
+        .fold(
+          e => Future.successful(BadRequest(JsError.toJson(e))),
+          request =>
+            submissionService
+              .resetGovTalkStatus(request)
+              .map(_ => NoContent)
+              .recover { case ex =>
+                logger.error(s"[resetGovTalk] formp-proxy reset failed submissionId=$submissionId", ex)
+                BadGateway(Json.obj("submissionId" -> submissionId, "message" -> "reset-govtalk-failed"))
+              }
+        )
+    }
+
   private lazy val redirectUrlPolicy = AbsoluteWithHostnameFromAllowlist(appConfig.chrisHost.toSet)
 
   def pollSubmission(pollUrl: RedirectUrl, submissionId: String): Action[AnyContent] =

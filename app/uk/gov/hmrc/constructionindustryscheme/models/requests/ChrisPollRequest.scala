@@ -17,7 +17,6 @@
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney
-
 import scala.xml.Elem
 
 case class ChrisPollRequest(correlationId: String, journey: ChrisPollJourney) {

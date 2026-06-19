@@ -58,7 +58,7 @@ class EmailConnectorIntegrationSpec
           )
       )
 
-      connector.sendSuccessfulEmail(req).futureValue mustBe Done
+      connector.sendEmail(req).futureValue mustBe Done
     }
 
     "fail the Future when upstream returns non-202 (e.g. 500)" in {
@@ -76,7 +76,7 @@ class EmailConnectorIntegrationSpec
           )
       )
 
-      val ex = connector.sendSuccessfulEmail(req).failed.futureValue
+      val ex = connector.sendEmail(req).failed.futureValue
       ex.getMessage must include("Send email failed: status: 500")
       ex.getMessage must include("""{"error":"boom"}""")
     }
@@ -94,7 +94,7 @@ class EmailConnectorIntegrationSpec
           )
       )
 
-      connector.sendSuccessfulEmail(req).failed.futureValue
+      connector.sendEmail(req).failed.futureValue
     }
   }
 }

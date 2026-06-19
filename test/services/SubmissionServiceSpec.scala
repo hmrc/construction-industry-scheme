@@ -106,6 +106,43 @@ final class SubmissionServiceSpec extends SpecBase {
     }
   }
 
+  "resetGovTalkStatus" - {
+
+    "delegates to FormpProxyConnector and completes" in {
+      val s = setup; import s._
+
+      val req = ResetGovTalkStatusRequest(
+        userIdentifier = "123",
+        formResultID = "sub-123",
+        oldProtocolStatus = "dataRequest",
+        gatewayURL = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      )
+
+      when(formpProxyConnector.resetGovTalkStatus(eqTo(req))(any[HeaderCarrier]))
+        .thenReturn(Future.unit)
+
+      service.resetGovTalkStatus(req).futureValue
+      verify(formpProxyConnector).resetGovTalkStatus(eqTo(req))(any[HeaderCarrier])
+      verifyNoInteractions(chrisConnector)
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val s = setup; import s._
+
+      val req = ResetGovTalkStatusRequest(
+        userIdentifier = "123",
+        formResultID = "sub-123",
+        oldProtocolStatus = "dataRequest",
+        gatewayURL = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      )
+
+      when(formpProxyConnector.resetGovTalkStatus(eqTo(req))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("reset failed")))
+
+      service.resetGovTalkStatus(req).failed.futureValue.getMessage must include("reset failed")
+    }
+  }
+
   "submitToChris" - {
 
     "passes envelope + correlationId to ChrisConnector and returns SubmissionResult" in {
@@ -287,6 +324,75 @@ final class SubmissionServiceSpec extends SpecBase {
         .futureValue mustBe pollResponse
     }
 
+    "passes Verification journey to Chris connector" in {
+      val s = setup
+      import s._
+
+      val submissionId = "sub-123"
+      val instanceId   = "instance-123"
+      val correlation  = "corr-expected"
+      val pollUrl      = "/poll/123"
+
+      val session = ChrisSubmissionSessionData(
+        submissionId = submissionId,
+        instanceId = instanceId,
+        correlationId = correlation,
+        lastMessageDate = Instant.parse("2025-01-01T00:00:00Z"),
+        numPolls = 0,
+        pollInterval = 10,
+        pollUrl = pollUrl,
+        govTalkStatus = None
+      )
+
+      val govTalk = GetGovTalkStatusResponse(Seq.empty)
+
+      when(chrisSubmissionSessionRepository.get(eqTo(submissionId)))
+        .thenReturn(Future.successful(Some(session)))
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(govTalk)))
+
+      when(chrisSubmissionSessionRepository.upsert(eqTo(session.copy(govTalkStatus = Some(govTalk)))))
+        .thenReturn(Future.unit)
+
+      when(
+        chrisConnector.pollSubmission(
+          eqTo(correlation),
+          eqTo(pollUrl),
+          eqTo(ChrisPollJourney.Verification)
+        )(using any[HeaderCarrier])
+      ).thenReturn(
+        Future.successful(
+          ChrisPollResponse(
+            status = SUBMITTED,
+            correlationId = "different-correlation",
+            pollUrl = None,
+            pollInterval = None,
+            error = None,
+            irMarkReceived = None,
+            lastMessageDate = None,
+            acceptedTime = None
+          )
+        )
+      )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl, ChrisPollJourney.Verification)
+        .failed
+        .futureValue
+        .getMessage must include("CorrelationId mismatch")
+
+      verify(chrisConnector).pollSubmission(
+        eqTo(correlation),
+        eqTo(pollUrl),
+        eqTo(ChrisPollJourney.Verification)
+      )(using any[HeaderCarrier])
+    }
+
     "fails when no session exists" in {
       val s = setup
       import s._
@@ -428,12 +534,12 @@ final class SubmissionServiceSpec extends SpecBase {
           parameters = Map("month" -> "September", "year" -> "2025")
         )
 
-      when(emailConnector.sendSuccessfulEmail(eqTo(expectedPayload))(any[HeaderCarrier]))
+      when(emailConnector.sendEmail(eqTo(expectedPayload))(any[HeaderCarrier]))
         .thenReturn(Future.successful(Done))
 
       service.sendSuccessfulEmail(submissionId, req).futureValue mustBe ()
 
-      verify(emailConnector).sendSuccessfulEmail(eqTo(expectedPayload))(any[HeaderCarrier])
+      verify(emailConnector).sendEmail(eqTo(expectedPayload))(any[HeaderCarrier])
       verifyNoMoreInteractions(emailConnector)
     }
 
@@ -451,12 +557,58 @@ final class SubmissionServiceSpec extends SpecBase {
           parameters = Map("month" -> "September", "year" -> "2025")
         )
 
-      when(emailConnector.sendSuccessfulEmail(eqTo(expectedPayload))(any[HeaderCarrier]))
+      when(emailConnector.sendEmail(eqTo(expectedPayload))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.sendSuccessfulEmail(submissionId, req).failed.futureValue.getMessage must include("boom")
 
-      verify(emailConnector).sendSuccessfulEmail(eqTo(expectedPayload))(any[HeaderCarrier])
+      verify(emailConnector).sendEmail(eqTo(expectedPayload))(any[HeaderCarrier])
+    }
+  }
+
+  "sendEmailForVerification" - {
+
+    "builds SubcontractorVerificationEmail and calls EmailConnector, returning Unit" in {
+      val s = setup
+      import s._
+
+      val req = SubcontractorVerificationEmailRequest("test@test.com")
+
+      val expectedPayload =
+        SubcontractorVerificationEmail(
+          to = List("test@test.com"),
+          templateId = "dtr_subcontractor_verification",
+          parameters = Map.empty[String, String]
+        )
+
+      when(emailConnector.sendEmail(eqTo(expectedPayload))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Done))
+
+      service.sendEmailForVerification(req).futureValue mustBe ()
+
+      verify(emailConnector).sendEmail(eqTo(expectedPayload))(any[HeaderCarrier])
+      verifyNoMoreInteractions(emailConnector)
+    }
+
+    "propagates failures from EmailConnector" in {
+      val s = setup
+      import s._
+
+      val req = SubcontractorVerificationEmailRequest("test@test.com")
+
+      val expectedPayload =
+        SubcontractorVerificationEmail(
+          to = List("test@test.com"),
+          templateId = "dtr_subcontractor_verification",
+          parameters = Map.empty[String, String]
+        )
+
+      when(emailConnector.sendEmail(eqTo(expectedPayload))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.sendEmailForVerification(req).failed.futureValue.getMessage must include("boom")
+
+      verify(emailConnector).sendEmail(eqTo(expectedPayload))(any[HeaderCarrier])
     }
   }
 

@@ -62,7 +62,14 @@ class SubmissionService @Inject() (
     hc: HeaderCarrier
   ): Future[Unit] = {
     val emailPayload = NilMonthlyReturnOrgSuccessEmail(request.email, request.month, request.year)
-    emailConnector.sendSuccessfulEmail(emailPayload).map(_ => ())
+    emailConnector.sendEmail(emailPayload).map(_ => ())
+  }
+
+  def sendEmailForVerification(
+    request: SubcontractorVerificationEmailRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
+    val emailPayload = SubcontractorVerificationEmail(request.email)
+    emailConnector.sendEmail(emailPayload).map(_ => ())
   }
 
   private def deleteChrisResourcesIfNeeded(
@@ -100,6 +107,9 @@ class SubmissionService @Inject() (
 
   def updateGovTalkStatus(request: UpdateGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.updateGovTalkStatus(request)
+
+  def resetGovTalkStatus(request: ResetGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    formpProxyConnector.resetGovTalkStatus(request)
 
   def initialiseGovTalkStatus(
     employerReference: EmployerReference,
