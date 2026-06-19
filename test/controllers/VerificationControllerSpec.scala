@@ -40,7 +40,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
   private def mockController(
     verificationService: VerificationService,
-    submissionService: SubmissionService,
+    submissionService: SubmissionService = mock[SubmissionService],
     auth: AuthAction = fakeAuthAction()
   ): VerificationController =
     new VerificationController(auth, verificationService, submissionService, cc)

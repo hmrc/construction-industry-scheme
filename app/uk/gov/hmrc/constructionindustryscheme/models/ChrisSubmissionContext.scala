@@ -23,7 +23,7 @@ import java.time.LocalDateTime
 sealed trait ChrisSubmissionContext {
   def hmrcMarkGenerated: String
   def submissionRequestDate: LocalDateTime
-  
+
   def monthlyReturnContext: Option[StoredMonthlyReturnContext]
   def verificationContext: Option[StoredVerificationContext]
 }
@@ -32,7 +32,7 @@ final case class MonthlyReturnSubmissionContext(
   hmrcMarkGenerated: String,
   submissionRequestDate: LocalDateTime
 ) extends ChrisSubmissionContext {
-  
+
   override def monthlyReturnContext: Option[StoredMonthlyReturnContext] =
     Some(
       StoredMonthlyReturnContext(
@@ -40,9 +40,9 @@ final case class MonthlyReturnSubmissionContext(
         submissionRequestDate = submissionRequestDate
       )
     )
-    
+
   override def verificationContext: Option[StoredVerificationContext] = None
-      
+
 }
 
 final case class VerificationSubmissionContext(
@@ -52,9 +52,9 @@ final case class VerificationSubmissionContext(
   actionIndicators: Seq[VerificationActionIndicator],
   requestedVerifications: Seq[StoredRequestedVerification]
 ) extends ChrisSubmissionContext {
-  
+
   override def monthlyReturnContext: Option[StoredMonthlyReturnContext] = None
-  
+
   override def verificationContext: Option[StoredVerificationContext] =
     Some(
       StoredVerificationContext(
@@ -66,4 +66,3 @@ final case class VerificationSubmissionContext(
       )
     )
 }
-

@@ -29,8 +29,8 @@ object VerificationActionIndicatorBuilder {
           )
         }
       }
-      
-    sequence(indicators)  
+
+    sequence(indicators)
   }
 
   def build(request: ChrisVerificationRequest): Seq[VerificationActionIndicator] =
@@ -38,11 +38,11 @@ object VerificationActionIndicatorBuilder {
       case Right(indicators) => indicators
       case Left(error)       => throw new IllegalArgumentException(error)
     }
-  
+
   private def parseLong(value: String, fieldName: String): Either[String, Long] =
-    try {
+    try
       Right(value.trim.toLong)
-    } catch {
+    catch {
       case _: NumberFormatException =>
         Left(s"Invalid long value for $fieldName: '$value'")
     }

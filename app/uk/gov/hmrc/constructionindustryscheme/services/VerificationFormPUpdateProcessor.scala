@@ -29,7 +29,8 @@ import scala.concurrent.{ExecutionContext, Future}
 class VerificationFormPUpdateProcessor @Inject() (
   formpProxyConnector: FormpProxyConnector,
   verificationResultMapper: VerificationResultMapper
-)(implicit ex: ExecutionContext) extends FormPSubmissionUpdateProcessor {
+)(implicit ex: ExecutionContext)
+    extends FormPSubmissionUpdateProcessor {
 
   override val journey: ChrisPollJourney = ChrisPollJourney.Verification
 
@@ -69,29 +70,30 @@ class VerificationFormPUpdateProcessor @Inject() (
         )
       )
 
-    if (isVerificationSuccess(response)) handleSuccess(session, ctx, response) else handleNonSuccess(session, ctx, response)
+    if (isVerificationSuccess(response)) handleSuccess(session, ctx, response)
+    else handleNonSuccess(session, ctx, response)
   }
-  
+
   private def handleSuccess(
     session: ChrisSubmissionSessionData,
     ctx: StoredVerificationContext,
     response: ChrisPollResponse
   )(implicit hc: HeaderCarrier): Future[Unit] =
     for {
-      mappedResults  <- verificationResultMapper.mapAll(
-                          chrisResults = response.cisResponseSubcontractors,
-                          context = ctx
-                        )
-      _              <- formpProxyConnector.processVerificationResponseFromChris(
-                          ProcessVerificationResponseFromChrisRequest(
-                            instanceId = session.instanceId,
-                            verifBatchResourceRef = ctx.verificationBatchResourceRef,
-                            submittableStatus = response.status.toString,
-                            acceptedTime = response.acceptedTime,
-                            hmrcMarkGgis = response.irMarkReceived,
-                            verificationResults = mappedResults
-                          )
-                        )
+      mappedResults <- verificationResultMapper.mapAll(
+                         chrisResults = response.cisResponseSubcontractors,
+                         context = ctx
+                       )
+      _             <- formpProxyConnector.processVerificationResponseFromChris(
+                         ProcessVerificationResponseFromChrisRequest(
+                           instanceId = session.instanceId,
+                           verifBatchResourceRef = ctx.verificationBatchResourceRef,
+                           submittableStatus = response.status.toString,
+                           acceptedTime = response.acceptedTime,
+                           hmrcMarkGgis = response.irMarkReceived,
+                           verificationResults = mappedResults
+                         )
+                       )
     } yield ()
 
   private def handleNonSuccess(
@@ -112,7 +114,7 @@ class VerificationFormPUpdateProcessor @Inject() (
       )
     )
 
-  private def isVerificationSuccess(response: ChrisPollResponse): Boolean=
+  private def isVerificationSuccess(response: ChrisPollResponse): Boolean =
     response.status == SUBMITTED &&
       response.cisResponseSubcontractors.nonEmpty
 

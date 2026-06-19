@@ -18,7 +18,7 @@ package services
 
 import base.SpecBase
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, ChrisPollJourney, GovTalkMeta, ResponseEndPoint, SubmissionResult, SubmissionStatus, SUBMITTED}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, ChrisPollJourney, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus}
 import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnFormPUpdateProcessor
 
@@ -63,19 +63,21 @@ class MonthlyReturnFormPUpdateProcessorSpec extends SpecBase {
         govTalkStatus = None
       )
 
-      processor.handlePollResponse(
-        session,
-        ChrisPollResponse(
-          status = SUBMITTED,
-          correlationId = "corr-123",
-          pollUrl = None,
-          pollInterval = None,
-          error = None,
-          irMarkReceived = None,
-          lastMessageDate = None,
-          acceptedTime = None
+      processor
+        .handlePollResponse(
+          session,
+          ChrisPollResponse(
+            status = SUBMITTED,
+            correlationId = "corr-123",
+            pollUrl = None,
+            pollInterval = None,
+            error = None,
+            irMarkReceived = None,
+            lastMessageDate = None,
+            acceptedTime = None
+          )
         )
-      ).futureValue mustBe ()
+        .futureValue mustBe ()
     }
   }
 

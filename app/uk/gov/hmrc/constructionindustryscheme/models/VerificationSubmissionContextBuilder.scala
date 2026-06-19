@@ -24,9 +24,9 @@ import java.time.LocalDateTime
 object VerificationSubmissionContextBuilder {
 
   private def parseLong(value: String, fieldName: String): Either[String, Long] =
-    try {
+    try
       Right(value.trim.toLong)
-    } catch {
+    catch {
       case _: NumberFormatException =>
         Left(s"Invalid long value for $fieldName: '$value'")
     }
@@ -44,25 +44,23 @@ object VerificationSubmissionContextBuilder {
   ): Either[String, VerificationSubmissionContext] =
     for {
       batchResourceRef <- parseLong(
-        request.verificationBatchResourceRef,
-        "verificationBatchResourceRef"
-      )
+                            request.verificationBatchResourceRef,
+                            "verificationBatchResourceRef"
+                          )
 
       actionIndicators <- VerificationActionIndicatorBuilder.buildEither(request)
 
       requestedVerifications <- buildRequestedVerifications(
-        request,
-        actionIndicators
-      )
-    } yield {
-      VerificationSubmissionContext(
-        hmrcMarkGenerated = hmrcMarkGenerated,
-        submissionRequestDate = submissionRequestDate,
-        verificationBatchResourceRef = batchResourceRef,
-        actionIndicators = actionIndicators,
-        requestedVerifications = requestedVerifications
-      )
-    }
+                                  request,
+                                  actionIndicators
+                                )
+    } yield VerificationSubmissionContext(
+      hmrcMarkGenerated = hmrcMarkGenerated,
+      submissionRequestDate = submissionRequestDate,
+      verificationBatchResourceRef = batchResourceRef,
+      actionIndicators = actionIndicators,
+      requestedVerifications = requestedVerifications
+    )
 
   private def buildRequestedVerifications(
     request: ChrisVerificationRequest,
@@ -89,26 +87,27 @@ object VerificationSubmissionContextBuilder {
         verificationOpt.map { verification =>
           for {
             verificationResourceRef <- parseLong(verification.verificationResourceRef, "verificationResourceRef")
-            actionIndicator <- actionByVerificationRef.get(verificationResourceRef).toRight(s"No action indicator found for verificationResourceRef: $verificationResourceRef")
-          } yield {
-            StoredRequestedVerification(
-              verificationResourceRef = verificationResourceRef,
-              subcontractorId = subcontractor.subcontractorId,
-              subbieResourceRef = subcontractor.subbieResourceRef,
-              subcontractorName = verification.subcontractorName,
-              actionIndicator = actionIndicator,
-              proceedVerification = verification.proceedVerification,
-              foreName = subcontractor.firstName,
-              middleName = subcontractor.secondName,
-              surname = subcontractor.surname,
-              tradingName = subcontractor.tradingName,
-              utr = subcontractor.utr,
-              nino = subcontractor.nino,
-              crn = subcontractor.crn,
-              partnershipUtr = subcontractor.partnerUtr,
-              subcontractorType = subcontractor.subcontractorType
-            )
-          }
+            actionIndicator         <-
+              actionByVerificationRef
+                .get(verificationResourceRef)
+                .toRight(s"No action indicator found for verificationResourceRef: $verificationResourceRef")
+          } yield StoredRequestedVerification(
+            verificationResourceRef = verificationResourceRef,
+            subcontractorId = subcontractor.subcontractorId,
+            subbieResourceRef = subcontractor.subbieResourceRef,
+            subcontractorName = verification.subcontractorName,
+            actionIndicator = actionIndicator,
+            proceedVerification = verification.proceedVerification,
+            foreName = subcontractor.firstName,
+            middleName = subcontractor.secondName,
+            surname = subcontractor.surname,
+            tradingName = subcontractor.tradingName,
+            utr = subcontractor.utr,
+            nino = subcontractor.nino,
+            crn = subcontractor.crn,
+            partnershipUtr = subcontractor.partnerUtr,
+            subcontractorType = subcontractor.subcontractorType
+          )
         }
       }
     sequence(requested)

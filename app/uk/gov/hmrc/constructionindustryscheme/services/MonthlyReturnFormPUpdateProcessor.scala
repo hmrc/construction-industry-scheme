@@ -25,19 +25,19 @@ import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessio
 
 @Singleton
 class MonthlyReturnFormPUpdateProcessor @Inject() extends FormPSubmissionUpdateProcessor {
-  
+
   override val journey: ChrisPollJourney = ChrisPollJourney.MonthlyReturn
-  
+
   // for now, the submission update remains FE-owned, so this is a no-op. Later FE SP call can be moved here
   override def handleInitialAccepted(
     session: ChrisSubmissionSessionData,
     response: SubmissionResult
   )(implicit hc: HeaderCarrier): Future[Unit] =
     Future.unit
-    
+
   override def handlePollResponse(
     session: ChrisSubmissionSessionData,
     response: ChrisPollResponse
-  )(implicit hc: HeaderCarrier): Future[Unit]=
+  )(implicit hc: HeaderCarrier): Future[Unit] =
     Future.unit
 }

@@ -24,11 +24,11 @@ class FormPSubmissionUpdateProcessorRegistry @Inject() (
   monthlyReturnProcessor: MonthlyReturnFormPUpdateProcessor,
   verificationProcessor: VerificationFormPUpdateProcessor
 ) {
-  
+
   private val processors: Map[ChrisPollJourney, FormPSubmissionUpdateProcessor] =
     Seq(monthlyReturnProcessor, verificationProcessor).map(p => p.journey -> p).toMap
-    
-  def processorFor(journey: ChrisPollJourney): FormPSubmissionUpdateProcessor =  
+
+  def processorFor(journey: ChrisPollJourney): FormPSubmissionUpdateProcessor =
     processors.getOrElse(
       journey,
       throw new IllegalArgumentException(s"No processor registered for journey: $journey")

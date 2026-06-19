@@ -48,12 +48,16 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       val verificationResultMapper = mock[VerificationResultMapper]
       val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
 
-      when(formpProxyConnector.updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(any[HeaderCarrier]))
+      when(
+        formpProxyConnector.updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(any[HeaderCarrier])
+      )
         .thenReturn(Future.unit)
 
       processor.handleInitialAccepted(sessionData(), submissionResult(ACCEPTED)).futureValue mustBe ()
 
-      verify(formpProxyConnector).updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(any[HeaderCarrier])
+      verify(formpProxyConnector).updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(
+        any[HeaderCarrier]
+      )
     }
 
     "process verification response from ChRIS on successful poll response" in {
@@ -78,35 +82,39 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
         )
       ).thenReturn(Future.unit)
 
-      processor.handlePollResponse(
-        sessionData(),
-        ChrisPollResponse(
-          status = SUBMITTED,
-          correlationId = "corr-123",
-          pollUrl = None,
-          pollInterval = None,
-          error = None,
-          irMarkReceived = Some("ir-mark"),
-          lastMessageDate = None,
-          acceptedTime = Some("2026-06-19T10:02:00Z"),
-          cisResponseSubcontractors = Seq(
-            CisResponseSubcontractor(
-              utr = Some("1234567890"),
-              partnershipUtr = None,
-              tradingName = Some("Test Trading"),
-              foreName = Some("John"),
-              middleName = None,
-              surname = Some("Smith"),
-              nino = Some("AB123456C"),
-              matched = Some("Y"),
-              taxTreatment = Some("net"),
-              verificationNumber = Some("V1000000007")
+      processor
+        .handlePollResponse(
+          sessionData(),
+          ChrisPollResponse(
+            status = SUBMITTED,
+            correlationId = "corr-123",
+            pollUrl = None,
+            pollInterval = None,
+            error = None,
+            irMarkReceived = Some("ir-mark"),
+            lastMessageDate = None,
+            acceptedTime = Some("2026-06-19T10:02:00Z"),
+            cisResponseSubcontractors = Seq(
+              CisResponseSubcontractor(
+                utr = Some("1234567890"),
+                partnershipUtr = None,
+                tradingName = Some("Test Trading"),
+                foreName = Some("John"),
+                middleName = None,
+                surname = Some("Smith"),
+                nino = Some("AB123456C"),
+                matched = Some("Y"),
+                taxTreatment = Some("net"),
+                verificationNumber = Some("V1000000007")
+              )
             )
           )
         )
-      ).futureValue mustBe ()
+        .futureValue mustBe ()
 
-      verify(formpProxyConnector).processVerificationResponseFromChris(any[ProcessVerificationResponseFromChrisRequest])(
+      verify(formpProxyConnector).processVerificationResponseFromChris(
+        any[ProcessVerificationResponseFromChrisRequest]
+      )(
         any[HeaderCarrier]
       )
     }
@@ -116,24 +124,30 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       val verificationResultMapper = mock[VerificationResultMapper]
       val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
 
-      when(formpProxyConnector.updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(any[HeaderCarrier]))
+      when(
+        formpProxyConnector.updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(any[HeaderCarrier])
+      )
         .thenReturn(Future.unit)
 
-      processor.handlePollResponse(
-        sessionData(),
-        ChrisPollResponse(
-          status = DEPARTMENTAL_ERROR,
-          correlationId = "corr-123",
-          pollUrl = None,
-          pollInterval = None,
-          error = None,
-          irMarkReceived = None,
-          lastMessageDate = None,
-          acceptedTime = None
+      processor
+        .handlePollResponse(
+          sessionData(),
+          ChrisPollResponse(
+            status = DEPARTMENTAL_ERROR,
+            correlationId = "corr-123",
+            pollUrl = None,
+            pollInterval = None,
+            error = None,
+            irMarkReceived = None,
+            lastMessageDate = None,
+            acceptedTime = None
+          )
         )
-      ).futureValue mustBe ()
+        .futureValue mustBe ()
 
-      verify(formpProxyConnector).updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(any[HeaderCarrier])
+      verify(formpProxyConnector).updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(
+        any[HeaderCarrier]
+      )
     }
 
     "fail when verification context is missing" in {

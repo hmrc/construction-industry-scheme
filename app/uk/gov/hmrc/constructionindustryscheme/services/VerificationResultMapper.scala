@@ -23,7 +23,6 @@ import uk.gov.hmrc.constructionindustryscheme.models.VerificationResults
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.Future
 
-
 @Singleton
 class VerificationResultMapper @Inject() () {
 
@@ -31,36 +30,35 @@ class VerificationResultMapper @Inject() () {
     chrisResults: Seq[CisResponseSubcontractor],
     context: StoredVerificationContext
   ): Future[Seq[VerificationResults]] = {
-    val mapped = chrisResults.map( chris => mapOne(chris, context))
+    val mapped = chrisResults.map(chris => mapOne(chris, context))
     val errors = mapped.collect { case Left(err) => err }
-    
+
     if (errors.nonEmpty) {
       Future.failed(new RuntimeException(s"Errors occurred during mapping: ${errors.mkString("; ")}"))
     } else {
       Future.successful(mapped.collect { case Right(result) => result })
     }
   }
-  
+
   private def mapOne(
     chris: CisResponseSubcontractor,
     context: StoredVerificationContext
   ): Either[String, VerificationResults] =
     for {
       requested <- findRequestedVerification(chris, context)
-      subbieRef <- requested.subbieResourceRef.toRight(
-                     s"Missing subbieResourceRef for matched verificationResourceRef: ${requested.verificationResourceRef}"
-                   )
-    } yield {
-      VerificationResults (
-        subbieResourceRef = subbieRef,
-        matched = chris.matched,
-        verified = deriveVerified(chris.matched, Some(requested.actionIndicator)),
-        verificationNumber = chris.verificationNumber,
-        taxTreatment = chris.taxTreatment
-      )
-    }
-    
-  private def findRequestedVerification(  
+      subbieRef <-
+        requested.subbieResourceRef.toRight(
+          s"Missing subbieResourceRef for matched verificationResourceRef: ${requested.verificationResourceRef}"
+        )
+    } yield VerificationResults(
+      subbieResourceRef = subbieRef,
+      matched = chris.matched,
+      verified = deriveVerified(chris.matched, Some(requested.actionIndicator)),
+      verificationNumber = chris.verificationNumber,
+      taxTreatment = chris.taxTreatment
+    )
+
+  private def findRequestedVerification(
     chris: CisResponseSubcontractor,
     context: StoredVerificationContext
   ): Either[String, StoredRequestedVerification] = {
@@ -69,36 +67,36 @@ class VerificationResultMapper @Inject() () {
         requested.subcontractorType.map(_.trim.toLowerCase) match {
           case Some("soletrader") =>
             same(requested.utr, chris.utr) &&
-              same(requested.foreName, chris.foreName) &&
-              same(requested.middleName, chris.middleName) &&
-              same(requested.surname, chris.surname)
+            same(requested.foreName, chris.foreName) &&
+            same(requested.middleName, chris.middleName) &&
+            same(requested.surname, chris.surname)
 
           case Some("company") | Some("trust") =>
             same(requested.utr, chris.utr) &&
-              same(requested.tradingName, chris.tradingName)
+            same(requested.tradingName, chris.tradingName)
 
-          case Some("partnership")  => 
+          case Some("partnership") =>
             same(requested.partnershipUtr, chris.partnershipUtr) &&
-              same(requested.tradingName, chris.tradingName)
+            same(requested.tradingName, chris.tradingName)
 
-          case other =>  
+          case other =>
             false
         }
       }
-      
+
     matches.toList match {
-      case List(one)  => Right(one)
-      case Nil        => Left(s"No matching requested verification found for subcontractor: $chris")
-      case _          => Left(s"Multiple matching requested verifications found for subcontractor: $chris")
-    }  
+      case List(one) => Right(one)
+      case Nil       => Left(s"No matching requested verification found for subcontractor: $chris")
+      case _         => Left(s"Multiple matching requested verifications found for subcontractor: $chris")
+    }
   }
-  
+
   private def same(left: Option[String], right: Option[String]): Boolean =
     normalise(left) == normalise(right)
-    
+
   private def normalise(value: Option[String]): Option[String] =
-    value.map(_.trim.toUpperCase()).filter(_.nonEmpty) 
-    
+    value.map(_.trim.toUpperCase()).filter(_.nonEmpty)
+
   private def deriveVerified(
     matched: Option[String],
     actionIndicator: Option[String]
