@@ -223,13 +223,13 @@ final class VerificationServiceSpec extends SpecBase {
       verificationBatchResourceRef = 77L,
       acceptedTime = "2026-06-15T10:05:00Z",
       submissionStatus = "ACCEPTED",
-      irMarkReceived = "IR_MARK_RECEIVED",
+      irMarkReceived = Some("IR_MARK_RECEIVED"),
       verificationResults = Seq(
         VerificationResult(
           resourceRef = 111L,
           matched = Some("Y"),
           verified = Some("Y"),
-          verificationNumber = "V123456",
+          verificationNumber = Some("V123456"),
           taxTreatment = "NET",
           verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 5, 0)
         ),
@@ -237,7 +237,7 @@ final class VerificationServiceSpec extends SpecBase {
           resourceRef = 222L,
           matched = Some("N"),
           verified = Some("N"),
-          verificationNumber = "V654321",
+          verificationNumber = Some("V654321"),
           taxTreatment = "GROSS",
           verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 6, 0)
         )

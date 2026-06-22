@@ -32,13 +32,13 @@ class ProcessVerificationResponseFromChrisRequestSpec extends PlaySpec {
         verificationBatchResourceRef = 222L,
         acceptedTime = "2026-06-15T10:05:00Z",
         submissionStatus = "SUBMITTED",
-        irMarkReceived = "IR_MARK_RECEIVED",
+        irMarkReceived = Some("IR_MARK_RECEIVED"),
         verificationResults = Seq(
           VerificationResult(
             resourceRef = 456L,
             matched = Some("Y"),
             verified = Some("Y"),
-            verificationNumber = "V123456",
+            verificationNumber = Some("V123456"),
             taxTreatment = "NET",
             verifiedDate = LocalDateTime.parse("2026-06-15T10:05:00")
           )
@@ -96,13 +96,13 @@ class ProcessVerificationResponseFromChrisRequestSpec extends PlaySpec {
         verificationBatchResourceRef = 222L,
         acceptedTime = "2026-06-15T10:05:00Z",
         submissionStatus = "SUBMITTED",
-        irMarkReceived = "IR_MARK_RECEIVED",
+        irMarkReceived = Some("IR_MARK_RECEIVED"),
         verificationResults = Seq(
           VerificationResult(
             resourceRef = 456L,
             matched = Some("Y"),
             verified = Some("Y"),
-            verificationNumber = "V123456",
+            verificationNumber = Some("V123456"),
             taxTreatment = "NET",
             verifiedDate = LocalDateTime.parse("2026-06-15T10:05:00")
           )
@@ -138,13 +138,13 @@ class ProcessVerificationResponseFromChrisRequestSpec extends PlaySpec {
         verificationBatchResourceRef = 222L,
         acceptedTime = "2026-06-15T10:05:00Z",
         submissionStatus = "SUBMITTED",
-        irMarkReceived = "IR_MARK_RECEIVED",
+        irMarkReceived = Some("IR_MARK_RECEIVED"),
         verificationResults = Seq(
           VerificationResult(
             resourceRef = 456L,
             matched = None,
             verified = None,
-            verificationNumber = "V123456",
+            verificationNumber = Some("V123456"),
             taxTreatment = "NET",
             verifiedDate = LocalDateTime.parse("2026-06-15T10:05:00")
           )
