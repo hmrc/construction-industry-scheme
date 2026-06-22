@@ -17,9 +17,11 @@
 package services
 
 import base.SpecBase
-import uk.gov.hmrc.constructionindustryscheme.models.{CisResponseSubcontractor, VerificationResults}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisResponseSubcontractor, VerificationResult}
 import uk.gov.hmrc.constructionindustryscheme.repositories.{StoredRequestedVerification, StoredVerificationContext}
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationResultMapper
+
+import java.time.LocalDateTime
 
 class VerificationResultMapperSpec extends SpecBase {
 
@@ -27,6 +29,8 @@ class VerificationResultMapperSpec extends SpecBase {
 
     "map ChRIS result to verification result for sole trader" in {
       val mapper = new VerificationResultMapper()
+
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
 
       val chrisResult = CisResponseSubcontractor(
         utr = Some("1234567890"),
@@ -44,7 +48,7 @@ class VerificationResultMapperSpec extends SpecBase {
       val context = StoredVerificationContext(
         verificationBatchResourceRef = 5L,
         hmrcMarkGenerated = "hmrc-mark",
-        submissionRequestDate = java.time.LocalDateTime.parse("2026-06-19T10:00:00"),
+        submissionRequestDate = LocalDateTime.parse("2026-06-19T10:00:00"),
         actionIndicators = Seq.empty,
         requestedVerifications = Seq(
           StoredRequestedVerification(
@@ -67,19 +71,28 @@ class VerificationResultMapperSpec extends SpecBase {
         )
       )
 
-      mapper.mapAll(Seq(chrisResult), context).futureValue mustBe Seq(
-        VerificationResults(
-          subbieResourceRef = 13L,
+      mapper
+        .mapAll(
+          chrisResults = Seq(chrisResult),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue mustBe Seq(
+        VerificationResult(
+          resourceRef = 13L,
           matched = Some("N"),
           verified = Some("Y"),
-          verificationNumber = Some("V1000000007"),
-          taxTreatment = Some("net")
+          verificationNumber = "V1000000007",
+          taxTreatment = "net",
+          verifiedDate = verifiedDate
         )
       )
     }
 
     "fail when no requested verification matches" in {
       val mapper = new VerificationResultMapper()
+
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
 
       val chrisResult = CisResponseSubcontractor(
         utr = Some("9999999999"),
@@ -97,12 +110,19 @@ class VerificationResultMapperSpec extends SpecBase {
       val context = StoredVerificationContext(
         verificationBatchResourceRef = 5L,
         hmrcMarkGenerated = "hmrc-mark",
-        submissionRequestDate = java.time.LocalDateTime.parse("2026-06-19T10:00:00"),
+        submissionRequestDate = LocalDateTime.parse("2026-06-19T10:00:00"),
         actionIndicators = Seq.empty,
         requestedVerifications = Seq.empty
       )
 
-      val ex = mapper.mapAll(Seq(chrisResult), context).failed.futureValue
+      val ex = mapper
+        .mapAll(
+          chrisResults = Seq(chrisResult),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .failed
+        .futureValue
 
       ex.getMessage must include("No matching requested verification found")
     }

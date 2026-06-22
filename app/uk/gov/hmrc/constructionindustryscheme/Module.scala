@@ -23,7 +23,7 @@ import uk.gov.hmrc.constructionindustryscheme.jobs.BatchPollerJob
 import uk.gov.hmrc.mongo.{CurrentTimestampSupport, TimestampSupport}
 import uk.gov.hmrc.mongo.lock.{LockRepository, MongoLockRepository}
 
-import java.time.{Clock, ZoneId, ZoneOffset}
+import java.time.{Clock, ZoneId}
 
 class Module extends AbstractModule {
 

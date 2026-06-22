@@ -50,8 +50,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
 
       when(
         formpProxyConnector.updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(any[HeaderCarrier])
-      )
-        .thenReturn(Future.unit)
+      ).thenReturn(Future.unit)
 
       processor.handleInitialAccepted(sessionData(), submissionResult(ACCEPTED)).futureValue mustBe ()
 
@@ -65,16 +64,24 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       val verificationResultMapper = mock[VerificationResultMapper]
       val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
 
-      val mappedResult = VerificationResults(
-        subbieResourceRef = 13L,
+      val verifiedDate = LocalDateTime.parse("2026-06-19T10:02:00")
+
+      val mappedResult = VerificationResult(
+        resourceRef = 13L,
         matched = Some("Y"),
         verified = Some("N"),
-        verificationNumber = Some("V1000000007"),
-        taxTreatment = Some("net")
+        verificationNumber = "V1000000007",
+        taxTreatment = "net",
+        verifiedDate = verifiedDate
       )
 
-      when(verificationResultMapper.mapAll(any[Seq[CisResponseSubcontractor]], any[StoredVerificationContext]))
-        .thenReturn(Future.successful(Seq(mappedResult)))
+      when(
+        verificationResultMapper.mapAll(
+          any[Seq[CisResponseSubcontractor]],
+          any[StoredVerificationContext],
+          any[LocalDateTime]
+        )
+      ).thenReturn(Future.successful(Seq(mappedResult)))
 
       when(
         formpProxyConnector.processVerificationResponseFromChris(any[ProcessVerificationResponseFromChrisRequest])(
@@ -93,7 +100,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
             error = None,
             irMarkReceived = Some("ir-mark"),
             lastMessageDate = None,
-            acceptedTime = Some("2026-06-19T10:02:00Z"),
+            acceptedTime = Some("2026-06-19T10:02:00"),
             cisResponseSubcontractors = Seq(
               CisResponseSubcontractor(
                 utr = Some("1234567890"),
@@ -112,11 +119,165 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
         )
         .futureValue mustBe ()
 
+      verify(verificationResultMapper).mapAll(
+        any[Seq[CisResponseSubcontractor]],
+        any[StoredVerificationContext],
+        any[LocalDateTime]
+      )
+
       verify(formpProxyConnector).processVerificationResponseFromChris(
         any[ProcessVerificationResponseFromChrisRequest]
       )(
         any[HeaderCarrier]
       )
+    }
+
+    "process verification response from ChRIS with expected request body" in {
+      val formpProxyConnector      = mock[FormpProxyConnector]
+      val verificationResultMapper = mock[VerificationResultMapper]
+      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
+
+      val verifiedDate = LocalDateTime.parse("2026-06-19T10:02:00")
+
+      val mappedResult = VerificationResult(
+        resourceRef = 13L,
+        matched = Some("Y"),
+        verified = Some("N"),
+        verificationNumber = "V1000000007",
+        taxTreatment = "net",
+        verifiedDate = verifiedDate
+      )
+
+      when(
+        verificationResultMapper.mapAll(
+          any[Seq[CisResponseSubcontractor]],
+          any[StoredVerificationContext],
+          any[LocalDateTime]
+        )
+      ).thenReturn(Future.successful(Seq(mappedResult)))
+
+      when(
+        formpProxyConnector.processVerificationResponseFromChris(any[ProcessVerificationResponseFromChrisRequest])(
+          any[HeaderCarrier]
+        )
+      ).thenReturn(Future.unit)
+
+      processor
+        .handlePollResponse(
+          sessionData(),
+          ChrisPollResponse(
+            status = SUBMITTED,
+            correlationId = "corr-123",
+            pollUrl = None,
+            pollInterval = None,
+            error = None,
+            irMarkReceived = Some("ir-mark"),
+            lastMessageDate = None,
+            acceptedTime = Some("2026-06-19T10:02:00"),
+            cisResponseSubcontractors = Seq(
+              CisResponseSubcontractor(
+                utr = Some("1234567890"),
+                partnershipUtr = None,
+                tradingName = Some("Test Trading"),
+                foreName = Some("John"),
+                middleName = None,
+                surname = Some("Smith"),
+                nino = Some("AB123456C"),
+                matched = Some("Y"),
+                taxTreatment = Some("net"),
+                verificationNumber = Some("V1000000007")
+              )
+            )
+          )
+        )
+        .futureValue mustBe ()
+
+      val requestCaptor =
+        org.mockito.ArgumentCaptor.forClass(classOf[ProcessVerificationResponseFromChrisRequest])
+
+      verify(formpProxyConnector).processVerificationResponseFromChris(requestCaptor.capture())(
+        any[HeaderCarrier]
+      )
+
+      requestCaptor.getValue mustBe ProcessVerificationResponseFromChrisRequest(
+        instanceId = "instance-123",
+        verificationBatchResourceRef = 5L,
+        acceptedTime = "2026-06-19T10:02:00",
+        submissionStatus = SUBMITTED.toString,
+        irMarkReceived = Some("ir-mark"),
+        verificationResults = Seq(mappedResult)
+      )
+    }
+
+    "process verification response from ChRIS when submitted with no receipt" in {
+      val formpProxyConnector      = mock[FormpProxyConnector]
+      val verificationResultMapper = mock[VerificationResultMapper]
+      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
+
+      val verifiedDate = LocalDateTime.parse("2026-06-19T10:02:00")
+
+      val mappedResult = VerificationResult(
+        resourceRef = 13L,
+        matched = Some("Y"),
+        verified = Some("N"),
+        verificationNumber = "V1000000007",
+        taxTreatment = "net",
+        verifiedDate = verifiedDate
+      )
+
+      when(
+        verificationResultMapper.mapAll(
+          any[Seq[CisResponseSubcontractor]],
+          any[StoredVerificationContext],
+          any[LocalDateTime]
+        )
+      ).thenReturn(Future.successful(Seq(mappedResult)))
+
+      when(
+        formpProxyConnector.processVerificationResponseFromChris(any[ProcessVerificationResponseFromChrisRequest])(
+          any[HeaderCarrier]
+        )
+      ).thenReturn(Future.unit)
+
+      processor
+        .handlePollResponse(
+          sessionData(),
+          ChrisPollResponse(
+            status = SUBMITTED_NO_RECEIPT,
+            correlationId = "corr-123",
+            pollUrl = None,
+            pollInterval = None,
+            error = None,
+            irMarkReceived = None,
+            lastMessageDate = None,
+            acceptedTime = Some("2026-06-19T10:02:00"),
+            cisResponseSubcontractors = Seq(
+              CisResponseSubcontractor(
+                utr = Some("1234567890"),
+                partnershipUtr = None,
+                tradingName = Some("Test Trading"),
+                foreName = Some("John"),
+                middleName = None,
+                surname = Some("Smith"),
+                nino = Some("AB123456C"),
+                matched = Some("Y"),
+                taxTreatment = Some("net"),
+                verificationNumber = Some("V1000000007")
+              )
+            )
+          )
+        )
+        .futureValue mustBe ()
+
+      val requestCaptor =
+        org.mockito.ArgumentCaptor.forClass(classOf[ProcessVerificationResponseFromChrisRequest])
+
+      verify(formpProxyConnector).processVerificationResponseFromChris(requestCaptor.capture())(
+        any[HeaderCarrier]
+      )
+
+      requestCaptor.getValue.irMarkReceived mustBe None
+      requestCaptor.getValue.submissionStatus mustBe SUBMITTED_NO_RECEIPT.toString
     }
 
     "update verification submission on non-success poll response" in {
@@ -126,8 +287,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
 
       when(
         formpProxyConnector.updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(any[HeaderCarrier])
-      )
-        .thenReturn(Future.unit)
+      ).thenReturn(Future.unit)
 
       processor
         .handlePollResponse(

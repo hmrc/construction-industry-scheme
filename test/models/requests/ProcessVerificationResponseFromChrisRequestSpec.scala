@@ -17,35 +17,37 @@
 package models.requests
 
 import base.SpecBase
-import uk.gov.hmrc.constructionindustryscheme.models.VerificationResults
+import uk.gov.hmrc.constructionindustryscheme.models.VerificationResult
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ProcessVerificationResponseFromChrisRequest
+import java.time.LocalDateTime
 
 class ProcessVerificationResponseFromChrisRequestSpec extends SpecBase {
 
   "ProcessVerificationResponseFromChrisRequest" - {
     "create an instance with the expected values" in {
-      val verificationResult = VerificationResults(
-        subbieResourceRef = 13L,
+      val verificationResult = VerificationResult(
+        resourceRef = 13L,
         matched = Some("Y"),
         verified = Some("N"),
-        verificationNumber = Some("V1000000007"),
-        taxTreatment = Some("net")
+        verificationNumber = "V1000000007",
+        taxTreatment = "net",
+        verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
       )
 
       val request = ProcessVerificationResponseFromChrisRequest(
         instanceId = "1",
-        verifBatchResourceRef = 5L,
-        submittableStatus = "SUBMITTED",
-        acceptedTime = Some("2017-04-06T08:46:08.081"),
-        hmrcMarkGgis = Some("hmrc-mark"),
+        verificationBatchResourceRef = 5L,
+        submissionStatus = "SUBMITTED",
+        acceptedTime = "2017-04-06T08:46:08.081",
+        irMarkReceived = Some("hmrc-mark"),
         verificationResults = Seq(verificationResult)
       )
 
       request.instanceId mustBe "1"
-      request.verifBatchResourceRef mustBe 5L
-      request.submittableStatus mustBe "SUBMITTED"
-      request.acceptedTime mustBe Some("2017-04-06T08:46:08.081")
-      request.hmrcMarkGgis mustBe Some("hmrc-mark")
+      request.verificationBatchResourceRef mustBe 5L
+      request.submissionStatus mustBe "SUBMITTED"
+      request.acceptedTime mustBe "2017-04-06T08:46:08.081"
+      request.irMarkReceived mustBe Some("hmrc-mark")
       request.verificationResults mustBe Seq(verificationResult)
     }
   }

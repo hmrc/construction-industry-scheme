@@ -17,25 +17,27 @@
 package models
 
 import base.SpecBase
-import uk.gov.hmrc.constructionindustryscheme.models.VerificationResults
+import uk.gov.hmrc.constructionindustryscheme.models.VerificationResult
+import java.time.LocalDateTime
 
-class VerificationResultsSpec extends SpecBase {
+class VerificationResultSpec extends SpecBase {
 
-  "VerificationResults" - {
+  "VerificationResult" - {
     "create an instance with the expected values" in {
-      val result = VerificationResults(
-        subbieResourceRef = 13L,
+      val result = VerificationResult(
+        resourceRef = 13L,
         matched = Some("Y"),
         verified = Some("N"),
-        verificationNumber = Some("V1000000007"),
-        taxTreatment = Some("net")
+        verificationNumber = "V1000000007",
+        taxTreatment = "net",
+        verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
       )
 
-      result.subbieResourceRef mustBe 13L
+      result.resourceRef mustBe 13L
       result.matched mustBe Some("Y")
       result.verified mustBe Some("N")
-      result.verificationNumber mustBe Some("V1000000007")
-      result.taxTreatment mustBe Some("net")
+      result.verificationNumber mustBe "V1000000007"
+      result.taxTreatment mustBe "net"
     }
   }
 }

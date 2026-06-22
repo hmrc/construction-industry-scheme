@@ -18,14 +18,17 @@ package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.libs.json.{Json, OFormat}
 
-case class VerificationResults(
-  subbieResourceRef: Long,
+import java.time.LocalDateTime
+
+case class VerificationResult(
+  resourceRef: Long,
   matched: Option[String],
   verified: Option[String],
-  verificationNumber: Option[String],
-  taxTreatment: Option[String]
+  verificationNumber: String,
+  taxTreatment: String,
+  verifiedDate: LocalDateTime
 )
 
-object VerificationResults {
-  implicit val format: OFormat[VerificationResults] = Json.format[VerificationResults]
+object VerificationResult {
+  implicit val format: OFormat[VerificationResult] = Json.format[VerificationResult]
 }

@@ -18,8 +18,9 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.constructionindustryscheme.models.CisResponseSubcontractor
 import uk.gov.hmrc.constructionindustryscheme.repositories.{StoredRequestedVerification, StoredVerificationContext}
-import uk.gov.hmrc.constructionindustryscheme.models.VerificationResults
+import uk.gov.hmrc.constructionindustryscheme.models.VerificationResult
 
+import java.time.LocalDateTime
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.Future
 
@@ -28,9 +29,10 @@ class VerificationResultMapper @Inject() () {
 
   def mapAll(
     chrisResults: Seq[CisResponseSubcontractor],
-    context: StoredVerificationContext
-  ): Future[Seq[VerificationResults]] = {
-    val mapped = chrisResults.map(chris => mapOne(chris, context))
+    context: StoredVerificationContext,
+    verifiedDate: LocalDateTime
+  ): Future[Seq[VerificationResult]] = {
+    val mapped = chrisResults.map(chris => mapOne(chris, context, verifiedDate))
     val errors = mapped.collect { case Left(err) => err }
 
     if (errors.nonEmpty) {
@@ -42,20 +44,24 @@ class VerificationResultMapper @Inject() () {
 
   private def mapOne(
     chris: CisResponseSubcontractor,
-    context: StoredVerificationContext
-  ): Either[String, VerificationResults] =
+    context: StoredVerificationContext,
+    verifiedDate: LocalDateTime
+  ): Either[String, VerificationResult] =
     for {
-      requested <- findRequestedVerification(chris, context)
-      subbieRef <-
+      requested          <- findRequestedVerification(chris, context)
+      resourceRef        <-
         requested.subbieResourceRef.toRight(
           s"Missing subbieResourceRef for matched verificationResourceRef: ${requested.verificationResourceRef}"
         )
-    } yield VerificationResults(
-      subbieResourceRef = subbieRef,
+      verificationNumber <- required(chris.verificationNumber, "verificationNumber")
+      taxTreatment       <- required(chris.taxTreatment, "taxTreatment")
+    } yield VerificationResult(
+      resourceRef = resourceRef,
       matched = chris.matched,
       verified = deriveVerified(chris.matched, Some(requested.actionIndicator)),
-      verificationNumber = chris.verificationNumber,
-      taxTreatment = chris.taxTreatment
+      verificationNumber = verificationNumber,
+      taxTreatment = taxTreatment,
+      verifiedDate = verifiedDate
     )
 
   private def findRequestedVerification(
@@ -90,6 +96,9 @@ class VerificationResultMapper @Inject() () {
       case _         => Left(s"Multiple matching requested verifications found for subcontractor: $chris")
     }
   }
+
+  private def required(value: Option[String], fieldName: String): Either[String, String] =
+    value.map(_.trim).filter(_.nonEmpty).toRight(s"Missing required field: $fieldName")
 
   private def same(left: Option[String], right: Option[String]): Boolean =
     normalise(left) == normalise(right)

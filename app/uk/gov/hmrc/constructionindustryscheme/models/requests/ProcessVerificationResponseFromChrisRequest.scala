@@ -17,15 +17,15 @@
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.constructionindustryscheme.models.VerificationResults
+import uk.gov.hmrc.constructionindustryscheme.models.VerificationResult
 
 final case class ProcessVerificationResponseFromChrisRequest(
   instanceId: String,
-  verifBatchResourceRef: Long,
-  submittableStatus: String,
-  acceptedTime: Option[String],
-  hmrcMarkGgis: Option[String],
-  verificationResults: Seq[VerificationResults]
+  verificationBatchResourceRef: Long,
+  acceptedTime: String,
+  submissionStatus: String,
+  irMarkReceived: Option[String],
+  verificationResults: Seq[VerificationResult]
 )
 
 object ProcessVerificationResponseFromChrisRequest {

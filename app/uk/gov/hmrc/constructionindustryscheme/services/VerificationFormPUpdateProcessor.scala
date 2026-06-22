@@ -22,8 +22,11 @@ import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
 import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, StoredVerificationContext}
 import uk.gov.hmrc.http.HeaderCarrier
+
+import java.time.LocalDateTime
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 @Singleton
 class VerificationFormPUpdateProcessor @Inject() (
@@ -78,23 +81,38 @@ class VerificationFormPUpdateProcessor @Inject() (
     session: ChrisSubmissionSessionData,
     ctx: StoredVerificationContext,
     response: ChrisPollResponse
-  )(implicit hc: HeaderCarrier): Future[Unit] =
-    for {
-      mappedResults <- verificationResultMapper.mapAll(
-                         chrisResults = response.cisResponseSubcontractors,
-                         context = ctx
-                       )
-      _             <- formpProxyConnector.processVerificationResponseFromChris(
-                         ProcessVerificationResponseFromChrisRequest(
-                           instanceId = session.instanceId,
-                           verifBatchResourceRef = ctx.verificationBatchResourceRef,
-                           submittableStatus = response.status.toString,
-                           acceptedTime = response.acceptedTime,
-                           hmrcMarkGgis = response.irMarkReceived,
-                           verificationResults = mappedResults
-                         )
-                       )
-    } yield ()
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
+
+    val result =
+      for {
+        acceptedTime <- requiredField(response.acceptedTime, "acceptedTime")
+        verifiedDate <- parseDateTime(acceptedTime, "acceptedTime")
+      } yield (acceptedTime, verifiedDate)
+
+    result match {
+      case Failure(error) =>
+        Future.failed(error)
+
+      case Success((acceptedTime, verifiedDate)) =>
+        for {
+          mappedResults <- verificationResultMapper.mapAll(
+                             chrisResults = response.cisResponseSubcontractors,
+                             context = ctx,
+                             verifiedDate = verifiedDate
+                           )
+          _             <- formpProxyConnector.processVerificationResponseFromChris(
+                             ProcessVerificationResponseFromChrisRequest(
+                               instanceId = session.instanceId,
+                               verificationBatchResourceRef = ctx.verificationBatchResourceRef,
+                               acceptedTime = acceptedTime,
+                               submissionStatus = response.status.toString,
+                               irMarkReceived = response.irMarkReceived,
+                               verificationResults = mappedResults
+                             )
+                           )
+        } yield ()
+    }
+  }
 
   private def handleNonSuccess(
     session: ChrisSubmissionSessionData,
@@ -118,4 +136,20 @@ class VerificationFormPUpdateProcessor @Inject() (
     response.status == SUBMITTED &&
       response.cisResponseSubcontractors.nonEmpty
 
+  private def requiredField(
+    value: Option[String],
+    fieldName: String
+  ): Try[String] =
+    value.map(_.trim).filter(_.nonEmpty) match {
+      case Some(value) => Success(value)
+      case None        => Failure(new RuntimeException(s"Missing required field: $fieldName"))
+    }
+
+  private def parseDateTime(
+    value: String,
+    fieldName: String
+  ): Try[LocalDateTime] =
+    Try(LocalDateTime.parse(value)).recoverWith { case ex =>
+      Failure(new RuntimeException(s"Invalid date format for field: $fieldName", ex))
+    }
 }
