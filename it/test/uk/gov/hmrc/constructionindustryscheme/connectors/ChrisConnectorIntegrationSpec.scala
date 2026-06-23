@@ -25,7 +25,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.OptionValues
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, ItResources, WireMockConstants}
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, ChrisDeleteRequest, ChrisPollJourney, DEPARTMENTAL_ERROR, FATAL_ERROR, SUBMITTED}
-import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.{MonthlyReturn, Verification}
+import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
 import uk.gov.hmrc.http.UpstreamErrorResponse
 

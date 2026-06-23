@@ -48,21 +48,24 @@ class VerificationResultMapper @Inject() () {
     verifiedDate: LocalDateTime
   ): Either[String, VerificationResult] =
     for {
-      requested          <- findRequestedVerification(chris, context)
-      resourceRef        <-
+      requested    <- findRequestedVerification(chris, context)
+      resourceRef  <-
         requested.subbieResourceRef.toRight(
           s"Missing subbieResourceRef for matched verificationResourceRef: ${requested.verificationResourceRef}"
         )
-      verificationNumber <- required(chris.verificationNumber, "verificationNumber")
-      taxTreatment       <- required(chris.taxTreatment, "taxTreatment")
-    } yield VerificationResult(
-      resourceRef = resourceRef,
-      matched = chris.matched,
-      verified = deriveVerified(chris.matched, Some(requested.actionIndicator)),
-      verificationNumber = verificationNumber,
-      taxTreatment = taxTreatment,
-      verifiedDate = verifiedDate
-    )
+      taxTreatment <- required(chris.taxTreatment, "taxTreatment")
+    } yield {
+      val verificationNumber = chris.verificationNumber.map(_.trim).filter(_.nonEmpty)
+
+      VerificationResult(
+        resourceRef = resourceRef,
+        matched = chris.matched,
+        verified = deriveVerified(chris.matched, Some(requested.actionIndicator), verificationNumber),
+        verificationNumber = verificationNumber,
+        taxTreatment = taxTreatment,
+        verifiedDate = verifiedDate
+      )
+    }
 
   private def findRequestedVerification(
     chris: CisResponseSubcontractor,
@@ -108,12 +111,17 @@ class VerificationResultMapper @Inject() () {
 
   private def deriveVerified(
     matched: Option[String],
-    actionIndicator: Option[String]
+    actionIndicator: Option[String],
+    verificationNumber: Option[String]
   ): Option[String] =
-    (matched.map(_.trim.toUpperCase), actionIndicator.map(_.trim.toUpperCase)) match {
-      case (Some("Y"), Some("MATCH"))  => Some("Y")
-      case (Some("N"), Some("VERIFY")) => Some("Y")
-      case (Some(_), Some(_))          => Some("N")
-      case _                           => None
+    if (verificationNumber.isEmpty) {
+      None
+    } else {
+      (matched.map(_.trim.toUpperCase), actionIndicator.map(_.trim.toUpperCase)) match {
+        case (Some("Y"), Some("MATCH"))  => Some("Y")
+        case (Some("N"), Some("VERIFY")) => Some("Y")
+        case (Some("Y"), _)              => Some("Y")
+        case _                           => None
+      }
     }
 }

@@ -27,46 +27,31 @@ class VerificationResultMapperSpec extends SpecBase {
 
   "VerificationResultMapper" - {
 
-    "map ChRIS result to verification result for sole trader" in {
+    "map ChRIS result to verification result for sole trader when verify action has verification number" in {
       val mapper = new VerificationResultMapper()
 
       val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
 
-      val chrisResult = CisResponseSubcontractor(
+      val chrisResult = cisResponseSubcontractor(
         utr = Some("1234567890"),
-        partnershipUtr = None,
-        tradingName = None,
         foreName = Some("John"),
         middleName = Some("A"),
         surname = Some("Smith"),
-        nino = Some("AB123456C"),
         matched = Some("N"),
         taxTreatment = Some("net"),
         verificationNumber = Some("V1000000007")
       )
 
-      val context = StoredVerificationContext(
-        verificationBatchResourceRef = 5L,
-        hmrcMarkGenerated = "hmrc-mark",
-        submissionRequestDate = LocalDateTime.parse("2026-06-19T10:00:00"),
-        actionIndicators = Seq.empty,
+      val context = storedVerificationContext(
         requestedVerifications = Seq(
-          StoredRequestedVerification(
-            verificationResourceRef = 13L,
-            subcontractorId = 1L,
+          storedRequestedVerification(
             subbieResourceRef = Some(13L),
-            subcontractorName = "John Smith",
             actionIndicator = "verify",
-            proceedVerification = true,
             foreName = Some("John"),
             middleName = Some("A"),
             surname = Some("Smith"),
-            tradingName = None,
             utr = Some("1234567890"),
-            nino = Some("AB123456C"),
-            crn = None,
-            subcontractorType = Some("soletrader"),
-            partnershipUtr = None
+            subcontractorType = Some("soletrader")
           )
         )
       )
@@ -82,7 +67,148 @@ class VerificationResultMapperSpec extends SpecBase {
           resourceRef = 13L,
           matched = Some("N"),
           verified = Some("Y"),
-          verificationNumber = "V1000000007",
+          verificationNumber = Some("V1000000007"),
+          taxTreatment = "net",
+          verifiedDate = verifiedDate
+        )
+      )
+    }
+
+    "map ChRIS result with missing verification number and leave verified empty" in {
+      val mapper = new VerificationResultMapper()
+
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val chrisResult = cisResponseSubcontractor(
+        utr = Some("1234567890"),
+        foreName = Some("John"),
+        middleName = Some("A"),
+        surname = Some("Smith"),
+        matched = Some("N"),
+        taxTreatment = Some("net"),
+        verificationNumber = None
+      )
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            subbieResourceRef = Some(13L),
+            actionIndicator = "verify",
+            foreName = Some("John"),
+            middleName = Some("A"),
+            surname = Some("Smith"),
+            utr = Some("1234567890"),
+            subcontractorType = Some("soletrader")
+          )
+        )
+      )
+
+      mapper
+        .mapAll(
+          chrisResults = Seq(chrisResult),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue mustBe Seq(
+        VerificationResult(
+          resourceRef = 13L,
+          matched = Some("N"),
+          verified = None,
+          verificationNumber = None,
+          taxTreatment = "net",
+          verifiedDate = verifiedDate
+        )
+      )
+    }
+
+    "trim verification number before mapping" in {
+      val mapper = new VerificationResultMapper()
+
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val chrisResult = cisResponseSubcontractor(
+        utr = Some("1234567890"),
+        foreName = Some("John"),
+        middleName = Some("A"),
+        surname = Some("Smith"),
+        matched = Some("N"),
+        taxTreatment = Some("net"),
+        verificationNumber = Some("  V1000000007  ")
+      )
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            subbieResourceRef = Some(13L),
+            actionIndicator = "verify",
+            foreName = Some("John"),
+            middleName = Some("A"),
+            surname = Some("Smith"),
+            utr = Some("1234567890"),
+            subcontractorType = Some("soletrader")
+          )
+        )
+      )
+
+      mapper
+        .mapAll(
+          chrisResults = Seq(chrisResult),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue mustBe Seq(
+        VerificationResult(
+          resourceRef = 13L,
+          matched = Some("N"),
+          verified = Some("Y"),
+          verificationNumber = Some("V1000000007"),
+          taxTreatment = "net",
+          verifiedDate = verifiedDate
+        )
+      )
+    }
+
+    "map blank verification number to None and leave verified empty" in {
+      val mapper = new VerificationResultMapper()
+
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val chrisResult = cisResponseSubcontractor(
+        utr = Some("1234567890"),
+        foreName = Some("John"),
+        middleName = Some("A"),
+        surname = Some("Smith"),
+        matched = Some("N"),
+        taxTreatment = Some("net"),
+        verificationNumber = Some("   ")
+      )
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            subbieResourceRef = Some(13L),
+            actionIndicator = "verify",
+            foreName = Some("John"),
+            middleName = Some("A"),
+            surname = Some("Smith"),
+            utr = Some("1234567890"),
+            subcontractorType = Some("soletrader")
+          )
+        )
+      )
+
+      mapper
+        .mapAll(
+          chrisResults = Seq(chrisResult),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue mustBe Seq(
+        VerificationResult(
+          resourceRef = 13L,
+          matched = Some("N"),
+          verified = None,
+          verificationNumber = None,
           taxTreatment = "net",
           verifiedDate = verifiedDate
         )
@@ -94,26 +220,16 @@ class VerificationResultMapperSpec extends SpecBase {
 
       val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
 
-      val chrisResult = CisResponseSubcontractor(
+      val chrisResult = cisResponseSubcontractor(
         utr = Some("9999999999"),
-        partnershipUtr = None,
-        tradingName = None,
         foreName = Some("Jane"),
-        middleName = None,
         surname = Some("Bloggs"),
-        nino = None,
         matched = Some("Y"),
         taxTreatment = None,
         verificationNumber = None
       )
 
-      val context = StoredVerificationContext(
-        verificationBatchResourceRef = 5L,
-        hmrcMarkGenerated = "hmrc-mark",
-        submissionRequestDate = LocalDateTime.parse("2026-06-19T10:00:00"),
-        actionIndicators = Seq.empty,
-        requestedVerifications = Seq.empty
-      )
+      val context = storedVerificationContext(requestedVerifications = Seq.empty)
 
       val ex = mapper
         .mapAll(
@@ -127,4 +243,75 @@ class VerificationResultMapperSpec extends SpecBase {
       ex.getMessage must include("No matching requested verification found")
     }
   }
+
+  private def cisResponseSubcontractor(
+    utr: Option[String] = Some("1234567890"),
+    partnershipUtr: Option[String] = None,
+    tradingName: Option[String] = None,
+    foreName: Option[String] = Some("John"),
+    middleName: Option[String] = Some("A"),
+    surname: Option[String] = Some("Smith"),
+    nino: Option[String] = Some("AB123456C"),
+    matched: Option[String] = Some("N"),
+    taxTreatment: Option[String] = Some("net"),
+    verificationNumber: Option[String] = Some("V1000000007")
+  ): CisResponseSubcontractor =
+    CisResponseSubcontractor(
+      utr = utr,
+      partnershipUtr = partnershipUtr,
+      tradingName = tradingName,
+      foreName = foreName,
+      middleName = middleName,
+      surname = surname,
+      nino = nino,
+      matched = matched,
+      taxTreatment = taxTreatment,
+      verificationNumber = verificationNumber
+    )
+
+  private def storedVerificationContext(
+    requestedVerifications: Seq[StoredRequestedVerification]
+  ): StoredVerificationContext =
+    StoredVerificationContext(
+      verificationBatchResourceRef = 5L,
+      hmrcMarkGenerated = "hmrc-mark",
+      submissionRequestDate = LocalDateTime.parse("2026-06-19T10:00:00"),
+      actionIndicators = Seq.empty,
+      requestedVerifications = requestedVerifications
+    )
+
+  private def storedRequestedVerification(
+    verificationResourceRef: Long = 13L,
+    subcontractorId: Long = 1L,
+    subbieResourceRef: Option[Long] = Some(13L),
+    subcontractorName: String = "John Smith",
+    actionIndicator: String = "verify",
+    proceedVerification: Boolean = true,
+    foreName: Option[String] = Some("John"),
+    middleName: Option[String] = Some("A"),
+    surname: Option[String] = Some("Smith"),
+    tradingName: Option[String] = None,
+    utr: Option[String] = Some("1234567890"),
+    nino: Option[String] = Some("AB123456C"),
+    crn: Option[String] = None,
+    subcontractorType: Option[String] = Some("soletrader"),
+    partnershipUtr: Option[String] = None
+  ): StoredRequestedVerification =
+    StoredRequestedVerification(
+      verificationResourceRef = verificationResourceRef,
+      subcontractorId = subcontractorId,
+      subbieResourceRef = subbieResourceRef,
+      subcontractorName = subcontractorName,
+      actionIndicator = actionIndicator,
+      proceedVerification = proceedVerification,
+      foreName = foreName,
+      middleName = middleName,
+      surname = surname,
+      tradingName = tradingName,
+      utr = utr,
+      nino = nino,
+      crn = crn,
+      subcontractorType = subcontractorType,
+      partnershipUtr = partnershipUtr
+    )
 }

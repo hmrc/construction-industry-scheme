@@ -1994,17 +1994,18 @@ class FormpProxyConnectorIntegrationSpec
     "POST request to /formp-proxy/cis/verification/response/process and return Unit when upstream returns 204" in {
       val request = ProcessVerificationResponseFromChrisRequest(
         instanceId = "1",
-        verifBatchResourceRef = 5L,
-        submittableStatus = "SUBMITTED",
-        acceptedTime = Some("2017-04-06T08:46:08.081"),
-        hmrcMarkGgis = Some("hmrc-mark"),
+        verificationBatchResourceRef = 5L,
+        submissionStatus = "SUBMITTED",
+        acceptedTime = "2017-04-06T08:46:08.081",
+        irMarkReceived = Some("hmrc-mark"),
         verificationResults = Seq(
-          VerificationResults(
-            subbieResourceRef = 13L,
+          VerificationResult(
+            resourceRef = 13L,
             matched = Some("Y"),
             verified = Some("N"),
             verificationNumber = Some("V1000000007"),
-            taxTreatment = Some("net")
+            taxTreatment = "net",
+            verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
           )
         )
       )
@@ -2027,10 +2028,10 @@ class FormpProxyConnectorIntegrationSpec
     "fail the future when upstream returns non-204" in {
       val request = ProcessVerificationResponseFromChrisRequest(
         instanceId = "1",
-        verifBatchResourceRef = 5L,
-        submittableStatus = "SUBMITTED",
-        acceptedTime = Some("2017-04-06T08:46:08.081"),
-        hmrcMarkGgis = Some("hmrc-mark"),
+        verificationBatchResourceRef = 5L,
+        submissionStatus = "SUBMITTED",
+        acceptedTime = "2017-04-06T08:46:08.081",
+        irMarkReceived = Some("hmrc-mark"),
         verificationResults = Seq.empty
       )
 

@@ -70,7 +70,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
         resourceRef = 13L,
         matched = Some("Y"),
         verified = Some("N"),
-        verificationNumber = "V1000000007",
+        verificationNumber = Some("V1000000007"),
         taxTreatment = "net",
         verifiedDate = verifiedDate
       )
@@ -143,7 +143,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
         resourceRef = 13L,
         matched = Some("Y"),
         verified = Some("N"),
-        verificationNumber = "V1000000007",
+        verificationNumber = Some("V1000000007"),
         taxTreatment = "net",
         verifiedDate = verifiedDate
       )
@@ -214,27 +214,8 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       val verificationResultMapper = mock[VerificationResultMapper]
       val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
 
-      val verifiedDate = LocalDateTime.parse("2026-06-19T10:02:00")
-
-      val mappedResult = VerificationResult(
-        resourceRef = 13L,
-        matched = Some("Y"),
-        verified = Some("N"),
-        verificationNumber = "V1000000007",
-        taxTreatment = "net",
-        verifiedDate = verifiedDate
-      )
-
       when(
-        verificationResultMapper.mapAll(
-          any[Seq[CisResponseSubcontractor]],
-          any[StoredVerificationContext],
-          any[LocalDateTime]
-        )
-      ).thenReturn(Future.successful(Seq(mappedResult)))
-
-      when(
-        formpProxyConnector.processVerificationResponseFromChris(any[ProcessVerificationResponseFromChrisRequest])(
+        formpProxyConnector.updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(
           any[HeaderCarrier]
         )
       ).thenReturn(Future.unit)
@@ -270,14 +251,18 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
         .futureValue mustBe ()
 
       val requestCaptor =
-        org.mockito.ArgumentCaptor.forClass(classOf[ProcessVerificationResponseFromChrisRequest])
+        org.mockito.ArgumentCaptor.forClass(classOf[UpdateVerificationSubmissionRequest])
 
-      verify(formpProxyConnector).processVerificationResponseFromChris(requestCaptor.capture())(
+      verify(formpProxyConnector).updateVerificationSubmission(requestCaptor.capture())(
         any[HeaderCarrier]
       )
 
-      requestCaptor.getValue.irMarkReceived mustBe None
-      requestCaptor.getValue.submissionStatus mustBe SUBMITTED_NO_RECEIPT.toString
+      requestCaptor.getValue.submittableStatus mustBe SUBMITTED_NO_RECEIPT.toString
+      requestCaptor.getValue.hmrcMarkGenerated mustBe Some("hmrc-mark")
+
+      verify(formpProxyConnector, never()).processVerificationResponseFromChris(
+        any[ProcessVerificationResponseFromChrisRequest]
+      )(any[HeaderCarrier])
     }
 
     "update verification submission on non-success poll response" in {

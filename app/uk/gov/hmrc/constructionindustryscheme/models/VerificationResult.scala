@@ -24,7 +24,7 @@ case class VerificationResult(
   resourceRef: Long,
   matched: Option[String],
   verified: Option[String],
-  verificationNumber: String,
+  verificationNumber: Option[String],
   taxTreatment: String,
   verifiedDate: LocalDateTime
 )
