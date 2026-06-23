@@ -46,13 +46,21 @@ class BatchPollerScheduledService @Inject() (
 
     logger.info("[BatchPollerScheduledService][invoke] Batch poller job invoked")
 
+    val startTime = System.currentTimeMillis()
+    logger.info(s"Now in startBatch(). startTime = $startTime")
+
     lock
       .withLock {
-        batchPollerService.run()
+        batchPollerService.run(startTime)
       }
       .map {
-        case Some(_) => logger.info("batch-poller-job completed (lock acquired)")
-        case None    => logger.info("batch-poller-job skipped (lock held by another instance)")
+        case Some(_) =>
+          logger.info(s"batch-poller-job completed (lock acquired). endTime=${System.currentTimeMillis()}")
+
+        case None =>
+          logger.info(
+            s"batch-poller-job skipped (lock held by another instance). endTime=${System.currentTimeMillis()}"
+          )
       }
   }
 }
