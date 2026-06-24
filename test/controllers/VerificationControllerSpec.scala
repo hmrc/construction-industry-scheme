@@ -650,4 +650,94 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       verify(service).updateVerificationSubmission(eqTo(validRequest))(any[HeaderCarrier])
     }
   }
+
+  "processVerificationResponseFromChris" - {
+
+    val url = "/cis/verification/response/process"
+
+    val validRequest = ProcessVerificationResponseFromChrisRequest(
+      instanceId = "abc-123",
+      verificationBatchResourceRef = 77L,
+      acceptedTime = "2026-06-15T10:05:00Z",
+      submissionStatus = "ACCEPTED",
+      irMarkReceived = Some("IR_MARK_RECEIVED"),
+      verificationResults = Seq(
+        VerificationResult(
+          resourceRef = 111L,
+          matched = Some("Y"),
+          verified = Some("Y"),
+          verificationNumber = Some("V123456"),
+          taxTreatment = "NET",
+          verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 5, 0)
+        ),
+        VerificationResult(
+          resourceRef = 222L,
+          matched = Some("N"),
+          verified = Some("N"),
+          verificationNumber = Some("V654321"),
+          taxTreatment = "GROSS",
+          verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 6, 0)
+        )
+      )
+    )
+
+    val validJson: JsValue = Json.toJson(validRequest)
+
+    "returns 204 NoContent when service succeeds" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      when(verificationService.processVerificationResponseFromChris(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val req = FakeRequest(POST, url)
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.processVerificationResponseFromChris()(req)
+
+      status(result) mustBe NO_CONTENT
+
+      verify(verificationService).processVerificationResponseFromChris(eqTo(validRequest))(any[HeaderCarrier])
+    }
+
+    "returns 400 BadRequest when JSON is invalid" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      val badJson = Json.obj("instanceId" -> "abc-123")
+
+      val req = FakeRequest(POST, url)
+        .withBody(badJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.processVerificationResponseFromChris()(req)
+
+      status(result) mustBe BAD_REQUEST
+      verifyNoInteractions(verificationService)
+    }
+
+    "returns 502 BadGateway with error body when service fails" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      when(verificationService.processVerificationResponseFromChris(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req = FakeRequest(POST, url)
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.processVerificationResponseFromChris()(req)
+
+      status(result) mustBe BAD_GATEWAY
+      contentType(result) mustBe Some(JSON)
+      contentAsJson(result) mustBe Json.obj("message" -> "process-verification-response-from-chris-failed")
+
+      verify(verificationService).processVerificationResponseFromChris(eqTo(validRequest))(any[HeaderCarrier])
+    }
+  }
 }
