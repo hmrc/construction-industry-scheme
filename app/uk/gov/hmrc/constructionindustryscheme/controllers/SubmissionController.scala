@@ -288,7 +288,8 @@ class SubmissionController @Inject() (
           payload.correlationId,
           res,
           r => renderSubmissionResponse(submissionId, payload)(r),
-          errorLabel = ""
+          errorLabel = "",
+          isResubmission = csr.isResubmission
         )
       )
       .recoverWith { case NonFatal(ex) =>
@@ -311,7 +312,8 @@ class SubmissionController @Inject() (
     correlationId: String,
     res: SubmissionResult,
     render: SubmissionResult => Result,
-    errorLabel: String
+    errorLabel: String,
+    isResubmission: Boolean = false
   )(implicit hc: HeaderCarrier): Future[Result] =
     submissionService
       .processInitialChrisAck(
@@ -322,7 +324,8 @@ class SubmissionController @Inject() (
         res.meta.responseEndPoint.pollIntervalSeconds,
         res.meta.responseEndPoint.url,
         appConfig.chrisGatewayUrl,
-        chrisResponseTimestamp(res)
+        chrisResponseTimestamp(res),
+        isResubmission
       )
       .map(_ => render(res))
       .recover { case ex =>

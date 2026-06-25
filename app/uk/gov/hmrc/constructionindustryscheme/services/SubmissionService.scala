@@ -24,6 +24,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository}
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import java.time.{Instant, LocalDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
@@ -37,9 +38,14 @@ class SubmissionService @Inject() (
   formpProxyConnector: FormpProxyConnector,
   emailConnector: EmailConnector,
   monthlyReturnService: MonthlyReturnService,
-  chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository
+  chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository,
+  servicesConfig: ServicesConfig
 )(implicit ec: ExecutionContext)
     extends Logging {
+
+  private val chrisCisReturnUrl: String =
+    servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.submit-url")
+
   def createSubmission(request: CreateSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
     formpProxyConnector.createSubmission(request)
 
@@ -119,25 +125,43 @@ class SubmissionService @Inject() (
     employerReference: EmployerReference,
     submissionId: String,
     correlationId: String,
-    gatewayURL: String
+    gatewayURL: String,
+    isResubmission: Boolean = false
   )(implicit hc: HeaderCarrier): Future[String] =
     monthlyReturnService.getCisTaxpayer(employerReference).flatMap { taxpayer =>
       val instanceId = taxpayer.uniqueId
       val getReq     = GetGovTalkStatusRequest(instanceId, submissionId)
 
-      getInitialGovTalkStatus(getReq).flatMap {
-        case Some(_) =>
-          Future.failed(new RuntimeException("govtalk status already exists"))
+      getInitialGovTalkStatus(getReq).flatMap { responseOpt =>
+        val existingRecordOpt = responseOpt.flatMap(_.govtalk_status.headOption)
 
-        case None =>
-          val createReq = CreateGovTalkStatusRecordRequest(
-            userIdentifier = instanceId,
-            formResultID = submissionId,
-            correlationID = correlationId,
-            gatewayURL = gatewayURL
-          )
+        existingRecordOpt match {
+          case Some(existingRecord) if isResubmission =>
+            resetGovTalkStatus(
+              ResetGovTalkStatusRequest(
+                existingRecord.userIdentifier,
+                existingRecord.formResultID,
+                existingRecord.protocolStatus,
+                chrisCisReturnUrl
+              )
+            ).map(_ => instanceId)
 
-          createGovTalkStatusRecord(createReq).map(_ => instanceId)
+          case Some(_) =>
+            Future.failed(new RuntimeException("govtalk status already exists"))
+
+          case None if isResubmission =>
+            Future.failed(new RuntimeException("Expected govTalkStatus record for resubmission but none found"))
+
+          case None =>
+            val createReq = CreateGovTalkStatusRecordRequest(
+              userIdentifier = instanceId,
+              formResultID = submissionId,
+              correlationID = correlationId,
+              gatewayURL = gatewayURL
+            )
+
+            createGovTalkStatusRecord(createReq).map(_ => instanceId)
+        }
       }
     }
 
@@ -149,7 +173,8 @@ class SubmissionService @Inject() (
     pollInterval: Int,
     pollUrl: String,
     gatewayURL: String,
-    lastMessageDate: Instant = Instant.now
+    lastMessageDate: Instant = Instant.now,
+    isResubmission: Boolean
   )(implicit hc: HeaderCarrier): Future[Unit] =
     validateCorrelationId(expectedCorrelationId, actualCorrelationId) match {
       case Left(reason) =>
@@ -157,7 +182,8 @@ class SubmissionService @Inject() (
 
       case Right(_) =>
         for {
-          instanceId <- initialiseGovTalkStatus(employerReference, submissionId, expectedCorrelationId, gatewayURL)
+          instanceId <-
+            initialiseGovTalkStatus(employerReference, submissionId, expectedCorrelationId, gatewayURL, isResubmission)
           _          <- saveInitialChrisSession(
                           submissionId,
                           instanceId,
