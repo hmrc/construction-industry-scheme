@@ -18,7 +18,8 @@ package services
 
 import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
-import org.mockito.Mockito.{times, verify, verifyNoInteractions, when}
+import org.mockito.Mockito.{reset, times, verify, verifyNoInteractions, when}
+import org.scalatest.BeforeAndAfterEach
 import uk.gov.hmrc.constructionindustryscheme.models.Submission
 import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.{GetMonthlyReturnForEditResponse, MonthlyReturnSubmissionToPoll}
@@ -27,7 +28,7 @@ import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnPollingProc
 import java.time.{LocalDateTime, ZoneId}
 import scala.concurrent.Future
 
-class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
+class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfterEach {
   private val monthlyReturnService = mock[MonthlyReturnService]
 
   private val submissionService = mock[SubmissionService]
@@ -35,6 +36,11 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
   private val service = new MonthlyReturnPollingProcessService(monthlyReturnService, submissionService)
 
   private val startTime = System.currentTimeMillis()
+
+  override def beforeEach(): Unit = {
+    reset(monthlyReturnService, submissionService)
+    super.beforeEach()
+  }
 
   "MonthlyReturnPollingProcessService" - {
 
