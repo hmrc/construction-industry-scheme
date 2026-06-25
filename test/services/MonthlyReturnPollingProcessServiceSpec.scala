@@ -32,10 +32,12 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
 
   private val service = new MonthlyReturnPollingProcessService(monthlyReturnService, submissionService)
 
+  private val startTime = System.currentTimeMillis()
+
   "MonthlyReturnPollingProcessService" - {
 
     "must not call getMonthlyReturnForEdit when there are no submissions" in {
-      service.process(Seq.empty).futureValue mustBe ()
+      service.process(Seq.empty, startTime).futureValue mustBe ()
 
       verifyNoInteractions(monthlyReturnService)
     }
@@ -68,7 +70,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
       when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
         .thenReturn(Future.failed(new RuntimeException("failed")), Future.successful(()))
 
-      service.process(Seq(submission1, submission2)).futureValue mustBe ()
+      service.process(Seq(submission1, submission2), startTime).futureValue mustBe ()
 
       verify(monthlyReturnService, times(2)).getMonthlyReturnForEdit(any())(any())
     }
@@ -111,7 +113,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
       when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
         .thenReturn(Future.successful(()))
 
-      service.process(Seq(submission1, submission2)).futureValue mustBe ()
+      service.process(Seq(submission1, submission2), startTime).futureValue mustBe ()
 
       verify(monthlyReturnService).getMonthlyReturnForEdit(
         eqTo(
