@@ -144,7 +144,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
 
       val submission = MonthlyReturnSubmissionToPoll(
         submissionId = 100,
-        submissionType = "type",
+        submissionType = "Original",
         status = "Started",
         taxOfficeNumber = "123",
         taxOfficeReference = "AZ123",
@@ -163,7 +163,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
         monthlyReturnItems = Seq.empty,
         submission = Seq(
           Submission(
-            submissionId = 1000,
+            submissionId = 100,
             submissionType = "Original",
             activeObjectId = None,
             status = None,
