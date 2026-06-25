@@ -235,7 +235,7 @@ class SubmissionService @Inject() (
     instanceId: String,
     submissionId: String,
     lastMessageDate: Instant = Instant.now
-  )(implicit hc: HeaderCarrier): Future[Unit] =
+  )(implicit hc: HeaderCarrier): Future[String] =
     for {
       statusResponseOpt <- getInitialGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId))
       statusResponse    <- Future.fromTry(
@@ -265,7 +265,7 @@ class SubmissionService @Inject() (
                              statusRecord.pollInterval,
                              statusRecord.gatewayURL
                            )
-    } yield ()
+    } yield statusRecord.gatewayURL
 
   private def fetchAndStoreGovTalkStatus(instanceId: String, submissionId: String)(implicit
     hc: HeaderCarrier
