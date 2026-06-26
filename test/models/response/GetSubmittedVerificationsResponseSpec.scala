@@ -16,7 +16,6 @@
 
 package models.response
 
-
 import org.scalatestplus.play.PlaySpec
 import play.api.libs.json.{JsSuccess, Json}
 import uk.gov.hmrc.constructionindustryscheme.models.*
@@ -276,10 +275,10 @@ final class GetSubmittedVerificationsResponseSpec extends PlaySpec {
     }
 
     "fail to deserialize when required fields are missing" in {
-      Json.obj("scheme" -> Json.arr())
+      Json
+        .obj("scheme" -> Json.arr())
         .validate[GetSubmittedVerificationsResponse]
         .isError mustBe true
     }
   }
 }
-
