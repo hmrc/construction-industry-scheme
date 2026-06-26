@@ -2062,7 +2062,8 @@ class FormpProxyConnectorIntegrationSpec
               "taxYear": 2025,
               "taxMonth": 6,
               "instanceId": "instance-monthly-return-001",
-              "agentId": "A123456"
+              "agentId": "A123456",
+              "amendment": "N"
             }
           ]
         }
