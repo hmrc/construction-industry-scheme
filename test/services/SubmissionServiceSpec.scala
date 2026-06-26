@@ -994,8 +994,7 @@ final class SubmissionServiceSpec extends SpecBase {
           employerRef,
           submissionId,
           correlationId,
-          gatewayUrl,
-          isResubmission = false
+          gatewayUrl
         )
         .futureValue mustBe taxpayer.uniqueId
 
@@ -1051,8 +1050,7 @@ final class SubmissionServiceSpec extends SpecBase {
           employerRef,
           submissionId,
           correlationId,
-          gatewayUrl,
-          isResubmission = false
+          gatewayUrl
         )
         .failed
         .futureValue
