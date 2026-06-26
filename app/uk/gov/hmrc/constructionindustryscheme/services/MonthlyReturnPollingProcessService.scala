@@ -61,7 +61,7 @@ class MonthlyReturnPollingProcessService @Inject() (
                           submission.instanceId,
                           submission.taxYear.toInt,
                           submission.taxMonth.toInt,
-                          isAmendment = Some(false)
+                          isAmendment = Some(submission.amendment == "Y")
                         )
                       )
       monthlyReturn = details.monthlyReturn.headOption

@@ -48,7 +48,8 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
   private def makeSubmission(
     instanceId: String = testInstanceId,
     taxYear: Int = testTaxYear,
-    taxMonth: Int = testTaxMonth
+    taxMonth: Int = testTaxMonth,
+    amendment: String = "N"
   ) =
     MonthlyReturnSubmissionToPoll(
       submissionId = testSubmissionId,
@@ -59,7 +60,8 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       taxYear = taxYear,
       taxMonth = taxMonth,
       instanceId = instanceId,
-      agentId = None
+      agentId = None,
+      amendment = amendment
     )
 
   private def makeMonthlyReturn(
@@ -179,14 +181,25 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
     "processSubmission" - {
 
-      "must call getMonthlyReturnForEdit with correct parameters" in {
+      "must call getMonthlyReturnForEdit with isAmendment = false for a non-amendment submission" in {
         setupHappyPath()
-        val sub = makeSubmission(instanceId = "inst-99", taxYear = 2025, taxMonth = 6)
+        val sub = makeSubmission(instanceId = "inst-99", taxYear = 2025, taxMonth = 6, amendment = "N")
 
         service.process(Seq(sub)).futureValue
 
         verify(monthlyReturnService).getMonthlyReturnForEdit(
           eqTo(GetMonthlyReturnForEditRequest("inst-99", taxYear = 2025, taxMonth = 6, isAmendment = Some(false)))
+        )(any())
+      }
+
+      "must call getMonthlyReturnForEdit with isAmendment = true for an amendment submission" in {
+        setupHappyPath()
+        val sub = makeSubmission(instanceId = "inst-99", taxYear = 2025, taxMonth = 6, amendment = "Y")
+
+        service.process(Seq(sub)).futureValue
+
+        verify(monthlyReturnService).getMonthlyReturnForEdit(
+          eqTo(GetMonthlyReturnForEditRequest("inst-99", taxYear = 2025, taxMonth = 6, isAmendment = Some(true)))
         )(any())
       }
 
