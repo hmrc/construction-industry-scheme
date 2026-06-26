@@ -266,4 +266,41 @@ final class VerificationServiceSpec extends SpecBase {
       service.processVerificationResponseFromChris(request).failed.futureValue.getMessage must include("boom")
     }
   }
+
+  "VerificationService#getSubmittedVerifications" - {
+
+    val request = GetSubmittedVerificationsRequest(
+      instanceId = "abc-123"
+    )
+
+    val response = GetSubmittedVerificationsResponse(
+      scheme = Seq.empty,
+      subcontractors = Seq.empty,
+      verificationBatches = Seq.empty,
+      verifications = Seq.empty,
+      submissions = Seq.empty
+    )
+
+    "delegates to FormpProxyConnector and returns the response" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.getSubmittedVerifications(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      service.getSubmittedVerifications(request).futureValue mustBe response
+
+      verify(connector).getSubmittedVerifications(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.getSubmittedVerifications(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.getSubmittedVerifications(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
 }

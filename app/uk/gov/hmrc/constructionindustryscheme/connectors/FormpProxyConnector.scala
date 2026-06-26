@@ -406,4 +406,12 @@ class FormpProxyConnector @Inject() (
         if (response.status == NO_CONTENT) Future.unit
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
+
+  def getSubmittedVerifications(
+    request: GetSubmittedVerificationsRequest
+  )(implicit hc: HeaderCarrier): Future[GetSubmittedVerificationsResponse] =
+    http
+      .post(url"$base/cis/verification/submitted-verifications")
+      .withBody(Json.toJson(request))
+      .execute[GetSubmittedVerificationsResponse]
 }
