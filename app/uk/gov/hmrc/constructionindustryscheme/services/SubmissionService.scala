@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
+import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
@@ -24,7 +25,6 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository}
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import java.time.{Instant, LocalDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
@@ -39,12 +39,9 @@ class SubmissionService @Inject() (
   emailConnector: EmailConnector,
   monthlyReturnService: MonthlyReturnService,
   chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository,
-  servicesConfig: ServicesConfig
+  appConfig: AppConfig
 )(implicit ec: ExecutionContext)
     extends Logging {
-
-  private val chrisCisReturnUrl: String =
-    servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.submit-url")
 
   def createSubmission(request: CreateSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
     formpProxyConnector.createSubmission(request)
@@ -132,36 +129,38 @@ class SubmissionService @Inject() (
       val instanceId = taxpayer.uniqueId
       val getReq     = GetGovTalkStatusRequest(instanceId, submissionId)
 
-      getInitialGovTalkStatus(getReq).flatMap { responseOpt =>
-        val existingRecordOpt = responseOpt.flatMap(_.govtalk_status.headOption)
+      getInitialGovTalkStatus(getReq).flatMap {
+        case Some(response) if isResubmission =>
+          response.govtalk_status.headOption match {
+            case Some(existingRecord) =>
+              resetGovTalkStatus(
+                ResetGovTalkStatusRequest(
+                  existingRecord.userIdentifier,
+                  existingRecord.formResultID,
+                  existingRecord.protocolStatus,
+                  appConfig.chrisGatewayUrl
+                )
+              ).map(_ => instanceId)
 
-        existingRecordOpt match {
-          case Some(existingRecord) if isResubmission =>
-            resetGovTalkStatus(
-              ResetGovTalkStatusRequest(
-                existingRecord.userIdentifier,
-                existingRecord.formResultID,
-                existingRecord.protocolStatus,
-                chrisCisReturnUrl
-              )
-            ).map(_ => instanceId)
+            case None =>
+              Future.failed(new RuntimeException("Expected govTalkStatus record for resubmission but none found"))
+          }
 
-          case Some(_) =>
-            Future.failed(new RuntimeException("govtalk status already exists"))
+        case Some(_) =>
+          Future.failed(new RuntimeException("govtalk status already exists"))
 
-          case None if isResubmission =>
-            Future.failed(new RuntimeException("Expected govTalkStatus record for resubmission but none found"))
+        case None if isResubmission =>
+          Future.failed(new RuntimeException("Expected govTalkStatus record for resubmission but none found"))
 
-          case None =>
-            val createReq = CreateGovTalkStatusRecordRequest(
-              userIdentifier = instanceId,
-              formResultID = submissionId,
-              correlationID = correlationId,
-              gatewayURL = gatewayURL
-            )
+        case None =>
+          val createReq = CreateGovTalkStatusRecordRequest(
+            userIdentifier = instanceId,
+            formResultID = submissionId,
+            correlationID = correlationId,
+            gatewayURL = gatewayURL
+          )
 
-            createGovTalkStatusRecord(createReq).map(_ => instanceId)
-        }
+          createGovTalkStatusRecord(createReq).map(_ => instanceId)
       }
     }
 

@@ -22,6 +22,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers.eq as eqTo
 import org.scalatest.freespec.AnyFreeSpec
+import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
@@ -30,7 +31,6 @@ import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initi
 import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository}
 import uk.gov.hmrc.constructionindustryscheme.services.*
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import java.time.{Instant, LocalDateTime}
 import scala.concurrent.Future
@@ -965,7 +965,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val employerRef   = EmployerReference("", "")
       val submissionId  = "sub-123"
       val correlationId = "CORR-123"
-      val gatewayUrl    = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      val gatewayUrl    = chrisGatewayUrl
 
       val taxpayer = mkTaxpayer()
 
@@ -1022,7 +1022,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val employerRef   = EmployerReference("", "")
       val submissionId  = "sub-123"
       val correlationId = "CORR-123"
-      val gatewayUrl    = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      val gatewayUrl    = chrisGatewayUrl
 
       val taxpayer = mkTaxpayer()
 
@@ -1065,6 +1065,51 @@ final class SubmissionServiceSpec extends SpecBase {
       )
     }
 
+    "fails when FormP returns an empty GovTalk status response and this is not a resubmission" in {
+      val s = setup
+      import s._
+
+      val employerRef   = EmployerReference("", "")
+      val submissionId  = "sub-123"
+      val correlationId = "CORR-123"
+      val gatewayUrl    = chrisGatewayUrl
+
+      val taxpayer = mkTaxpayer("instance-123")
+
+      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(taxpayer))
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
+          eqTo(Initial)
+        )(any[HeaderCarrier])
+      ).thenReturn(
+        Future.successful(
+          Some(GetGovTalkStatusResponse(govtalk_status = Seq.empty))
+        )
+      )
+
+      service
+        .initialiseGovTalkStatus(
+          employerRef,
+          submissionId,
+          correlationId,
+          gatewayUrl
+        )
+        .failed
+        .futureValue
+        .getMessage mustBe "govtalk status already exists"
+
+      verify(formpProxyConnector, never()).createGovTalkStatusRecord(any[CreateGovTalkStatusRecordRequest])(
+        any[HeaderCarrier]
+      )
+
+      verify(formpProxyConnector, never()).resetGovTalkStatus(any[ResetGovTalkStatusRequest])(
+        any[HeaderCarrier]
+      )
+    }
+
     "resets existing GovTalk status when this is a resubmission" in {
       val s = setup
       import s._
@@ -1072,7 +1117,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val employerRef   = EmployerReference("", "")
       val submissionId  = "sub-123"
       val correlationId = "CORR-123"
-      val gatewayUrl    = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      val gatewayUrl    = chrisGatewayUrl
 
       val taxpayer = mkTaxpayer("instance-123")
 
@@ -1129,7 +1174,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val employerRef   = EmployerReference("", "")
       val submissionId  = "sub-123"
       val correlationId = "CORR-123"
-      val gatewayUrl    = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      val gatewayUrl    = chrisGatewayUrl
 
       val taxpayer = mkTaxpayer("instance-123")
 
@@ -1171,7 +1216,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val employerRef   = EmployerReference("", "")
       val submissionId  = "sub-123"
       val correlationId = "CORR-123"
-      val gatewayUrl    = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      val gatewayUrl    = chrisGatewayUrl
 
       val taxpayer = mkTaxpayer("instance-123")
 
@@ -1217,13 +1262,9 @@ final class SubmissionServiceSpec extends SpecBase {
     val emailConnector: EmailConnector                                     = mock[EmailConnector]
     val monthlyReturnService: MonthlyReturnService                         = mock[MonthlyReturnService]
     val chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository = mock[ChrisSubmissionSessionRepository]
-    val servicesConfig: ServicesConfig                                     = mock[ServicesConfig]
+    val appConfig: AppConfig                                               = mock[AppConfig]
 
-    when(servicesConfig.baseUrl(eqTo("chris")))
-      .thenReturn("http://localhost:6997")
-
-    when(servicesConfig.getString(eqTo("microservice.services.chris.submit-url")))
-      .thenReturn("/submission/ChRIS/CISR/Filing/sync/CIS300MR")
+    val chrisGatewayUrl = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
 
     val service = new SubmissionService(
       chrisConnector,
@@ -1231,8 +1272,11 @@ final class SubmissionServiceSpec extends SpecBase {
       emailConnector,
       monthlyReturnService,
       chrisSubmissionSessionRepository,
-      servicesConfig
+      appConfig
     )
+
+    when(appConfig.chrisGatewayUrl)
+      .thenReturn(chrisGatewayUrl)
 
     def mkPayload(
       corrId: String = "CID-123",
