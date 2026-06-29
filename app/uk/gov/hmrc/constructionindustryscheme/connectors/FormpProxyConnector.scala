@@ -350,6 +350,15 @@ class FormpProxyConnector @Inject() (
       .withBody(Json.toJson(request))
       .execute[CreateSubmissionAndUpdateVerificationsResponse]
 
+  def processVerificationResponseFromChris(
+    request: ProcessVerificationResponseFromChrisRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/verification/response/process")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap(acceptResponse(NO_CONTENT))
+
   private def acceptResponse(acceptedStatuses: Int*)(response: HttpResponse): Future[Unit] =
     acceptResponse(status => acceptedStatuses.contains(status))(response)
 
