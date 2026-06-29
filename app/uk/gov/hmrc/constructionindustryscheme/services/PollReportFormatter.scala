@@ -41,6 +41,9 @@ object PollReportFormatter {
   private val Ellipsis: String =
     "..."
 
+  private val ColumnSeparator: String =
+    " "
+
   private val ReportDateTimeFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("dd-MM-yy HH:mm:ss")
 
@@ -88,30 +91,34 @@ object PollReportFormatter {
         content.currentReturnStatus
       }
 
-    "    " +
-      formatField(content.user, UserWidth) +
-      formatField(content.submissionType, SubmissionTypeWidth) +
-      formatField(content.submissionId, SubmissionIdWidth) +
-      formatField(
-        content.govTalkRequestStatus,
-        GovTalkRequestStatusWidth
-      ) +
-      formatField(
-        currentReturnStatus,
-        CurrentReturnStatusWidth
-      ) +
-      formatField(
-        content.employerReference,
-        EmployerReferenceWidth
-      ) +
-      formatField(
-        content.correlationId,
-        CorrelationIdWidth
-      ) +
-      formatField(
-        content.agentId,
-        AgentIdWidth
+    val fields =
+      Seq(
+        formatField(content.user, UserWidth),
+        formatField(content.submissionType, SubmissionTypeWidth),
+        formatField(content.submissionId, SubmissionIdWidth),
+        formatField(
+          content.govTalkRequestStatus,
+          GovTalkRequestStatusWidth
+        ),
+        formatField(
+          currentReturnStatus,
+          CurrentReturnStatusWidth
+        ),
+        formatField(
+          content.employerReference,
+          EmployerReferenceWidth
+        ),
+        formatField(
+          content.correlationId,
+          CorrelationIdWidth
+        ),
+        formatField(
+          content.agentId,
+          AgentIdWidth
+        )
       )
+
+    "    " + fields.mkString(ColumnSeparator)
   }
 
   private def formatField(
