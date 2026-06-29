@@ -21,8 +21,9 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatestplus.mockito.MockitoSugar
+import uk.gov.hmrc.constructionindustryscheme.models.PollReportContent
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.services.{BatchPollerService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.services.{BatchPollerService, GeneratePollReportService, SubmissionService}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -31,46 +32,59 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
 
   "BatchPollerService run" - {
 
-    "must call SubmissionService and complete successfully when submissions are returned" in new Setup {
-      when(mockSubmissionService.getSubmissionsToPoll()(using hc))
-        .thenReturn(Future.successful(nonEmptyResponse))
+    "must call SubmissionService and complete when submissions are returned" in new Setup {
+
+      when(mockSubmissionService.getSubmissionsToPoll()(using hc)).thenReturn(Future.successful(nonEmptyResponse))
 
       service.run().futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+      verifyNoInteractions(mockGeneratePollReportService)
       verifyNoMoreInteractions(mockSubmissionService)
     }
 
-    "must call SubmissionService and complete successfully when empty lists are returned" in new Setup {
-      when(mockSubmissionService.getSubmissionsToPoll()(using hc))
-        .thenReturn(Future.successful(emptyResponse))
+    "must call GeneratePollReportService when empty submission lists are returned" in new Setup {
+
+      when(mockSubmissionService.getSubmissionsToPoll()(using hc)).thenReturn(Future.successful(emptyResponse))
+
+      when(
+        mockGeneratePollReportService.generatePollReport(
+          Seq.empty[PollReportContent]
+        )
+      ).thenReturn(Future.unit)
 
       service.run().futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
-      verifyNoMoreInteractions(mockSubmissionService)
+      verify(mockGeneratePollReportService).generatePollReport(Seq.empty[PollReportContent])
+      verifyNoMoreInteractions(mockSubmissionService, mockGeneratePollReportService)
     }
 
-    "must recover and complete successfully when SubmissionService fails" in new Setup {
+    "must recover and complete when SubmissionService fails" in new Setup {
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.failed(new RuntimeException("formp-proxy failed")))
 
       service.run().futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+      verifyNoInteractions(mockGeneratePollReportService)
       verifyNoMoreInteractions(mockSubmissionService)
     }
   }
 
   private trait Setup {
-    given ExecutionContext  = scala.concurrent.ExecutionContext.global
+    given ExecutionContext  = ExecutionContext.global
     given hc: HeaderCarrier = HeaderCarrier()
 
     val mockSubmissionService: SubmissionService =
       mock[SubmissionService]
 
+    val mockGeneratePollReportService: GeneratePollReportService =
+      mock[GeneratePollReportService]
+
     val service = new BatchPollerService(
-      submissionService = mockSubmissionService
+      submissionService = mockSubmissionService,
+      generatePollReportService = mockGeneratePollReportService
     )
 
     val verificationSubmission: VerificationSubmissionToPoll =

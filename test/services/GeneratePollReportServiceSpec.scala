@@ -19,24 +19,94 @@ package services
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
+import uk.gov.hmrc.constructionindustryscheme.models.PollReportContent
 import uk.gov.hmrc.constructionindustryscheme.services.GeneratePollReportService
-import uk.gov.hmrc.http.HeaderCarrier
 
-import scala.concurrent.ExecutionContext
+import java.time.LocalDateTime
 
 class GeneratePollReportServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures {
 
   "GeneratePollReportService generatePollReport" - {
 
-    "must complete successfully" in new Setup {
-      service.generatePollReport().futureValue mustBe ()
+    "must generate and log a report when report content is provided" in new Setup {
+
+      service
+        .generatePollReport(
+          reportContent = Seq(reportContent),
+          generatedAt = generatedAt
+        )
+        .futureValue mustBe ()
+    }
+
+    "must generate and log an empty report when no content is provided" in new Setup {
+
+      service
+        .generatePollReport(
+          reportContent = Seq.empty,
+          generatedAt = generatedAt
+        )
+        .futureValue mustBe ()
+    }
+
+    "must support the one-argument method used by BatchPollerService" in new Setup {
+
+      service
+        .generatePollReport(Seq(reportContent))
+        .futureValue mustBe ()
+    }
+
+    "must complete successfully for recoverable error content" in new Setup {
+
+      val recoverableErrorContent =
+        reportContent.copy(
+          recoverableError = true
+        )
+
+      service
+        .generatePollReport(
+          reportContent = Seq(recoverableErrorContent),
+          generatedAt = generatedAt
+        )
+        .futureValue mustBe ()
+    }
+
+    "must complete successfully when content contains an oversized field" in new Setup {
+
+      val oversizedContent =
+        reportContent.copy(
+          user = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        )
+
+      service
+        .generatePollReport(
+          reportContent = Seq(oversizedContent),
+          generatedAt = generatedAt
+        )
+        .futureValue mustBe ()
     }
   }
 
   private trait Setup {
-    given ExecutionContext = scala.concurrent.ExecutionContext.global
-    given HeaderCarrier    = HeaderCarrier()
 
-    val service = new GeneratePollReportService()
+    val service =
+      new GeneratePollReportService()
+
+    val generatedAt: LocalDateTime =
+      LocalDateTime.of(
+        2026, 5, 5, 14, 25, 38
+      )
+
+    val reportContent: PollReportContent =
+      PollReportContent(
+        user = "ONLINE",
+        submissionType = "CIS300MR",
+        submissionId = "90002",
+        govTalkRequestStatus = "SUBMITTED",
+        currentReturnStatus = "POLLING",
+        employerReference = "123/456789",
+        correlationId = "correlation-id-001",
+        agentId = "A123456",
+        recoverableError = false
+      )
   }
 }
