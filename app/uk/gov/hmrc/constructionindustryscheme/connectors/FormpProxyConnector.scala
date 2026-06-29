@@ -406,4 +406,15 @@ class FormpProxyConnector @Inject() (
         if (response.status == NO_CONTENT) Future.unit
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
+
+  def deleteSubcontractor(request: DeleteSubcontractorRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/subcontractor/delete")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == 204) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+      }
+
 }

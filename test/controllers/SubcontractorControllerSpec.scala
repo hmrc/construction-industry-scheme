@@ -27,9 +27,9 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
 import scala.concurrent.Future
 
@@ -205,6 +205,87 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
 
       status(result) mustBe BAD_GATEWAY
       (contentAsJson(result) \ "message").as[String] mustBe "get-subcontractorUTRs-failed"
+    }
+  }
+  "deleteSubcontractor" - {
+
+    val deleteUrl = "/subcontractor/delete"
+
+    val requestBody = DeleteSubcontractorRequest(
+      instanceId = "abc-123",
+      subbieResourceRef = 10L
+    )
+
+    "returns 204 when service succeeds" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      when(service.deleteSubcontractor(eqTo(requestBody))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val req: FakeRequest[DeleteSubcontractorRequest] =
+        FakeRequest(POST, deleteUrl).withBody(requestBody)
+
+      val result = controller.deleteSubcontractor()(req)
+
+      status(result) mustBe NO_CONTENT
+
+      verify(service).deleteSubcontractor(eqTo(requestBody))(any[HeaderCarrier])
+    }
+
+    "propagates UpstreamErrorResponse status and message" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      val upstreamError =
+        UpstreamErrorResponse("formp delete failed", 404, 404)
+
+      when(service.deleteSubcontractor(eqTo(requestBody))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(upstreamError))
+
+      val req: FakeRequest[DeleteSubcontractorRequest] =
+        FakeRequest(POST, deleteUrl).withBody(requestBody)
+
+      val result = controller.deleteSubcontractor()(req)
+
+      status(result) mustBe 404
+      (contentAsJson(result) \ "message").as[String] mustBe "formp delete failed"
+
+      verify(service).deleteSubcontractor(eqTo(requestBody))(any[HeaderCarrier])
+    }
+
+    "returns 502 BadGateway when service throws NonFatal" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      when(service.deleteSubcontractor(eqTo(requestBody))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req: FakeRequest[DeleteSubcontractorRequest] =
+        FakeRequest(POST, deleteUrl).withBody(requestBody)
+
+      val result = controller.deleteSubcontractor()(req)
+
+      status(result) mustBe BAD_GATEWAY
+      (contentAsJson(result) \ "message").as[String] mustBe "delete-subcontractor-failed"
+
+      verify(service).deleteSubcontractor(eqTo(requestBody))(any[HeaderCarrier])
+    }
+
+    "returns 400 when JSON is invalid" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      val badJson = Json.obj("invalid" -> "payload")
+
+      val req = FakeRequest(POST, deleteUrl)
+        .withBody(badJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.deleteSubcontractor()(req)
+
+      status(result) mustBe BAD_REQUEST
+      verifyNoInteractions(service)
     }
   }
 

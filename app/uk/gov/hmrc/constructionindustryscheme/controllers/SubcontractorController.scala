@@ -20,12 +20,14 @@ import play.api.Logging
 import play.api.libs.json.{JsError, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
+import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
 class SubcontractorController @Inject() (
   authorise: AuthAction,
@@ -60,5 +62,20 @@ class SubcontractorController @Inject() (
         BadGateway(Json.obj("message" -> "get-subcontractorUTRs-failed"))
       }
   }
+
+  def deleteSubcontractor(): Action[DeleteSubcontractorRequest] =
+    authorise.async(parse.json[DeleteSubcontractorRequest]) { implicit request =>
+      subcontractorService
+        .deleteSubcontractor(request.body)
+        .map(_ => NoContent)
+        .recover {
+          case u: UpstreamErrorResponse =>
+            logger.error("[deleteSubcontractor] formp-proxy delete failed", u)
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case NonFatal(t)              =>
+            logger.error("[deleteSubcontractor] formp-proxy delete failed", t)
+            BadGateway(Json.obj("message" -> "delete-subcontractor-failed"))
+        }
+    }
 
 }
