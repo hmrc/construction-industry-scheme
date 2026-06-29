@@ -17,9 +17,9 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorForDeleteResponse
 import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorListResponse
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorResponse
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -51,4 +51,8 @@ class SubcontractorService @Inject() (formpProxyConnector: FormpProxyConnector) 
   )(implicit hc: HeaderCarrier): Future[GetSubcontractorResponse] =
     formpProxyConnector.getSubcontractor(cisId, subbieResourceRef)
 
+  def deleteSubcontractor(request: DeleteSubcontractorRequest)(implicit
+    hc: HeaderCarrier
+  ): Future[Unit] =
+    formpProxyConnector.deleteSubcontractor(request)
 }

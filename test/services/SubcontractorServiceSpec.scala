@@ -20,8 +20,8 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorForDeleteResponse
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.models.Subcontractor
@@ -341,6 +341,36 @@ final class SubcontractorServiceSpec extends SpecBase {
       service.getSubcontractor(cisId, subbieResourceRef).failed.futureValue.getMessage must include("boom")
 
       verify(connector).getSubcontractor(eqTo(cisId), eqTo(subbieResourceRef))(any[HeaderCarrier])
+    }
+  }
+
+  "deleteSubcontractor" - {
+
+    val request = DeleteSubcontractorRequest(
+      instanceId = "abc-123",
+      subbieResourceRef = 98765L
+    )
+
+    "delegates to FormpProxyConnector and returns Unit" in {
+      val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                                  = new SubcontractorService(formpProxyConnector)
+
+      when(formpProxyConnector.deleteSubcontractor(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.deleteSubcontractor(request).futureValue mustBe ((): Unit)
+
+      verify(formpProxyConnector).deleteSubcontractor(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                                  = new SubcontractorService(formpProxyConnector)
+
+      when(formpProxyConnector.deleteSubcontractor(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.deleteSubcontractor(request).failed.futureValue.getMessage must include("boom")
     }
   }
 
