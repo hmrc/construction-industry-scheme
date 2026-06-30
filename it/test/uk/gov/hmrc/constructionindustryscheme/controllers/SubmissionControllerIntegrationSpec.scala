@@ -335,5 +335,5 @@ class SubmissionControllerIntegrationSpec
       response.swap.value.statusCode mustBe BAD_REQUEST
     }
   }
-  
+
 }

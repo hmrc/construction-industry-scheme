@@ -126,4 +126,21 @@ class VerificationController @Inject() (
         )
     }
 
+  def processVerificationResponseFromChris(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      request.body
+        .validate[ProcessVerificationResponseFromChrisRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          body =>
+            verificationService
+              .processVerificationResponseFromChris(body)
+              .map(_ => NoContent)
+              .recover { case ex =>
+                logger.error("[processVerificationResponseFromChris] formp-proxy update failed", ex)
+                BadGateway(Json.obj("message" -> "process-verification-response-from-chris-failed"))
+              }
+        )
+    }
+
 }
