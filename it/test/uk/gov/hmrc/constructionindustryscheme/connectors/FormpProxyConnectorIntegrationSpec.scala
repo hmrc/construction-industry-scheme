@@ -2172,7 +2172,7 @@ class FormpProxyConnectorIntegrationSpec
             verified = Some("Y"),
             verificationNumber = Some("V123456"),
             taxTreatment = "NET",
-            verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 5, 0)
+            verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
           )
         )
       )
@@ -2201,7 +2201,7 @@ class FormpProxyConnectorIntegrationSpec
             verified = Some("N"),
             verificationNumber = Some("V123456"),
             taxTreatment = "GROSS",
-            verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 5, 0)
+            verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
           )
         )
       )

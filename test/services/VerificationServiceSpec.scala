@@ -264,7 +264,7 @@ final class VerificationServiceSpec extends SpecBase {
           verified = Some("Y"),
           verificationNumber = Some("V123456"),
           taxTreatment = "NET",
-          verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 5, 0)
+          verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
         ),
         VerificationResult(
           resourceRef = 222L,
@@ -272,7 +272,7 @@ final class VerificationServiceSpec extends SpecBase {
           verified = Some("N"),
           verificationNumber = Some("V654321"),
           taxTreatment = "GROSS",
-          verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 6, 0)
+          verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 6, 0))
         )
       )
     )
