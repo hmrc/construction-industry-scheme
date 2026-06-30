@@ -64,7 +64,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       val verificationResultMapper = mock[VerificationResultMapper]
       val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
 
-      val verifiedDate = LocalDateTime.parse("2026-06-19T10:02:00")
+      val verifiedDate = Some(LocalDateTime.parse("2026-06-19T10:02:00"))
 
       val mappedResult = VerificationResult(
         resourceRef = 13L,
@@ -137,7 +137,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       val verificationResultMapper = mock[VerificationResultMapper]
       val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
 
-      val verifiedDate = LocalDateTime.parse("2026-06-19T10:02:00")
+      val verifiedDate = Some(LocalDateTime.parse("2026-06-19T10:02:00"))
 
       val mappedResult = VerificationResult(
         resourceRef = 13L,

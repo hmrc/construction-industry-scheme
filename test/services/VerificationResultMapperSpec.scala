@@ -37,7 +37,7 @@ class VerificationResultMapperSpec extends SpecBase {
         foreName = Some("John"),
         middleName = Some("A"),
         surname = Some("Smith"),
-        matched = Some("N"),
+        matched = Some("unmatched"),
         taxTreatment = Some("net"),
         verificationNumber = Some("V1000000007")
       )
@@ -65,11 +65,11 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 13L,
-          matched = Some("N"),
+          matched = None,
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
           taxTreatment = "net",
-          verifiedDate = verifiedDate
+          verifiedDate = None
         )
       )
     }
@@ -84,7 +84,7 @@ class VerificationResultMapperSpec extends SpecBase {
         foreName = Some("John"),
         middleName = Some("A"),
         surname = Some("Smith"),
-        matched = Some("N"),
+        matched = Some("unmatched"),
         taxTreatment = Some("net"),
         verificationNumber = None
       )
@@ -112,16 +112,16 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 13L,
-          matched = Some("N"),
+          matched = None,
           verified = None,
           verificationNumber = None,
           taxTreatment = "net",
-          verifiedDate = verifiedDate
+          verifiedDate = None
         )
       )
     }
 
-    "trim verification number before mapping" in {
+    "trim verification number before mapping and set verified date when matched" in {
       val mapper = new VerificationResultMapper()
 
       val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
@@ -131,7 +131,7 @@ class VerificationResultMapperSpec extends SpecBase {
         foreName = Some("John"),
         middleName = Some("A"),
         surname = Some("Smith"),
-        matched = Some("N"),
+        matched = Some("matched"),
         taxTreatment = Some("net"),
         verificationNumber = Some("  V1000000007  ")
       )
@@ -159,11 +159,11 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 13L,
-          matched = Some("N"),
+          matched = Some("Y"),
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
           taxTreatment = "net",
-          verifiedDate = verifiedDate
+          verifiedDate = Some(verifiedDate)
         )
       )
     }
@@ -178,7 +178,7 @@ class VerificationResultMapperSpec extends SpecBase {
         foreName = Some("John"),
         middleName = Some("A"),
         surname = Some("Smith"),
-        matched = Some("N"),
+        matched = Some("unmatched"),
         taxTreatment = Some("net"),
         verificationNumber = Some("   ")
       )
@@ -206,11 +206,11 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 13L,
-          matched = Some("N"),
+          matched = None,
           verified = None,
           verificationNumber = None,
           taxTreatment = "net",
-          verifiedDate = verifiedDate
+          verifiedDate = None
         )
       )
     }
@@ -224,7 +224,7 @@ class VerificationResultMapperSpec extends SpecBase {
         utr = Some("9999999999"),
         foreName = Some("Jane"),
         surname = Some("Bloggs"),
-        matched = Some("Y"),
+        matched = Some("matched"),
         taxTreatment = None,
         verificationNumber = None
       )
@@ -252,7 +252,7 @@ class VerificationResultMapperSpec extends SpecBase {
     middleName: Option[String] = Some("A"),
     surname: Option[String] = Some("Smith"),
     nino: Option[String] = Some("AB123456C"),
-    matched: Option[String] = Some("N"),
+    matched: Option[String] = Some("unmatched"),
     taxTreatment: Option[String] = Some("net"),
     verificationNumber: Option[String] = Some("V1000000007")
   ): CisResponseSubcontractor =

@@ -2005,7 +2005,7 @@ class FormpProxyConnectorIntegrationSpec
             verified = Some("N"),
             verificationNumber = Some("V1000000007"),
             taxTreatment = "net",
-            verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+            verifiedDate = Some(LocalDateTime.parse("2017-04-06T08:46:08.081"))
           )
         )
       )
