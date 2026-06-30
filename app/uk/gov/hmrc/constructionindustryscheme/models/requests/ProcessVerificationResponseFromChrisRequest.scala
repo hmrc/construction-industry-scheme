@@ -40,7 +40,7 @@ final case class VerificationResult(
   verified: Option[String],
   verificationNumber: Option[String],
   taxTreatment: String,
-  verifiedDate: LocalDateTime
+  verifiedDate: Option[LocalDateTime]
 )
 
 object VerificationResult {
