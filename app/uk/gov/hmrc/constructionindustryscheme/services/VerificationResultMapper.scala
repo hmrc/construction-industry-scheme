@@ -57,9 +57,9 @@ class VerificationResultMapper @Inject() () {
     } yield {
       val verificationNumber = chris.verificationNumber.map(_.trim).filter(_.nonEmpty)
       val verified           = deriveVerified(chris.matched, Some(requested.actionIndicator), verificationNumber)
-      val matched            = normalise(chris.matched).collect{
-                                 case "MATCHED" => "Y"
-                               }
+      val matched            = normalise(chris.matched).collect { case "MATCHED" =>
+        "Y"
+      }
 
       VerificationResult(
         resourceRef = resourceRef,
