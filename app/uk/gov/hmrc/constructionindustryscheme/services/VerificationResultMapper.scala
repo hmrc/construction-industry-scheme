@@ -28,10 +28,10 @@ import scala.concurrent.Future
 class VerificationResultMapper @Inject() () {
 
   def mapAll(
-    chrisResults: Seq[CisResponseSubcontractor],
-    context: StoredVerificationContext,
-    verifiedDate: LocalDateTime
-  ): Future[Seq[VerificationResult]] = {
+              chrisResults: Seq[CisResponseSubcontractor],
+              context: StoredVerificationContext,
+              verifiedDate: LocalDateTime
+            ): Future[Seq[VerificationResult]] = {
     val mapped = chrisResults.map(chris => mapOne(chris, context, verifiedDate))
     val errors = mapped.collect { case Left(err) => err }
 
@@ -43,27 +43,32 @@ class VerificationResultMapper @Inject() () {
   }
 
   private def mapOne(
-    chris: CisResponseSubcontractor,
-    context: StoredVerificationContext,
-    verifiedDate: LocalDateTime
-  ): Either[String, VerificationResult] =
+                      chris: CisResponseSubcontractor,
+                      context: StoredVerificationContext,
+                      verifiedDate: LocalDateTime
+                    ): Either[String, VerificationResult] =
     for {
-      requested    <- findRequestedVerification(chris, context)
-      resourceRef  <-
+      requested <- findRequestedVerification(chris, context)
+      resourceRef <-
         requested.subbieResourceRef.toRight(
           s"Missing subbieResourceRef for matched verificationResourceRef: ${requested.verificationResourceRef}"
         )
       taxTreatment <- required(chris.taxTreatment, "taxTreatment")
     } yield {
       val verificationNumber = chris.verificationNumber.map(_.trim).filter(_.nonEmpty)
+      val verified = deriveVerified(chris.matched, Some(requested.actionIndicator), verificationNumber)
 
       VerificationResult(
         resourceRef = resourceRef,
         matched = chris.matched,
-        verified = deriveVerified(chris.matched, Some(requested.actionIndicator), verificationNumber),
+        verified = verified,
         verificationNumber = verificationNumber,
         taxTreatment = taxTreatment,
-        verifiedDate = verifiedDate
+        verifiedDate = verifiedDateFor(
+          matched = chris.matched,
+          verificationNumber = verificationNumber,
+          verifiedDate = verifiedDate
+        )
       )
     }
 
@@ -75,18 +80,15 @@ class VerificationResultMapper @Inject() () {
       context.requestedVerifications.filter { requested =>
         requested.subcontractorType.map(_.trim.toLowerCase) match {
           case Some("soletrader") =>
-            same(requested.utr, chris.utr) &&
-            same(requested.foreName, chris.foreName) &&
-            same(requested.middleName, chris.middleName) &&
-            same(requested.surname, chris.surname)
+            soleTraderMatches(requested, chris)
 
           case Some("company") | Some("trust") =>
             same(requested.utr, chris.utr) &&
-            same(requested.tradingName, chris.tradingName)
+              same(requested.tradingName, chris.tradingName)
 
           case Some("partnership") =>
             same(requested.partnershipUtr, chris.partnershipUtr) &&
-            same(requested.tradingName, chris.tradingName)
+              same(requested.tradingName, chris.tradingName)
 
           case other =>
             false
@@ -95,10 +97,46 @@ class VerificationResultMapper @Inject() () {
 
     matches.toList match {
       case List(one) => Right(one)
-      case Nil       => Left(s"No matching requested verification found for subcontractor: $chris")
-      case _         => Left(s"Multiple matching requested verifications found for subcontractor: $chris")
+      case Nil => Left(s"No matching requested verification found for subcontractor: $chris")
+      case _ => Left(s"Multiple matching requested verifications found for subcontractor: $chris")
     }
   }
+
+  private def soleTraderMatches(requested: StoredRequestedVerification, chris: CisResponseSubcontractor): Boolean = {
+    val hasPersonalName =
+      hasValue(requested.foreName) || hasValue(requested.middleName) || hasValue(requested.surname)
+
+    val hasTradingName = hasValue(requested.tradingName)
+
+    val personalNameMatches =
+      same(requested.foreName, chris.foreName) &&
+        same(requested.middleName, chris.middleName) &&
+        same(requested.surname, chris.surname)
+
+    val tradingNameMatches = same(requested.tradingName, chris.tradingName)
+
+    same(requested.utr, chris.utr) &&
+      ((hasPersonalName, hasTradingName) match {
+        case (true, true)   => personalNameMatches && tradingNameMatches
+        case (true, false)  => personalNameMatches
+        case (false, true)  => tradingNameMatches
+        case (false, false) => false
+      })
+  }
+
+  private def verifiedDateFor(
+    matched: Option[String],
+    verificationNumber: Option[String],
+    verifiedDate: LocalDateTime
+  ): Option[LocalDateTime] =
+    if (normalise(matched).contains("Y") && verificationNumber.isDefined) {
+      Some(verifiedDate)
+    } else {
+      None
+    }
+
+  private def hasValue(value: Option[String]): Boolean =
+    normalise(value).isDefined
 
   private def required(value: Option[String], fieldName: String): Either[String, String] =
     value.map(_.trim).filter(_.nonEmpty).toRight(s"Missing required field: $fieldName")
