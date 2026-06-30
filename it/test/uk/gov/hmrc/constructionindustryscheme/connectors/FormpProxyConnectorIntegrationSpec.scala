@@ -2076,29 +2076,6 @@ class FormpProxyConnectorIntegrationSpec
             aResponse()
               .withStatus(200)
               .withBody(responseJson.toString())
-            )
-        )
-      
-      val out = connector.getBatchPollSubmissions().futureValue
-      
-      Json.toJson(out) mustBe responseJson
-    }
-      
-    "POST /formp-proxy/cis/verification/response/process and return Unit on 204" in {
-      val req = ProcessVerificationResponseFromChrisRequest(
-        instanceId = instanceId,
-        verificationBatchResourceRef = 77L,
-        acceptedTime = "2026-06-15T10:05:00Z",
-        submissionStatus = "ACCEPTED",
-        irMarkReceived = Some("IR_MARK_RECEIVED"),
-        verificationResults = Seq(
-          VerificationResult(
-            resourceRef = 111L,
-            matched = Some("Y"),
-            verified = Some("Y"),
-            verificationNumber = Some("V123456"),
-            taxTreatment = "NET",
-            verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
           )
       )
 
@@ -2114,30 +2091,6 @@ class FormpProxyConnectorIntegrationSpec
             aResponse()
               .withStatus(500)
               .withBody("""{"message":"boom"}""")
-            )
-        )
-      
-      val ex = connector.getBatchPollSumissions().failed.futureValue
-      
-      ex mustBe a[UpstreamErrorResponse]
-      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
-    }
-        
-    "fail with UpstreamErrorResponse when upstream returns non-204" in {
-      val req = ProcessVerificationResponseFromChrisRequest(
-        instanceId = instanceId,
-        verificationBatchResourceRef = 77L,
-        acceptedTime = "2026-06-15T10:05:00Z",
-        submissionStatus = "FAILED",
-        irMarkReceived = Some("IR_MARK_RECEIVED"),
-        verificationResults = Seq(
-          VerificationResult(
-            resourceRef = 111L,
-            matched = Some("N"),
-            verified = Some("N"),
-            verificationNumber = Some("V123456"),
-            taxTreatment = "GROSS",
-            verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
           )
       )
 
@@ -2146,11 +2099,12 @@ class FormpProxyConnectorIntegrationSpec
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
+  }
 
-    "FormpProxyConnector processVerificationResponseFromChris" should {
+  "FormpProxyConnector processVerificationResponseFromChris" should {
 
-      "POST /formp-proxy/cis/verification/response/process and return Unit on 204" in {
-        val req = ProcessVerificationResponseFromChrisRequest(
+    "POST /formp-proxy/cis/verification/response/process and return Unit on 204" in {
+      val req = ProcessVerificationResponseFromChrisRequest(
           instanceId = instanceId,
           verificationBatchResourceRef = 77L,
           acceptedTime = "2026-06-15T10:05:00Z",
@@ -2163,7 +2117,7 @@ class FormpProxyConnectorIntegrationSpec
               verified = Some("Y"),
               verificationNumber = Some("V123456"),
               taxTreatment = "NET",
-              verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 5, 0)
+              verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
             )
           )
         )
@@ -2192,7 +2146,7 @@ class FormpProxyConnectorIntegrationSpec
               verified = Some("N"),
               verificationNumber = Some("V123456"),
               taxTreatment = "GROSS",
-              verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 5, 0)
+              verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
             )
           )
         )
@@ -2206,7 +2160,7 @@ class FormpProxyConnectorIntegrationSpec
         val ex = connector.processVerificationResponseFromChris(req).failed.futureValue
         ex mustBe a[UpstreamErrorResponse]
         ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
-      }
+
     }
   }
 }
