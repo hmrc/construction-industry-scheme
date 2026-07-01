@@ -21,7 +21,7 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.mockito.{ArgumentMatchers, Mockito}
 import org.scalatest.EitherValues
-import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, INTERNAL_SERVER_ERROR, NOT_FOUND, NO_CONTENT, OK, UNAUTHORIZED}
+import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, CREATED, INTERNAL_SERVER_ERROR, NO_CONTENT, OK, UNAUTHORIZED}
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, status}
@@ -873,140 +873,6 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .withHeaders(CONTENT_TYPE -> JSON)
 
       val result = controller.updateSubmission(submissionId)(req)
-
-      status(result) mustBe UNAUTHORIZED
-      verifyNoInteractions(submissionService)
-    }
-  }
-
-  "getGovTalkStatus" - {
-
-    val validGetStatusJson = Json.obj(
-      "userIdentifier" -> "123",
-      "formResultID"   -> "sub-123"
-    )
-
-    val govTalkRecord = Json.obj(
-      "userIdentifier"  -> "123",
-      "formResultID"    -> "sub-123",
-      "correlationID"   -> "CID-001",
-      "formLock"        -> "N",
-      "createDate"      -> Json.toJson(None: Option[String]),
-      "endStateDate"    -> Json.toJson(None: Option[String]),
-      "lastMessageDate" -> "2025-04-01T12:00:00",
-      "numPolls"        -> 1,
-      "pollInterval"    -> 15,
-      "protocolStatus"  -> "dataRequest",
-      "gatewayURL"      -> "http://gateway/sync"
-    )
-
-    val govTalkStatusResponse = Json.obj("govtalk_status" -> Json.arr(govTalkRecord))
-
-    "returns 200 with status payload when service returns Some" in {
-      val submissionService = mock[SubmissionService]
-      val xmlValidator      = mock[XmlValidator]
-      val controller        = mkController(submissionService = submissionService, xmlValidator = xmlValidator)
-
-      import uk.gov.hmrc.constructionindustryscheme.models.GovTalkStatusRecord
-      import uk.gov.hmrc.constructionindustryscheme.models.response.GetGovTalkStatusResponse
-
-      import java.time.LocalDateTime
-
-      val record = GovTalkStatusRecord(
-        userIdentifier = "123",
-        formResultID = "sub-123",
-        correlationID = "CID-001",
-        formLock = "N",
-        createDate = None,
-        endStateDate = None,
-        lastMessageDate = LocalDateTime.parse("2025-04-01T12:00:00"),
-        numPolls = 1,
-        pollInterval = 15,
-        protocolStatus = "dataRequest",
-        gatewayURL = "http://gateway/sync"
-      )
-
-      when(
-        submissionService.getGovTalkStatusForResubmission(eqTo("123"), eqTo(submissionId))(any[HeaderCarrier])
-      ).thenReturn(Future.successful(Some(GetGovTalkStatusResponse(Seq(record)))))
-
-      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/govtalk-status")
-        .withBody(validGetStatusJson)
-        .withHeaders(CONTENT_TYPE -> JSON)
-
-      val result = controller.getGovTalkStatus(submissionId)(req)
-
-      status(result) mustBe OK
-      verify(submissionService).getGovTalkStatusForResubmission(eqTo("123"), eqTo(submissionId))(any[HeaderCarrier])
-    }
-
-    "returns 404 NotFound when service returns None" in {
-      val submissionService = mock[SubmissionService]
-      val xmlValidator      = mock[XmlValidator]
-      val controller        = mkController(submissionService = submissionService, xmlValidator = xmlValidator)
-
-      when(
-        submissionService.getGovTalkStatusForResubmission(eqTo("123"), eqTo(submissionId))(any[HeaderCarrier])
-      ).thenReturn(Future.successful(None))
-
-      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/govtalk-status")
-        .withBody(validGetStatusJson)
-        .withHeaders(CONTENT_TYPE -> JSON)
-
-      val result = controller.getGovTalkStatus(submissionId)(req)
-
-      status(result) mustBe NOT_FOUND
-    }
-
-    "returns 400 when JSON is invalid" in {
-      val submissionService = mock[SubmissionService]
-      val xmlValidator      = mock[XmlValidator]
-      val controller        = mkController(submissionService = submissionService, xmlValidator = xmlValidator)
-
-      val bad = Json.obj("userIdentifier" -> "123")
-
-      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/govtalk-status")
-        .withBody(bad)
-        .withHeaders(CONTENT_TYPE -> JSON)
-
-      val result = controller.getGovTalkStatus(submissionId)(req)
-
-      status(result) mustBe BAD_REQUEST
-      verifyNoInteractions(submissionService)
-    }
-
-    "returns 502 BadGateway when service fails" in {
-      val submissionService = mock[SubmissionService]
-      val xmlValidator      = mock[XmlValidator]
-      val controller        = mkController(submissionService = submissionService, xmlValidator = xmlValidator)
-
-      when(
-        submissionService.getGovTalkStatusForResubmission(eqTo("123"), eqTo(submissionId))(any[HeaderCarrier])
-      ).thenReturn(Future.failed(new RuntimeException("formp get failed")))
-
-      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/govtalk-status")
-        .withBody(validGetStatusJson)
-        .withHeaders(CONTENT_TYPE -> JSON)
-
-      val result = controller.getGovTalkStatus(submissionId)(req)
-
-      status(result) mustBe BAD_GATEWAY
-      val js = contentAsJson(result)
-      (js \ "submissionId").as[String] mustBe submissionId
-      (js \ "message").as[String] mustBe "get-govtalk-status-failed"
-    }
-
-    "returns 401 when unauthorised" in {
-      val submissionService = mock[SubmissionService]
-      val xmlValidator      = mock[XmlValidator]
-      val controller        =
-        mkController(submissionService = submissionService, auth = rejectingAuthAction, xmlValidator = xmlValidator)
-
-      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/govtalk-status")
-        .withBody(validGetStatusJson)
-        .withHeaders(CONTENT_TYPE -> JSON)
-
-      val result = controller.getGovTalkStatus(submissionId)(req)
 
       status(result) mustBe UNAUTHORIZED
       verifyNoInteractions(submissionService)

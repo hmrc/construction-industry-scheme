@@ -118,26 +118,6 @@ class SubmissionController @Inject() (
         )
     }
 
-  def getGovTalkStatus(submissionId: String): Action[JsValue] =
-    authorise(parse.json).async { implicit req =>
-      req.body
-        .validate[GetGovTalkStatusRequest]
-        .fold(
-          e => Future.successful(BadRequest(JsError.toJson(e))),
-          request =>
-            submissionService
-              .getGovTalkStatusForResubmission(request.userIdentifier, submissionId)
-              .map {
-                case Some(status) => Ok(Json.toJson(status))
-                case None         => NotFound
-              }
-              .recover { case ex =>
-                logger.error(s"[getGovTalkStatus] formp-proxy get failed submissionId=$submissionId", ex)
-                BadGateway(Json.obj("submissionId" -> submissionId, "message" -> "get-govtalk-status-failed"))
-              }
-        )
-    }
-
   private lazy val redirectUrlPolicy = AbsoluteWithHostnameFromAllowlist(appConfig.chrisHost.toSet)
 
   def pollSubmission(pollUrl: RedirectUrl, submissionId: String): Action[AnyContent] =

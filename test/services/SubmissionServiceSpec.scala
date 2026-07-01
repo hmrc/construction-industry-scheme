@@ -125,68 +125,6 @@ final class SubmissionServiceSpec extends SpecBase {
     }
   }
 
-  "getGovTalkStatusForResubmission" - {
-
-    "delegates to FormpProxyConnector with Polling phase and returns the response" in {
-      val s = setup; import s._
-
-      import uk.gov.hmrc.constructionindustryscheme.models.GovTalkStatusRecord
-      import uk.gov.hmrc.constructionindustryscheme.models.response.GetGovTalkStatusResponse
-      import java.time.LocalDateTime
-
-      val record   = GovTalkStatusRecord(
-        userIdentifier = "123",
-        formResultID = "sub-123",
-        correlationID = "CID-001",
-        formLock = "N",
-        createDate = None,
-        endStateDate = None,
-        lastMessageDate = LocalDateTime.parse("2025-04-01T12:00:00"),
-        numPolls = 1,
-        pollInterval = 15,
-        protocolStatus = "dataRequest",
-        gatewayURL = "http://gateway/sync"
-      )
-      val response = GetGovTalkStatusResponse(Seq(record))
-
-      when(
-        formpProxyConnector.getGovTalkStatus(
-          eqTo(GetGovTalkStatusRequest("123", "sub-123")),
-          eqTo(Polling)
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.successful(Some(response)))
-
-      service.getGovTalkStatusForResubmission("123", "sub-123").futureValue mustBe Some(response)
-
-      verify(formpProxyConnector).getGovTalkStatus(
-        eqTo(GetGovTalkStatusRequest("123", "sub-123")),
-        eqTo(Polling)
-      )(any[HeaderCarrier])
-    }
-
-    "returns None when FormpProxyConnector returns None" in {
-      val s = setup; import s._
-
-      when(
-        formpProxyConnector.getGovTalkStatus(any[GetGovTalkStatusRequest], eqTo(Polling))(any[HeaderCarrier])
-      ).thenReturn(Future.successful(None))
-
-      service.getGovTalkStatusForResubmission("123", "sub-999").futureValue mustBe None
-    }
-
-    "propagates failure from FormpProxyConnector" in {
-      val s = setup; import s._
-
-      when(
-        formpProxyConnector.getGovTalkStatus(any[GetGovTalkStatusRequest], eqTo(Polling))(any[HeaderCarrier])
-      ).thenReturn(Future.failed(new RuntimeException("formp-down")))
-
-      service.getGovTalkStatusForResubmission("123", "sub-123").failed.futureValue.getMessage must include(
-        "formp-down"
-      )
-    }
-  }
-
   "resetGovTalkStatus" - {
 
     "delegates to FormpProxyConnector and completes" in {
