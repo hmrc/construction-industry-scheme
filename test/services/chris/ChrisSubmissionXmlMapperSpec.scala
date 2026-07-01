@@ -141,7 +141,7 @@ final class ChrisSubmissionXmlMapperSpec extends AnyFreeSpec with Matchers with 
       res.status mustBe FATAL_ERROR
 
       val err = res.meta.error.value
-      err.errorNumber mustBe "3001"
+      err.errorNumber mustBe "3000"
       err.errorType mustBe "departmentalError"
     }
 

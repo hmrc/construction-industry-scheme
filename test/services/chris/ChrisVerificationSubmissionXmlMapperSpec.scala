@@ -150,7 +150,7 @@ final class ChrisVerificationSubmissionXmlMapperSpec extends AnyFreeSpec with Ma
       res.status mustBe FATAL_ERROR
 
       val err = res.meta.error.value
-      err.errorNumber mustBe "3001"
+      err.errorNumber mustBe "3000"
       err.errorType mustBe "departmentalError"
     }
 

@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
 import javax.inject.{Inject, Singleton}
+import play.api.libs.json.Json
 import play.api.libs.ws.DefaultBodyWritables.writeableOf_String
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
@@ -92,13 +93,17 @@ class ChrisConnector @Inject() (
           logger.error(
             s"[ChrisConnector] 5xx polling corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
           )
+          val errorOpt = journey match {
+            case ChrisPollJourney.Verification => Some(Json.toJson(GovTalkErrorMapper.fromHttpTimeout()))
+            case _                             => None
+          }
           Future.successful(
             ChrisPollResponse(
               ACCEPTED,
               correlationId,
               None,
               None,
-              None,
+              errorOpt,
               None,
               None,
               None,
@@ -128,12 +133,16 @@ class ChrisConnector @Inject() (
         logger.error(
           s"[ChrisConnector] Transport exception calling $pollUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${e.getMessage}"
         )
+        val errorOpt = journey match {
+          case ChrisPollJourney.Verification => Some(Json.toJson(GovTalkErrorMapper.fromConnectionRefused()))
+          case _                             => None
+        }
         ChrisPollResponse(
           ACCEPTED,
           correlationId,
           None,
           None,
-          None,
+          errorOpt,
           None,
           None,
           None,
