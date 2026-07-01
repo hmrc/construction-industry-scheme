@@ -53,6 +53,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "monthYear"             -> "2025-05",
     "email"                 -> "test@test.com",
     "isAgent"               -> true,
+    "isResubmission"        -> false,
     "clientTaxOfficeNumber" -> "123",
     "clientTaxOfficeRef"    -> "ABC456",
     "returnType"            -> "MonthlyNilReturn",
@@ -115,7 +116,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Int],
           any[String],
           any[String],
-          any[Instant]
+          any[Instant],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
@@ -163,7 +165,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Int],
           any[String],
           any[String],
-          any[Instant]
+          any[Instant],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
@@ -212,7 +215,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Int],
           any[String],
           any[String],
-          any[Instant]
+          any[Instant],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
@@ -263,7 +267,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Int],
           any[String],
           any[String],
-          any[Instant]
+          any[Instant],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
@@ -322,7 +327,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Int],
           any[String],
           any[String],
-          any[Instant]
+          any[Instant],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -388,7 +394,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Int],
           any[String],
           any[String],
-          any[Instant]
+          any[Instant],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -560,7 +567,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Int],
           any[String],
           any[String],
-          any[Instant]
+          any[Instant],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
@@ -660,7 +668,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Int],
           any[String],
           any[String],
-          any[Instant]
+          any[Instant],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.failed(new RuntimeException("ack persistence failed")))
 
@@ -1362,7 +1371,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Int],
           any[String],
           any[String],
-          any[Instant]
+          any[Instant],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -1404,7 +1414,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Int],
           any[String],
           eqTo("http://chris.example/gateway"),
-          any[Instant]
+          any[Instant],
+          any[Boolean]
         )(any[HeaderCarrier])
     }
 
@@ -1433,7 +1444,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Int],
           any[String],
           any[String],
-          any[Instant]
+          any[Instant],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -1518,7 +1530,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Int],
           any[String],
           any[String],
-          any[Instant]
+          any[Instant],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -1560,7 +1573,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Int],
           any[String],
           eqTo("http://chris.example/gateway"),
-          any[Instant]
+          any[Instant],
+          any[Boolean]
         )(any[HeaderCarrier])
     }
 
@@ -1653,7 +1667,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Int],
           any[String],
           any[String],
-          any[Instant]
+          any[Instant],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.failed(new RuntimeException("verification ack persistence failed")))
 
