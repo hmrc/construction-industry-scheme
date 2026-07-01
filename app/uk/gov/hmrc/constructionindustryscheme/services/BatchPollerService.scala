@@ -21,6 +21,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
 @Singleton
 class BatchPollerService @Inject() (
@@ -45,7 +46,7 @@ class BatchPollerService @Inject() (
       // - If verificationSubmissions is non-empty, call F6 - Verification Polling Process
       // - If monthlyReturnSubmissions is non-empty, call F2 - Monthly Return Polling Process
       }
-      .recover { case exception =>
+      .recover { case NonFatal(exception) =>
         logger.error(
           "[BatchPollerService][run] GetBatchPollSubmissions failed",
           exception
