@@ -2169,9 +2169,7 @@ class FormpProxyConnectorIntegrationSpec
     "GET /formp-proxy/cis/subcontractor/:cisId/:subbieResourceRef/delete-status and return response model (200)" in {
       val responseJson = Json.parse(
         """{
-          |  "scheme": null,
-          |  "subcontractor": null,
-          |  "canBeDeleted": true
+          |  "subcontractorCanBeDeleted": true
           |}""".stripMargin)
 
       stubFor(
@@ -2187,15 +2185,13 @@ class FormpProxyConnectorIntegrationSpec
       val out = connector.getSubcontractorDeleteStatus(instanceId, subbieResourceRef).futureValue
 
       out mustBe a[GetSubcontractorForDeleteResponse]
-      out.canBeDeleted mustBe true
+      out.subcontractorCanBeDeleted mustBe true
     }
 
     "return response model when subcontractor cannot be deleted" in {
       val responseJson = Json.parse(
         """{
-          |  "scheme": null,
-          |  "subcontractor": null,
-          |  "canBeDeleted": false
+          |  "subcontractorCanBeDeleted": false
           |}""".stripMargin)
 
       stubFor(
@@ -2211,7 +2207,7 @@ class FormpProxyConnectorIntegrationSpec
       val out = connector.getSubcontractorDeleteStatus(instanceId, subbieResourceRef).futureValue
 
       out mustBe a[GetSubcontractorForDeleteResponse]
-      out.canBeDeleted mustBe false
+      out.subcontractorCanBeDeleted mustBe false
     }
 
     "fail with UpstreamErrorResponse when upstream returns non-2xx" in {
