@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
+import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
@@ -37,9 +38,11 @@ class SubmissionService @Inject() (
   formpProxyConnector: FormpProxyConnector,
   emailConnector: EmailConnector,
   monthlyReturnService: MonthlyReturnService,
-  chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository
+  chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository,
+  appConfig: AppConfig
 )(implicit ec: ExecutionContext)
     extends Logging {
+
   def createSubmission(request: CreateSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
     formpProxyConnector.createSubmission(request)
 
@@ -123,15 +126,35 @@ class SubmissionService @Inject() (
     employerReference: EmployerReference,
     submissionId: String,
     correlationId: String,
-    gatewayURL: String
+    gatewayURL: String,
+    isResubmission: Boolean = false
   )(implicit hc: HeaderCarrier): Future[String] =
     monthlyReturnService.getCisTaxpayer(employerReference).flatMap { taxpayer =>
       val instanceId = taxpayer.uniqueId
       val getReq     = GetGovTalkStatusRequest(instanceId, submissionId)
 
       getInitialGovTalkStatus(getReq).flatMap {
+        case Some(response) if isResubmission =>
+          response.govtalk_status.headOption match {
+            case Some(existingRecord) =>
+              resetGovTalkStatus(
+                ResetGovTalkStatusRequest(
+                  existingRecord.userIdentifier,
+                  existingRecord.formResultID,
+                  existingRecord.protocolStatus,
+                  appConfig.chrisGatewayUrl
+                )
+              ).map(_ => instanceId)
+
+            case None =>
+              Future.failed(new RuntimeException("Expected govTalkStatus record for resubmission but none found"))
+          }
+
         case Some(_) =>
           Future.failed(new RuntimeException("govtalk status already exists"))
+
+        case None if isResubmission =>
+          Future.failed(new RuntimeException("Expected govTalkStatus record for resubmission but none found"))
 
         case None =>
           val createReq = CreateGovTalkStatusRecordRequest(
@@ -153,7 +176,8 @@ class SubmissionService @Inject() (
     pollInterval: Int,
     pollUrl: String,
     gatewayURL: String,
-    lastMessageDate: Instant = Instant.now
+    lastMessageDate: Instant = Instant.now,
+    isResubmission: Boolean
   )(implicit hc: HeaderCarrier): Future[Unit] =
     validateCorrelationId(expectedCorrelationId, actualCorrelationId) match {
       case Left(reason) =>
@@ -161,7 +185,8 @@ class SubmissionService @Inject() (
 
       case Right(_) =>
         for {
-          instanceId <- initialiseGovTalkStatus(employerReference, submissionId, expectedCorrelationId, gatewayURL)
+          instanceId <-
+            initialiseGovTalkStatus(employerReference, submissionId, expectedCorrelationId, gatewayURL, isResubmission)
           _          <- saveInitialChrisSession(
                           submissionId,
                           instanceId,
