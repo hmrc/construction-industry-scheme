@@ -182,7 +182,7 @@ final class VerificationServiceSpec extends SpecBase {
       instanceId = "abc-123",
       verificationBatchId = 99L,
       verificationBatchResourceRef = 10L,
-      emailRecipient = "ops@example.com",
+      emailRecipient = Some("ops@example.com"),
       irMarkGenerated = Some("IR_MARK"),
       verifications = Seq(
         VerificationToUpdate("ACME", 111L, "Y"),

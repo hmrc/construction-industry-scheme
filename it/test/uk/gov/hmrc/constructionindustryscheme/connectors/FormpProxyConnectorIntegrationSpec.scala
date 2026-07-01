@@ -1747,7 +1747,7 @@ class FormpProxyConnectorIntegrationSpec
         instanceId = instanceId,
         verificationBatchId = 99L,
         verificationBatchResourceRef = 7L,
-        emailRecipient = "ops@example.com",
+        emailRecipient = Some("ops@example.com"),
         irMarkGenerated = Some("IR_MARK"),
         verifications = Seq(
           VerificationToUpdate(
@@ -1787,7 +1787,7 @@ class FormpProxyConnectorIntegrationSpec
         instanceId = instanceId,
         verificationBatchId = 99L,
         verificationBatchResourceRef = 7L,
-        emailRecipient = "ops@example.com",
+        emailRecipient = Some("ops@example.com"),
         irMarkGenerated = Some("IR_MARK"),
         verifications = Seq(
           VerificationToUpdate(
