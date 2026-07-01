@@ -91,10 +91,14 @@ class SubmissionService @Inject() (
         Future.unit
     }
 
-//  def getGovTalkStatus(request: GetGovTalkStatusRequest)(implicit
-//    hc: HeaderCarrier
-//  ): Future[Option[GetGovTalkStatusResponse]] =
-//    formpProxyConnector.getGovTalkStatus(request)
+  def getGovTalkStatusForResubmission(
+    userIdentifier: String,
+    submissionId: String
+  )(implicit hc: HeaderCarrier): Future[Option[GetGovTalkStatusResponse]] =
+    formpProxyConnector.getGovTalkStatus(
+      GetGovTalkStatusRequest(userIdentifier, submissionId),
+      Polling
+    )
 
   def createGovTalkStatusRecord(request: CreateGovTalkStatusRecordRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.createGovTalkStatusRecord(request)
