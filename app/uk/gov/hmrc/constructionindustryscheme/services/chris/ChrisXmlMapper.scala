@@ -53,6 +53,12 @@ trait ChrisXmlMapper {
       } yield Some(GovTalkError(errorNumber = errorNumber, errorType = errorType, errorText = errorText))
     } else Right(None)
 
+  protected def directTextOptional(scope: NodeSeq, tagName: String): Option[String] =
+    (scope \ tagName).headOption.map(_.text.trim).filter(_.nonEmpty)
+
+  protected def directTexts(scope: NodeSeq, tagName: String): Seq[String] =
+    (scope \ tagName).map(_.text.trim).filter(_.nonEmpty)
+
   /** Shared parsing for stage-1 (submit) GovTalk responses. Callers supply the qualifier => status mapping appropriate
     * to their flow.
     */
@@ -110,7 +116,9 @@ trait ChrisXmlMapper {
                                          "DigestValue"
                                        )
     } yield {
-      val status = deriveStatus(qualifier, errOpt, doc)
+      val status                    = deriveStatus(qualifier, errOpt, doc)
+      val cisResponseSubcontractors = parseCisVerificationResults(doc)
+
       ChrisPollResponse(
         status,
         correlationId,
@@ -120,7 +128,31 @@ trait ChrisXmlMapper {
         irMark,
         lastMessageDateOpt,
         acceptedTime,
-        Some(GovTalkErrorStatusClassifier.fromXmlOutcome(status, errOpt))
+        Some(GovTalkErrorStatusClassifier.fromXmlOutcome(status, errOpt)),
+        cisResponseSubcontractors
+      )
+    }
+  }
+
+  protected def parseCisVerificationResults(doc: Elem): Seq[CisResponseSubcontractor] = {
+    val subcontractorNodes: NodeSeq =
+      doc \\ "CISresponse" \\ "Subcontractor"
+
+    subcontractorNodes.map { sub =>
+      val name  = sub \ "Name"
+      val fores = directTexts(name, "Fore")
+
+      CisResponseSubcontractor(
+        utr = directTextOptional(sub, "UTR"),
+        partnershipUtr = directTextOptional(sub \ "Partnership", "UTR"),
+        tradingName = directTextOptional(sub, "TradingName"),
+        foreName = fores.headOption,
+        middleName = fores.drop(1).headOption,
+        surname = directTextOptional(name, "Sur"),
+        nino = directTextOptional(sub, "NINO"),
+        matched = directTextOptional(sub, "Matched"),
+        taxTreatment = directTextOptional(sub, "TaxTreatment"),
+        verificationNumber = directTextOptional(sub, "VerificationNumber")
       )
     }
   }

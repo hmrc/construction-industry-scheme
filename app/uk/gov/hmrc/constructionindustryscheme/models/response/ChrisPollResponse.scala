@@ -17,7 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.models.response
 
 import play.api.libs.json.JsValue
-import uk.gov.hmrc.constructionindustryscheme.models.{GovTalkErrorStatus, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisResponseSubcontractor, GovTalkErrorStatus, SubmissionStatus}
 
 case class ChrisPollResponse(
   status: SubmissionStatus,
@@ -28,5 +28,6 @@ case class ChrisPollResponse(
   irMarkReceived: Option[String],
   lastMessageDate: Option[String],
   acceptedTime: Option[String],
-  govTalkErrorStatus: Option[GovTalkErrorStatus] = None
+  govTalkErrorStatus: Option[GovTalkErrorStatus] = None,
+  cisResponseSubcontractors: Seq[CisResponseSubcontractor] = Seq.empty
 )

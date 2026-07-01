@@ -23,7 +23,7 @@ import uk.gov.hmrc.constructionindustryscheme.jobs.BatchPollerJob
 import uk.gov.hmrc.mongo.{CurrentTimestampSupport, TimestampSupport}
 import uk.gov.hmrc.mongo.lock.{LockRepository, MongoLockRepository}
 
-import java.time.{Clock, ZoneOffset}
+import java.time.{Clock, ZoneId}
 
 class Module extends AbstractModule {
 
@@ -31,7 +31,7 @@ class Module extends AbstractModule {
     bind(classOf[AuthAction]).to(classOf[DefaultAuthAction]).asEagerSingleton()
     bind(classOf[AgentAction]).to(classOf[DefaultAgentAction]).asEagerSingleton()
     bind(classOf[AppConfig]).asEagerSingleton()
-    bind(classOf[Clock]).toInstance(Clock.systemDefaultZone.withZone(ZoneOffset.UTC))
+    bind(classOf[Clock]).toInstance(Clock.system(ZoneId.of("Europe/London")))
     bind(classOf[TimestampSupport]).to(classOf[CurrentTimestampSupport])
     bind(classOf[LockRepository]).to(classOf[MongoLockRepository])
     bind(classOf[BatchPollerJob]).asEagerSingleton()
