@@ -2099,11 +2099,12 @@ class FormpProxyConnectorIntegrationSpec
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
+  }
 
-    "FormpProxyConnector processVerificationResponseFromChris" should {
+  "FormpProxyConnector processVerificationResponseFromChris" should {
 
-      "POST /formp-proxy/cis/verification/response/process and return Unit on 204" in {
-        val req = ProcessVerificationResponseFromChrisRequest(
+    "POST /formp-proxy/cis/verification/response/process and return Unit on 204" in {
+      val req = ProcessVerificationResponseFromChrisRequest(
           instanceId = instanceId,
           verificationBatchResourceRef = 77L,
           acceptedTime = "2026-06-15T10:05:00Z",
@@ -2116,7 +2117,7 @@ class FormpProxyConnectorIntegrationSpec
               verified = Some("Y"),
               verificationNumber = Some("V123456"),
               taxTreatment = "NET",
-              verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 5, 0)
+              verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
             )
           )
         )
@@ -2145,7 +2146,7 @@ class FormpProxyConnectorIntegrationSpec
               verified = Some("N"),
               verificationNumber = Some("V123456"),
               taxTreatment = "GROSS",
-              verifiedDate = LocalDateTime.of(2026, 6, 15, 10, 5, 0)
+              verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
             )
           )
         )
@@ -2159,7 +2160,7 @@ class FormpProxyConnectorIntegrationSpec
         val ex = connector.processVerificationResponseFromChris(req).failed.futureValue
         ex mustBe a[UpstreamErrorResponse]
         ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
-      }
+
     }
   }
 }
