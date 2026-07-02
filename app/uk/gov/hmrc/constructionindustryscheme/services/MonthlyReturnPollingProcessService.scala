@@ -21,7 +21,9 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnFo
 import uk.gov.hmrc.constructionindustryscheme.models.response.MonthlyReturnSubmissionToPoll
 import uk.gov.hmrc.http.HeaderCarrier
 
+import java.time.{LocalDateTime, ZoneId}
 import javax.inject.{Inject, Singleton}
+import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
@@ -32,42 +34,57 @@ class MonthlyReturnPollingProcessService @Inject() (
   ec: ExecutionContext
 ) extends Logging {
 
+  private val ukTimezone: ZoneId = ZoneId.of("Europe/London")
+  private val alertDuration      = 24.hours.toMillis
+
   def process(
-    monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll]
+    monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll],
+    startTime: Long
   )(implicit hc: HeaderCarrier): Future[Unit] =
     Future
       .traverse(monthlyReturnSubmissions) { sub =>
-        processSubmission(sub).recover { case ex =>
-          logger.error(
-            s"[MonthlyReturnPollingProcessService][process] Failed for instanceId=${sub.instanceId}, submissionId=${sub.submissionId}",
-            ex
-          )
-        }
+        processSubmission(sub)
+          .map { submissionRequestDateOpt =>
+            submissionRequestDateOpt.foreach { submissionRequestDate =>
+              val submissionTime = submissionRequestDate.atZone(ukTimezone).toInstant.toEpochMilli
+              if (startTime > submissionTime + alertDuration) {
+                logger.warn(
+                  s"Submission in status ${sub.status} has been polling for more than ${alertDuration / 1.hour.toMillis} hours: ${sub.submissionId}"
+                )
+              }
+            }
+          }
+          .recover { case ex =>
+            logger.error(
+              s"[MonthlyReturnPollingProcessService][process] Failed for instanceId=${sub.instanceId}, submissionId=${sub.submissionId}",
+              ex
+            )
+          }
       }
       .map(_ => ())
 
   private def processSubmission(
     submission: MonthlyReturnSubmissionToPoll
-  )(implicit hc: HeaderCarrier): Future[Unit] =
+  )(implicit hc: HeaderCarrier): Future[Option[LocalDateTime]] =
     logger.info(
       s"[MonthlyReturnPollingProcessService][processSubmission] " +
         s"instanceId=${submission.instanceId}, " +
         s"submissionId=${submission.submissionId}"
     )
     for {
-      details <- monthlyReturnService.getMonthlyReturnForEdit(
-                   GetMonthlyReturnForEditRequest(
-                     submission.instanceId,
-                     submission.taxYear.toInt,
-                     submission.taxMonth.toInt,
-                     isAmendment = Some(false)
-                   )
-                 )
-
+      details              <- monthlyReturnService.getMonthlyReturnForEdit(
+                                GetMonthlyReturnForEditRequest(
+                                  submission.instanceId,
+                                  submission.taxYear,
+                                  submission.taxMonth,
+                                  isAmendment = Some(false)
+                                )
+                              )
+      submissionRequestDate = details.submission.headOption.flatMap(_.submissionRequestDate)
       // TODO: At the moment above call is not used. But We will require getMonthlyReturnForEdit in DTR-5744
-      _       <- submissionService.processMonthlyReturnGovTalkStatusCheck(
-                   submission.instanceId,
-                   submission.submissionId.toString
-                 )
-    } yield ()
+      _                    <- submissionService.processMonthlyReturnGovTalkStatusCheck(
+                                submission.instanceId,
+                                submission.submissionId.toString
+                              )
+    } yield submissionRequestDate
 }

@@ -18,24 +18,34 @@ package services
 
 import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
-import org.mockito.Mockito.{times, verify, verifyNoInteractions, when}
+import org.mockito.Mockito.{reset, times, verify, verifyNoInteractions, when}
+import org.scalatest.BeforeAndAfterEach
+import uk.gov.hmrc.constructionindustryscheme.models.Submission
 import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.{GetMonthlyReturnForEditResponse, MonthlyReturnSubmissionToPoll}
 import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnPollingProcessService, MonthlyReturnService, SubmissionService}
 
+import java.time.{LocalDateTime, ZoneId}
 import scala.concurrent.Future
 
-class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
+class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfterEach {
   private val monthlyReturnService = mock[MonthlyReturnService]
 
   private val submissionService = mock[SubmissionService]
 
   private val service = new MonthlyReturnPollingProcessService(monthlyReturnService, submissionService)
 
+  private val startTime = System.currentTimeMillis()
+
+  override def beforeEach(): Unit = {
+    reset(monthlyReturnService, submissionService)
+    super.beforeEach()
+  }
+
   "MonthlyReturnPollingProcessService" - {
 
     "must not call getMonthlyReturnForEdit when there are no submissions" in {
-      service.process(Seq.empty).futureValue mustBe ()
+      service.process(Seq.empty, startTime).futureValue mustBe ()
 
       verifyNoInteractions(monthlyReturnService)
     }
@@ -68,7 +78,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
       when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
         .thenReturn(Future.failed(new RuntimeException("failed")), Future.successful(()))
 
-      service.process(Seq(submission1, submission2)).futureValue mustBe ()
+      service.process(Seq(submission1, submission2), startTime).futureValue mustBe ()
 
       verify(monthlyReturnService, times(2)).getMonthlyReturnForEdit(any())(any())
     }
@@ -111,7 +121,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
       when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
         .thenReturn(Future.successful(()))
 
-      service.process(Seq(submission1, submission2)).futureValue mustBe ()
+      service.process(Seq(submission1, submission2), startTime).futureValue mustBe ()
 
       verify(monthlyReturnService).getMonthlyReturnForEdit(
         eqTo(
@@ -133,6 +143,65 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
             isAmendment = Some(false)
           )
         )
+      )(any())
+    }
+
+    "must log warning when submission has been polling for more than 24 hours" in {
+
+      val submission = MonthlyReturnSubmissionToPoll(
+        submissionId = 100,
+        submissionType = "Original",
+        status = "Started",
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AZ123",
+        taxYear = 2026,
+        taxMonth = 4,
+        instanceId = "1",
+        agentId = None
+      )
+
+      val oldSubmissionRequestDate = LocalDateTime.now(ZoneId.of("Europe/London")).minusHours(25)
+
+      val response = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq.empty,
+        monthlyReturnItems = Seq.empty,
+        submission = Seq(
+          Submission(
+            submissionId = 100,
+            submissionType = "Original",
+            activeObjectId = None,
+            status = None,
+            hmrcMarkGenerated = None,
+            hmrcMarkGgis = None,
+            emailRecipient = None,
+            acceptedTime = None,
+            createDate = None,
+            lastUpdate = None,
+            schemeId = 1,
+            agentId = None,
+            l_Migrated = None,
+            submissionRequestDate = Some(oldSubmissionRequestDate),
+            govTalkErrorCode = None,
+            govTalkErrorType = None,
+            govTalkErrorMessage = None
+          )
+        )
+      )
+
+      when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
+        .thenReturn(Future.successful(response))
+
+      when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
+        .thenReturn(Future.successful(()))
+
+      service.process(Seq(submission), System.currentTimeMillis()).futureValue mustBe ()
+
+      verify(submissionService).processMonthlyReturnGovTalkStatusCheck(
+        eqTo("1"),
+        eqTo("100"),
+        any()
       )(any())
     }
   }
