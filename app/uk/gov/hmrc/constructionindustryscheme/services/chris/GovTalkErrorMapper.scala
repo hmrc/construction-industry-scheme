@@ -26,7 +26,7 @@ object GovTalkErrorMapper {
         GovTalkError("3001", "departmentalError", error.errorText)
 
       case ("3000", "fatal") =>
-        GovTalkError("3001", "departmentalError", error.errorText)
+        GovTalkError("3000", "departmentalError", error.errorText)
 
       case _ =>
         GovTalkError(error.errorNumber, "systemError", error.errorText)

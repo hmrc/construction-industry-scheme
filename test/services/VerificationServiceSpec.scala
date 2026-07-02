@@ -176,6 +176,41 @@ final class VerificationServiceSpec extends SpecBase {
     }
   }
 
+  "VerificationService#updateVerificationSubmission" - {
+
+    val request = UpdateVerificationSubmissionRequest(
+      instanceId = "abc-123",
+      verificationBatchId = 99L,
+      verificationBatchResourceRef = 77L,
+      submittableStatus = "FATAL_ERROR",
+      govtalkErrorCode = Some("500"),
+      govtalkErrorType = Some("timeOut"),
+      govtalkErrorMessage = Some("timeOut")
+    )
+
+    "delegates to FormpProxyConnector and returns Unit" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.updateVerificationSubmission(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.updateVerificationSubmission(request).futureValue mustBe ()
+
+      verify(connector).updateVerificationSubmission(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.updateVerificationSubmission(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.updateVerificationSubmission(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
   "VerificationService#createSubmissionForVerification" - {
 
     val request = CreateSubmissionAndUpdateVerificationsRequest(

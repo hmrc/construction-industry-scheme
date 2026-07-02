@@ -259,7 +259,7 @@ class FormpProxyConnectorIntegrationSpec
 
   "FormpProxyConnector updateSubmission" should {
 
-    "returns Unit when upstream responds 204/200" in {
+    "returns Unit when upstream responds with 204" in {
       val req = UpdateSubmissionRequest(
         instanceId = instanceId,
         taxYear = 2024,
@@ -767,7 +767,7 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = intercept[Throwable](connector.createAndUpdateSubcontractor(request).futureValue)
-      ex.getMessage.toLowerCase must include("500")
+      ex.getMessage.toLowerCase must include("boom")
     }
   }
 
@@ -1932,6 +1932,53 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = connector.modifyVerifications(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector updateVerificationSubmission" should {
+
+    "POST /formp-proxy/cis/verification/submission/update and return Unit (204)" in {
+      val req = UpdateVerificationSubmissionRequest(
+        instanceId = "abc-123",
+        verificationBatchId = 99L,
+        verificationBatchResourceRef = 77L,
+        submittableStatus = "FATAL_ERROR",
+        govtalkErrorCode = Some("500"),
+        govtalkErrorType = Some("timeOut"),
+        govtalkErrorMessage = Some("timeOut")
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission/update"))
+          .withHeader("Content-Type", containing("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(204))
+      )
+
+      connector.updateVerificationSubmission(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail the future when upstream returns a non-2xx (e.g. 500)" in {
+      val req = UpdateVerificationSubmissionRequest(
+        instanceId = "abc-123",
+        verificationBatchId = 99L,
+        verificationBatchResourceRef = 77L,
+        submittableStatus = "ACCEPTED"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission/update"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("""{"message":"boom"}""")
+          )
+      )
+
+      val ex = connector.updateVerificationSubmission(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
