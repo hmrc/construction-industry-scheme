@@ -26,7 +26,9 @@ import scala.util.control.NonFatal
 @Singleton
 class BatchPollerService @Inject() (
   submissionService: SubmissionService,
-  monthlyReturnPollingProcessService: MonthlyReturnPollingProcessService
+  verificationPollingProcessService: VerificationPollingProcessService,
+  monthlyReturnPollingProcessService: MonthlyReturnPollingProcessService,
+  generatePollReportService: GeneratePollReportService
 )(implicit ec: ExecutionContext)
     extends Logging {
 
@@ -35,22 +37,35 @@ class BatchPollerService @Inject() (
     submissionService
       .getSubmissionsToPoll()
       .flatMap { submissions =>
+        val verificationSubmissions  = submissions.verificationSubmissions
+        val monthlyReturnSubmissions = submissions.monthlyReturnSubmissions
+
         logger.info(
           s"[BatchPollerService][run] GetBatchPollSubmissions returned " +
-            s"verificationSubmissions=${submissions.verificationSubmissions.size}, " +
-            s"monthlyReturnSubmissions=${submissions.monthlyReturnSubmissions.size}"
+            s"verificationSubmissions=${verificationSubmissions.size}, " +
+            s"monthlyReturnSubmissions=${monthlyReturnSubmissions.size}"
         )
 
         // TODO:
         // Future tickets:
         // - If both lists are empty, call F8 - Generate Poll Report
         // - If verificationSubmissions is non-empty, call F6 - Verification Polling Process
-        if (submissions.monthlyReturnSubmissions.nonEmpty) {
-          monthlyReturnPollingProcessService.process(
-            submissions.monthlyReturnSubmissions
-          )
+        // - If monthlyReturnSubmissions is non-empty, call F2 - Monthly Return Polling Process
+
+        if (verificationSubmissions.isEmpty && monthlyReturnSubmissions.isEmpty) {
+          // Call F8 - Generate Poll Report
+          generatePollReportService.generatePollReport()
         } else {
-          Future.unit
+          val processes = Seq(
+            Option.when(verificationSubmissions.nonEmpty) {
+              verificationPollingProcessService.process(verificationSubmissions)
+            },
+            Option.when(monthlyReturnSubmissions.nonEmpty) {
+              monthlyReturnPollingProcessService.process(monthlyReturnSubmissions)
+            }
+          ).flatten
+
+          Future.sequence(processes).map(_ => ())
         }
       }
       .recover { case NonFatal(exception) =>

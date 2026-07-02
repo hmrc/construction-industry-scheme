@@ -17,14 +17,19 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
+import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
 import uk.gov.hmrc.constructionindustryscheme.models.response.VerificationSubmissionToPoll
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
 @Singleton
-class VerificationPollingProcessService @Inject() () extends Logging {
+class VerificationPollingProcessService @Inject() (
+  submissionService: SubmissionService
+)(implicit ec: ExecutionContext)
+    extends Logging {
 
   def process(
     verificationSubmissions: Seq[VerificationSubmissionToPoll]
@@ -34,14 +39,28 @@ class VerificationPollingProcessService @Inject() () extends Logging {
       s"[VerificationPollingProcessService][process] Calling F6 - Verification Polling Process for ${verificationSubmissions.size} submissions"
     )
 
-    /*
-     * TODO:
-     * Implement F6 - Verification Polling Process here.
-     *
-     * Expected next step:
-     * For each verification submission, call the verification polling logic.
-     */
+    Future
+      .traverse(verificationSubmissions) { submission =>
+        val submissionId = submission.submissionId.toString
 
-    Future.unit
+        (for {
+          session <- submissionService.syncChrisSessionFromPollingGovTalkStatus(
+                       instanceId = submission.instanceId,
+                       submissionId = submissionId
+                     )
+          _       <- submissionService.pollSubmissionAndUpdateGovTalkStatus(
+                       submissionId = submissionId,
+                       pollUrl = session.pollUrl,
+                       journey = Verification
+                     )
+        } yield ()).recover { case NonFatal(ex) =>
+          logger.error(
+            s"[VerificationPollingProcessService][process] Failed for verification submission: " +
+              s"instanceId=${submission.instanceId}, submissionId=${submission.submissionId}",
+            ex
+          )
+        }
+      }
+      .map(_ => ())
   }
 }

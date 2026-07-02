@@ -1289,6 +1289,70 @@ final class SubmissionServiceSpec extends SpecBase {
     }
   }
 
+  "syncChrisSessionFromPollingGovTalkStatus" - {
+
+    "must get polling GovTalk status, upsert Chris session, and return session data" in new Setup {
+      val instanceId = "instance-123"
+      val submissionId = "sub-123"
+      val correlation = "corr-123"
+      val pollUrl = "/poll/123"
+
+      val statusRecord = GovTalkStatusRecord(
+        userIdentifier = instanceId,
+        formResultID = submissionId,
+        correlationID = correlation,
+        formLock = "N",
+        createDate = Some(LocalDateTime.of(2025, 1, 1, 10, 0)),
+        endStateDate = None,
+        lastMessageDate = LocalDateTime.of(2025, 1, 1, 12, 30),
+        numPolls = 2,
+        pollInterval = 5,
+        protocolStatus = "dataPoll",
+        gatewayURL = pollUrl
+      )
+
+      val statusResponse =
+        GetGovTalkStatusResponse(
+          govtalk_status = Seq(statusRecord)
+        )
+
+      val expectedSession =
+        ChrisSubmissionSessionData(
+          submissionId = submissionId,
+          instanceId = instanceId,
+          correlationId = correlation,
+          lastMessageDate = Instant.parse("2025-01-01T12:30:00Z"),
+          numPolls = 2,
+          pollInterval = 5,
+          pollUrl = pollUrl,
+          govTalkStatus = Some(statusResponse)
+        )
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(statusResponse)))
+
+      when(chrisSubmissionSessionRepository.upsert(eqTo(expectedSession)))
+        .thenReturn(Future.unit)
+
+      service
+        .syncChrisSessionFromPollingGovTalkStatus(instanceId, submissionId)
+        .futureValue mustBe expectedSession
+
+      verify(formpProxyConnector).getGovTalkStatus(
+        eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+        eqTo(Polling)
+      )(any[HeaderCarrier])
+
+      verify(chrisSubmissionSessionRepository).upsert(eqTo(expectedSession))
+      verifyNoInteractions(chrisConnector)
+      verifyNoInteractions(emailConnector)
+    }
+  }
+
   "getSubmissionsToPoll" - {
 
     "must return submissions from FormpProxyConnector" in new Setup {

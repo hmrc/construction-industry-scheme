@@ -265,6 +265,43 @@ class SubmissionService @Inject() (
       _                  <- fetchAndStoreGovTalkStatus(session.instanceId, submissionId)
     } yield result
 
+  def syncChrisSessionFromPollingGovTalkStatus(
+    instanceId: String,
+    submissionId: String
+  )(implicit hc: HeaderCarrier): Future[ChrisSubmissionSessionData] =
+    getPollingGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId)).flatMap {
+      case Some(statusResponse) =>
+        statusResponse.govtalk_status.headOption match {
+          case Some(statusRecord) =>
+            val sessionData = ChrisSubmissionSessionData(
+              submissionId = submissionId,
+              instanceId = instanceId,
+              correlationId = statusRecord.correlationID,
+              lastMessageDate = statusRecord.lastMessageDate.toInstant(ZoneOffset.UTC),
+              numPolls = statusRecord.numPolls,
+              pollInterval = statusRecord.pollInterval,
+              pollUrl = statusRecord.gatewayURL,
+              govTalkStatus = Some(statusResponse)
+            )
+
+            chrisSubmissionSessionRepository.upsert(sessionData).map(_ => sessionData)
+
+          case None =>
+            Future.failed(
+              new RuntimeException(
+                s"No GovTalk status record found for instanceId: $instanceId, submissionId: $submissionId"
+              )
+            )
+        }
+
+      case None =>
+        Future.failed(
+          new RuntimeException(
+            s"No polling GovTalk status found for instanceId: $instanceId, submissionId: $submissionId"
+          )
+        )
+    }
+
   private def fetchAndStoreGovTalkStatus(instanceId: String, submissionId: String)(implicit
     hc: HeaderCarrier
   ): Future[Unit] =
