@@ -17,8 +17,9 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
-import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
-import uk.gov.hmrc.constructionindustryscheme.models.response.MonthlyReturnSubmissionToPoll
+import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetMonthlyReturnForEditResponse, MonthlyReturnSubmissionToPoll}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
@@ -55,19 +56,81 @@ class MonthlyReturnPollingProcessService @Inject() (
         s"submissionId=${submission.submissionId}"
     )
     for {
-      details <- monthlyReturnService.getMonthlyReturnForEdit(
-                   GetMonthlyReturnForEditRequest(
-                     submission.instanceId,
-                     submission.taxYear.toInt,
-                     submission.taxMonth.toInt,
-                     isAmendment = Some(false)
-                   )
-                 )
-
-      // TODO: At the moment above call is not used. But We will require getMonthlyReturnForEdit in DTR-5744
-      _       <- submissionService.processMonthlyReturnGovTalkStatusCheck(
-                   submission.instanceId,
-                   submission.submissionId.toString
-                 )
+      details      <- monthlyReturnService.getMonthlyReturnForEdit(
+                        GetMonthlyReturnForEditRequest(
+                          submission.instanceId,
+                          submission.taxYear.toInt,
+                          submission.taxMonth.toInt,
+                          isAmendment = Some(submission.amendment == "Y")
+                        )
+                      )
+      monthlyReturn = details.monthlyReturn.headOption
+                        .getOrElse(
+                          throw new RuntimeException(
+                            s"No monthly return found for instanceId=${submission.instanceId}"
+                          )
+                        )
+      sub           = details.submission.headOption
+                        .getOrElse(
+                          throw new RuntimeException(
+                            s"No submission found for instanceId=${submission.instanceId}"
+                          )
+                        )
+      gatewayUrl   <- submissionService.processMonthlyReturnGovTalkStatusCheck(
+                        submission.instanceId,
+                        submission.submissionId.toString
+                      )
+      pollResponse <- submissionService.pollSubmissionAndUpdateGovTalkStatus(
+                        submission.submissionId.toString,
+                        gatewayUrl,
+                        ChrisPollJourney.MonthlyReturn
+                      )
+      updateReq     = UpdateSubmissionRequest(
+                        instanceId = submission.instanceId,
+                        taxYear = monthlyReturn.taxYear,
+                        taxMonth = monthlyReturn.taxMonth,
+                        hmrcMarkGenerated = sub.hmrcMarkGenerated,
+                        submittableStatus = pollResponse.status.toString,
+                        amendment = monthlyReturn.amendment.getOrElse("N"),
+                        hmrcMarkGgis = pollResponse.irMarkReceived,
+                        submissionRequestDate = sub.submissionRequestDate,
+                        acceptedTime = pollResponse.acceptedTime,
+                        emailRecipient = sub.emailRecipient,
+                        agentId = sub.agentId,
+                        govTalkResponse = pollResponse.govTalkErrorStatus
+                      )
+      _            <- submissionService.updateSubmission(updateReq)
+      _            <- sendEmailIfRequired(
+                        pollResponse.status,
+                        sub.emailRecipient,
+                        monthlyReturn.taxMonth,
+                        monthlyReturn.taxYear,
+                        submission.submissionId.toString
+                      )
     } yield ()
+
+  private def sendEmailIfRequired(
+    status: SubmissionStatus,
+    emailRecipient: Option[String],
+    taxMonth: Int,
+    taxYear: Int,
+    submissionId: String
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    status match {
+      case SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR =>
+        emailRecipient match {
+          case Some(email) =>
+            submissionService.sendSuccessfulEmail(
+              submissionId,
+              SendSuccessEmailRequest(email, taxMonth.toString, taxYear.toString)
+            )
+          case None        =>
+            logger.warn(
+              s"[MonthlyReturnPollingProcessService][sendEmailIfRequired] No emailRecipient for submissionId=$submissionId, skipping email"
+            )
+            Future.unit
+        }
+      case _                                                     =>
+        Future.unit
+    }
 }
