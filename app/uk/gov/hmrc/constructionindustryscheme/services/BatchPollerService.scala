@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
+import uk.gov.hmrc.constructionindustryscheme.models.PollReportContent
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
@@ -25,7 +26,8 @@ import scala.util.control.NonFatal
 
 @Singleton
 class BatchPollerService @Inject() (
-  submissionService: SubmissionService
+  submissionService: SubmissionService,
+  generatePollReportService: GeneratePollReportService
 )(implicit ec: ExecutionContext)
     extends Logging {
 
@@ -33,18 +35,29 @@ class BatchPollerService @Inject() (
     logger.info("[BatchPollerService][run] Calling F1 - Get Submissions To Poll")
     submissionService
       .getSubmissionsToPoll()
-      .map { submissions =>
+      .flatMap { submissions =>
         logger.info(
           s"[BatchPollerService][run] GetBatchPollSubmissions returned " +
             s"verificationSubmissions=${submissions.verificationSubmissions.size}, " +
             s"monthlyReturnSubmissions=${submissions.monthlyReturnSubmissions.size}"
         )
 
-      // TODO:
-      // Future tickets:
-      // - If both lists are empty, call F8 - Generate Poll Report
-      // - If verificationSubmissions is non-empty, call F6 - Verification Polling Process
-      // - If monthlyReturnSubmissions is non-empty, call F2 - Monthly Return Polling Process
+        if (
+          submissions.verificationSubmissions.isEmpty &&
+          submissions.monthlyReturnSubmissions.isEmpty
+        ) {
+          generatePollReportService.generatePollReport(
+            Seq.empty[PollReportContent]
+          )
+        } else {
+          /*
+           * F6 and F2 will process the submissions.
+           *
+           * Their F9 PollReportContent results will eventually be combined
+           * and passed to GeneratePollReportService here.
+           */
+          Future.unit
+        }
       }
       .recover { case NonFatal(exception) =>
         logger.error(
