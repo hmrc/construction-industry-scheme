@@ -17,14 +17,17 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
+import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.MonthlyReturnSubmissionToPoll
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class MonthlyReturnPollingProcessService @Inject() () extends Logging {
+class MonthlyReturnPollingProcessService @Inject() (monthlyReturnService: MonthlyReturnService)(implicit
+  ec: ExecutionContext
+) extends Logging {
 
   def process(
     monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll]
@@ -41,7 +44,30 @@ class MonthlyReturnPollingProcessService @Inject() () extends Logging {
      * Expected next step:
      * For each monthly return submission, call the monthly return polling logic.
      */
-
-    Future.unit
+    Future
+      .traverse(monthlyReturnSubmissions)(processSubmission)
+      .map(_ => ())
   }
+
+  private def processSubmission(
+    submission: MonthlyReturnSubmissionToPoll
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    for {
+      details <- monthlyReturnService.getMonthlyReturnForEdit(
+                   GetMonthlyReturnForEditRequest(
+                     submission.instanceId,
+                     submission.taxYear.toInt,
+                     submission.taxMonth.toInt,
+                     isAmendment = Some(false)
+                   )
+                 )
+
+      _ = logger.info(
+            s"[MonthlyReturnPollingProcessService][processSubmission] " +
+              s"getMonthlyReturnForEdit called with " +
+              s"instanceId=${submission.instanceId}, " +
+              s"taxMonth=${submission.taxMonth}, " +
+              s"taxYear=${submission.taxYear}"
+          )
+    } yield ()
 }

@@ -25,7 +25,8 @@ import scala.util.control.NonFatal
 
 @Singleton
 class BatchPollerService @Inject() (
-  submissionService: SubmissionService
+  submissionService: SubmissionService,
+  monthlyReturnPollingProcessService: MonthlyReturnPollingProcessService
 )(implicit ec: ExecutionContext)
     extends Logging {
 
@@ -33,18 +34,24 @@ class BatchPollerService @Inject() (
     logger.info("[BatchPollerService][run] Calling F1 - Get Submissions To Poll")
     submissionService
       .getSubmissionsToPoll()
-      .map { submissions =>
+      .flatMap { submissions =>
         logger.info(
           s"[BatchPollerService][run] GetBatchPollSubmissions returned " +
             s"verificationSubmissions=${submissions.verificationSubmissions.size}, " +
             s"monthlyReturnSubmissions=${submissions.monthlyReturnSubmissions.size}"
         )
 
-      // TODO:
-      // Future tickets:
-      // - If both lists are empty, call F8 - Generate Poll Report
-      // - If verificationSubmissions is non-empty, call F6 - Verification Polling Process
-      // - If monthlyReturnSubmissions is non-empty, call F2 - Monthly Return Polling Process
+        // TODO:
+        // Future tickets:
+        // - If both lists are empty, call F8 - Generate Poll Report
+        // - If verificationSubmissions is non-empty, call F6 - Verification Polling Process
+        if (submissions.monthlyReturnSubmissions.nonEmpty) {
+          monthlyReturnPollingProcessService.process(
+            submissions.monthlyReturnSubmissions
+          )
+        } else {
+          Future.unit
+        }
       }
       .recover { case NonFatal(exception) =>
         logger.error(
