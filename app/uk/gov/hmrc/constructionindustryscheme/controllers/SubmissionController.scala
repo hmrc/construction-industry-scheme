@@ -27,6 +27,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceive
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, ChrisPollJourney, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkError, GovTalkErrorStatus, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHelper
 import uk.gov.hmrc.constructionindustryscheme.services.chris.{GovTalkErrorMapper, GovTalkErrorStatusClassifier}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.constructionindustryscheme.utils.{UriHelper, XmlToJsonConvertor, XmlValidator}
@@ -276,7 +277,7 @@ class SubmissionController @Inject() (
         )
     }
 
-    val employerRef = EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef)
+    val employerRef = resolveEmployerRef(csr.isAgent, csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef)
 
     submissionService
       .submitToChris(payload)
@@ -415,6 +416,21 @@ class SubmissionController @Inject() (
       "error" -> Json.obj("number" -> error.errorNumber, "type" -> error.errorType, "text" -> error.errorText)
     )
 
+  private def resolveEmployerRef(isAgent: Boolean, clientTaxOfficeNumber: String, clientTaxOfficeRef: String)(implicit
+    req: AuthenticatedRequest[_]
+  ): EmployerReference =
+    if (isAgent) EmployerReference(clientTaxOfficeNumber, clientTaxOfficeRef)
+    else {
+      val (ton, tor) = CisEnrolmentHelper
+        .extractTaxOfficeIdentifiers(req.enrolments)
+        .getOrElse(
+          throw new IllegalStateException(
+            "Missing CIS enrolment identifiers (TaxOfficeNumber/TaxOfficeReference) in HMRC-CIS-ORG"
+          )
+        )
+      EmployerReference(ton, tor)
+    }
+
   private def chrisResponseTimestamp(res: SubmissionResult): Instant =
     res.meta.gatewayTimestamp
       .flatMap(ts => Try(Instant.parse(ts)).toOption)
@@ -451,7 +467,7 @@ class SubmissionController @Inject() (
         logger.info(s"full chris xml envelope:${payload.envelope}")
     }
 
-    val employerRef = EmployerReference(cvr.clientTaxOfficeNumber, cvr.clientTaxOfficeRef)
+    val employerRef = resolveEmployerRef(cvr.isAgent, cvr.clientTaxOfficeNumber, cvr.clientTaxOfficeRef)
 
     submissionService
       .submitVerificationToChris(payload)
