@@ -25,33 +25,35 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class MonthlyReturnPollingProcessService @Inject() (monthlyReturnService: MonthlyReturnService)(implicit
+class MonthlyReturnPollingProcessService @Inject() (
+  monthlyReturnService: MonthlyReturnService,
+  submissionService: SubmissionService
+)(implicit
   ec: ExecutionContext
 ) extends Logging {
 
   def process(
     monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll]
-  )(implicit hc: HeaderCarrier): Future[Unit] = {
-
-    logger.info(
-      s"[MonthlyReturnPollingProcessService][process] Calling F2 - Monthly Return Polling Process for ${monthlyReturnSubmissions.size} submissions"
-    )
-
-    /*
-     * TODO:
-     * Implement F2 - Monthly Return Polling Process here.
-     *
-     * Expected next step:
-     * For each monthly return submission, call the monthly return polling logic.
-     */
+  )(implicit hc: HeaderCarrier): Future[Unit] =
     Future
-      .traverse(monthlyReturnSubmissions)(processSubmission)
+      .traverse(monthlyReturnSubmissions) { sub =>
+        processSubmission(sub).recover { case ex =>
+          logger.error(
+            s"[MonthlyReturnPollingProcessService][process] Failed for instanceId=${sub.instanceId}, submissionId=${sub.submissionId}",
+            ex
+          )
+        }
+      }
       .map(_ => ())
-  }
 
   private def processSubmission(
     submission: MonthlyReturnSubmissionToPoll
   )(implicit hc: HeaderCarrier): Future[Unit] =
+    logger.info(
+      s"[MonthlyReturnPollingProcessService][processSubmission] " +
+        s"instanceId=${submission.instanceId}, " +
+        s"submissionId=${submission.submissionId}"
+    )
     for {
       details <- monthlyReturnService.getMonthlyReturnForEdit(
                    GetMonthlyReturnForEditRequest(
@@ -62,12 +64,10 @@ class MonthlyReturnPollingProcessService @Inject() (monthlyReturnService: Monthl
                    )
                  )
 
-      _ = logger.info(
-            s"[MonthlyReturnPollingProcessService][processSubmission] " +
-              s"getMonthlyReturnForEdit called with " +
-              s"instanceId=${submission.instanceId}, " +
-              s"taxMonth=${submission.taxMonth}, " +
-              s"taxYear=${submission.taxYear}"
-          )
+      // TODO: At the moment above call is not used. But We will require getMonthlyReturnForEdit in DTR-5744
+      _       <- submissionService.processMonthlyReturnGovTalkStatusCheck(
+                   submission.instanceId,
+                   submission.submissionId.toString
+                 )
     } yield ()
 }
