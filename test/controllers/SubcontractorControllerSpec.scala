@@ -28,6 +28,7 @@ import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, stat
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
+import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorForDeleteResponse
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -44,7 +45,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
     new SubcontractorController(auth, subcontractorService, cc)
 
   val cisId             = "1"
-  val subbieResourceRef = 10
+  val subbieResourceRef = 10L
 
   "createAndUpdateSubcontractor" - {
 
@@ -205,6 +206,53 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
 
       status(result) mustBe BAD_GATEWAY
       (contentAsJson(result) \ "message").as[String] mustBe "get-subcontractorUTRs-failed"
+    }
+  }
+
+  "getSubcontractorDeleteStatus" - {
+
+    val url = s"/cis/subcontractor/$cisId/$subbieResourceRef/delete-status"
+
+    val mockResponse = GetSubcontractorForDeleteResponse(
+      subcontractorCanBeDeleted = true
+    )
+
+    "return OK and response json when service succeeds" in {
+      val service = mock[SubcontractorService]
+
+      when(
+        service.getSubcontractorDeleteStatus(
+          any[String],
+          any[Long]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(mockResponse))
+
+      val controller = mockController(service)
+
+      val request = FakeRequest(GET, url)
+      val result  = controller.getSubcontractorDeleteStatus(cisId, subbieResourceRef)(request)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.toJson(mockResponse)
+
+      verify(service).getSubcontractorDeleteStatus(eqTo(cisId), eqTo(subbieResourceRef))(any())
+    }
+
+    "return BadGateway when service fails" in {
+      val service = mock[SubcontractorService]
+
+      when(service.getSubcontractorDeleteStatus(eqTo(cisId), eqTo(subbieResourceRef))(any()))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val controller = mockController(service)
+
+      val request = FakeRequest(GET, url)
+      val result  = controller.getSubcontractorDeleteStatus(cisId, subbieResourceRef)(request)
+
+      status(result) mustBe BAD_GATEWAY
+      (contentAsJson(result) \ "message").as[String] mustBe "get-subcontractor-delete-status-failed"
+
+      verify(service).getSubcontractorDeleteStatus(eqTo(cisId), eqTo(subbieResourceRef))(any())
     }
   }
 

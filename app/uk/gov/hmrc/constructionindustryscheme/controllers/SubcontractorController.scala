@@ -61,4 +61,20 @@ class SubcontractorController @Inject() (
       }
   }
 
+  def getSubcontractorDeleteStatus(
+    cisId: String,
+    subbieResourceRef: Long
+  ): Action[AnyContent] = authorise.async { implicit request =>
+    subcontractorService
+      .getSubcontractorDeleteStatus(cisId, subbieResourceRef)
+      .map(response => Ok(Json.toJson(response)))
+      .recover { case ex =>
+        logger.error(
+          s"[getSubcontractorDeleteStatus] formp-proxy call failed (cisId=$cisId, subbieResourceRef=$subbieResourceRef)",
+          ex
+        )
+        BadGateway(Json.obj("message" -> "get-subcontractor-delete-status-failed"))
+      }
+  }
+
 }
