@@ -40,7 +40,7 @@ class ProcessVerificationResponseFromChrisRequestSpec extends PlaySpec {
             verified = Some("Y"),
             verificationNumber = Some("V123456"),
             taxTreatment = "NET",
-            verifiedDate = LocalDateTime.parse("2026-06-15T10:05:00")
+            verifiedDate = Some(LocalDateTime.parse("2026-06-15T10:05:00"))
           )
         )
       )
@@ -104,7 +104,7 @@ class ProcessVerificationResponseFromChrisRequestSpec extends PlaySpec {
             verified = Some("Y"),
             verificationNumber = Some("V123456"),
             taxTreatment = "NET",
-            verifiedDate = LocalDateTime.parse("2026-06-15T10:05:00")
+            verifiedDate = Some(LocalDateTime.parse("2026-06-15T10:05:00"))
           )
         )
       )
@@ -146,7 +146,7 @@ class ProcessVerificationResponseFromChrisRequestSpec extends PlaySpec {
             verified = None,
             verificationNumber = Some("V123456"),
             taxTreatment = "NET",
-            verifiedDate = LocalDateTime.parse("2026-06-15T10:05:00")
+            verifiedDate = Some(LocalDateTime.parse("2026-06-15T10:05:00"))
           )
         )
       )
