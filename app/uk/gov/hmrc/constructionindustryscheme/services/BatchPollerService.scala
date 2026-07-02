@@ -28,10 +28,10 @@ import scala.util.control.NonFatal
 class BatchPollerService @Inject() (
   submissionService: SubmissionService,
   generatePollReportService: GeneratePollReportService
-)(using ec: ExecutionContext)
+)(implicit ec: ExecutionContext)
     extends Logging {
 
-  def run()(using hc: HeaderCarrier): Future[Unit] = {
+  def run()(implicit hc: HeaderCarrier): Future[Unit] = {
     logger.info("[BatchPollerService][run] Calling F1 - Get Submissions To Poll")
     submissionService
       .getSubmissionsToPoll()
