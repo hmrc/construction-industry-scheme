@@ -135,7 +135,8 @@ final class GetSubcontractorListResponseSpec extends PlaySpec {
     }
 
     "fail to deserialize when subcontractors is missing" in {
-      Json.obj()
+      Json
+        .obj()
         .validate[GetSubcontractorListResponse]
         .isError mustBe true
     }
