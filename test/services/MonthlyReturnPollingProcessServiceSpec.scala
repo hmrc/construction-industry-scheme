@@ -24,7 +24,9 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, GetMonthlyReturnForEditResponse, MonthlyReturnSubmissionToPoll}
 import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnPollingProcessService, MonthlyReturnService, SubmissionService}
+import uk.gov.hmrc.http.HeaderCarrier
 
+import java.time.{LocalDateTime, ZoneId}
 import scala.concurrent.Future
 
 class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfterEach {
@@ -33,6 +35,8 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
   private val submissionService    = mock[SubmissionService]
 
   private val service = new MonthlyReturnPollingProcessService(monthlyReturnService, submissionService)
+
+  private val startTime = System.currentTimeMillis()
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -151,7 +155,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     "process" - {
 
       "must not interact with any service when there are no submissions" in {
-        service.process(Seq.empty).futureValue mustBe ()
+        service.process(Seq.empty, startTime).futureValue mustBe ()
 
         verifyNoInteractions(monthlyReturnService)
         verifyNoInteractions(submissionService)
@@ -173,7 +177,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         when(submissionService.updateSubmission(any())(any()))
           .thenReturn(Future.unit)
 
-        service.process(Seq(sub1, sub2)).futureValue mustBe ()
+        service.process(Seq(sub1, sub2), startTime).futureValue mustBe ()
 
         verify(monthlyReturnService, times(2)).getMonthlyReturnForEdit(any())(any())
       }
@@ -185,7 +189,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         setupHappyPath()
         val sub = makeSubmission(instanceId = "inst-99", taxYear = 2025, taxMonth = 6, amendment = "N")
 
-        service.process(Seq(sub)).futureValue
+        service.process(Seq(sub), startTime).futureValue
 
         verify(monthlyReturnService).getMonthlyReturnForEdit(
           eqTo(GetMonthlyReturnForEditRequest("inst-99", taxYear = 2025, taxMonth = 6, isAmendment = Some(false)))
@@ -196,7 +200,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         setupHappyPath()
         val sub = makeSubmission(instanceId = "inst-99", taxYear = 2025, taxMonth = 6, amendment = "Y")
 
-        service.process(Seq(sub)).futureValue
+        service.process(Seq(sub), startTime).futureValue
 
         verify(monthlyReturnService).getMonthlyReturnForEdit(
           eqTo(GetMonthlyReturnForEditRequest("inst-99", taxYear = 2025, taxMonth = 6, isAmendment = Some(true)))
@@ -206,7 +210,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       "must call processMonthlyReturnGovTalkStatusCheck with instanceId and submissionId" in {
         setupHappyPath()
 
-        service.process(Seq(makeSubmission())).futureValue
+        service.process(Seq(makeSubmission()), startTime).futureValue
 
         verify(submissionService).processMonthlyReturnGovTalkStatusCheck(
           eqTo(testInstanceId),
@@ -218,7 +222,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       "must call pollSubmissionAndUpdateGovTalkStatus with gatewayUrl and MonthlyReturn journey" in {
         setupHappyPath()
 
-        service.process(Seq(makeSubmission())).futureValue
+        service.process(Seq(makeSubmission()), startTime).futureValue
 
         verify(submissionService).pollSubmissionAndUpdateGovTalkStatus(
           eqTo(testSubmissionId.toString),
@@ -238,7 +242,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
         setupHappyPath(makeDetails(mr, dbSub), pollResp)
 
-        service.process(Seq(makeSubmission(taxYear = 2026, taxMonth = 4))).futureValue
+        service.process(Seq(makeSubmission(taxYear = 2026, taxMonth = 4)), startTime).futureValue
 
         verify(submissionService).updateSubmission(
           eqTo(
@@ -264,7 +268,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         val mr = makeMonthlyReturn(amendment = None)
         setupHappyPath(makeDetails(mr))
 
-        service.process(Seq(makeSubmission())).futureValue
+        service.process(Seq(makeSubmission()), startTime).futureValue
 
         verify(submissionService).updateSubmission(
           eqTo(
@@ -285,7 +289,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
           .thenReturn(Future.successful(makeDetails().copy(monthlyReturn = Seq.empty)))
 
-        service.process(Seq(makeSubmission())).futureValue mustBe ()
+        service.process(Seq(makeSubmission()), startTime).futureValue mustBe ()
 
         verify(submissionService, never).updateSubmission(any())(any())
       }
@@ -294,7 +298,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
           .thenReturn(Future.successful(makeDetails().copy(submission = Seq.empty)))
 
-        service.process(Seq(makeSubmission())).futureValue mustBe ()
+        service.process(Seq(makeSubmission()), startTime).futureValue mustBe ()
 
         verify(submissionService, never).updateSubmission(any())(any())
       }
@@ -307,7 +311,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         val mr    = makeMonthlyReturn(taxYear = 2026, taxMonth = 4)
         setupHappyPath(makeDetails(mr, dbSub), makePollResponse(SUBMITTED))
 
-        service.process(Seq(makeSubmission())).futureValue
+        service.process(Seq(makeSubmission()), startTime).futureValue
 
         verify(submissionService).sendSuccessfulEmail(
           eqTo(testSubmissionId.toString),
@@ -320,7 +324,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         val mr    = makeMonthlyReturn(taxYear = 2026, taxMonth = 7)
         setupHappyPath(makeDetails(mr, dbSub), makePollResponse(SUBMITTED_NO_RECEIPT))
 
-        service.process(Seq(makeSubmission(taxMonth = 7))).futureValue
+        service.process(Seq(makeSubmission(taxMonth = 7)), startTime).futureValue
 
         verify(submissionService).sendSuccessfulEmail(
           eqTo(testSubmissionId.toString),
@@ -333,7 +337,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         val mr    = makeMonthlyReturn(taxYear = 2026, taxMonth = 10)
         setupHappyPath(makeDetails(mr, dbSub), makePollResponse(DEPARTMENTAL_ERROR))
 
-        service.process(Seq(makeSubmission(taxMonth = 10))).futureValue
+        service.process(Seq(makeSubmission(taxMonth = 10)), startTime).futureValue
 
         verify(submissionService).sendSuccessfulEmail(
           eqTo(testSubmissionId.toString),
@@ -344,7 +348,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       "must not send email when status is ACCEPTED (AC2)" in {
         setupHappyPath(pollResponse = makePollResponse(ACCEPTED))
 
-        service.process(Seq(makeSubmission())).futureValue
+        service.process(Seq(makeSubmission()), startTime).futureValue
 
         verify(submissionService, never).sendSuccessfulEmail(any(), any())(any())
       }
@@ -352,7 +356,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       "must not send email when status is STARTED (AC8)" in {
         setupHappyPath(pollResponse = makePollResponse(STARTED))
 
-        service.process(Seq(makeSubmission())).futureValue
+        service.process(Seq(makeSubmission()), startTime).futureValue
 
         verify(submissionService, never).sendSuccessfulEmail(any(), any())(any())
       }
@@ -360,7 +364,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       "must not send email when status is FATAL_ERROR (AC9)" in {
         setupHappyPath(pollResponse = makePollResponse(FATAL_ERROR))
 
-        service.process(Seq(makeSubmission())).futureValue
+        service.process(Seq(makeSubmission()), startTime).futureValue
 
         verify(submissionService, never).sendSuccessfulEmail(any(), any())(any())
       }
@@ -369,7 +373,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         val dbSub = makeDbSubmission(emailRecipient = None)
         setupHappyPath(makeDetails(dbSubmission = dbSub), makePollResponse(SUBMITTED))
 
-        service.process(Seq(makeSubmission())).futureValue
+        service.process(Seq(makeSubmission()), startTime).futureValue
 
         verify(submissionService, never).sendSuccessfulEmail(any(), any())(any())
       }
@@ -388,7 +392,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         s"must set submittableStatus to '$expectedStatusString' in UpdateSubmissionRequest" in {
           setupHappyPath(pollResponse = makePollResponse(status))
 
-          service.process(Seq(makeSubmission())).futureValue
+          service.process(Seq(makeSubmission()), startTime).futureValue
 
           verify(submissionService).updateSubmission(
             eqTo(
@@ -405,6 +409,69 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           )(any())
         }
       }
+    }
+
+    "must log warning when submission has been polling for more than 24 hours" in {
+      val submission = MonthlyReturnSubmissionToPoll(
+        submissionId = 100,
+        submissionType = "Original",
+        status = "Started",
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AZ123",
+        taxYear = 2026,
+        taxMonth = 4,
+        instanceId = "1",
+        agentId = None,
+        amendment = "N"
+      )
+
+      val oldSubmissionRequestDate = LocalDateTime.now(ZoneId.of("Europe/London")).minusHours(25)
+
+      val response = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq(makeMonthlyReturn(testTaxYear, testTaxMonth, Some("N"))),
+        subcontractors = Seq.empty,
+        monthlyReturnItems = Seq.empty,
+        submission = Seq(
+          Submission(
+            submissionId = 100,
+            submissionType = "Original",
+            activeObjectId = None,
+            status = None,
+            hmrcMarkGenerated = None,
+            hmrcMarkGgis = None,
+            emailRecipient = None,
+            acceptedTime = None,
+            createDate = None,
+            lastUpdate = None,
+            schemeId = 1,
+            agentId = None,
+            l_Migrated = None,
+            submissionRequestDate = Some(oldSubmissionRequestDate),
+            govTalkErrorCode = None,
+            govTalkErrorType = None,
+            govTalkErrorMessage = None
+          )
+        )
+      )
+
+      when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
+        .thenReturn(Future.successful(response))
+
+      when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
+        .thenReturn(Future.successful(gatewayUrl))
+      when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any()))
+        .thenReturn(Future.successful(makePollResponse(ACCEPTED)))
+      when(submissionService.updateSubmission(any())(any()))
+        .thenReturn(Future.unit)
+
+      service.process(Seq(submission), System.currentTimeMillis()).futureValue mustBe ()
+
+      verify(submissionService).processMonthlyReturnGovTalkStatusCheck(
+        any(),
+        any(),
+        any()
+      )(any[HeaderCarrier])
     }
   }
 }

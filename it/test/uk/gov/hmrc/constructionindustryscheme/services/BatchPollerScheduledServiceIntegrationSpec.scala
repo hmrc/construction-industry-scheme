@@ -73,11 +73,11 @@ class BatchPollerScheduledServiceIntegrationSpec
       repository.isLocked(lockId, otherOwner).futureValue shouldBe true
       lockDocFor(lockId).map(_.owner)                     shouldBe Some(otherOwner)
 
-      verify(batchPollerService, never()).run()(any[HeaderCarrier])
+      verify(batchPollerService, never()).run(any())(any[HeaderCarrier])
     }
 
     "acquire the lock and run when no other instance holds it" in {
-      when(batchPollerService.run()(any[HeaderCarrier])).thenReturn(Future.unit)
+      when(batchPollerService.run(any())(any[HeaderCarrier])).thenReturn(Future.unit)
 
       lockDocFor(lockId) shouldBe None
 
@@ -86,7 +86,7 @@ class BatchPollerScheduledServiceIntegrationSpec
       // a lock has been created for the job (held/disowned to expire naturally, not released)
       lockDocFor(lockId) shouldBe defined
 
-      verify(batchPollerService).run()(any[HeaderCarrier])
+      verify(batchPollerService).run(any())(any[HeaderCarrier])
     }
   }
 }

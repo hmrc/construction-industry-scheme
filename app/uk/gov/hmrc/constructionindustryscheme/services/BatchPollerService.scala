@@ -29,7 +29,7 @@ class BatchPollerService @Inject() (
 )(implicit ec: ExecutionContext)
     extends Logging {
 
-  def run()(implicit hc: HeaderCarrier): Future[Unit] = {
+  def run(startTime: Long)(implicit hc: HeaderCarrier): Future[Unit] = {
     logger.info("[BatchPollerService][run] Calling F1 - Get Submissions To Poll")
     submissionService
       .getSubmissionsToPoll()
@@ -46,7 +46,8 @@ class BatchPollerService @Inject() (
         // - If verificationSubmissions is non-empty, call F6 - Verification Polling Process
         if (submissions.monthlyReturnSubmissions.nonEmpty) {
           monthlyReturnPollingProcessService.process(
-            submissions.monthlyReturnSubmissions
+            submissions.monthlyReturnSubmissions,
+            startTime
           )
         } else {
           Future.unit

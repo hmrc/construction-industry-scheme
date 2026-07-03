@@ -32,15 +32,17 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
 
   "BatchPollerService run" - {
 
+    val startTime = System.currentTimeMillis()
+
     "must call SubmissionService and complete successfully when submissions are returned" in new Setup {
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(nonEmptyResponse))
-      when(mockMonthlyReturnPollingProcessService.process(any())(any())).thenReturn(Future.unit)
+      when(mockMonthlyReturnPollingProcessService.process(any(), any())(any())).thenReturn(Future.unit)
 
-      service.run().futureValue mustBe ()
+      service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
-      verify(mockMonthlyReturnPollingProcessService).process(any())(any())
+      verify(mockMonthlyReturnPollingProcessService).process(any(), any())(any())
       verifyNoMoreInteractions(mockSubmissionService)
     }
 
@@ -48,7 +50,7 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(emptyResponse))
 
-      service.run().futureValue mustBe ()
+      service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
       verifyNoMoreInteractions(mockSubmissionService)
@@ -59,7 +61,7 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.failed(new RuntimeException("formp-proxy failed")))
 
-      service.run().futureValue mustBe ()
+      service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
       verifyNoMoreInteractions(mockSubmissionService)
