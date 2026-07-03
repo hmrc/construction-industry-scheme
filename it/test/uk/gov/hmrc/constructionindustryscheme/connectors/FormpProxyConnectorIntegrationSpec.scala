@@ -2163,4 +2163,113 @@ class FormpProxyConnectorIntegrationSpec
 
     }
   }
+
+  "FormpProxyConnector getSubcontractorList" should {
+
+    val cisId = "cis-123"
+
+    "GET /formp-proxy/cis/subcontractors/:cisId and return the full subcontractor list" in {
+      val responseJson = Json.parse(
+        """
+          |{
+          |  "subcontractors": [
+          |    {
+          |      "subcontractorId": 999,
+          |      "subbieResourceRef": 456,
+          |      "utr": "1234567890",
+          |      "pageVisited": 1,
+          |      "firstName": "John",
+          |      "secondName": "Q",
+          |      "surname": "Smith",
+          |      "tradingName": "John Smith Trading",
+          |      "subcontractorType": "soletrader",
+          |      "addressLine1": "1 Test Street",
+          |      "addressLine2": "Flat 2",
+          |      "addressLine3": "London",
+          |      "country": "United Kingdom",
+          |      "postcode": "AA1 1AA",
+          |      "emailAddress": "subcontractor@example.com",
+          |      "phoneNumber": "01234567890",
+          |      "mobilePhoneNumber": "07123456789",
+          |      "worksReferenceNumber": "WR-123",
+          |      "matched": "Y",
+          |      "autoVerified": "N",
+          |      "verified": "Y",
+          |      "verificationNumber": "V123456",
+          |      "taxTreatment": "NET",
+          |      "verificationDate": "2026-06-15T10:05:00",
+          |      "version": 1,
+          |      "updatedTaxTreatment": "NET",
+          |      "lastMonthlyReturnDate": "2026-05-15T10:05:00",
+          |      "pendingVerifications": 0
+          |    }
+          |  ]
+          |}
+          |""".stripMargin
+      )
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val response = connector.getSubcontractorList(cisId).futureValue
+
+      response.subcontractors must have size 1
+
+      val subcontractor = response.subcontractors.head
+      subcontractor.subcontractorId mustBe 999L
+      subcontractor.subbieResourceRef mustBe Some(456L)
+      subcontractor.utr mustBe Some("1234567890")
+      subcontractor.firstName mustBe Some("John")
+      subcontractor.surname mustBe Some("Smith")
+      subcontractor.subcontractorType mustBe Some("soletrader")
+      subcontractor.taxTreatment mustBe Some("NET")
+      subcontractor.verificationNumber mustBe Some("V123456")
+      subcontractor.displayName mustBe "John Smith"
+
+      verify(
+        getRequestedFor(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+      )
+    }
+
+    "returns an empty subcontractor list when FormP returns no subcontractors" in {
+      val responseJson = Json.obj(
+        "subcontractors" -> Json.arr()
+      )
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val response = connector.getSubcontractorList(cisId).futureValue
+
+      response.subcontractors mustBe empty
+    }
+
+    "fails when FormP returns a non-2xx response" in {
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .willReturn(
+            aResponse()
+              .withStatus(502)
+              .withBody("""{"message":"bad gateway"}""")
+          )
+      )
+
+      val ex = connector.getSubcontractorList(cisId).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 502
+    }
+  }
 }

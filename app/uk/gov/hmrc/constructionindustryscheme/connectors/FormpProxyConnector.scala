@@ -411,4 +411,11 @@ class FormpProxyConnector @Inject() (
         if (response.status == NO_CONTENT) Future.unit
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
+
+  def getSubcontractorList(
+    cisId: String
+  )(implicit hc: HeaderCarrier): Future[GetSubcontractorListResponse] =
+    http
+      .get(url"$base/cis/subcontractors/$cisId")
+      .execute[GetSubcontractorListResponse]
 }

@@ -29,6 +29,8 @@ import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
+import uk.gov.hmrc.constructionindustryscheme.models.Subcontractor
+import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorListResponse
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.Future
@@ -205,6 +207,97 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
 
       status(result) mustBe BAD_GATEWAY
       (contentAsJson(result) \ "message").as[String] mustBe "get-subcontractorUTRs-failed"
+    }
+  }
+
+  "getSubcontractorList" - {
+
+    val cisId                   = "cis-123"
+    val getSubcontractorListUrl = s"/subcontractors/$cisId"
+
+    val subcontractor =
+      Json
+        .obj(
+          "subcontractorId"    -> 999L,
+          "subbieResourceRef"  -> 456L,
+          "utr"                -> "1234567890",
+          "firstName"          -> "John",
+          "secondName"         -> "Q",
+          "surname"            -> "Smith",
+          "tradingName"        -> "John Smith Trading",
+          "subcontractorType"  -> "soletrader",
+          "country"            -> "United Kingdom",
+          "postcode"           -> "AA1 1AA",
+          "taxTreatment"       -> "NET",
+          "verificationNumber" -> "V123456",
+          "verified"           -> "Y",
+          "matched"            -> "Y",
+          "version"            -> 1
+        )
+        .as[Subcontractor]
+
+    val response = GetSubcontractorListResponse(
+      subcontractors = List(subcontractor)
+    )
+
+    "returns 200 with the subcontractor list when the service succeeds" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      when(service.getSubcontractorList(eqTo(cisId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      val req: FakeRequest[AnyContentAsEmpty.type] =
+        FakeRequest(GET, getSubcontractorListUrl)
+
+      val result = controller.getSubcontractorList(cisId)(req)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.toJson(response)
+
+      (contentAsJson(result) \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 999L
+      (contentAsJson(result) \ "subcontractors")(0).\("utr").as[String] mustBe "1234567890"
+      (contentAsJson(result) \ "subcontractors")(0).\("displayName").as[String] mustBe "John Smith"
+
+      verify(service).getSubcontractorList(eqTo(cisId))(any[HeaderCarrier])
+    }
+
+    "returns 200 with an empty subcontractor list when no subcontractors exist" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      val response = GetSubcontractorListResponse(List.empty)
+
+      when(service.getSubcontractorList(eqTo(cisId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      val req: FakeRequest[AnyContentAsEmpty.type] =
+        FakeRequest(GET, getSubcontractorListUrl)
+
+      val result = controller.getSubcontractorList(cisId)(req)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.obj("subcontractors" -> Json.arr())
+
+      verify(service).getSubcontractorList(eqTo(cisId))(any[HeaderCarrier])
+    }
+
+    "returns 502 when the service fails" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      when(service.getSubcontractorList(eqTo(cisId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("formp down")))
+
+      val req: FakeRequest[AnyContentAsEmpty.type] =
+        FakeRequest(GET, getSubcontractorListUrl)
+
+      val result = controller.getSubcontractorList(cisId)(req)
+
+      status(result) mustBe BAD_GATEWAY
+      (contentAsJson(result) \ "message").as[String] mustBe "get-subcontractor-list-failed"
+
+      verify(service).getSubcontractorList(eqTo(cisId))(any[HeaderCarrier])
     }
   }
 
