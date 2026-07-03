@@ -350,6 +350,11 @@ class FormpProxyConnector @Inject() (
       .withBody(Json.toJson(request))
       .execute[CreateSubmissionAndUpdateVerificationsResponse]
 
+  def getBatchPollSubmissions()(implicit hc: HeaderCarrier): Future[GetBatchPollSubmissionsResponse] =
+    http
+      .get(url"$base/cis/batchpoll-submissions")
+      .execute[GetBatchPollSubmissionsResponse]
+
   def processVerificationResponseFromChris(
     request: ProcessVerificationResponseFromChrisRequest
   )(implicit hc: HeaderCarrier): Future[Unit] =
