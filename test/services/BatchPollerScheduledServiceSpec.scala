@@ -37,9 +37,9 @@ class BatchPollerScheduledServiceSpec extends SpecBase with BeforeAndAfterEach {
   private val appConfig          = mock[AppConfig]
   private val batchPollerService = mock[BatchPollerService]
 
-  private val now = Instant.parse("2026-06-03T00:00:00Z")
+  private val now = Instant.parse("2026-06-29T12:00:00Z")
 
-  override def beforeEach(): Unit = {
+  override protected def beforeEach(): Unit = {
     super.beforeEach()
     reset(lockRepository, timestampSupport, appConfig, batchPollerService)
     when(appConfig.batchPollerJobLockTtl).thenReturn(30.minutes)
@@ -78,8 +78,7 @@ class BatchPollerScheduledServiceSpec extends SpecBase with BeforeAndAfterEach {
     "skip the job without failing when the lock is held by another instance" in {
       when(lockRepository.takeLock(any(), any(), any())).thenReturn(Future.successful(None))
 
-      service.invoke.futureValue // completes without failing
-
+      service.invoke.futureValue
       verify(lockRepository).takeLock(any(), any(), any())
       verify(lockRepository, never()).disownLock(any(), any(), any())
       verify(batchPollerService, never())

@@ -23,38 +23,86 @@ import java.time.format.DateTimeFormatter
 
 object PollReportFormatter {
 
-  private val SectionSeparator: String =
-    "=========================================================================================================================================================================="
+  private case class Column(
+    heading: String,
+    width: Int,
+    value: PollReportContent => String
+  )
 
-  private val ReportTitle: String =
-    "BATCH POLLING RESULTS FOR"
-
-  private val Header: String =
-    "    USER            SUBMISSION_TYPE    SUBMISSION_ID        GOVTALK_REQUEST_STATUS    CURRENT_RETURN_STATUS    EMP REFERENCE    CORRELATION ID                   AGENT ID"
-
-  private val Underline: String =
-    "    ----------------------------------------------------------------------------------------------------------------------------------------------------------------------"
-
-  private val FatalErrorStatus: String =
-    "FATAL ERROR"
-
-  private val Ellipsis: String =
-    "..."
+  private val Indent: String =
+    "    "
 
   private val ColumnSeparator: String =
     " "
 
-  private val ReportDateTimeFormatter: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("dd-MM-yy HH:mm:ss")
+  private val Ellipsis: String =
+    "..."
 
-  private val UserWidth                 = 15
-  private val SubmissionTypeWidth       = 18
-  private val SubmissionIdWidth         = 20
-  private val GovTalkRequestStatusWidth = 25
-  private val CurrentReturnStatusWidth  = 24
-  private val EmployerReferenceWidth    = 16
-  private val CorrelationIdWidth        = 32
-  private val AgentIdWidth              = 8
+  private val SectionSeparator: String =
+    "=========================================================================================================================================================================="
+
+  private val Underline: String =
+    "    ----------------------------------------------------------------------------------------------------------------------------------------------------------------------"
+
+  private val DateTimeFormatter: DateTimeFormatter =
+    java.time.format.DateTimeFormatter.ofPattern(
+      "dd-MM-yy HH:mm:ss"
+    )
+
+  private val Columns: Seq[Column] =
+    Seq(
+      Column(
+        heading = "USER",
+        width = 15,
+        value = _.user
+      ),
+      Column(
+        heading = "SUBMISSION_TYPE",
+        width = 18,
+        value = _.submissionType
+      ),
+      Column(
+        heading = "SUBMISSION_ID",
+        width = 20,
+        value = _.submissionId
+      ),
+      Column(
+        heading = "GOVTALK_REQUEST_STATUS",
+        width = 25,
+        value = _.govTalkRequestStatus
+      ),
+      Column(
+        heading = "CURRENT_RETURN_STATUS",
+        width = 24,
+        value = _.currentReturnStatus
+      ),
+      Column(
+        heading = "EMP REFERENCE",
+        width = 16,
+        value = _.employerReference
+      ),
+      Column(
+        heading = "CORRELATION ID",
+        width = 32,
+        value = _.correlationId
+      ),
+      Column(
+        heading = "AGENT ID",
+        width = 8,
+        value = _.agentId
+      )
+    )
+
+  private val Header: String =
+    Indent +
+      Columns
+        .map { column =>
+          formatField(
+            column.heading,
+            column.width
+          )
+        }
+        .mkString(ColumnSeparator)
 
   def format(
     reportContent: Seq[PollReportContent],
@@ -67,7 +115,7 @@ object PollReportFormatter {
     (
       Seq(
         SectionSeparator,
-        s"$ReportTitle ${generatedAt.format(ReportDateTimeFormatter)}",
+        s"BATCH POLLING RESULTS FOR ${generatedAt.format(DateTimeFormatter)}",
         Header,
         Underline
       ) ++
@@ -82,44 +130,16 @@ object PollReportFormatter {
 
   private def formatRow(
     content: PollReportContent
-  ): String = {
-
-    val currentReturnStatus =
-      if (content.recoverableError) {
-        FatalErrorStatus
-      } else {
-        content.currentReturnStatus
-      }
-
-    val fields =
-      Seq(
-        formatField(content.user, UserWidth),
-        formatField(content.submissionType, SubmissionTypeWidth),
-        formatField(content.submissionId, SubmissionIdWidth),
-        formatField(
-          content.govTalkRequestStatus,
-          GovTalkRequestStatusWidth
-        ),
-        formatField(
-          currentReturnStatus,
-          CurrentReturnStatusWidth
-        ),
-        formatField(
-          content.employerReference,
-          EmployerReferenceWidth
-        ),
-        formatField(
-          content.correlationId,
-          CorrelationIdWidth
-        ),
-        formatField(
-          content.agentId,
-          AgentIdWidth
-        )
-      )
-
-    "    " + fields.mkString(ColumnSeparator)
-  }
+  ): String =
+    Indent +
+      Columns
+        .map { column =>
+          formatField(
+            column.value(content),
+            column.width
+          )
+        }
+        .mkString(ColumnSeparator)
 
   private def formatField(
     value: String,
@@ -129,13 +149,13 @@ object PollReportFormatter {
     val safeValue =
       Option(value).getOrElse("")
 
-    val formattedValue =
+    val displayValue =
       if (safeValue.length > width) {
         safeValue.take(width - Ellipsis.length) + Ellipsis
       } else {
         safeValue
       }
 
-    formattedValue.padTo(width, ' ')
+    displayValue.padTo(width, ' ')
   }
 }

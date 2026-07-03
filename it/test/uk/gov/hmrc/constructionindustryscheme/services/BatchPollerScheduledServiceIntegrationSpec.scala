@@ -22,6 +22,7 @@ import org.mockito.Mockito.{doReturn, never, verify}
 import org.mongodb.scala.model.Filters
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers.shouldBe
+import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.http.HeaderCarrier
@@ -40,29 +41,29 @@ class BatchPollerScheduledServiceIntegrationSpec
   private lazy val lockApp =
     GuiceApplicationBuilder()
       .configure("schedules.batch-poller-job.enabled" -> false)
-      .overrides(play.api.inject.bind[MongoComponent].toInstance(mongoComponent))
+      .overrides(bind[MongoComponent].toInstance(mongoComponent))
       .build()
 
   override protected val repository: MongoLockRepository = lockApp.injector.instanceOf[MongoLockRepository]
 
   private val appConfig = lockApp.injector.instanceOf[AppConfig]
 
-  private val lockId = "batch-poller-job"
-
   private val batchPollerService = mock[BatchPollerService]
 
   private val service =
     new BatchPollerScheduledService(repository, new CurrentTimestampSupport(), appConfig, batchPollerService)
+
+  private val lockId =
+    "batch-poller-job"
 
   private def lockDocFor(id: String): Option[Lock] =
     repository.collection.find(Filters.equal("_id", id)).headOption().futureValue
 
   "BatchPollerScheduledService.invoke" - {
 
-    "skip the job, leaving the existing lock untouched, when another instance already holds the lock" in {
+    "skip the job and retain the existing lock when another instance holds it" in {
       val otherOwner = "another-instance"
 
-      // another instance takes the lock first
       repository.takeLock(lockId, otherOwner, appConfig.batchPollerJobLockTtl).futureValue mustBe defined
       repository.isLocked(lockId, otherOwner).futureValue shouldBe true
 
@@ -71,7 +72,7 @@ class BatchPollerScheduledServiceIntegrationSpec
       // the lock is still owned by the other instance - our service did not acquire or steal it
       repository.isLocked(lockId, otherOwner).futureValue shouldBe true
 
-      lockDocFor(lockId)map(_.owner) shouldBe Some(otherOwner)
+      lockDocFor(lockId).map(_.owner) shouldBe Some(otherOwner)
 
       verify(batchPollerService, never()).run()(any[HeaderCarrier])
     }
@@ -86,7 +87,7 @@ class BatchPollerScheduledServiceIntegrationSpec
 
       service.invoke.futureValue
 
-      // a lock has been created for the job (held/disowned to expire naturally, not released)
+      // The lock is disowned and remains until natural expiry.
       lockDocFor(lockId) shouldBe defined
 
       verify(batchPollerService).run()(any[HeaderCarrier])

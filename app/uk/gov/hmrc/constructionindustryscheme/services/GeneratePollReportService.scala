@@ -39,10 +39,6 @@ class GeneratePollReportService @Inject() () extends Logging {
     generatedAt: LocalDateTime
   ): Future[Unit] = {
 
-    logger.info(
-      "[GeneratePollReportService][generatePollReport] Calling F8 - Generate Poll Report"
-    )
-
     val report =
       PollReportFormatter.format(
         reportContent = reportContent,

@@ -24,6 +24,31 @@ case class PollReportContent(
   currentReturnStatus: String,
   employerReference: String,
   correlationId: String,
-  agentId: String,
-  recoverableError: Boolean = false
+  agentId: String
 )
+
+object PollReportContent {
+
+  val FatalErrorStatus: String =
+    "FATAL ERROR"
+
+  def forRecoverableError(
+    user: String,
+    submissionType: String,
+    submissionId: String,
+    govTalkRequestStatus: String,
+    employerReference: String,
+    correlationId: String,
+    agentId: String
+  ): PollReportContent =
+    PollReportContent(
+      user = user,
+      submissionType = submissionType,
+      submissionId = submissionId,
+      govTalkRequestStatus = govTalkRequestStatus,
+      currentReturnStatus = FatalErrorStatus,
+      employerReference = employerReference,
+      correlationId = correlationId,
+      agentId = agentId
+    )
+}

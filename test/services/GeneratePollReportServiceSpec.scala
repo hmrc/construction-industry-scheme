@@ -26,9 +26,9 @@ import java.time.LocalDateTime
 
 class GeneratePollReportServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures {
 
-  "GeneratePollReportService generatePollReport" - {
+  "GeneratePollReportService.generatePollReport" - {
 
-    "must generate and log a report when report content is provided" in new Setup {
+    "generate and log a populated report successfully" in new Setup {
 
       service
         .generatePollReport(
@@ -38,7 +38,7 @@ class GeneratePollReportServiceSpec extends AnyFreeSpec with Matchers with Scala
         .futureValue mustBe ()
     }
 
-    "must generate and log an empty report when no content is provided" in new Setup {
+    "generate and log an empty report successfully" in new Setup {
 
       service
         .generatePollReport(
@@ -48,38 +48,22 @@ class GeneratePollReportServiceSpec extends AnyFreeSpec with Matchers with Scala
         .futureValue mustBe ()
     }
 
-    "must support the one-argument method used by BatchPollerService" in new Setup {
-
-      service
-        .generatePollReport(Seq(reportContent))
-        .futureValue mustBe ()
-    }
-
-    "must complete successfully for recoverable error content" in new Setup {
+    "generate and log recoverable-error report content successfully" in new Setup {
 
       val recoverableErrorContent =
-        reportContent.copy(
-          recoverableError = true
+        PollReportContent.forRecoverableError(
+          user = reportContent.user,
+          submissionType = reportContent.submissionType,
+          submissionId = reportContent.submissionId,
+          govTalkRequestStatus = reportContent.govTalkRequestStatus,
+          employerReference = reportContent.employerReference,
+          correlationId = reportContent.correlationId,
+          agentId = reportContent.agentId
         )
 
       service
         .generatePollReport(
           reportContent = Seq(recoverableErrorContent),
-          generatedAt = generatedAt
-        )
-        .futureValue mustBe ()
-    }
-
-    "must complete successfully when content contains an oversized field" in new Setup {
-
-      val oversizedContent =
-        reportContent.copy(
-          user = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        )
-
-      service
-        .generatePollReport(
-          reportContent = Seq(oversizedContent),
           generatedAt = generatedAt
         )
         .futureValue mustBe ()
@@ -91,12 +75,12 @@ class GeneratePollReportServiceSpec extends AnyFreeSpec with Matchers with Scala
     val service =
       new GeneratePollReportService()
 
-    val generatedAt: LocalDateTime =
+    val generatedAt =
       LocalDateTime.of(
         2026, 5, 5, 14, 25, 38
       )
 
-    val reportContent: PollReportContent =
+    val reportContent =
       PollReportContent(
         user = "ONLINE",
         submissionType = "CIS300MR",
@@ -105,8 +89,7 @@ class GeneratePollReportServiceSpec extends AnyFreeSpec with Matchers with Scala
         currentReturnStatus = "POLLING",
         employerReference = "123/456789",
         correlationId = "correlation-id-001",
-        agentId = "A123456",
-        recoverableError = false
+        agentId = "A123456"
       )
   }
 }

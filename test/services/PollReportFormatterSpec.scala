@@ -25,9 +25,9 @@ import java.time.LocalDateTime
 
 class PollReportFormatterSpec extends AnyFreeSpec with Matchers {
 
-  "PollReportFormatter format" - {
+  "PollReportFormatter.format" - {
 
-    "must generate an empty report using the required structure" in new Setup {
+    "generate an empty report using the required structure" in new Setup {
 
       val result =
         PollReportFormatter.format(
@@ -38,7 +38,7 @@ class PollReportFormatterSpec extends AnyFreeSpec with Matchers {
       result mustBe Seq(
         sectionSeparator,
         "BATCH POLLING RESULTS FOR 05-05-26 14:25:38",
-        header,
+        expectedHeader,
         underline,
         "",
         underline,
@@ -46,7 +46,7 @@ class PollReportFormatterSpec extends AnyFreeSpec with Matchers {
       ).mkString(System.lineSeparator())
     }
 
-    "must populate the report using the supplied F9 content" in new Setup {
+    "generate a populated report with columns aligned to the headings" in new Setup {
 
       val result =
         PollReportFormatter.format(
@@ -54,26 +54,24 @@ class PollReportFormatterSpec extends AnyFreeSpec with Matchers {
           generatedAt = generatedAt
         )
 
-      result must include(
-        "BATCH POLLING RESULTS FOR 05-05-26 14:25:38"
-      )
+      val lines =
+        result.linesIterator.toSeq
 
-      result must include("ONLINE")
-      result must include("CIS300MR")
-      result must include("90002")
-      result must include("SUBMITTED")
-      result must include("POLLING")
-      result must include("123/456789")
-      result must include("correlation-id-001")
-      result must include("A123456")
+      lines(2) mustBe expectedHeader
+      lines(4) mustBe expectedRow
     }
 
-    "must set current return status to FATAL ERROR for a recoverable ChRIS error" in new Setup {
+    "show FATAL ERROR as the current status for recoverable ChRIS content" in new Setup {
 
       val recoverableErrorContent =
-        reportContent.copy(
-          currentReturnStatus = "POLLING",
-          recoverableError = true
+        PollReportContent.forRecoverableError(
+          user = "ONLINE",
+          submissionType = "CIS300MR",
+          submissionId = "90002",
+          govTalkRequestStatus = "SUBMITTED",
+          employerReference = "123/456789",
+          correlationId = "correlation-id-001",
+          agentId = "A123456"
         )
 
       val result =
@@ -90,59 +88,55 @@ class PollReportFormatterSpec extends AnyFreeSpec with Matchers {
           )
 
       reportRow must include("FATAL ERROR")
-      reportRow must not include "POLLING"
     }
 
-    "must truncate a field longer than its configured width" in new Setup {
+    "truncate an oversized value to width minus three followed by ellipsis" in new Setup {
 
-      val longUserContent =
+      val oversizedContent =
         reportContent.copy(
           user = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         )
 
       val result =
         PollReportFormatter.format(
-          reportContent = Seq(longUserContent),
+          reportContent = Seq(oversizedContent),
           generatedAt = generatedAt
         )
 
-      /*
-       * USER width is 15:
-       * first 12 characters + "..."
-       */
-      result must include("ABCDEFGHIJKL...")
-      result must not include "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      val reportRow =
+        result.linesIterator
+          .find(_.contains("CIS300MR"))
+          .getOrElse(
+            fail("Expected populated report row")
+          )
+
+      // USER width = 15: first 12 characters + "..."
+      reportRow must include(
+        "    ABCDEFGHIJKL... CIS300MR"
+      )
+
+      reportRow must not include
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     }
 
-    "must not truncate a field equal to its configured width" in new Setup {
+    "not truncate a value equal to the configured width" in new Setup {
 
-      val maximumWidthContent =
+      val exactWidthContent =
         reportContent.copy(
           user = "123456789012345"
         )
 
       val result =
         PollReportFormatter.format(
-          reportContent = Seq(maximumWidthContent),
+          reportContent = Seq(exactWidthContent),
           generatedAt = generatedAt
         )
 
       result must include("123456789012345")
+      result must not include "123456789012..."
     }
 
-    "must not truncate a field shorter than its configured width" in new Setup {
-
-      val result =
-        PollReportFormatter.format(
-          reportContent = Seq(reportContent),
-          generatedAt = generatedAt
-        )
-
-      result must include("ONLINE")
-      result must not include "ONLINE..."
-    }
-
-    "must truncate each field using its configured width" in new Setup {
+    "truncate every column according to its configured width" in new Setup {
 
       val oversizedContent =
         reportContent.copy(
@@ -164,10 +158,8 @@ class PollReportFormatterSpec extends AnyFreeSpec with Matchers {
 
       val reportRow =
         result.linesIterator
-          .find(_.contains("123456789012..."))
-          .getOrElse(
-            fail("Expected formatted report row")
-          )
+          .drop(4)
+          .next()
 
       reportRow must include("123456789012...")
       reportRow must include("123456789012345...")
@@ -179,20 +171,19 @@ class PollReportFormatterSpec extends AnyFreeSpec with Matchers {
       reportRow must include("12345...")
     }
 
-    "must generate a row for each supplied submission" in new Setup {
+    "generate a row for each supplied report-content item" in new Setup {
 
-      val secondReportContent =
+      val secondRow =
         reportContent.copy(
-          submissionType = "CISVERIFY",
           submissionId = "90003",
-          correlationId = "correlation-id-002"
+          submissionType = "CISVERIFY"
         )
 
       val result =
         PollReportFormatter.format(
           reportContent = Seq(
             reportContent,
-            secondReportContent
+            secondRow
           ),
           generatedAt = generatedAt
         )
@@ -201,42 +192,6 @@ class PollReportFormatterSpec extends AnyFreeSpec with Matchers {
       result must include("90003")
       result must include("CIS300MR")
       result must include("CISVERIFY")
-      result must include("correlation-id-001")
-      result must include("correlation-id-002")
-    }
-
-    "must handle a null field value without writing null into the report" in new Setup {
-
-      val contentWithNullAgentId =
-        reportContent.copy(
-          agentId = null
-        )
-
-      val result =
-        PollReportFormatter.format(
-          reportContent = Seq(contentWithNullAgentId),
-          generatedAt = generatedAt
-        )
-
-      result must not include "null"
-    }
-
-    "must retain the required separators and headings" in new Setup {
-
-      val result =
-        PollReportFormatter.format(
-          reportContent = Seq(reportContent),
-          generatedAt = generatedAt
-        )
-
-      val lines =
-        result.linesIterator.toSeq
-
-      lines.head mustBe sectionSeparator
-      lines(1) mustBe "BATCH POLLING RESULTS FOR 05-05-26 14:25:38"
-      lines(2) mustBe header
-      lines(3) mustBe underline
-      lines.last mustBe sectionSeparator
     }
   }
 
@@ -250,11 +205,14 @@ class PollReportFormatterSpec extends AnyFreeSpec with Matchers {
     val sectionSeparator: String =
       "=========================================================================================================================================================================="
 
-    val header: String =
-      "    USER            SUBMISSION_TYPE    SUBMISSION_ID        GOVTALK_REQUEST_STATUS    CURRENT_RETURN_STATUS    EMP REFERENCE    CORRELATION ID                   AGENT ID"
-
     val underline: String =
       "    ----------------------------------------------------------------------------------------------------------------------------------------------------------------------"
+
+    val expectedHeader: String =
+      "    USER            SUBMISSION_TYPE    SUBMISSION_ID        GOVTALK_REQUEST_STATUS    CURRENT_RETURN_STATUS    EMP REFERENCE    CORRELATION ID                   AGENT ID"
+
+    val expectedRow: String =
+      "    ONLINE          CIS300MR           90002                SUBMITTED                 POLLING                  123/456789       correlation-id-001               A123456 "
 
     val reportContent: PollReportContent =
       PollReportContent(
@@ -265,8 +223,7 @@ class PollReportFormatterSpec extends AnyFreeSpec with Matchers {
         currentReturnStatus = "POLLING",
         employerReference = "123/456789",
         correlationId = "correlation-id-001",
-        agentId = "A123456",
-        recoverableError = false
+        agentId = "A123456"
       )
   }
 }

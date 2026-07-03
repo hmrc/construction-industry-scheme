@@ -32,7 +32,11 @@ class BatchPollerService @Inject() (
     extends Logging {
 
   def run()(implicit hc: HeaderCarrier): Future[Unit] = {
-    logger.info("[BatchPollerService][run] Calling F1 - Get Submissions To Poll")
+
+    logger.info(
+      "[BatchPollerService][run] Calling F1 - Get Submissions To Poll"
+    )
+
     submissionService
       .getSubmissionsToPoll()
       .flatMap { submissions =>
@@ -51,10 +55,12 @@ class BatchPollerService @Inject() (
           )
         } else {
           /*
-           * F6 and F2 will process the submissions.
+           * F2 and F6 will return PollReportContent rows.
+           * After both complete, invoke:
            *
-           * Their F9 PollReportContent results will eventually be combined
-           * and passed to GeneratePollReportService here.
+           * generatePollReportService.generatePollReport(
+           *   verificationRows ++ monthlyReturnRows
+           * )
            */
           Future.unit
         }
