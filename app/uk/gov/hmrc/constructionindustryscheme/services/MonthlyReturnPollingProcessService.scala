@@ -56,7 +56,7 @@ class MonthlyReturnPollingProcessService @Inject() (monthlyReturnService: Monthl
       details <- monthlyReturnService.getMonthlyReturnForEdit(
                    GetMonthlyReturnForEditRequest(
                      submission.instanceId,
-                     submission.taxYear.toInt,
+                     submission.taxYear,
                      submission.taxMonth.toInt,
                      isAmendment = Some(false)
                    )
