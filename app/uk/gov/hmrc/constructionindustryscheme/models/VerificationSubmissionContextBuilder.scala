@@ -78,36 +78,41 @@ object VerificationSubmissionContextBuilder {
         .toMap
 
     val requested: Seq[Either[String, StoredRequestedVerification]] =
-      request.subcontractors.flatMap { subcontractor =>
+      request.subcontractors.map { subcontractor =>
         val verificationOpt =
           subcontractor.subbieResourceRef
             .map(_.toString)
             .flatMap(verificationByResourceRef.get)
 
-        verificationOpt.map { verification =>
-          for {
-            verificationResourceRef <- parseLong(verification.verificationResourceRef, "verificationResourceRef")
-            actionIndicator         <-
-              actionByVerificationRef
-                .get(verificationResourceRef)
-                .toRight(s"No action indicator found for verificationResourceRef: $verificationResourceRef")
-          } yield StoredRequestedVerification(
-            verificationResourceRef = verificationResourceRef,
-            subcontractorId = subcontractor.subcontractorId,
-            subbieResourceRef = subcontractor.subbieResourceRef,
-            subcontractorName = verification.subcontractorName,
-            actionIndicator = actionIndicator,
-            proceedVerification = verification.proceedVerification,
-            foreName = subcontractor.firstName,
-            middleName = subcontractor.secondName,
-            surname = subcontractor.surname,
-            tradingName = subcontractor.tradingName,
-            utr = subcontractor.utr,
-            nino = subcontractor.nino,
-            crn = subcontractor.crn,
-            partnershipUtr = subcontractor.partnerUtr,
-            subcontractorType = subcontractor.subcontractorType
-          )
+        verificationOpt match {
+          case None               =>
+            Left(
+              s"No verification found for subcontractorId: ${subcontractor.subcontractorId} (subbieResourceRef: ${subcontractor.subbieResourceRef})"
+            )
+          case Some(verification) =>
+            for {
+              verificationResourceRef <- parseLong(verification.verificationResourceRef, "verificationResourceRef")
+              actionIndicator         <-
+                actionByVerificationRef
+                  .get(verificationResourceRef)
+                  .toRight(s"No action indicator found for verificationResourceRef: $verificationResourceRef")
+            } yield StoredRequestedVerification(
+              verificationResourceRef = verificationResourceRef,
+              subcontractorId = subcontractor.subcontractorId,
+              subbieResourceRef = subcontractor.subbieResourceRef,
+              subcontractorName = verification.subcontractorName,
+              actionIndicator = actionIndicator,
+              proceedVerification = verification.proceedVerification,
+              foreName = subcontractor.firstName,
+              middleName = subcontractor.secondName,
+              surname = subcontractor.surname,
+              tradingName = subcontractor.tradingName,
+              utr = subcontractor.utr,
+              nino = subcontractor.nino,
+              crn = subcontractor.crn,
+              partnershipUtr = subcontractor.partnerUtr,
+              subcontractorType = subcontractor.subcontractorType
+            )
         }
       }
     sequence(requested)

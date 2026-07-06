@@ -94,23 +94,30 @@ class VerificationFormPUpdateProcessor @Inject() (
         Future.failed(error)
 
       case Success((acceptedTime, verifiedDate)) =>
-        for {
-          mappedResults <- verificationResultMapper.mapAll(
-                             chrisResults = response.cisResponseSubcontractors,
-                             context = ctx,
-                             verifiedDate = verifiedDate
-                           )
-          _             <- formpProxyConnector.processVerificationResponseFromChris(
-                             ProcessVerificationResponseFromChrisRequest(
-                               instanceId = session.instanceId,
-                               verificationBatchResourceRef = ctx.verificationBatchResourceRef,
-                               acceptedTime = acceptedTime,
-                               submissionStatus = response.status.toString,
-                               irMarkReceived = response.irMarkReceived,
-                               verificationResults = mappedResults
+        if (response.cisResponseSubcontractors.isEmpty)
+          Future.failed(
+            new RuntimeException(
+              s"SUBMITTED response contained no subcontractor results for submissionId: ${session.submissionId}"
+            )
+          )
+        else
+          for {
+            mappedResults <- verificationResultMapper.mapAll(
+                               chrisResults = response.cisResponseSubcontractors,
+                               context = ctx,
+                               verifiedDate = verifiedDate
                              )
-                           )
-        } yield ()
+            _             <- formpProxyConnector.processVerificationResponseFromChris(
+                               ProcessVerificationResponseFromChrisRequest(
+                                 instanceId = session.instanceId,
+                                 verificationBatchResourceRef = ctx.verificationBatchResourceRef,
+                                 acceptedTime = acceptedTime,
+                                 submissionStatus = response.status.toString,
+                                 irMarkReceived = response.irMarkReceived,
+                                 verificationResults = mappedResults
+                               )
+                             )
+          } yield ()
     }
   }
 
@@ -133,8 +140,7 @@ class VerificationFormPUpdateProcessor @Inject() (
     )
 
   private def isVerificationSuccess(response: ChrisPollResponse): Boolean =
-    response.status == SUBMITTED &&
-      response.cisResponseSubcontractors.nonEmpty
+    response.status == SUBMITTED
 
   private def requiredField(
     value: Option[String],

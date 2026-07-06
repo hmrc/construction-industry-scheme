@@ -136,7 +136,7 @@ trait ChrisXmlMapper {
 
   protected def parseCisVerificationResults(doc: Elem): Seq[CisResponseSubcontractor] = {
     val subcontractorNodes: NodeSeq =
-      doc \\ "CISresponse" \\ "Subcontractor"
+      doc \\ "CISresponse" \ "Subcontractor"
 
     subcontractorNodes.map { sub =>
       val name  = sub \ "Name"
