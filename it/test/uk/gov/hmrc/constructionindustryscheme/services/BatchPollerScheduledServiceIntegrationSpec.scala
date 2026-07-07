@@ -18,7 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import base.SpecBase
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.{doReturn, never, verify}
+import org.mockito.Mockito.{doReturn, never, verify, when}
 import org.mongodb.scala.model.Filters
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers.shouldBe
@@ -54,9 +54,6 @@ class BatchPollerScheduledServiceIntegrationSpec
 
   private val service =
     new BatchPollerScheduledService(repository, new CurrentTimestampSupport(), appConfig, batchPollerService)
-
-  private val lockId =
-    "batch-poller-job"
 
   private def lockDocFor(id: String): Option[Lock] =
     repository.collection.find(Filters.equal("_id", id)).headOption().futureValue

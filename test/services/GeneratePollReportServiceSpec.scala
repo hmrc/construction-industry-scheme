@@ -22,7 +22,7 @@ import org.scalatest.matchers.must.Matchers
 import uk.gov.hmrc.constructionindustryscheme.models.PollReportContent
 import uk.gov.hmrc.constructionindustryscheme.services.GeneratePollReportService
 
-import java.time.LocalDateTime
+import java.time.{Clock, LocalDateTime, ZoneId}
 
 class GeneratePollReportServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures {
 
@@ -32,8 +32,7 @@ class GeneratePollReportServiceSpec extends AnyFreeSpec with Matchers with Scala
 
       service
         .generatePollReport(
-          reportContent = Seq(reportContent),
-          generatedAt = generatedAt
+          reportContent = Seq(reportContent)
         )
         .futureValue mustBe ()
     }
@@ -42,8 +41,7 @@ class GeneratePollReportServiceSpec extends AnyFreeSpec with Matchers with Scala
 
       service
         .generatePollReport(
-          reportContent = Seq.empty,
-          generatedAt = generatedAt
+          reportContent = Seq.empty
         )
         .futureValue mustBe ()
     }
@@ -63,8 +61,7 @@ class GeneratePollReportServiceSpec extends AnyFreeSpec with Matchers with Scala
 
       service
         .generatePollReport(
-          reportContent = Seq(recoverableErrorContent),
-          generatedAt = generatedAt
+          reportContent = Seq(recoverableErrorContent)
         )
         .futureValue mustBe ()
     }
@@ -72,13 +69,22 @@ class GeneratePollReportServiceSpec extends AnyFreeSpec with Matchers with Scala
 
   private trait Setup {
 
-    val service =
-      new GeneratePollReportService()
-
-    val generatedAt =
+    val generatedAt: LocalDateTime =
       LocalDateTime.of(
         2026, 5, 5, 14, 25, 38
       )
+
+    val zoneId: ZoneId =
+      ZoneId.of("Europe/London")
+
+    val clock: Clock =
+      Clock.fixed(
+        generatedAt.atZone(zoneId).toInstant,
+        zoneId
+      )
+
+    val service =
+      new GeneratePollReportService(clock)
 
     val reportContent =
       PollReportContent(

@@ -19,30 +19,22 @@ package uk.gov.hmrc.constructionindustryscheme.services
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.PollReportContent
 
-import java.time.LocalDateTime
+import java.time.{Clock, LocalDateTime}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.Future
 
 @Singleton
-class GeneratePollReportService @Inject() () extends Logging {
+class GeneratePollReportService @Inject() (
+  clock: Clock
+) extends Logging {
 
   def generatePollReport(
     reportContent: Seq[PollReportContent]
-  ): Future[Unit] =
-    generatePollReport(
-      reportContent = reportContent,
-      generatedAt = LocalDateTime.now()
-    )
-
-  def generatePollReport(
-    reportContent: Seq[PollReportContent],
-    generatedAt: LocalDateTime
   ): Future[Unit] = {
-
     val report =
       PollReportFormatter.format(
         reportContent = reportContent,
-        generatedAt = generatedAt
+        generatedAt = LocalDateTime.now(clock)
       )
 
     logger.info(report)
