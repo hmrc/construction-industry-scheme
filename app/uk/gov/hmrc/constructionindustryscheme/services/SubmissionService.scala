@@ -270,31 +270,23 @@ class SubmissionService @Inject() (
     submissionId: String
   )(implicit hc: HeaderCarrier): Future[ChrisSubmissionSessionData] =
     getPollingGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId)).flatMap {
-      case Some(statusResponse) =>
-        statusResponse.govtalk_status.headOption match {
-          case Some(statusRecord) =>
-            val sessionData = ChrisSubmissionSessionData(
-              submissionId = submissionId,
-              instanceId = instanceId,
-              correlationId = statusRecord.correlationID,
-              lastMessageDate = statusRecord.lastMessageDate.toInstant(ZoneOffset.UTC),
-              numPolls = statusRecord.numPolls,
-              pollInterval = statusRecord.pollInterval,
-              pollUrl = statusRecord.gatewayURL,
-              govTalkStatus = Some(statusResponse)
-            )
+      case Some(statusResponse) if statusResponse.govtalk_status.nonEmpty =>
+        val statusRecord = statusResponse.govtalk_status.head
 
-            chrisSubmissionSessionRepository.upsert(sessionData).map(_ => sessionData)
+        val sessionData = ChrisSubmissionSessionData(
+          submissionId = submissionId,
+          instanceId = instanceId,
+          correlationId = statusRecord.correlationID,
+          lastMessageDate = statusRecord.lastMessageDate.toInstant(ZoneOffset.UTC),
+          numPolls = statusRecord.numPolls,
+          pollInterval = statusRecord.pollInterval,
+          pollUrl = statusRecord.gatewayURL,
+          govTalkStatus = Some(statusResponse)
+        )
 
-          case None =>
-            Future.failed(
-              new RuntimeException(
-                s"No GovTalk status record found for instanceId: $instanceId, submissionId: $submissionId"
-              )
-            )
-        }
+        chrisSubmissionSessionRepository.upsert(sessionData).map(_ => sessionData)
 
-      case None =>
+      case _ =>
         Future.failed(
           new RuntimeException(
             s"No polling GovTalk status found for instanceId: $instanceId, submissionId: $submissionId"
