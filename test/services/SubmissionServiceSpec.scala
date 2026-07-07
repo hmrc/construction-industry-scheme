@@ -1292,10 +1292,10 @@ final class SubmissionServiceSpec extends SpecBase {
   "syncChrisSessionFromPollingGovTalkStatus" - {
 
     "must get polling GovTalk status, upsert Chris session, and return session data" in new Setup {
-      val instanceId = "instance-123"
+      val instanceId   = "instance-123"
       val submissionId = "sub-123"
-      val correlation = "corr-123"
-      val pollUrl = "/poll/123"
+      val correlation  = "corr-123"
+      val pollUrl      = "/poll/123"
 
       val statusRecord = GovTalkStatusRecord(
         userIdentifier = instanceId,

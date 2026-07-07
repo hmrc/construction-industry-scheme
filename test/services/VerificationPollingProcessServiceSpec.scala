@@ -30,11 +30,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
-class VerificationPollingProcessServiceSpec
-  extends AnyFreeSpec
-    with Matchers
-    with ScalaFutures
-    with MockitoSugar {
+class VerificationPollingProcessServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures with MockitoSugar {
 
   "VerificationPollingProcessService process" - {
 
