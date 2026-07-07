@@ -16,46 +16,105 @@
 
 package services
 
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers
-import uk.gov.hmrc.constructionindustryscheme.models.response.MonthlyReturnSubmissionToPoll
-import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnPollingProcessService
-import uk.gov.hmrc.http.HeaderCarrier
+import base.SpecBase
+import org.mockito.ArgumentMatchers.{any, eq as eqTo}
+import org.mockito.Mockito.{verify, verifyNoInteractions, when}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.GetMonthlyReturnForEditRequest
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetMonthlyReturnForEditResponse, MonthlyReturnSubmissionToPoll}
+import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnPollingProcessService, MonthlyReturnService}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 
-class MonthlyReturnPollingProcessServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures {
+class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
+  private val monthlyReturnService = mock[MonthlyReturnService]
 
-  "MonthlyReturnPollingProcessService process" - {
+  private val service = new MonthlyReturnPollingProcessService(monthlyReturnService)
 
-    "must complete successfully for monthly return submissions" in new Setup {
-      val submissions = Seq(
-        MonthlyReturnSubmissionToPoll(
-          submissionId = 90002L,
-          submissionType = "CIS300MR",
-          status = "SUBMITTED",
-          taxOfficeNumber = "123",
-          taxOfficeReference = "456789",
-          taxYear = 2025,
-          taxMonth = 6,
-          instanceId = "instance-monthly-return-001",
-          agentId = Some("A123456")
-        )
+  "MonthlyReturnPollingProcessService" - {
+
+    "must not call getMonthlyReturnForEdit when there are no submissions" in {
+      service.process(Seq.empty).futureValue mustBe ()
+
+      verifyNoInteractions(monthlyReturnService)
+    }
+
+    "must fail when getMonthlyReturnForEdit fails" in {
+      val submission = MonthlyReturnSubmissionToPoll(
+        submissionId = 100,
+        submissionType = "type",
+        status = "Started",
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AZ123",
+        taxYear = 2026,
+        taxMonth = 2,
+        instanceId = "1",
+        agentId = None
       )
 
-      service.process(submissions).futureValue mustBe ()
+      when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
+        .thenReturn(Future.failed(new RuntimeException("failed")))
+
+      service.process(Seq(submission)).failed.futureValue.getMessage mustBe "failed"
     }
 
-    "must complete successfully for empty monthly return submissions" in new Setup {
-      service.process(Seq.empty).futureValue mustBe ()
+    "must call getMonthlyReturnForEdit for each monthly return submission" in {
+      val submission1 = MonthlyReturnSubmissionToPoll(
+        submissionId = 100,
+        submissionType = "type",
+        status = "Started",
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AZ123",
+        taxYear = 2026,
+        taxMonth = 4,
+        instanceId = "1",
+        agentId = None
+      )
+
+      val submission2 = MonthlyReturnSubmissionToPoll(
+        submissionId = 101,
+        submissionType = "type",
+        status = "Started",
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AZ123",
+        taxYear = 2026,
+        taxMonth = 5,
+        instanceId = "2",
+        agentId = None
+      )
+
+      val response = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq.empty,
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      when(monthlyReturnService.getMonthlyReturnForEdit(any())(any())).thenReturn(Future.successful(response))
+
+      service.process(Seq(submission1, submission2)).futureValue mustBe ()
+
+      verify(monthlyReturnService).getMonthlyReturnForEdit(
+        eqTo(
+          GetMonthlyReturnForEditRequest(
+            "1",
+            taxYear = 2026,
+            taxMonth = 4,
+            isAmendment = Some(false)
+          )
+        )
+      )(any())
+
+      verify(monthlyReturnService).getMonthlyReturnForEdit(
+        eqTo(
+          GetMonthlyReturnForEditRequest(
+            "2",
+            taxYear = 2026,
+            taxMonth = 5,
+            isAmendment = Some(false)
+          )
+        )
+      )(any())
     }
-  }
-
-  private trait Setup {
-    given ExecutionContext = scala.concurrent.ExecutionContext.global
-    given HeaderCarrier    = HeaderCarrier()
-
-    val service = new MonthlyReturnPollingProcessService()
   }
 }

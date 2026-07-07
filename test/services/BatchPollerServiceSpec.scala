@@ -16,13 +16,14 @@
 
 package services
 
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.services.{BatchPollerService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.services.{BatchPollerService, MonthlyReturnPollingProcessService, SubmissionService}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -34,10 +35,12 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
     "must call SubmissionService and complete successfully when submissions are returned" in new Setup {
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(nonEmptyResponse))
+      when(mockMonthlyReturnPollingProcessService.process(any())(any())).thenReturn(Future.unit)
 
       service.run().futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+      verify(mockMonthlyReturnPollingProcessService).process(any())(any())
       verifyNoMoreInteractions(mockSubmissionService)
     }
 
@@ -49,6 +52,7 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
       verifyNoMoreInteractions(mockSubmissionService)
+      verifyNoInteractions(mockMonthlyReturnPollingProcessService)
     }
 
     "must recover and complete successfully when SubmissionService fails" in new Setup {
@@ -59,6 +63,7 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
       verifyNoMoreInteractions(mockSubmissionService)
+      verifyNoMoreInteractions(mockMonthlyReturnPollingProcessService)
     }
   }
 
@@ -69,8 +74,12 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
     val mockSubmissionService: SubmissionService =
       mock[SubmissionService]
 
+    val mockMonthlyReturnPollingProcessService: MonthlyReturnPollingProcessService =
+      mock[MonthlyReturnPollingProcessService]
+
     val service = new BatchPollerService(
-      submissionService = mockSubmissionService
+      submissionService = mockSubmissionService,
+      monthlyReturnPollingProcessService = mockMonthlyReturnPollingProcessService
     )
 
     val verificationSubmission: VerificationSubmissionToPoll =
