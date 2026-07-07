@@ -49,7 +49,7 @@ class BatchPollerScheduledService @Inject() (
     lock
       .withLock {
         val startTime = System.currentTimeMillis()
-        logger.info(s"Now in startBatch(). startTime = $startTime")
+        logger.info(s"Now in invoke(). startTime = $startTime")
         batchPollerService.run(startTime)
       }
       .map {

@@ -52,8 +52,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
   private def makeSubmission(
     instanceId: String = testInstanceId,
     taxYear: Int = testTaxYear,
-    taxMonth: Int = testTaxMonth,
-    amendment: String = "N"
+    taxMonth: Int = testTaxMonth
   ) =
     MonthlyReturnSubmissionToPoll(
       submissionId = testSubmissionId,
@@ -64,8 +63,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       taxYear = taxYear,
       taxMonth = taxMonth,
       instanceId = instanceId,
-      agentId = None,
-      amendment = amendment
+      agentId = None
     )
 
   private def makeMonthlyReturn(
@@ -185,25 +183,14 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
     "processSubmission" - {
 
-      "must call getMonthlyReturnForEdit with isAmendment = false for a non-amendment submission" in {
+      "must call getMonthlyReturnForEdit with isAmendment = false" in {
         setupHappyPath()
-        val sub = makeSubmission(instanceId = "inst-99", taxYear = 2025, taxMonth = 6, amendment = "N")
+        val sub = makeSubmission(instanceId = "inst-99", taxYear = 2025, taxMonth = 6)
 
         service.process(Seq(sub), startTime).futureValue
 
         verify(monthlyReturnService).getMonthlyReturnForEdit(
           eqTo(GetMonthlyReturnForEditRequest("inst-99", taxYear = 2025, taxMonth = 6, isAmendment = Some(false)))
-        )(any())
-      }
-
-      "must call getMonthlyReturnForEdit with isAmendment = true for an amendment submission" in {
-        setupHappyPath()
-        val sub = makeSubmission(instanceId = "inst-99", taxYear = 2025, taxMonth = 6, amendment = "Y")
-
-        service.process(Seq(sub), startTime).futureValue
-
-        verify(monthlyReturnService).getMonthlyReturnForEdit(
-          eqTo(GetMonthlyReturnForEditRequest("inst-99", taxYear = 2025, taxMonth = 6, isAmendment = Some(true)))
         )(any())
       }
 
@@ -421,8 +408,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         taxYear = 2026,
         taxMonth = 4,
         instanceId = "1",
-        agentId = None,
-        amendment = "N"
+        agentId = None
       )
 
       val oldSubmissionRequestDate = LocalDateTime.now(ZoneId.of("Europe/London")).minusHours(25)
