@@ -395,6 +395,18 @@ class FormpProxyConnector @Inject() (
       .withBody(Json.toJson(request))
       .execute[CreateSubmissionAndUpdateVerificationsResponse]
 
+  def updateVerificationSubmission(
+    request: UpdateVerificationSubmissionRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/verification/submission/update")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == 204) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+      }
+
   def getBatchPollSubmissions()(implicit hc: HeaderCarrier): Future[GetBatchPollSubmissionsResponse] =
     http
       .get(url"$base/cis/batchpoll-submissions")
@@ -419,4 +431,5 @@ class FormpProxyConnector @Inject() (
     http
       .get(url"$base/cis/subcontractor/$cisId/$subbieResourceRef/delete-status")
       .execute[GetSubcontractorForDeleteResponse]
+
 }
