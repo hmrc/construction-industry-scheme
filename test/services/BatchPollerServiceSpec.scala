@@ -65,6 +65,24 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       verifyNoInteractions(mockMonthlyReturnPollingProcessService)
     }
 
+    "must return unit without calling GeneratePollReportService when only verification submissions exist" in new Setup {
+      val verificationOnlyResponse =
+        GetBatchPollSubmissionsResponse(
+          verificationSubmissions = Seq(verificationSubmission),
+          monthlyReturnSubmissions = Seq.empty
+        )
+
+      when(mockSubmissionService.getSubmissionsToPoll()(using hc))
+        .thenReturn(Future.successful(verificationOnlyResponse))
+
+      service.run().futureValue mustBe ()
+
+      verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+      verifyNoInteractions(mockGeneratePollReportService)
+      verifyNoInteractions(mockMonthlyReturnPollingProcessService)
+      verifyNoMoreInteractions(mockSubmissionService)
+    }
+
     "must recover and complete when SubmissionService fails" in new Setup {
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.failed(new RuntimeException("formp-proxy failed")))

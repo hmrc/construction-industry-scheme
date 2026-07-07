@@ -146,14 +146,11 @@ object PollReportFormatter {
     width: Int
   ): String = {
 
-    val safeValue =
-      Option(value).getOrElse("")
-
     val displayValue =
-      if (safeValue.length > width) {
-        safeValue.take(width - Ellipsis.length) + Ellipsis
+      if (value.length > width) {
+        value.take(width - Ellipsis.length) + Ellipsis
       } else {
-        safeValue
+        value
       }
 
     displayValue.padTo(width, ' ')
