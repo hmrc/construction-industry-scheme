@@ -411,4 +411,12 @@ class FormpProxyConnector @Inject() (
         if (response.status == NO_CONTENT) Future.unit
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
+
+  def getSubcontractorDeleteStatus(
+    cisId: String,
+    subbieResourceRef: Long
+  )(implicit hc: HeaderCarrier): Future[GetSubcontractorForDeleteResponse] =
+    http
+      .get(url"$base/cis/subcontractor/$cisId/$subbieResourceRef/delete-status")
+      .execute[GetSubcontractorForDeleteResponse]
 }

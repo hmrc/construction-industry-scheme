@@ -27,7 +27,8 @@ import scala.util.control.NonFatal
 @Singleton
 class BatchPollerService @Inject() (
   submissionService: SubmissionService,
-  generatePollReportService: GeneratePollReportService
+  generatePollReportService: GeneratePollReportService,
+  monthlyReturnPollingProcessService: MonthlyReturnPollingProcessService
 )(implicit ec: ExecutionContext)
     extends Logging {
 
@@ -52,6 +53,10 @@ class BatchPollerService @Inject() (
         ) {
           generatePollReportService.generatePollReport(
             Seq.empty[PollReportContent]
+          )
+        } else if (submissions.monthlyReturnSubmissions.nonEmpty) {
+          monthlyReturnPollingProcessService.process(
+            submissions.monthlyReturnSubmissions
           )
         } else {
           /*
