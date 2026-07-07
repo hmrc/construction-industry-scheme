@@ -2158,72 +2158,127 @@ class FormpProxyConnectorIntegrationSpec
             .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
         )
 
-      val ex = connector.processVerificationResponseFromChris(req).failed.futureValue
-      ex mustBe a[UpstreamErrorResponse]
-      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+        val ex = connector.processVerificationResponseFromChris(req).failed.futureValue
+        ex mustBe a[UpstreamErrorResponse]
+        ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
 
   "FormpProxyConnector getSubcontractorDeleteStatus" should {
 
     "GET /formp-proxy/cis/subcontractor/:cisId/:subbieResourceRef/delete-status and return response model (200)" in {
+
       val responseJson = Json.parse(
         """{
+          |  "subcontractorName": "Gamma Builders",
           |  "subcontractorCanBeDeleted": true
-          |}""".stripMargin)
-
-      stubFor(
-        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractor/$instanceId/$subbieResourceRef/delete-status"))
-          .willReturn(
-            aResponse()
-              .withStatus(200)
-              .withHeader("Content-Type", "application/json")
-              .withBody(responseJson.toString())
-          )
+          |}""".stripMargin
       )
 
-      val out = connector.getSubcontractorDeleteStatus(instanceId, subbieResourceRef).futureValue
+      stubFor(
+        get(
+          urlPathEqualTo(
+            s"/formp-proxy/cis/subcontractor/$instanceId/$subbieResourceRef/delete-status"
+          )
+        ).willReturn(
+          aResponse()
+            .withStatus(200)
+            .withHeader("Content-Type", "application/json")
+            .withBody(responseJson.toString())
+        )
+      )
 
-      out mustBe a[GetSubcontractorForDeleteResponse]
-      out.subcontractorCanBeDeleted mustBe true
+      val out =
+        connector
+          .getSubcontractorDeleteStatus(instanceId, subbieResourceRef)
+          .futureValue
+
+      out mustBe GetSubcontractorForDeleteResponse(
+        subcontractorName = "Gamma Builders",
+        subcontractorCanBeDeleted = true
+      )
     }
 
     "return response model when subcontractor cannot be deleted" in {
+
       val responseJson = Json.parse(
         """{
+          |  "subcontractorName": "Gamma Builders",
           |  "subcontractorCanBeDeleted": false
-          |}""".stripMargin)
-
-      stubFor(
-        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractor/$instanceId/$subbieResourceRef/delete-status"))
-          .willReturn(
-            aResponse()
-              .withStatus(200)
-              .withHeader("Content-Type", "application/json")
-              .withBody(responseJson.toString())
-          )
+          |}""".stripMargin
       )
 
-      val out = connector.getSubcontractorDeleteStatus(instanceId, subbieResourceRef).futureValue
+      stubFor(
+        get(
+          urlPathEqualTo(
+            s"/formp-proxy/cis/subcontractor/$instanceId/$subbieResourceRef/delete-status"
+          )
+        ).willReturn(
+          aResponse()
+            .withStatus(200)
+            .withHeader("Content-Type", "application/json")
+            .withBody(responseJson.toString())
+        )
+      )
 
-      out mustBe a[GetSubcontractorForDeleteResponse]
-      out.subcontractorCanBeDeleted mustBe false
+      val out =
+        connector
+          .getSubcontractorDeleteStatus(instanceId, subbieResourceRef)
+          .futureValue
+
+      out mustBe GetSubcontractorForDeleteResponse(
+        subcontractorName = "Gamma Builders",
+        subcontractorCanBeDeleted = false
+      )
     }
 
     "fail with UpstreamErrorResponse when upstream returns non-2xx" in {
+
       stubFor(
-        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractor/$instanceId/$subbieResourceRef/delete-status"))
-          .willReturn(
-            aResponse()
-              .withStatus(500)
-              .withBody("""{"message":"boom"}""")
+        get(
+          urlPathEqualTo(
+            s"/formp-proxy/cis/subcontractor/$instanceId/$subbieResourceRef/delete-status"
           )
+        ).willReturn(
+          aResponse()
+            .withStatus(500)
+            .withBody("""{"message":"boom"}""")
+        )
       )
 
-      val ex = connector.getSubcontractorDeleteStatus(instanceId, subbieResourceRef).failed.futureValue
+      val ex =
+        connector
+          .getSubcontractorDeleteStatus(instanceId, subbieResourceRef)
+          .failed
+          .futureValue
 
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns 400" in {
+
+      stubFor(
+        get(
+          urlPathEqualTo(
+            s"/formp-proxy/cis/subcontractor/$instanceId/$subbieResourceRef/delete-status"
+          )
+        ).willReturn(
+          aResponse()
+            .withStatus(400)
+            .withBody("""{"message":"bad request"}""")
+        )
+      )
+
+      val ex =
+        connector
+          .getSubcontractorDeleteStatus(instanceId, subbieResourceRef)
+          .failed
+          .futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 400
     }
   }
 }

@@ -156,11 +156,14 @@ final class SubcontractorServiceSpec extends SpecBase {
 
     val subbieResourceRef = 10L
 
-    val mockResponse = GetSubcontractorForDeleteResponse(
-      subcontractorCanBeDeleted = true
-    )
+    val mockResponse =
+      GetSubcontractorForDeleteResponse(
+        subcontractorName = "Gamma Builders",
+        subcontractorCanBeDeleted = true
+      )
 
     "return response from connector when successful" in {
+
       val connector = mock[FormpProxyConnector]
 
       when(
@@ -172,17 +175,25 @@ final class SubcontractorServiceSpec extends SpecBase {
 
       val service = new SubcontractorService(connector)
 
-      val result = service.getSubcontractorDeleteStatus(cisId, subbieResourceRef).futureValue
+      val result =
+        service
+          .getSubcontractorDeleteStatus(
+            cisId,
+            subbieResourceRef
+          )
+          .futureValue
 
       result mustBe mockResponse
 
-      verify(connector).getSubcontractorDeleteStatus(
-        eqTo(cisId),
-        eqTo(subbieResourceRef)
-      )(any[HeaderCarrier])
+      verify(connector)
+        .getSubcontractorDeleteStatus(
+          eqTo(cisId),
+          eqTo(subbieResourceRef)
+        )(any[HeaderCarrier])
     }
 
     "propagate failure from connector" in {
+
       val connector = mock[FormpProxyConnector]
 
       when(
@@ -190,21 +201,30 @@ final class SubcontractorServiceSpec extends SpecBase {
           eqTo(cisId),
           eqTo(subbieResourceRef)
         )(any[HeaderCarrier])
-      ).thenReturn(Future.failed(new RuntimeException("boom")))
+      ).thenReturn(
+        Future.failed(
+          new RuntimeException("boom")
+        )
+      )
 
       val service = new SubcontractorService(connector)
 
-      val result = service.getSubcontractorDeleteStatus(cisId, subbieResourceRef)
+      val exception =
+        service
+          .getSubcontractorDeleteStatus(
+            cisId,
+            subbieResourceRef
+          )
+          .failed
+          .futureValue
 
-      whenReady(result.failed) { ex =>
-        ex.getMessage mustBe "boom"
-      }
+      exception.getMessage mustBe "boom"
 
-      verify(connector).getSubcontractorDeleteStatus(
-        eqTo(cisId),
-        eqTo(subbieResourceRef)
-      )(any[HeaderCarrier])
+      verify(connector)
+        .getSubcontractorDeleteStatus(
+          eqTo(cisId),
+          eqTo(subbieResourceRef)
+        )(any[HeaderCarrier])
     }
   }
-
 }
