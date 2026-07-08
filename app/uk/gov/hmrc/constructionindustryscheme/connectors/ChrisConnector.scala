@@ -21,8 +21,8 @@ import play.api.libs.ws.DefaultBodyWritables.writeableOf_String
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisPollXmlMapper, ChrisSubmissionXmlMapper, GovTalkErrorStatusClassifier}
+import uk.gov.hmrc.constructionindustryscheme.models.{ChrisPollJourney, *}
+import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisPollXmlMapper, ChrisSubmissionXmlMapper, ChrisVerificationPollXmlMapper, GovTalkErrorStatusClassifier}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps, UpstreamErrorResponse}
@@ -62,7 +62,7 @@ class ChrisConnector @Inject() (
         logger.info("[ChrisConnector] pollSubmission request:\n" + ChrisPollRequest(correlationId, journey).payload)
         logger.info("[ChrisConnector] pollSubmission response:\n" + resp.body)
         if (is2xx(resp.status)) {
-          ChrisPollXmlMapper.parse(resp.body) match {
+          parsePollResponse(journey, resp.body) match {
             case Left(err)     =>
               logger.error(
                 s"[ChrisConnector] Failed to parse 2xx polling response corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
@@ -184,6 +184,15 @@ class ChrisConnector @Inject() (
     hc: HeaderCarrier
   ): Future[SubmissionResult] =
     submit(chrisCisVerifyUrl, envelope, correlationId)
+
+  private def parsePollResponse(
+    journey: ChrisPollJourney,
+    body: String
+  ): Either[String, ChrisPollResponse] =
+    journey match {
+      case ChrisPollJourney.MonthlyReturn => ChrisPollXmlMapper.parse(body)
+      case ChrisPollJourney.Verification  => ChrisVerificationPollXmlMapper.parse(body)
+    }
 
   private def handle2xxResponse(resp: HttpResponse, correlationId: String): SubmissionResult = {
     val body = resp.body

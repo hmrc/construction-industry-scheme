@@ -38,7 +38,9 @@ class ChrisSubmissionSessionDataSpec extends SpecBase {
       numPolls = 3,
       pollInterval = 10,
       pollUrl = "/poll/123",
-      govTalkStatus = None
+      govTalkStatus = None,
+      monthlyReturnContext = None,
+      verificationContext = None
     )
 
     val json = Json.toJson(data)
@@ -51,26 +53,30 @@ class ChrisSubmissionSessionDataSpec extends SpecBase {
     (json \ "pollInterval").as[Int]                          shouldBe 10
     (json \ "pollUrl").as[String]                            shouldBe "/poll/123"
     (json \ "govTalkStatus").asOpt[GetGovTalkStatusResponse] shouldBe None
+    (json \ "monthlyReturnContext").asOpt[StoredMonthlyReturnContext] shouldBe None
+    (json \ "verificationContext").asOpt[StoredVerificationContext]   shouldBe None
   }
 
   "ChrisSubmissionSessionData deserializes from JSON" in {
     val now = Instant.parse("2025-02-02T01:02:03.456Z")
 
     val json = Json.obj(
-      "submissionId"    -> "sub-456",
-      "instanceId"      -> "instance-456",
-      "correlationId"   -> "corr-456",
-      "lastMessageDate" -> now,
-      "numPolls"        -> 5,
-      "pollInterval"    -> 15,
-      "pollUrl"         -> "/poll/456",
-      "govTalkStatus"   -> None
+      "submissionId"          -> "sub-456",
+      "instanceId"            -> "instance-456",
+      "correlationId"         -> "corr-456",
+      "lastMessageDate"       -> now,
+      "numPolls"              -> 5,
+      "pollInterval"          -> 15,
+      "pollUrl"               -> "/poll/456",
+      "govTalkStatus"         -> None,
+      "monthlyReturnContext"  -> None,
+      "verificationContext"   -> None
     )
 
     val result = json.validate[ChrisSubmissionSessionData]
 
     result.isSuccess shouldBe true
-    result.get       shouldBe ChrisSubmissionSessionData(
+    result.get shouldBe ChrisSubmissionSessionData(
       submissionId = "sub-456",
       instanceId = "instance-456",
       correlationId = "corr-456",
@@ -78,7 +84,9 @@ class ChrisSubmissionSessionDataSpec extends SpecBase {
       numPolls = 5,
       pollInterval = 15,
       pollUrl = "/poll/456",
-      govTalkStatus = None
+      govTalkStatus = None,
+      monthlyReturnContext = None,
+      verificationContext = None
     )
   }
 
@@ -93,7 +101,14 @@ class ChrisSubmissionSessionDataSpec extends SpecBase {
       numPolls = 7,
       pollInterval = 20,
       pollUrl = "/poll/roundtrip",
-      govTalkStatus = None
+      govTalkStatus = None,
+      monthlyReturnContext = Some(
+        StoredMonthlyReturnContext(
+          hmrcMarkGenerated = "hmrc-mark",
+          submissionRequestDate = java.time.LocalDateTime.parse("2025-01-01T10:00:00")
+        )
+      ),
+      verificationContext = None
     )
 
     val json   = Json.toJson(data)

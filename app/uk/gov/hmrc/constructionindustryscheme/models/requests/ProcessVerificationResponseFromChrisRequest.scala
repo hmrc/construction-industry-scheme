@@ -17,8 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
-
-import java.time.LocalDateTime
+import uk.gov.hmrc.constructionindustryscheme.models.VerificationResult
 
 final case class ProcessVerificationResponseFromChrisRequest(
   instanceId: String,
@@ -32,18 +31,4 @@ final case class ProcessVerificationResponseFromChrisRequest(
 object ProcessVerificationResponseFromChrisRequest {
   implicit val format: OFormat[ProcessVerificationResponseFromChrisRequest] =
     Json.format[ProcessVerificationResponseFromChrisRequest]
-}
-
-final case class VerificationResult(
-  resourceRef: Long,
-  matched: Option[String],
-  verified: Option[String],
-  verificationNumber: Option[String],
-  taxTreatment: String,
-  verifiedDate: LocalDateTime
-)
-
-object VerificationResult {
-  implicit val format: OFormat[VerificationResult] =
-    Json.format[VerificationResult]
 }
