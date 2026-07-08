@@ -104,7 +104,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         any[Instant],
         any[ChrisPollJourney],
         any[ChrisSubmissionContext],
-        any[SubmissionResult]
+        any[SubmissionResult],
+        any[Boolean]
       )(any[HeaderCarrier])
     ).thenReturn(Future.successful(()))
 
@@ -124,7 +125,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         any[Instant],
         any[ChrisPollJourney],
         any[ChrisSubmissionContext],
-        any[SubmissionResult]
+        any[SubmissionResult],
+        any[Boolean]
       )(any[HeaderCarrier])
     ).thenReturn(Future.failed(ex))
 

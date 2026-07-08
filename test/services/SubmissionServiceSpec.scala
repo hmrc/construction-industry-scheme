@@ -1319,14 +1319,14 @@ final class SubmissionServiceSpec extends SpecBase {
   }
 
   trait Setup {
-    val chrisConnector: ChrisConnector                                                 = mock[ChrisConnector]
-    val formpProxyConnector: FormpProxyConnector                                       = mock[FormpProxyConnector]
-    val emailConnector: EmailConnector                                                 = mock[EmailConnector]
-    val monthlyReturnService: MonthlyReturnService                                     = mock[MonthlyReturnService]
-    val chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository             = mock[ChrisSubmissionSessionRepository]
+    val chrisConnector: ChrisConnector                                     = mock[ChrisConnector]
+    val formpProxyConnector: FormpProxyConnector                           = mock[FormpProxyConnector]
+    val emailConnector: EmailConnector                                     = mock[EmailConnector]
+    val monthlyReturnService: MonthlyReturnService                         = mock[MonthlyReturnService]
+    val chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository = mock[ChrisSubmissionSessionRepository]
     val appConfig: AppConfig                                               = mock[AppConfig]
 
-    val chrisGatewayUrl = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+    val chrisGatewayUrl                                                                = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
     val formPSubmissionUpdateProcessorRegistry: FormPSubmissionUpdateProcessorRegistry =
       mock[FormPSubmissionUpdateProcessorRegistry]
     val formPSubmissionUpdateProcessor: FormPSubmissionUpdateProcessor                 =
@@ -1338,8 +1338,8 @@ final class SubmissionServiceSpec extends SpecBase {
       emailConnector,
       monthlyReturnService,
       chrisSubmissionSessionRepository,
-      appConfig,
-      formPSubmissionUpdateProcessorRegistry
+      formPSubmissionUpdateProcessorRegistry,
+      appConfig
     )
 
     when(appConfig.chrisGatewayUrl)
