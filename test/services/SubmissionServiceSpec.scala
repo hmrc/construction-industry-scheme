@@ -1351,6 +1351,73 @@ final class SubmissionServiceSpec extends SpecBase {
       verifyNoInteractions(chrisConnector)
       verifyNoInteractions(emailConnector)
     }
+
+    "must fail when no polling GovTalk status is found" in new Setup {
+      val instanceId   = "instance-123"
+      val submissionId = "sub-123"
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(None))
+
+      val result =
+        service
+          .syncChrisSessionFromPollingGovTalkStatus(instanceId, submissionId)
+          .failed
+          .futureValue
+
+      result mustBe a[RuntimeException]
+      result.getMessage mustBe
+        s"No polling GovTalk status found for instanceId: $instanceId, submissionId: $submissionId"
+
+      verify(formpProxyConnector).getGovTalkStatus(
+        eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+        eqTo(Polling)
+      )(any[HeaderCarrier])
+
+      verifyNoInteractions(chrisSubmissionSessionRepository)
+      verifyNoInteractions(chrisConnector)
+      verifyNoInteractions(emailConnector)
+    }
+
+    "must fail when polling GovTalk status response contains no status records" in new Setup {
+      val instanceId   = "instance-123"
+      val submissionId = "sub-123"
+
+      val statusResponse =
+        GetGovTalkStatusResponse(
+          govtalk_status = Seq.empty
+        )
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(statusResponse)))
+
+      val result =
+        service
+          .syncChrisSessionFromPollingGovTalkStatus(instanceId, submissionId)
+          .failed
+          .futureValue
+
+      result mustBe a[RuntimeException]
+      result.getMessage mustBe
+        s"No polling GovTalk status found for instanceId: $instanceId, submissionId: $submissionId"
+
+      verify(formpProxyConnector).getGovTalkStatus(
+        eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+        eqTo(Polling)
+      )(any[HeaderCarrier])
+
+      verifyNoInteractions(chrisSubmissionSessionRepository)
+      verifyNoInteractions(chrisConnector)
+      verifyNoInteractions(emailConnector)
+    }
   }
 
   "getSubmissionsToPoll" - {
