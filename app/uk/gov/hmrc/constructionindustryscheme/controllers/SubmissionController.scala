@@ -25,7 +25,7 @@ import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.*
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, ChrisPollJourney, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkErrorStatus, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, ChrisPollJourney, ChrisSubmissionContext, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkErrorStatus, MonthlyReturnSubmissionContext, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult, VerificationSubmissionContextBuilder}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.GovTalkErrorStatusClassifier
 import uk.gov.hmrc.http.UpstreamErrorResponse
@@ -35,7 +35,7 @@ import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
 import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
 
-import java.time.{Clock, Instant}
+import java.time.{Clock, Instant, LocalDateTime}
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -259,7 +259,13 @@ class SubmissionController @Inject() (
   private def handleSubmitToChris(submissionId: String, csr: ChrisSubmissionRequest)(implicit
     req: AuthenticatedRequest[JsValue]
   ): Future[Result] = {
-    val payload = ChRISSubmission.buildPayload(csr, req)
+    val payload               = ChRISSubmission.buildPayload(csr, req)
+    val submissionRequestDate = LocalDateTime.now(clock)
+    val monthlyReturnContext  =
+      MonthlyReturnSubmissionContext(
+        hmrcMarkGenerated = payload.irMark,
+        submissionRequestDate = submissionRequestDate
+      )
 
     auditService.monthlyNilReturnRequestEvent(createMonthlyNilReturnRequestJson(payload))
 
@@ -287,6 +293,8 @@ class SubmissionController @Inject() (
           payload.irMark,
           payload.correlationId,
           res,
+          MonthlyReturn,
+          monthlyReturnContext,
           r => renderSubmissionResponse(submissionId, payload)(r),
           errorLabel = "",
           isResubmission = csr.isResubmission
@@ -311,21 +319,26 @@ class SubmissionController @Inject() (
     irMark: String,
     correlationId: String,
     res: SubmissionResult,
+    journey: ChrisPollJourney,
+    context: ChrisSubmissionContext,
     render: SubmissionResult => Result,
     errorLabel: String,
     isResubmission: Boolean = false
   )(implicit hc: HeaderCarrier): Future[Result] =
     submissionService
       .processInitialChrisAck(
-        employerRef,
-        submissionId,
-        correlationId,
-        res.meta.correlationId,
-        res.meta.responseEndPoint.pollIntervalSeconds,
-        res.meta.responseEndPoint.url,
-        appConfig.chrisGatewayUrl,
-        chrisResponseTimestamp(res),
-        isResubmission
+        employerReference = employerRef,
+        submissionId = submissionId,
+        expectedCorrelationId = correlationId,
+        actualCorrelationId = res.meta.correlationId,
+        pollInterval = res.meta.responseEndPoint.pollIntervalSeconds,
+        pollUrl = res.meta.responseEndPoint.url,
+        gatewayURL = appConfig.chrisGatewayUrl,
+        lastMessageDate = chrisResponseTimestamp(res),
+        journey = journey,
+        context = context,
+        response = res,
+        isResubmission = isResubmission
       )
       .map(_ => render(res))
       .recover { case ex =>
@@ -428,47 +441,59 @@ class SubmissionController @Inject() (
   )(implicit req: AuthenticatedRequest[JsValue]): Future[Result] = {
     val payload = CisVerificationSubmission.buildPayload(cvr, req.enrolments)
 
-    xmlValidator.validate(payload.irEnvelope, appConfig.cisVerificationSchema) match {
-      case Failure(e) =>
-        logger.error(
-          s"Chris verification XML validation failed, but continuing with ChRIS submission for correlationId=${payload.correlationId}: ${e.getMessage}",
-          e
-        )
+    VerificationSubmissionContextBuilder
+      .build(
+        request = cvr,
+        hmrcMarkGenerated = payload.irMark,
+        submissionRequestDate = LocalDateTime.now(clock)
+      ) match {
+      case Left(error) =>
+        Future.successful(BadRequest(Json.obj("message" -> error)))
 
-      case Success(_) =>
-        logger.info(
-          s"Chris verification XML validation successful. Sending ChRIS verification submission for correlationId=${payload.correlationId}."
-        )
-        // todo: for testing purposes,  remove before marging
-        logger.info(s"full chris xml envelope:${payload.envelope}")
+      case Right(verificationContext) =>
+        xmlValidator.validate(payload.irEnvelope, appConfig.cisVerificationSchema) match {
+          case Failure(e) =>
+            logger.error(
+              s"Chris verification XML validation failed, but continuing with ChRIS submission for correlationId=${payload.correlationId}: ${e.getMessage}",
+              e
+            )
+
+          case Success(_) =>
+            logger.info(
+              s"Chris verification XML validation successful. Sending ChRIS verification submission for correlationId=${payload.correlationId}."
+            )
+            // todo: for testing purposes,  remove before marging
+            logger.info(s"full chris xml envelope:${payload.envelope}")
+        }
+
+        val employerRef = EmployerReference(cvr.clientTaxOfficeNumber, cvr.clientTaxOfficeRef)
+
+        submissionService
+          .submitVerificationToChris(payload)
+          .flatMap(res =>
+            handleInitialChrisAck(
+              submissionId,
+              employerRef,
+              payload.irMark,
+              payload.correlationId,
+              res,
+              Verification,
+              verificationContext,
+              r => renderChrisResponse(submissionId, payload.irMark, r),
+              errorLabel = " verification"
+            )
+          )
+          .recoverWith { case NonFatal(ex) =>
+            handleInitialChrisFailure(
+              submissionId,
+              employerRef,
+              payload.irMark,
+              payload.correlationId,
+              ex,
+              errorLabel = " verification",
+              startedErrorText = "Chris verification failure"
+            )
+          }
     }
-
-    val employerRef = EmployerReference(cvr.clientTaxOfficeNumber, cvr.clientTaxOfficeRef)
-
-    submissionService
-      .submitVerificationToChris(payload)
-      .flatMap(res =>
-        handleInitialChrisAck(
-          submissionId,
-          employerRef,
-          payload.irMark,
-          payload.correlationId,
-          res,
-          r => renderChrisResponse(submissionId, payload.irMark, r),
-          errorLabel = " verification"
-        )
-      )
-      .recoverWith { case NonFatal(ex) =>
-        handleInitialChrisFailure(
-          submissionId,
-          employerRef,
-          payload.irMark,
-          payload.correlationId,
-          ex,
-          errorLabel = " verification",
-          startedErrorText = "Chris verification failure"
-        )
-      }
   }
-
 }

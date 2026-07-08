@@ -89,6 +89,45 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       clock
     )
 
+  private def mockProcessInitialChrisAckSuccess(
+    submissionService: SubmissionService
+  ): Unit =
+    when(
+      submissionService.processInitialChrisAck(
+        any[EmployerReference],
+        any[String],
+        any[String],
+        any[String],
+        any[Int],
+        any[String],
+        any[String],
+        any[Instant],
+        any[ChrisPollJourney],
+        any[ChrisSubmissionContext],
+        any[SubmissionResult]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.successful(()))
+
+  private def mockProcessInitialChrisAckFailure(
+    submissionService: SubmissionService,
+    ex: Throwable
+  ): Unit =
+    when(
+      submissionService.processInitialChrisAck(
+        any[EmployerReference],
+        any[String],
+        any[String],
+        any[String],
+        any[Int],
+        any[String],
+        any[String],
+        any[Instant],
+        any[ChrisPollJourney],
+        any[ChrisSubmissionContext],
+        any[SubmissionResult]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.failed(ex))
+
   "submitToChris" - {
     "returns 200 with SUBMITTED when service returns SubmittedStatus" in {
       val submissionService = mock[SubmissionService]
@@ -107,19 +146,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
-      when(
-        submissionService.processInitialChrisAck(
-          any[EmployerReference],
-          any[String],
-          any[String],
-          any[String],
-          any[Int],
-          any[String],
-          any[String],
-          any[Instant],
-          any[Boolean]
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.successful(()))
+      mockProcessInitialChrisAckSuccess(submissionService)
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
           val payload = invocation.getArgument(0, classOf[ChRISSubmission])
@@ -156,19 +183,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
-      when(
-        submissionService.processInitialChrisAck(
-          any[EmployerReference],
-          any[String],
-          any[String],
-          any[String],
-          any[Int],
-          any[String],
-          any[String],
-          any[Instant],
-          any[Boolean]
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.successful(()))
+      mockProcessInitialChrisAckSuccess(submissionService)
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
           val payload = invocation.getArgument(0, classOf[ChRISSubmission])
@@ -206,19 +221,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
-      when(
-        submissionService.processInitialChrisAck(
-          any[EmployerReference],
-          any[String],
-          any[String],
-          any[String],
-          any[Int],
-          any[String],
-          any[String],
-          any[Instant],
-          any[Boolean]
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.successful(()))
+      mockProcessInitialChrisAckSuccess(submissionService)
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
           val payload = invocation.getArgument(0, classOf[ChRISSubmission])
@@ -258,19 +261,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
-      when(
-        submissionService.processInitialChrisAck(
-          any[EmployerReference],
-          any[String],
-          any[String],
-          any[String],
-          any[Int],
-          any[String],
-          any[String],
-          any[Instant],
-          any[Boolean]
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.successful(()))
+      mockProcessInitialChrisAckSuccess(submissionService)
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
           val payload = invocation.getArgument(0, classOf[ChRISSubmission])
@@ -318,19 +309,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
 
-      when(
-        submissionService.processInitialChrisAck(
-          any[EmployerReference],
-          any[String],
-          any[String],
-          any[String],
-          any[Int],
-          any[String],
-          any[String],
-          any[Instant],
-          any[Boolean]
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.successful(()))
+      mockProcessInitialChrisAckSuccess(submissionService)
 
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
@@ -385,19 +364,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
 
-      when(
-        submissionService.processInitialChrisAck(
-          any[EmployerReference],
-          any[String],
-          any[String],
-          any[String],
-          any[Int],
-          any[String],
-          any[String],
-          any[Instant],
-          any[Boolean]
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.successful(()))
+      mockProcessInitialChrisAckSuccess(submissionService)
 
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
@@ -558,19 +525,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(
-        submissionService.processInitialChrisAck(
-          any[EmployerReference],
-          any[String],
-          any[String],
-          any[String],
-          any[Int],
-          any[String],
-          any[String],
-          any[Instant],
-          any[Boolean]
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.successful(()))
+      mockProcessInitialChrisAckSuccess(submissionService)
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
         .thenReturn(Future.successful(mkSubmissionResult(DEPARTMENTAL_ERROR)))
       when(xmlValidator.validate(any(), any())).thenReturn(Failure(new Exception("invalid!")))
@@ -659,19 +614,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           )
         }
 
-      when(
-        submissionService.processInitialChrisAck(
-          any[EmployerReference],
-          any[String],
-          any[String],
-          any[String],
-          any[Int],
-          any[String],
-          any[String],
-          any[Instant],
-          any[Boolean]
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.failed(new RuntimeException("ack persistence failed")))
+      mockProcessInitialChrisAckFailure(
+        submissionService,
+        new RuntimeException("verification ack persistence failed")
+      )
 
       val request =
         FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -1312,12 +1258,12 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       "contractorUTR"                -> "1234567890",
       "contractorAORef"              -> "123/AB456",
       "verificationBatchId"          -> "batch-1",
-      "verificationBatchResourceRef" -> "batch-ref",
+      "verificationBatchResourceRef" -> "5",
       "emailRecipient"               -> "test@test.com",
       "subcontractors"               -> Json.arr(
         Json.obj(
           "subcontractorId"        -> 1L,
-          "subbieResourceRef"      -> 10L,
+          "subbieResourceRef"      -> 13L,
           "firstName"              -> "John",
           "secondName"             -> "Q",
           "surname"                -> "Smith",
@@ -1340,7 +1286,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       "verifications"                -> Json.arr(
         Json.obj(
           "subcontractorName"       -> "John Smith",
-          "verificationResourceRef" -> "ref-1",
+          "verificationResourceRef" -> "13",
           "proceedVerification"     -> true
         )
       )
@@ -1362,19 +1308,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(xmlValidator.validate(any[NodeSeq], eqTo(verificationSchema)))
         .thenReturn(Success(()))
 
-      when(
-        submissionService.processInitialChrisAck(
-          any[EmployerReference],
-          any[String],
-          any[String],
-          any[String],
-          any[Int],
-          any[String],
-          any[String],
-          any[Instant],
-          any[Boolean]
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.successful(()))
+      mockProcessInitialChrisAckSuccess(submissionService)
 
       when(submissionService.submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
@@ -1415,6 +1349,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[String],
           eqTo("http://chris.example/gateway"),
           any[Instant],
+          eqTo(ChrisPollJourney.Verification),
+          any[VerificationSubmissionContext],
+          any[SubmissionResult],
           any[Boolean]
         )(any[HeaderCarrier])
     }
@@ -1435,19 +1372,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(xmlValidator.validate(any[NodeSeq], eqTo(verificationSchema)))
         .thenReturn(Success(()))
 
-      when(
-        submissionService.processInitialChrisAck(
-          any[EmployerReference],
-          any[String],
-          any[String],
-          any[String],
-          any[Int],
-          any[String],
-          any[String],
-          any[Instant],
-          any[Boolean]
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.successful(()))
+      mockProcessInitialChrisAckSuccess(submissionService)
 
       when(submissionService.submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
@@ -1521,19 +1446,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Failure(new Exception("invalid verification xml")))
 
-      when(
-        submissionService.processInitialChrisAck(
-          any[EmployerReference],
-          any[String],
-          any[String],
-          any[String],
-          any[Int],
-          any[String],
-          any[String],
-          any[Instant],
-          any[Boolean]
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.successful(()))
+      mockProcessInitialChrisAckSuccess(submissionService)
 
       when(submissionService.submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
@@ -1574,6 +1487,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[String],
           eqTo("http://chris.example/gateway"),
           any[Instant],
+          eqTo(ChrisPollJourney.Verification),
+          any[VerificationSubmissionContext],
+          any[SubmissionResult],
           any[Boolean]
         )(any[HeaderCarrier])
     }
@@ -1658,19 +1574,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           )
         }
 
-      when(
-        submissionService.processInitialChrisAck(
-          any[EmployerReference],
-          any[String],
-          any[String],
-          any[String],
-          any[Int],
-          any[String],
-          any[String],
-          any[Instant],
-          any[Boolean]
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.failed(new RuntimeException("verification ack persistence failed")))
+      mockProcessInitialChrisAckFailure(
+        submissionService,
+        new RuntimeException("verification ack persistence failed")
+      )
 
       val request =
         FakeRequest(POST, s"/cis/submissions/$submissionId/submit-verification-to-chris")
@@ -1689,6 +1596,33 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       verify(submissionService, times(1))
         .submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier])
+    }
+
+    "returns 400 when verification context cannot be built" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      val badVerificationJson = validVerificationJson.as[JsObject] ++ Json.obj(
+        "verificationBatchResourceRef" -> "not-a-long"
+      )
+
+      val request =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-verification-to-chris")
+          .withBody(badVerificationJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitVerificationToChris(submissionId)(request)
+
+      status(result) mustBe BAD_REQUEST
+      (contentAsJson(result) \ "message").as[String] must include("Invalid long value for verificationBatchResourceRef")
+
+      verifyNoInteractions(submissionService)
+      verifyNoInteractions(xmlValidator)
     }
   }
 

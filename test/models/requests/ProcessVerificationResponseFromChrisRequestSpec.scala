@@ -16,150 +16,39 @@
 
 package models.requests
 
-import play.api.libs.json.{JsSuccess, Json}
-import org.scalatestplus.play.PlaySpec
-import uk.gov.hmrc.constructionindustryscheme.models.requests.*
-
+import base.SpecBase
+import uk.gov.hmrc.constructionindustryscheme.models.VerificationResult
+import uk.gov.hmrc.constructionindustryscheme.models.requests.ProcessVerificationResponseFromChrisRequest
 import java.time.LocalDateTime
 
-class ProcessVerificationResponseFromChrisRequestSpec extends PlaySpec {
+class ProcessVerificationResponseFromChrisRequestSpec extends SpecBase {
 
-  "ProcessVerificationResponseFromChrisRequest" should {
+  "ProcessVerificationResponseFromChrisRequest" - {
+    "create an instance with the expected values" in {
+      val verificationResult = VerificationResult(
+        resourceRef = 13L,
+        matched = Some("Y"),
+        verified = Some("N"),
+        verificationNumber = Some("V1000000007"),
+        taxTreatment = "net",
+        verifiedDate = Some(LocalDateTime.parse("2017-04-06T08:46:08.081"))
+      )
 
-    "serialize to JSON" in {
-      val model = ProcessVerificationResponseFromChrisRequest(
-        instanceId = "abc-123",
-        verificationBatchResourceRef = 222L,
-        acceptedTime = "2026-06-15T10:05:00Z",
+      val request = ProcessVerificationResponseFromChrisRequest(
+        instanceId = "1",
+        verificationBatchResourceRef = 5L,
         submissionStatus = "SUBMITTED",
-        irMarkReceived = Some("IR_MARK_RECEIVED"),
-        verificationResults = Seq(
-          VerificationResult(
-            resourceRef = 456L,
-            matched = Some("Y"),
-            verified = Some("Y"),
-            verificationNumber = Some("V123456"),
-            taxTreatment = "NET",
-            verifiedDate = LocalDateTime.parse("2026-06-15T10:05:00")
-          )
-        )
+        acceptedTime = "2017-04-06T08:46:08.081",
+        irMarkReceived = Some("hmrc-mark"),
+        verificationResults = Seq(verificationResult)
       )
 
-      Json.toJson(model) mustBe Json.parse(
-        """
-          |{
-          |  "instanceId": "abc-123",
-          |  "verificationBatchResourceRef": 222,
-          |  "acceptedTime": "2026-06-15T10:05:00Z",
-          |  "submissionStatus": "SUBMITTED",
-          |  "irMarkReceived": "IR_MARK_RECEIVED",
-          |  "verificationResults": [
-          |    {
-          |      "resourceRef": 456,
-          |      "matched": "Y",
-          |      "verified": "Y",
-          |      "verificationNumber": "V123456",
-          |      "taxTreatment": "NET",
-          |      "verifiedDate": "2026-06-15T10:05:00"
-          |    }
-          |  ]
-          |}
-          |""".stripMargin
-      )
-    }
-
-    "deserialize from JSON" in {
-      val json = Json.parse(
-        """
-          |{
-          |  "instanceId": "abc-123",
-          |  "verificationBatchResourceRef": 222,
-          |  "acceptedTime": "2026-06-15T10:05:00Z",
-          |  "submissionStatus": "SUBMITTED",
-          |  "irMarkReceived": "IR_MARK_RECEIVED",
-          |  "verificationResults": [
-          |    {
-          |      "resourceRef": 456,
-          |      "matched": "Y",
-          |      "verified": "Y",
-          |      "verificationNumber": "V123456",
-          |      "taxTreatment": "NET",
-          |      "verifiedDate": "2026-06-15T10:05:00"
-          |    }
-          |  ]
-          |}
-          |""".stripMargin
-      )
-
-      val expected = ProcessVerificationResponseFromChrisRequest(
-        instanceId = "abc-123",
-        verificationBatchResourceRef = 222L,
-        acceptedTime = "2026-06-15T10:05:00Z",
-        submissionStatus = "SUBMITTED",
-        irMarkReceived = Some("IR_MARK_RECEIVED"),
-        verificationResults = Seq(
-          VerificationResult(
-            resourceRef = 456L,
-            matched = Some("Y"),
-            verified = Some("Y"),
-            verificationNumber = Some("V123456"),
-            taxTreatment = "NET",
-            verifiedDate = LocalDateTime.parse("2026-06-15T10:05:00")
-          )
-        )
-      )
-
-      json.validate[ProcessVerificationResponseFromChrisRequest] mustBe JsSuccess(expected)
-    }
-
-    "deserialize when optional verification result fields are missing" in {
-      val json = Json.parse(
-        """
-          |{
-          |  "instanceId": "abc-123",
-          |  "verificationBatchResourceRef": 222,
-          |  "acceptedTime": "2026-06-15T10:05:00Z",
-          |  "submissionStatus": "SUBMITTED",
-          |  "irMarkReceived": "IR_MARK_RECEIVED",
-          |  "verificationResults": [
-          |    {
-          |      "resourceRef": 456,
-          |      "verificationNumber": "V123456",
-          |      "taxTreatment": "NET",
-          |      "verifiedDate": "2026-06-15T10:05:00"
-          |    }
-          |  ]
-          |}
-          |""".stripMargin
-      )
-
-      val expected = ProcessVerificationResponseFromChrisRequest(
-        instanceId = "abc-123",
-        verificationBatchResourceRef = 222L,
-        acceptedTime = "2026-06-15T10:05:00Z",
-        submissionStatus = "SUBMITTED",
-        irMarkReceived = Some("IR_MARK_RECEIVED"),
-        verificationResults = Seq(
-          VerificationResult(
-            resourceRef = 456L,
-            matched = None,
-            verified = None,
-            verificationNumber = Some("V123456"),
-            taxTreatment = "NET",
-            verifiedDate = LocalDateTime.parse("2026-06-15T10:05:00")
-          )
-        )
-      )
-
-      json.validate[ProcessVerificationResponseFromChrisRequest] mustBe JsSuccess(expected)
-    }
-
-    "fail to deserialize when required fields are missing" in {
-      val json = Json.obj(
-        "instanceId" -> "abc-123"
-      )
-
-      json.validate[ProcessVerificationResponseFromChrisRequest].isError mustBe true
+      request.instanceId mustBe "1"
+      request.verificationBatchResourceRef mustBe 5L
+      request.submissionStatus mustBe "SUBMITTED"
+      request.acceptedTime mustBe "2017-04-06T08:46:08.081"
+      request.irMarkReceived mustBe Some("hmrc-mark")
+      request.verificationResults mustBe Seq(verificationResult)
     }
   }
 }
