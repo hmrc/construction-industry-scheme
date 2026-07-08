@@ -31,6 +31,7 @@ class CisReturnXmlBuilderSpec extends AnyWordSpec with Matchers {
       monthYear = "2025-05",
       email = Some("test@test.com"),
       isAgent = false,
+      isResubmission = false,
       clientTaxOfficeNumber = "",
       clientTaxOfficeRef = "",
       returnType = returnType,
