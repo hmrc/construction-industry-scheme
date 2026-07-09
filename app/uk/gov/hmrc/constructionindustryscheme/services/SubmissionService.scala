@@ -100,16 +100,34 @@ class SubmissionService @Inject() (
 
   def updateGovTalkStatusCorrelationId(request: UpdateGovTalkStatusCorrelationIdRequest)(implicit
     hc: HeaderCarrier
-  ): Future[Unit] =
+  ): Future[Unit] = {
+    logger.debug(
+      s"[SubmissionService][updateGovTalkStatusCorrelationId] Calling SP F18h: Update GovTalk Correlation ID. " +
+        s"Parameters: instanceId=${request.userIdentifier}, submissionId=${request.formResultID}, " +
+        s"correlationId=${request.correlationID}, pollInterval=${request.pollInterval}, gatewayURL=${request.gatewayURL}"
+    )
     formpProxyConnector.updateGovTalkStatusCorrelationId(request)
+  }
 
   def updateGovTalkStatusStatistics(request: UpdateGovTalkStatusStatisticsRequest)(implicit
     hc: HeaderCarrier
-  ): Future[Unit] =
+  ): Future[Unit] = {
+    logger.debug(
+      s"[SubmissionService][updateGovTalkStatusStatistics] Calling SP F18i: Update GovTalk Statistics. " +
+        s"Parameters: instanceId=${request.userIdentifier}, submissionId=${request.formResultID}, " +
+        s"lastMessageDate=${request.lastMessageDate}, numPolls=${request.numPolls}, pollInterval=${request.pollInterval}, gatewayURL=${request.gatewayURL}"
+    )
     formpProxyConnector.updateGovTalkStatusStatistics(request)
+  }
 
-  def updateGovTalkStatus(request: UpdateGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+  def updateGovTalkStatus(request: UpdateGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] = {
+    logger.debug(
+      s"[SubmissionService][updateGovTalkStatus] Calling SP F18j: Update GovTalk Status. " +
+        s"Parameters: instanceId=${request.userIdentifier}, submissionId=${request.formResultID}, " +
+        s"endStateDate=${request.endStateDate}, protocolStatus=${request.protocolStatus}"
+    )
     formpProxyConnector.updateGovTalkStatus(request)
+  }
 
   def resetGovTalkStatus(request: ResetGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.resetGovTalkStatus(request)
@@ -245,7 +263,10 @@ class SubmissionService @Inject() (
     instanceId: String,
     submissionId: String,
     lastMessageDate: Instant = Instant.now
-  )(implicit hc: HeaderCarrier): Future[Unit] =
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
+    logger.info(
+      s"[SubmissionService][processMonthlyReturnGovTalkStatusCheck] checking status for instanceId=$instanceId, submissionId=$submissionId"
+    )
     for {
       statusResponseOpt <- getInitialGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId))
       statusResponse    <- Future.fromTry(
@@ -276,6 +297,7 @@ class SubmissionService @Inject() (
                              statusRecord.gatewayURL
                            )
     } yield ()
+  }
 
   private def fetchAndStoreGovTalkStatus(instanceId: String, submissionId: String)(implicit
     hc: HeaderCarrier
