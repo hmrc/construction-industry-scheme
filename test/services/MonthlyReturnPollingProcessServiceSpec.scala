@@ -65,8 +65,16 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase {
         agentId = None
       )
 
+      val response = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq.empty,
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
       when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
-        .thenReturn(Future.failed(new RuntimeException("failed")), Future.successful(()))
+        .thenReturn(Future.failed(new RuntimeException("failed")), Future.successful(response))
 
       service.process(Seq(submission1, submission2)).futureValue mustBe ()
 

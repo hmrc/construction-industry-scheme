@@ -48,7 +48,7 @@ class MonthlyReturnPollingProcessService @Inject() (
 
   private def processSubmission(
     submission: MonthlyReturnSubmissionToPoll
-  )(implicit hc: HeaderCarrier): Future[Unit] =
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
     logger.info(
       s"[MonthlyReturnPollingProcessService][processSubmission] " +
         s"instanceId=${submission.instanceId}, " +
@@ -58,8 +58,8 @@ class MonthlyReturnPollingProcessService @Inject() (
       details <- monthlyReturnService.getMonthlyReturnForEdit(
                    GetMonthlyReturnForEditRequest(
                      submission.instanceId,
-                     submission.taxYear.toInt,
-                     submission.taxMonth.toInt,
+                     submission.taxYear,
+                     submission.taxMonth,
                      isAmendment = Some(false)
                    )
                  )
@@ -70,4 +70,5 @@ class MonthlyReturnPollingProcessService @Inject() (
                    submission.submissionId.toString
                  )
     } yield ()
+  }
 }

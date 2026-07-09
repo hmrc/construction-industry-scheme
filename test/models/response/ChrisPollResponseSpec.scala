@@ -18,7 +18,7 @@ package models.response
 
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.must.Matchers
-import uk.gov.hmrc.constructionindustryscheme.models.ACCEPTED
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, CisResponseSubcontractor}
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 
 class ChrisPollResponseSpec extends AnyWordSpec with Matchers {
@@ -32,7 +32,21 @@ class ChrisPollResponseSpec extends AnyWordSpec with Matchers {
         error = None,
         irMarkReceived = None,
         lastMessageDate = Some("2025-01-01T00:00:00Z"),
-        acceptedTime = None
+        acceptedTime = None,
+        cisResponseSubcontractors = Seq(
+          CisResponseSubcontractor(
+            utr = Some("1234567890"),
+            partnershipUtr = None,
+            tradingName = Some("Test Trading"),
+            foreName = Some("John"),
+            middleName = None,
+            surname = Some("Smith"),
+            nino = Some("123456789"),
+            matched = Some("Y"),
+            taxTreatment = Some("net"),
+            verificationNumber = Some("V1000000007")
+          )
+        )
       )
 
       response.status mustBe ACCEPTED
@@ -40,6 +54,20 @@ class ChrisPollResponseSpec extends AnyWordSpec with Matchers {
       response.pollUrl mustBe Some("/poll/123")
       response.pollInterval mustBe Some(10)
       response.lastMessageDate mustBe Some("2025-01-01T00:00:00Z")
+      response.cisResponseSubcontractors mustBe Seq(
+        CisResponseSubcontractor(
+          utr = Some("1234567890"),
+          partnershipUtr = None,
+          tradingName = Some("Test Trading"),
+          foreName = Some("John"),
+          middleName = None,
+          surname = Some("Smith"),
+          nino = Some("123456789"),
+          matched = Some("Y"),
+          taxTreatment = Some("net"),
+          verificationNumber = Some("V1000000007")
+        )
+      )
     }
   }
 }
