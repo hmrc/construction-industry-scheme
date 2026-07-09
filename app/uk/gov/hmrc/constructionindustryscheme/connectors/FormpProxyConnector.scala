@@ -432,7 +432,6 @@ class FormpProxyConnector @Inject() (
       .get(url"$base/cis/subcontractor/$cisId/$subbieResourceRef/delete-status")
       .execute[GetSubcontractorForDeleteResponse]
 
-
   def getSubcontractorList(
     cisId: String
   )(implicit hc: HeaderCarrier): Future[GetSubcontractorListResponse] =
