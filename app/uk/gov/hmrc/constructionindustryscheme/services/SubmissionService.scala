@@ -102,7 +102,7 @@ class SubmissionService @Inject() (
     hc: HeaderCarrier
   ): Future[Unit] = {
     logger.debug(
-      s"[SubmissionService][updateGovTalkStatusCorrelationId] Calling SP F18h: Update GovTalk Correlation ID. " +
+      s"[SubmissionService][updateGovTalkStatusCorrelationId] Update GovTalk Correlation ID. " +
         s"Parameters: instanceId=${request.userIdentifier}, submissionId=${request.formResultID}, " +
         s"correlationId=${request.correlationID}, pollInterval=${request.pollInterval}, gatewayURL=${request.gatewayURL}"
     )
@@ -113,7 +113,7 @@ class SubmissionService @Inject() (
     hc: HeaderCarrier
   ): Future[Unit] = {
     logger.debug(
-      s"[SubmissionService][updateGovTalkStatusStatistics] Calling SP F18i: Update GovTalk Statistics. " +
+      s"[SubmissionService][updateGovTalkStatusStatistics] Update GovTalk Statistics. " +
         s"Parameters: instanceId=${request.userIdentifier}, submissionId=${request.formResultID}, " +
         s"lastMessageDate=${request.lastMessageDate}, numPolls=${request.numPolls}, pollInterval=${request.pollInterval}, gatewayURL=${request.gatewayURL}"
     )
@@ -122,7 +122,7 @@ class SubmissionService @Inject() (
 
   def updateGovTalkStatus(request: UpdateGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] = {
     logger.debug(
-      s"[SubmissionService][updateGovTalkStatus] Calling SP F18j: Update GovTalk Status. " +
+      s"[SubmissionService][updateGovTalkStatus] Update GovTalk Status. " +
         s"Parameters: instanceId=${request.userIdentifier}, submissionId=${request.formResultID}, " +
         s"endStateDate=${request.endStateDate}, protocolStatus=${request.protocolStatus}"
     )
