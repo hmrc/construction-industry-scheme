@@ -18,11 +18,14 @@ package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
 
+import java.time.LocalDateTime
+
 case class UpdateVerificationSubmissionRequest(
   instanceId: String,
-  verificationBatchId: Long,
   verificationBatchResourceRef: Long,
   submittableStatus: String,
+  submissionRequestDate: Option[LocalDateTime],
+  hmrcMarkGenerated: Option[String],
   govtalkErrorCode: Option[String] = None,
   govtalkErrorType: Option[String] = None,
   govtalkErrorMessage: Option[String] = None

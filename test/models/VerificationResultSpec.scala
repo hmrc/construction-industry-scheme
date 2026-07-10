@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-package models.requests
+package models
 
 import base.SpecBase
 import uk.gov.hmrc.constructionindustryscheme.models.VerificationResult
-import uk.gov.hmrc.constructionindustryscheme.models.requests.ProcessVerificationResponseFromChrisRequest
 import java.time.LocalDateTime
 
-class ProcessVerificationResponseFromChrisRequestSpec extends SpecBase {
+class VerificationResultSpec extends SpecBase {
 
-  "ProcessVerificationResponseFromChrisRequest" - {
+  "VerificationResult" - {
     "create an instance with the expected values" in {
-      val verificationResult = VerificationResult(
+      val result = VerificationResult(
         resourceRef = 13L,
         matched = Some("Y"),
         verified = Some("N"),
@@ -34,21 +33,11 @@ class ProcessVerificationResponseFromChrisRequestSpec extends SpecBase {
         verifiedDate = Some(LocalDateTime.parse("2017-04-06T08:46:08.081"))
       )
 
-      val request = ProcessVerificationResponseFromChrisRequest(
-        instanceId = "1",
-        verificationBatchResourceRef = 5L,
-        submissionStatus = "SUBMITTED",
-        acceptedTime = "2017-04-06T08:46:08.081",
-        irMarkReceived = Some("hmrc-mark"),
-        verificationResults = Seq(verificationResult)
-      )
-
-      request.instanceId mustBe "1"
-      request.verificationBatchResourceRef mustBe 5L
-      request.submissionStatus mustBe "SUBMITTED"
-      request.acceptedTime mustBe "2017-04-06T08:46:08.081"
-      request.irMarkReceived mustBe Some("hmrc-mark")
-      request.verificationResults mustBe Seq(verificationResult)
+      result.resourceRef mustBe 13L
+      result.matched mustBe Some("Y")
+      result.verified mustBe Some("N")
+      result.verificationNumber mustBe Some("V1000000007")
+      result.taxTreatment mustBe "net"
     }
   }
 }

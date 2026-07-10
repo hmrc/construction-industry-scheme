@@ -48,9 +48,9 @@ class BatchPollerScheduledServiceIntegrationSpec
 
   private val appConfig = lockApp.injector.instanceOf[AppConfig]
 
-  private val lockId = "batch-poller-job"
-
   private val batchPollerService = mock[BatchPollerService]
+
+  private val lockId = "batch-poller-job"
 
   private val service =
     new BatchPollerScheduledService(repository, new CurrentTimestampSupport(), appConfig, batchPollerService)
@@ -77,8 +77,7 @@ class BatchPollerScheduledServiceIntegrationSpec
     }
 
     "acquire the lock and run when no other instance holds it" in {
-      when(batchPollerService.run()(any[HeaderCarrier]))
-        .thenReturn(Future.unit)
+      when(batchPollerService.run()(any[HeaderCarrier])).thenReturn(Future.unit)
 
       lockDocFor(lockId) shouldBe None
 

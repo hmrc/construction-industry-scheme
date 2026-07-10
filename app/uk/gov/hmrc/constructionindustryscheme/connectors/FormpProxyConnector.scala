@@ -340,7 +340,7 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/verification/submission/update")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap(acceptResponse(status => status / 100 == 2))
+      .flatMap(acceptResponse(NO_CONTENT))
 
   def createSubmissionForVerification(
     request: CreateSubmissionAndUpdateVerificationsRequest
@@ -363,6 +363,14 @@ class FormpProxyConnector @Inject() (
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap(acceptResponse(NO_CONTENT))
+
+  def getSubcontractorDeleteStatus(
+    cisId: String,
+    subbieResourceRef: Long
+  )(implicit hc: HeaderCarrier): Future[GetSubcontractorForDeleteResponse] =
+    http
+      .get(url"$base/cis/subcontractor/$cisId/$subbieResourceRef/delete-status")
+      .execute[GetSubcontractorForDeleteResponse]
 
   private def acceptResponse(acceptedStatuses: Int*)(response: HttpResponse): Future[Unit] =
     acceptResponse(status => acceptedStatuses.contains(status))(response)
