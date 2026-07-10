@@ -37,6 +37,7 @@ POST       /scheme/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId 
 
 POST       /subcontractor/create-and-update                              uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.createAndUpdateSubcontractor()
 GET        /subcontractors/utr/:cisId                                    uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractorUTRs(cisId: String)
+GET        /subcontractors/:cisId                                        uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractorList(cisId: String)
 GET        /subcontractor/:cisId/:subbieResourceRef/delete-status        uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractorDeleteStatus(cisId: String, subbieResourceRef: Long)
 
 POST       /amend-monthly-return/create                                  uk.gov.hmrc.constructionindustryscheme.controllers.AmendMonthlyReturnController.createAmendedMonthlyReturn()
