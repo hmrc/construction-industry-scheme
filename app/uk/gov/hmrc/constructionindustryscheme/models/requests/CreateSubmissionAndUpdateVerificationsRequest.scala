@@ -32,7 +32,7 @@ case class CreateSubmissionAndUpdateVerificationsRequest(
   instanceId: String,
   verificationBatchId: Long,
   verificationBatchResourceRef: Long,
-  emailRecipient: String,
+  emailRecipient: Option[String],
   irMarkGenerated: Option[String] = None,
   verifications: Seq[VerificationToUpdate],
   agentId: Option[String] = None

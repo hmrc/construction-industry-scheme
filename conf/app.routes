@@ -24,7 +24,7 @@ POST       /submissions/:submissionId/update                             uk.gov.
 GET        /submissions/poll                                             uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.pollSubmission(pollUrl: RedirectUrl, submissionId: String)
 POST       /submissions/:submissionId/send-success-email                 uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.sendSuccessfulEmail(submissionId: String)
 POST       /submissions/:submissionId/submit-verification-to-chris       uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.submitVerificationToChris(submissionId: String)
-GET        /submissions/verification/poll                               uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.pollVerificationSubmission(pollUrl: RedirectUrl, submissionId: String)
+GET        /submissions/verification/poll                                uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.pollVerificationSubmission(pollUrl: RedirectUrl, submissionId: String)
 POST       /submissions/:submissionId/reset-govtalk                      uk.gov.hmrc.constructionindustryscheme.controllers.SubmissionController.resetGovTalk(submissionId: String)
 
 POST       /agent/client-list/retrieval/start                            uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.start
@@ -37,23 +37,25 @@ POST       /scheme/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId 
 
 POST       /subcontractor/create-and-update                              uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.createAndUpdateSubcontractor()
 GET        /subcontractors/utr/:cisId                                    uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractorUTRs(cisId: String)
+GET        /subcontractor/:cisId/:subbieResourceRef/delete-status        uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractorDeleteStatus(cisId: String, subbieResourceRef: Long)
 
 POST       /amend-monthly-return/create                                  uk.gov.hmrc.constructionindustryscheme.controllers.AmendMonthlyReturnController.createAmendedMonthlyReturn()
 
 # user answers caching in mongo
-GET           /user-cache/agent-client/:id                            uk.gov.hmrc.constructionindustryscheme.controllers.AgentClientController.get(id: String)
-POST          /user-cache/agent-client/:id                            uk.gov.hmrc.constructionindustryscheme.controllers.AgentClientController.save(id: String)
-DELETE        /user-cache/agent-client/:id                            uk.gov.hmrc.constructionindustryscheme.controllers.AgentClientController.remove(id: String)
+GET           /user-cache/agent-client/:id                               uk.gov.hmrc.constructionindustryscheme.controllers.AgentClientController.get(id: String)
+POST          /user-cache/agent-client/:id                               uk.gov.hmrc.constructionindustryscheme.controllers.AgentClientController.save(id: String)
+DELETE        /user-cache/agent-client/:id                               uk.gov.hmrc.constructionindustryscheme.controllers.AgentClientController.remove(id: String)
 
-GET           /verification-batch/newest/:instanceId              uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getNewestVerificationBatch(instanceId: String)
-GET           /verification-batch/current/:instanceId             uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getCurrentVerificationBatch(instanceId: String)
-POST          /verification-batch/modify                          uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.modifyVerifications()
+GET           /verification-batch/newest/:instanceId                     uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getNewestVerificationBatch(instanceId: String)
+GET           /verification-batch/current/:instanceId                    uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getCurrentVerificationBatch(instanceId: String)
+POST          /verification-batch/modify                                 uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.modifyVerifications()
 
-POST          /verification-batch/create                          uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createVerificationBatchAndVerifications()
-POST          /verification/submission/create               uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createSubmissionAndUpdateVerifications()
-POST          /verification-batch/send-email                      uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.sendEmailForVerification
+POST          /verification-batch/create                                 uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createVerificationBatchAndVerifications()
+POST          /verification/submission/create                            uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createSubmissionAndUpdateVerifications()
+POST          /verification/submission/update                            uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.updateVerificationSubmission()
+POST          /verification-batch/send-email                             uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.sendEmailForVerification
 POST          /verification/response/process                       uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.processVerificationResponseFromChris()
 
-GET          /journey-handoffs/:journeyType/:id                      uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.get(journeyType: String, id: String)
-POST         /journey-handoffs/:journeyType                          uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.create(journeyType: String)
-DELETE       /journey-handoffs/:journeyType/:id                      uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.delete(journeyType: String, id: String)
+GET          /journey-handoffs/:journeyType/:id                          uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.get(journeyType: String, id: String)
+POST         /journey-handoffs/:journeyType                              uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.create(journeyType: String)
+DELETE       /journey-handoffs/:journeyType/:id                          uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.delete(journeyType: String, id: String)
