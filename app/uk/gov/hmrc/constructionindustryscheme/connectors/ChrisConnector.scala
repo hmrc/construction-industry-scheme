@@ -63,12 +63,7 @@ class ChrisConnector @Inject() (
         logger.info("[ChrisConnector] pollSubmission request:\n" + ChrisPollRequest(correlationId, journey).payload)
         logger.info("[ChrisConnector] pollSubmission response:\n" + resp.body)
         if (is2xx(resp.status)) {
-          val parseResult: Either[String, ChrisPollResponse] = journey match {
-            case ChrisPollJourney.Verification  => ChrisVerificationPollXmlMapper.parse(resp.body)
-            case ChrisPollJourney.MonthlyReturn => ChrisPollXmlMapper.parse(resp.body)
-          }
-
-          parseResult match {
+          parsePollResponse(journey, resp.body) match {
             case Left(err)     =>
               logger.error(
                 s"[ChrisConnector] Failed to parse 2xx polling response corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
@@ -199,6 +194,15 @@ class ChrisConnector @Inject() (
     hc: HeaderCarrier
   ): Future[SubmissionResult] =
     submit(chrisCisVerifyUrl, envelope, correlationId, ChrisVerificationSubmissionXmlMapper.parse)
+
+  private def parsePollResponse(
+    journey: ChrisPollJourney,
+    body: String
+  ): Either[String, ChrisPollResponse] =
+    journey match {
+      case ChrisPollJourney.MonthlyReturn => ChrisPollXmlMapper.parse(body)
+      case ChrisPollJourney.Verification  => ChrisVerificationPollXmlMapper.parse(body)
+    }
 
   private def handle2xxResponse(
     resp: HttpResponse,

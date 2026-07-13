@@ -16,48 +16,56 @@
 
 package models.requests
 
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
-import play.api.libs.json.{JsSuccess, Json}
+import base.SpecBase
+import play.api.libs.json.{JsNull, Json}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.UpdateVerificationSubmissionRequest
 
-class UpdateVerificationSubmissionRequestSpec extends AnyWordSpec with Matchers {
+import java.time.LocalDateTime
 
-  "UpdateVerificationSubmissionRequest format" should {
+class UpdateVerificationSubmissionRequestSpec extends SpecBase {
 
-    "round-trip json with all fields" in {
-      val request = UpdateVerificationSubmissionRequest(
-        instanceId = "abc-123",
-        verificationBatchId = 99L,
-        verificationBatchResourceRef = 77L,
-        submittableStatus = "FATAL_ERROR",
-        govtalkErrorCode = Some("500"),
-        govtalkErrorType = Some("timeOut"),
-        govtalkErrorMessage = Some("timeOut")
-      )
+  "UpdateVerificationSubmissionRequest" - {
 
-      Json.toJson(request).validate[UpdateVerificationSubmissionRequest] shouldBe JsSuccess(request)
-    }
-
-    "round-trip json with optional fields absent" in {
-      val request = UpdateVerificationSubmissionRequest(
-        instanceId = "abc-123",
-        verificationBatchId = 99L,
-        verificationBatchResourceRef = 77L,
-        submittableStatus = "ACCEPTED"
-      )
-
-      Json.toJson(request).validate[UpdateVerificationSubmissionRequest] shouldBe JsSuccess(request)
-    }
-
-    "fail to deserialize when submittableStatus is missing" in {
+    "must read from JSON" in {
       val json = Json.obj(
-        "instanceId"                   -> "abc-123",
-        "verificationBatchId"          -> 99L,
-        "verificationBatchResourceRef" -> 77L
+        "instanceId"                   -> "1",
+        "verificationBatchResourceRef" -> 2001L,
+        "submittableStatus"            -> "SUBMITTED",
+        "submissionRequestDate"        -> "2026-06-15T03:30:52",
+        "hmrcMarkGenerated"            -> "hmrc-mark",
+        "govtalkErrorCode"             -> JsNull,
+        "govtalkErrorType"             -> JsNull,
+        "govtalkErrorMessage"          -> JsNull
       )
 
-      json.validate[UpdateVerificationSubmissionRequest].isError shouldBe true
+      val result = json.as[UpdateVerificationSubmissionRequest]
+
+      result.instanceId mustBe "1"
+      result.verificationBatchResourceRef mustBe 2001L
+      result.submittableStatus mustBe "SUBMITTED"
+      result.hmrcMarkGenerated mustBe Some("hmrc-mark")
+      result.submissionRequestDate.value mustBe LocalDateTime.parse("2026-06-15T03:30:52")
+      result.govtalkErrorCode mustBe None
+      result.govtalkErrorType mustBe None
+      result.govtalkErrorMessage mustBe None
+    }
+
+    "must write to JSON" in {
+      val model = UpdateVerificationSubmissionRequest(
+        instanceId = "1",
+        verificationBatchResourceRef = 2001L,
+        submittableStatus = "SUBMITTED",
+        submissionRequestDate = Some(LocalDateTime.parse("2026-06-15T03:30:52")),
+        hmrcMarkGenerated = Some("hmrc-mark")
+      )
+
+      val json = Json.toJson(model)
+
+      (json \ "instanceId").as[String] mustBe "1"
+      (json \ "verificationBatchResourceRef").as[Long] mustBe 2001L
+      (json \ "submittableStatus").as[String] mustBe "SUBMITTED"
+      (json \ "submissionRequestDate").as[LocalDateTime] mustBe LocalDateTime.parse("2026-06-15T03:30:52")
+      (json \ "hmrcMarkGenerated").as[String] mustBe "hmrc-mark"
     }
   }
 }

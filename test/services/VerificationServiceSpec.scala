@@ -20,13 +20,13 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.{CreateVerifications, DeleteVerifications}
+import uk.gov.hmrc.constructionindustryscheme.models.{CreateVerifications, DeleteVerifications, VerificationResult}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
 import uk.gov.hmrc.http.HeaderCarrier
-import java.time.LocalDateTime
 
+import java.time.LocalDateTime
 import scala.concurrent.Future
 
 final class VerificationServiceSpec extends SpecBase {
@@ -176,48 +176,13 @@ final class VerificationServiceSpec extends SpecBase {
     }
   }
 
-  "VerificationService#updateVerificationSubmission" - {
-
-    val request = UpdateVerificationSubmissionRequest(
-      instanceId = "abc-123",
-      verificationBatchId = 99L,
-      verificationBatchResourceRef = 77L,
-      submittableStatus = "FATAL_ERROR",
-      govtalkErrorCode = Some("500"),
-      govtalkErrorType = Some("timeOut"),
-      govtalkErrorMessage = Some("timeOut")
-    )
-
-    "delegates to FormpProxyConnector and returns Unit" in {
-      val connector: FormpProxyConnector = mock[FormpProxyConnector]
-      val service                        = new VerificationService(connector)
-
-      when(connector.updateVerificationSubmission(eqTo(request))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(()))
-
-      service.updateVerificationSubmission(request).futureValue mustBe ()
-
-      verify(connector).updateVerificationSubmission(eqTo(request))(any[HeaderCarrier])
-    }
-
-    "propagates failures from FormpProxyConnector" in {
-      val connector: FormpProxyConnector = mock[FormpProxyConnector]
-      val service                        = new VerificationService(connector)
-
-      when(connector.updateVerificationSubmission(eqTo(request))(any[HeaderCarrier]))
-        .thenReturn(Future.failed(new RuntimeException("boom")))
-
-      service.updateVerificationSubmission(request).failed.futureValue.getMessage must include("boom")
-    }
-  }
-
   "VerificationService#createSubmissionForVerification" - {
 
     val request = CreateSubmissionAndUpdateVerificationsRequest(
       instanceId = "abc-123",
       verificationBatchId = 99L,
       verificationBatchResourceRef = 10L,
-      emailRecipient = "ops@example.com",
+      emailRecipient = Some("ops@example.com"),
       irMarkGenerated = Some("IR_MARK"),
       verifications = Seq(
         VerificationToUpdate("ACME", 111L, "Y"),
@@ -248,6 +213,39 @@ final class VerificationServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.createSubmissionAndUpdateVerifications(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "VerificationService#updateVerificationSubmission" - {
+
+    val request = UpdateVerificationSubmissionRequest(
+      instanceId = "abc-123",
+      verificationBatchResourceRef = 10L,
+      submittableStatus = "SUBMITTED",
+      submissionRequestDate = Some(LocalDateTime.parse("2026-06-15T03:30:52")),
+      hmrcMarkGenerated = Some("hmrc-mark")
+    )
+
+    "delegates to FormpProxyConnector and returns Unit" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.updateVerificationSubmission(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.updateVerificationSubmission(request).futureValue mustBe ()
+
+      verify(connector).updateVerificationSubmission(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.updateVerificationSubmission(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.updateVerificationSubmission(request).failed.futureValue.getMessage must include("boom")
     }
   }
 
