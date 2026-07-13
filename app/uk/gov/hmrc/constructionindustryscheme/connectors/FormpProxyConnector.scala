@@ -419,4 +419,12 @@ class FormpProxyConnector @Inject() (
     http
       .get(url"$base/cis/subcontractor/$cisId/$subbieResourceRef/delete-status")
       .execute[GetSubcontractorForDeleteResponse]
+
+  def getSubmissionWithVerificationBatch(
+    instanceId: String,
+    verificationBatchResourceRef: Long
+  )(implicit hc: HeaderCarrier): Future[GetSubmissionWithVerificationBatchResponse] =
+    http
+      .get(url"$base/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef")
+      .execute[GetSubmissionWithVerificationBatchResponse]
 }

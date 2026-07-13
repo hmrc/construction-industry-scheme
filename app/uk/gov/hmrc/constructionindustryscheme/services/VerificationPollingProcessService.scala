@@ -21,10 +21,13 @@ import uk.gov.hmrc.constructionindustryscheme.models.response.VerificationSubmis
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class VerificationPollingProcessService @Inject() () extends Logging {
+class VerificationPollingProcessService @Inject() (
+  submissionService: SubmissionService
+)(implicit ec: ExecutionContext)
+    extends Logging {
 
   def process(
     verificationSubmissions: Seq[VerificationSubmissionToPoll]
@@ -33,15 +36,19 @@ class VerificationPollingProcessService @Inject() () extends Logging {
     logger.info(
       s"[VerificationPollingProcessService][process] Calling F6 - Verification Polling Process for ${verificationSubmissions.size} submissions"
     )
+    logger.info(
+      s"[VerificationPollingProcessService][process] Calling F7 - Get Submission With Verification Batch for ${verificationSubmissions.size} submissions"
+    )
 
     /*
      * TODO:
      * Implement F6 - Verification Polling Process here.
-     *
-     * Expected next step:
-     * For each verification submission, call the verification polling logic.
      */
 
-    Future.unit
+    Future
+      .traverse(verificationSubmissions) { submission =>
+        submissionService.getSubmissionWithVerificationBatch(submission)
+      }
+      .map(_ => ())
   }
 }

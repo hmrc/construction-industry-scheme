@@ -2281,4 +2281,36 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 400
     }
   }
+  "FormpProxyConnector getSubmissionWithVerificationBatch" should {
+
+    "GET /formp-proxy/cis/verification/submission-batch/:instanceId/:verificationBatchResourceRef and return response" in {
+      val instanceId = "instance-verification-001"
+      val verificationBatchResourceRef = 70001L
+
+      val responseJson = Json.parse(
+        """
+        {
+          "subcontractors": [],
+          "verifications": []
+        }
+      """
+      )
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val result =
+        connector
+          .getSubmissionWithVerificationBatch(instanceId, verificationBatchResourceRef)
+          .futureValue
+
+      Json.toJson(result) mustBe responseJson
+    }
+  }
 }
