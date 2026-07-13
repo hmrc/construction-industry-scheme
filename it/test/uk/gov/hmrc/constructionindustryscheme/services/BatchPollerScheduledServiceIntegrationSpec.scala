@@ -18,7 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import base.SpecBase
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.{doReturn, never, verify, when}
+import org.mockito.Mockito.{never, verify, when}
 import org.mongodb.scala.model.Filters
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers.shouldBe

@@ -40,6 +40,28 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
       verify(submissionService).getSubmissionWithVerificationBatch(verificationSubmission1)
       verify(submissionService).getSubmissionWithVerificationBatch(verificationSubmission2)
     }
+
+    "must fail when SubmissionService fails to get the submission with verification batch" in new Setup {
+
+      val exception =
+        new RuntimeException("Failed to get submission with verification batch")
+
+      when(
+        submissionService
+          .getSubmissionWithVerificationBatch(verificationSubmission1)
+      ).thenReturn(Future.failed(exception))
+
+      val result =
+        service
+          .process(Seq(verificationSubmission1))
+          .failed
+          .futureValue
+
+      result mustBe exception
+
+      verify(submissionService)
+        .getSubmissionWithVerificationBatch(verificationSubmission1)
+    }
   }
 
   private trait Setup {
