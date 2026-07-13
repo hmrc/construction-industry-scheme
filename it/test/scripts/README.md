@@ -42,23 +42,42 @@ status of both legs.
 
 One scenario TON exercises several stub legs with *different* dispatch rules:
 
-| Stub leg | Reads the TON from | Magic values |
+| Stub leg | Reads the TON from | Magic values (IR-CIS-VERIFY) |
 |---|---|---|
-| ChRIS submit/poll (XML) | the GovTalk XML envelope | 500–505 → that HTTP status; 754/EZ00125 → immediate fatal; 755–758 → terminal status on poll |
+| ChRIS submit/poll (XML) | the GovTalk XML envelope | 500–505 → that HTTP status; 779/EZ00125 → immediate fatal; 774–778 → terminal status on poll (775 fatal, 776 departmental 3001, 777 no-receipt, 778 forever pending) |
 | `/cis-taxpayer` | the request body (resolved employer ref) | 500 → HTTP 500 |
-| `/cis/govtalkstatus/*` | the caller's **enrolment** | 500 → 500, 502 → 502 |
+| `/cis/govtalkstatus/*` | a `?scenario=` query param (not sent by the backend) | 500/502/404 |
+
+The stub's verify success response contains one hardcoded subcontractor
+(Noel Armstrong / DBB Construction / UTR 8786438047); the default request body
+must describe the same subcontractor or the backend's
+`VerificationResultMapper` fails the successful poll with HTTP 500.
 
 Consequences encoded in the scenario tables of `run-e2e-scenarios.sh`:
 
-- TON `500` always ends as backend HTTP 500: the ChRIS failure handling itself
-  calls `/cis-taxpayer`, which also fails.
-- TON `502` differs by mode: enrolment mode → backend 500 (the govtalk leg
-  fails too), agent mode → backend 200 with `status=FATAL_ERROR`.
-- TON `759`/`760`/`761` (recoverable errors) are a **stub gap** for the VERIFY
-  poll: only the CIS300MR monthly-return poll maps `RECOVERABLE_ERROR_*`
-  responses, so the verify poll falls through to success. The suite pins these
-  rows to `SUBMITTED` so they start failing (and get updated) if the stub gains
-  support.
+- The verification flow derives the downstream employer ref from the **body**
+  unconditionally (unlike monthly returns, which use `resolveEmployerRef`), so
+  the `/cis-taxpayer` 500-magic only fires in agent mode: agent TON `500` →
+  backend 500, enrolment TON `500` → backend 200 `FATAL_ERROR`.
+- The govtalk failure leg is no longer reachable end-to-end (the backend never
+  sends `?scenario=`), so no enrolment-502 special case remains.
+- TON `780` (both modes) is the **F18 scenario 5** row: a 3000/`fatal`
+  GovTalk error on the verify poll maps to `DEPARTMENTAL_ERROR` with
+  `error.errorNumber=3000` (vs scenario 6 = 776 → 3001/`business`). Needs a
+  stub that maps TON 780 to the `DEPARTMENTAL_ERROR_3000` final status backed
+  by `submitCISVerifyMessage-departmentalError-3000-response.xml` (added to
+  the stub 2026-07-13); against an older stub these rows fail with
+  `poll status=SUBMITTED`.
+- Scenario rows are labelled `F18 s<n>` after the tester's scenario numbers
+  (s1 request>5xx, s2 request>GovTalk error, s3 poll>5xx, s4 poll>fatal,
+  s5 poll>3000/fatal, s6 poll>3001/business, s7 poll>other error number —
+  same mapper branch as s4, exercised by the 775 row via err 1001). **s3** has
+  no TON: the suite polls a crafted URL
+  (`…/poll/IR-CIS-VERIFY/2?final=SERVER_ERROR_500` — the stub only fires the
+  5xx when the path count is ≥ 2) after a happy-path submit; the backend
+  responds 200 `ACCEPTED` (keep-polling) with `govTalkErrorStatus=ServerError`.
+- There are no recoverable (3000/2005/1000) entries in the verify statusMap at
+  all — recoverable-on-poll is untestable for VERIFY until the stub adds them.
 - A token with **no** `HMRC-CIS-ORG` enrolment and `isAgent=false` → backend
   500 (missing enrolment identifiers), covered as a negative test.
 

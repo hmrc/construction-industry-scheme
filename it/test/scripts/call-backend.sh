@@ -112,6 +112,12 @@ fi
 TOKEN=$("$SCRIPT_DIR/bearer-token.sh" ${TOKEN_ARGS[@]+"${TOKEN_ARGS[@]}"} "$TOKEN_TON" "$TOKEN_TOR")
 log "--- Token obtained ---"
 
+# VerificationSubmissionContextBuilder joins verifications to subcontractors by
+# verificationResourceRef == subbieResourceRef (as string); mismatched refs -> 400.
+# The subcontractor identity (names/tradingName/utr) must match the hardcoded
+# subcontractor in the stub's submitCISVerifyMessage-success-response.xml, or
+# VerificationResultMapper fails the poll with "No matching requested
+# verification" -> backend 500.
 default_body() {
   cat <<JSON
 {
@@ -128,10 +134,11 @@ default_body() {
     {
       "subcontractorId": 1,
       "subbieResourceRef": 10,
-      "firstName": "John",
-      "surname": "Smith",
-      "utr": "1111111111",
-      "nino": "AA123456A",
+      "firstName": "Noel",
+      "surname": "Armstrong",
+      "tradingName": "DBB Construction",
+      "utr": "8786438047",
+      "nino": "AB623456C",
       "subcontractorType": "soletrader",
       "addressLine1": "1 Test Street",
       "postcode": "NE1 1AA",
@@ -140,8 +147,8 @@ default_body() {
   ],
   "verifications": [
     {
-      "subcontractorName": "John Smith",
-      "verificationResourceRef": "111",
+      "subcontractorName": "Noel Armstrong",
+      "verificationResourceRef": "10",
       "proceedVerification": true
     }
   ]
