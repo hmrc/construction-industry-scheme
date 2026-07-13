@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.constructionindustryscheme.models.VerificationResult
 
-final case class ProcessVerificationResponseFromChrisRequest(
-  instanceId: String,
-  verificationBatchResourceRef: Long,
-  acceptedTime: String,
-  submissionStatus: String,
-  irMarkReceived: Option[String],
-  verificationResults: Seq[VerificationResult]
+import java.time.LocalDateTime
+
+case class VerificationResult(
+  resourceRef: Long,
+  matched: Option[String],
+  verified: Option[String],
+  verificationNumber: Option[String],
+  taxTreatment: String,
+  verifiedDate: Option[LocalDateTime]
 )
 
-object ProcessVerificationResponseFromChrisRequest {
-  implicit val format: OFormat[ProcessVerificationResponseFromChrisRequest] =
-    Json.format[ProcessVerificationResponseFromChrisRequest]
+object VerificationResult {
+  implicit val format: OFormat[VerificationResult] = Json.format[VerificationResult]
 }

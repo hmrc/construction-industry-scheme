@@ -81,4 +81,15 @@ class SubcontractorController @Inject() (
       }
   }
 
+  def getSubcontractorList(cisId: String): Action[AnyContent] =
+    authorise.async { implicit request =>
+      subcontractorService
+        .getSubcontractorList(cisId)
+        .map(response => Ok(Json.toJson(response)))
+        .recover { case ex =>
+          logger.error(s"[getSubcontractorList] formp-proxy get failed (cisId=$cisId)", ex)
+          BadGateway(Json.obj("message" -> "get-subcontractor-list-failed"))
+        }
+    }
+
 }
