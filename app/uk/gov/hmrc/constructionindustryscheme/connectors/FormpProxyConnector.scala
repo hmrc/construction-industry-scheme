@@ -372,11 +372,17 @@ class FormpProxyConnector @Inject() (
       .get(url"$base/cis/subcontractor/$cisId/$subbieResourceRef/delete-status")
       .execute[GetSubcontractorForDeleteResponse]
 
+  def getSubcontractorList(
+    cisId: String
+  )(implicit hc: HeaderCarrier): Future[GetSubcontractorListResponse] =
+    http
+      .get(url"$base/cis/subcontractors/$cisId")
+      .execute[GetSubcontractorListResponse]
+
   private def acceptResponse(acceptedStatuses: Int*)(response: HttpResponse): Future[Unit] =
     acceptResponse(status => acceptedStatuses.contains(status))(response)
 
   private def acceptResponse(fn: Int => Boolean)(response: HttpResponse): Future[Unit] =
     if (fn(response.status)) Future.unit
     else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-
 }
