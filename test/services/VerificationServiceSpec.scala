@@ -20,12 +20,13 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.{CreateVerifications, DeleteVerifications}
+import uk.gov.hmrc.constructionindustryscheme.models.{CreateVerifications, DeleteVerifications, VerificationResult}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
 import uk.gov.hmrc.http.HeaderCarrier
 
+import java.time.LocalDateTime
 import scala.concurrent.Future
 
 final class VerificationServiceSpec extends SpecBase {
@@ -181,7 +182,7 @@ final class VerificationServiceSpec extends SpecBase {
       instanceId = "abc-123",
       verificationBatchId = 99L,
       verificationBatchResourceRef = 10L,
-      emailRecipient = "ops@example.com",
+      emailRecipient = Some("ops@example.com"),
       irMarkGenerated = Some("IR_MARK"),
       verifications = Seq(
         VerificationToUpdate("ACME", 111L, "Y"),
@@ -212,6 +213,90 @@ final class VerificationServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.createSubmissionAndUpdateVerifications(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "VerificationService#updateVerificationSubmission" - {
+
+    val request = UpdateVerificationSubmissionRequest(
+      instanceId = "abc-123",
+      verificationBatchResourceRef = 10L,
+      submittableStatus = "SUBMITTED",
+      submissionRequestDate = Some(LocalDateTime.parse("2026-06-15T03:30:52")),
+      hmrcMarkGenerated = Some("hmrc-mark")
+    )
+
+    "delegates to FormpProxyConnector and returns Unit" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.updateVerificationSubmission(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.updateVerificationSubmission(request).futureValue mustBe ()
+
+      verify(connector).updateVerificationSubmission(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.updateVerificationSubmission(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.updateVerificationSubmission(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "VerificationService#processVerificationResponseFromChris" - {
+
+    val request = ProcessVerificationResponseFromChrisRequest(
+      instanceId = "abc-123",
+      verificationBatchResourceRef = 77L,
+      acceptedTime = "2026-06-15T10:05:00Z",
+      submissionStatus = "ACCEPTED",
+      irMarkReceived = Some("IR_MARK_RECEIVED"),
+      verificationResults = Seq(
+        VerificationResult(
+          resourceRef = 111L,
+          matched = Some("Y"),
+          verified = Some("Y"),
+          verificationNumber = Some("V123456"),
+          taxTreatment = "NET",
+          verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
+        ),
+        VerificationResult(
+          resourceRef = 222L,
+          matched = Some("N"),
+          verified = Some("N"),
+          verificationNumber = Some("V654321"),
+          taxTreatment = "GROSS",
+          verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 6, 0))
+        )
+      )
+    )
+
+    "delegates to FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.processVerificationResponseFromChris(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.processVerificationResponseFromChris(request).futureValue mustBe ()
+
+      verify(connector).processVerificationResponseFromChris(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.processVerificationResponseFromChris(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.processVerificationResponseFromChris(request).failed.futureValue.getMessage must include("boom")
     }
   }
 }

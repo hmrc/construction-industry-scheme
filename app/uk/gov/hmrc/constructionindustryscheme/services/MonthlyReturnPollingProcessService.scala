@@ -69,9 +69,11 @@ class MonthlyReturnPollingProcessService @Inject() (
     submission: MonthlyReturnSubmissionToPoll
   )(implicit hc: HeaderCarrier): Future[Option[LocalDateTime]] =
     logger.info(
-      s"[MonthlyReturnPollingProcessService][processSubmission] " +
+      s"[MonthlyReturnPollingProcessService][processSubmission] Processing in-flight return: " +
         s"instanceId=${submission.instanceId}, " +
-        s"submissionId=${submission.submissionId}"
+        s"submissionId=${submission.submissionId}, " +
+        s"taxYear=${submission.taxYear}, " +
+        s"taxMonth=${submission.taxMonth}"
     )
     for {
       details      <- monthlyReturnService.getMonthlyReturnForEdit(

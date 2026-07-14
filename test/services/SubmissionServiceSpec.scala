@@ -23,7 +23,7 @@ import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers.eq as eqTo
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.{ChrisPollJourney, *}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
@@ -309,6 +309,15 @@ final class SubmissionServiceSpec extends SpecBase {
 
       when(chrisSubmissionSessionRepository.upsert(eqTo(updatedSessionWithGovTalk)))
         .thenReturn(Future.unit)
+
+      when(formPSubmissionUpdateProcessorRegistry.processorFor(eqTo(ChrisPollJourney.MonthlyReturn)))
+        .thenReturn(formPSubmissionUpdateProcessor)
+
+      when(
+        formPSubmissionUpdateProcessor.handlePollResponse(any[ChrisSubmissionSessionData], any[ChrisPollResponse])(
+          any[HeaderCarrier]
+        )
+      ).thenReturn(Future.unit)
 
       service
         .pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl, ChrisPollJourney.MonthlyReturn)
@@ -790,6 +799,24 @@ final class SubmissionServiceSpec extends SpecBase {
       val gatewayUrl          = "/gateway"
       val lastMessageDate     = Instant.parse("2025-01-01T00:00:00Z")
       val taxpayer            = mkTaxpayer("instance-123")
+      val journey             = ChrisPollJourney.MonthlyReturn
+      val context             = MonthlyReturnSubmissionContext(
+        hmrcMarkGenerated = "hmrc-mark",
+        submissionRequestDate = LocalDateTime.of(2025, 1, 1, 0, 0)
+      )
+      val response            = mkResult(ACCEPTED, corrId = expectedCorrelation)
+      val expectedSessionData = ChrisSubmissionSessionData(
+        submissionId = submissionId,
+        instanceId = "instance-123",
+        correlationId = expectedCorrelation,
+        lastMessageDate = lastMessageDate,
+        numPolls = 0,
+        pollInterval = pollInterval,
+        pollUrl = pollUrl,
+        govTalkStatus = None,
+        monthlyReturnContext = context.monthlyReturnContext,
+        verificationContext = context.verificationContext
+      )
 
       when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
         .thenReturn(Future.successful(taxpayer))
@@ -808,20 +835,7 @@ final class SubmissionServiceSpec extends SpecBase {
       ).thenReturn(Future.unit)
 
       when(
-        chrisSubmissionSessionRepository.upsert(
-          eqTo(
-            ChrisSubmissionSessionData(
-              submissionId = submissionId,
-              instanceId = "instance-123",
-              correlationId = expectedCorrelation,
-              lastMessageDate = lastMessageDate,
-              numPolls = 0,
-              pollInterval = pollInterval,
-              pollUrl = pollUrl,
-              govTalkStatus = None
-            )
-          )
-        )
+        chrisSubmissionSessionRepository.upsert(eqTo(expectedSessionData))
       ).thenReturn(Future.unit)
 
       when(
@@ -859,6 +873,16 @@ final class SubmissionServiceSpec extends SpecBase {
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
+      when(formPSubmissionUpdateProcessorRegistry.processorFor(eqTo(journey)))
+        .thenReturn(formPSubmissionUpdateProcessor)
+
+      when(
+        formPSubmissionUpdateProcessor.handleInitialAccepted(eqTo(expectedSessionData), eqTo(response))(
+          any[HeaderCarrier]
+        )
+      )
+        .thenReturn(Future.unit)
+
       service
         .processInitialChrisAck(
           employerRef,
@@ -868,7 +892,10 @@ final class SubmissionServiceSpec extends SpecBase {
           pollInterval,
           pollUrl,
           gatewayUrl,
-          lastMessageDate
+          lastMessageDate,
+          journey,
+          context,
+          response
         )
         .futureValue mustBe ()
     }
@@ -885,7 +912,14 @@ final class SubmissionServiceSpec extends SpecBase {
           "corr-actual",
           10,
           "/poll/123",
-          "/gateway"
+          "/gateway",
+          Instant.parse("2025-01-01T00:00:00Z"),
+          ChrisPollJourney.MonthlyReturn,
+          MonthlyReturnSubmissionContext(
+            hmrcMarkGenerated = "hmrc-mark",
+            submissionRequestDate = LocalDateTime.of(2025, 1, 1, 0, 0)
+          ),
+          mkResult(ACCEPTED, corrId = "corr-actual")
         )
         .failed
         .futureValue
@@ -1181,18 +1215,23 @@ final class SubmissionServiceSpec extends SpecBase {
   }
 
   trait Setup {
-    val chrisConnector: ChrisConnector                                     = mock[ChrisConnector]
-    val formpProxyConnector: FormpProxyConnector                           = mock[FormpProxyConnector]
-    val emailConnector: EmailConnector                                     = mock[EmailConnector]
-    val monthlyReturnService: MonthlyReturnService                         = mock[MonthlyReturnService]
-    val chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository = mock[ChrisSubmissionSessionRepository]
+    val chrisConnector: ChrisConnector                                                 = mock[ChrisConnector]
+    val formpProxyConnector: FormpProxyConnector                                       = mock[FormpProxyConnector]
+    val emailConnector: EmailConnector                                                 = mock[EmailConnector]
+    val monthlyReturnService: MonthlyReturnService                                     = mock[MonthlyReturnService]
+    val chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository             = mock[ChrisSubmissionSessionRepository]
+    val formPSubmissionUpdateProcessorRegistry: FormPSubmissionUpdateProcessorRegistry =
+      mock[FormPSubmissionUpdateProcessorRegistry]
+    val formPSubmissionUpdateProcessor: FormPSubmissionUpdateProcessor                 =
+      mock[FormPSubmissionUpdateProcessor]
 
     val service = new SubmissionService(
       chrisConnector,
       formpProxyConnector,
       emailConnector,
       monthlyReturnService,
-      chrisSubmissionSessionRepository
+      chrisSubmissionSessionRepository,
+      formPSubmissionUpdateProcessorRegistry
     )
 
     def mkPayload(
