@@ -137,6 +137,9 @@ class ChrisConnector @Inject() (
       }
 
   def deleteSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[Unit] =
+    val payloadXml = ChrisDeleteRequest(correlationId).payload.toString
+    logger.info(s"[ChrisConnector] sending delete request url=$pollUrl corrId=$correlationId payload:\n$payloadXml")
+
     httpClient
       .post(url"$pollUrl")
       .setHeader(
@@ -144,7 +147,7 @@ class ChrisConnector @Inject() (
         "Accept"        -> "application/xml",
         "CorrelationId" -> correlationId
       )
-      .withBody(ChrisDeleteRequest(correlationId).payload.toString)
+      .withBody(payloadXml)
       .execute[HttpResponse]
       .map { resp =>
         logger.info(s"[ChrisConnector] delete request sent url=$pollUrl corrId=$correlationId status=${resp.status}")
