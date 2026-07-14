@@ -28,5 +28,6 @@ final case class GetSubmissionWithVerificationBatchResponse(
 )
 
 object GetSubmissionWithVerificationBatchResponse {
-  given format: OFormat[GetSubmissionWithVerificationBatchResponse] = Json.format[GetSubmissionWithVerificationBatchResponse]
+  given format: OFormat[GetSubmissionWithVerificationBatchResponse] =
+    Json.format[GetSubmissionWithVerificationBatchResponse]
 }

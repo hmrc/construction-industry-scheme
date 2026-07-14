@@ -16,11 +16,9 @@
 
 package services
 
+import base.SpecBase
 import org.mockito.Mockito.*
-import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers
-import org.scalatestplus.mockito.MockitoSugar
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
 import uk.gov.hmrc.constructionindustryscheme.models.response.VerificationSubmissionToPoll
 import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
@@ -30,18 +28,16 @@ import uk.gov.hmrc.http.HeaderCarrier
 import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
-class VerificationPollingProcessServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures with MockitoSugar {
+class VerificationPollingProcessServiceSpec extends SpecBase {
 
   "VerificationPollingProcessService process" - {
 
     "must complete successfully for verification submissions" in new Setup {
-      val submissions: Seq[VerificationSubmissionToPoll] = Seq(verificationSubmission)
+      val submissions = Seq(verificationSubmission)
 
       when(
-        mockSubmissionService.syncChrisSessionFromPollingGovTalkStatus(
-          verificationSubmission.instanceId,
-          verificationSubmission.submissionId.toString
-        )
+        mockSubmissionService
+          .syncVerificationSessionForPolling(verificationSubmission)
       ).thenReturn(Future.successful(chrisSession))
 
       when(
@@ -54,16 +50,15 @@ class VerificationPollingProcessServiceSpec extends AnyFreeSpec with Matchers wi
 
       service.process(submissions).futureValue mustBe ()
 
-      verify(mockSubmissionService).syncChrisSessionFromPollingGovTalkStatus(
-        verificationSubmission.instanceId,
-        verificationSubmission.submissionId.toString
-      )
+      verify(mockSubmissionService)
+        .syncVerificationSessionForPolling(verificationSubmission)
 
-      verify(mockSubmissionService).pollSubmissionAndUpdateGovTalkStatus(
-        verificationSubmission.submissionId.toString,
-        chrisSession.pollUrl,
-        Verification
-      )
+      verify(mockSubmissionService)
+        .pollSubmissionAndUpdateGovTalkStatus(
+          verificationSubmission.submissionId.toString,
+          chrisSession.pollUrl,
+          Verification
+        )
 
       verifyNoMoreInteractions(mockSubmissionService)
     }

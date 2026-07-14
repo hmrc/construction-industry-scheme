@@ -2613,4 +2613,90 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
+
+  "FormpProxyConnector getSubmissionWithVerificationBatch" should {
+
+    "POST the request and return the response when upstream returns 200" in {
+      val request =
+        GetSubmissionWithVerificationBatchRequest(
+          instanceId = instanceId,
+          verificationBatchResourceRef = 77L
+        )
+
+      val responseJson =
+        Json.parse(
+          """{
+            |  "scheme": null,
+            |  "submission": null,
+            |  "verificationBatch": null,
+            |  "verifications": [],
+            |  "subcontractors": []
+            |}""".stripMargin
+        )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission-batch"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
+          )
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withHeader("Content-Type", "application/json")
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val result =
+        connector
+          .getSubmissionWithVerificationBatch(request)
+          .futureValue
+
+      result mustBe GetSubmissionWithVerificationBatchResponse(
+        scheme = None,
+        submission = None,
+        verificationBatch = None,
+        verifications = Seq.empty,
+        subcontractors = Seq.empty
+      )
+    }
+
+    "fail the future when upstream returns 500" in {
+      val request =
+        GetSubmissionWithVerificationBatchRequest(
+          instanceId = instanceId,
+          verificationBatchResourceRef = 77L
+        )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission-batch"))
+          .withRequestBody(
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
+          )
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("formp error")
+          )
+      )
+
+      val exception =
+        intercept[Throwable] {
+          connector
+            .getSubmissionWithVerificationBatch(request)
+            .futureValue
+        }
+
+      exception.getMessage must include("500")
+    }
+  }
 }
