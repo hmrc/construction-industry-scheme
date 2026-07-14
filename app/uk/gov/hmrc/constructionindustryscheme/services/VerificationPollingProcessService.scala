@@ -44,10 +44,7 @@ class VerificationPollingProcessService @Inject() (
         val submissionId = submission.submissionId.toString
 
         (for {
-          session <- submissionService.syncChrisSessionFromPollingGovTalkStatus(
-                       instanceId = submission.instanceId,
-                       submissionId = submissionId
-                     )
+          session <- submissionService.syncVerificationSessionForPolling(submission)
           _       <- submissionService.pollSubmissionAndUpdateGovTalkStatus(
                        submissionId = submissionId,
                        pollUrl = session.pollUrl,

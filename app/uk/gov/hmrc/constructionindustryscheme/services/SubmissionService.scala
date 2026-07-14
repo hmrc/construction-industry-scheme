@@ -265,34 +265,70 @@ class SubmissionService @Inject() (
       _                  <- fetchAndStoreGovTalkStatus(session.instanceId, submissionId)
     } yield result
 
-  def syncChrisSessionFromPollingGovTalkStatus(
-    instanceId: String,
-    submissionId: String
-  )(implicit hc: HeaderCarrier): Future[ChrisSubmissionSessionData] =
-    getPollingGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId)).flatMap {
-      case Some(statusResponse) if statusResponse.govtalk_status.nonEmpty =>
+  def syncVerificationSessionForPolling(
+    submission: VerificationSubmissionToPoll
+  )(implicit hc: HeaderCarrier): Future[ChrisSubmissionSessionData] = {
+
+    val submissionId = submission.submissionId.toString
+
+    val govTalkStatusFuture =
+      getPollingGovTalkStatus(
+        GetGovTalkStatusRequest(submission.instanceId, submissionId)
+      ).flatMap {
+        case Some(statusResponse) if statusResponse.govtalk_status.nonEmpty =>
+          Future.successful(statusResponse)
+
+        case _ =>
+          Future.failed(
+            new RuntimeException(
+              s"No polling GovTalk status found for instanceId: ${submission.instanceId}, submissionId: $submissionId"
+            )
+          )
+      }
+
+    val verificationContextFuture =
+      formpProxyConnector
+        .getSubmissionWithVerificationBatch(
+          GetSubmissionWithVerificationBatchRequest(
+            instanceId = submission.instanceId,
+            verificationBatchResourceRef = submission.verificationBatchResourceRef
+          )
+        )
+        .flatMap { response =>
+          VerificationSubmissionContextBuilder
+            .buildFromFormpSnapshot(
+              response = response,
+              verificationBatchResourceRef = submission.verificationBatchResourceRef
+            )
+            .fold(
+              error => Future.failed(new RuntimeException(s"Failed to build verification context: $error")),
+              Future.successful
+            )
+        }
+
+    govTalkStatusFuture
+      .zip(verificationContextFuture)
+      .flatMap { case (statusResponse, verificationContext) =>
         val statusRecord = statusResponse.govtalk_status.head
 
         val sessionData = ChrisSubmissionSessionData(
           submissionId = submissionId,
-          instanceId = instanceId,
+          instanceId = submission.instanceId,
           correlationId = statusRecord.correlationID,
           lastMessageDate = statusRecord.lastMessageDate.toInstant(ZoneOffset.UTC),
           numPolls = statusRecord.numPolls,
           pollInterval = statusRecord.pollInterval,
           pollUrl = statusRecord.gatewayURL,
-          govTalkStatus = Some(statusResponse)
+          govTalkStatus = Some(statusResponse),
+          monthlyReturnContext = None,
+          verificationContext = Some(verificationContext)
         )
 
-        chrisSubmissionSessionRepository.upsert(sessionData).map(_ => sessionData)
-
-      case _ =>
-        Future.failed(
-          new RuntimeException(
-            s"No polling GovTalk status found for instanceId: $instanceId, submissionId: $submissionId"
-          )
-        )
-    }
+        chrisSubmissionSessionRepository
+          .upsert(sessionData)
+          .map(_ => sessionData)
+      }
+  }
 
   private def fetchAndStoreGovTalkStatus(instanceId: String, submissionId: String)(implicit
     hc: HeaderCarrier

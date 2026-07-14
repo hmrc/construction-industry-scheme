@@ -17,25 +17,12 @@
 package uk.gov.hmrc.constructionindustryscheme.models
 
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisVerificationRequest, VerificationDetails}
-import uk.gov.hmrc.constructionindustryscheme.repositories.StoredRequestedVerification
+import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubmissionWithVerificationBatchResponse
+import uk.gov.hmrc.constructionindustryscheme.repositories.{StoredRequestedVerification, StoredVerificationContext}
 
 import java.time.LocalDateTime
 
 object VerificationSubmissionContextBuilder {
-
-  private def parseLong(value: String, fieldName: String): Either[String, Long] =
-    try
-      Right(value.trim.toLong)
-    catch {
-      case _: NumberFormatException =>
-        Left(s"Invalid long value for $fieldName: '$value'")
-    }
-
-  private def sequence[A](values: Seq[Either[String, A]]): Either[String, Seq[A]] = {
-    val errors = values.collect { case Left(err) => err }
-    if errors.nonEmpty then Left(errors.mkString("; "))
-    else Right(values.collect { case Right(v) => v })
-  }
 
   def build(
     request: ChrisVerificationRequest,
@@ -59,6 +46,33 @@ object VerificationSubmissionContextBuilder {
       submissionRequestDate = submissionRequestDate,
       verificationBatchResourceRef = batchResourceRef,
       actionIndicators = actionIndicators,
+      requestedVerifications = requestedVerifications
+    )
+
+  def buildFromFormpSnapshot(
+    response: GetSubmissionWithVerificationBatchResponse,
+    verificationBatchResourceRef: Long
+  ): Either[String, StoredVerificationContext] =
+    for {
+      submission             <- response.submission.toRight(
+                                  s"No submission returned for verificationBatchResourceRef=$verificationBatchResourceRef"
+                                )
+      hmrcMarkGenerated      <- submission.hmrcMarkGenerated.toRight(s"Missing hmrcMarkGenerated")
+      submissionRequestDate  <- submission.submissionRequestDate.toRight(s"Missing submissionRequestDate")
+      requestedVerifications <- buildRequestedVerificationsFromFormp(
+                                  verifications = response.verifications,
+                                  subcontractors = response.subcontractors
+                                )
+    } yield StoredVerificationContext(
+      verificationBatchResourceRef = verificationBatchResourceRef,
+      hmrcMarkGenerated = hmrcMarkGenerated,
+      submissionRequestDate = submissionRequestDate,
+      actionIndicators = requestedVerifications.map { requested =>
+        VerificationActionIndicator(
+          verificationResourceRef = requested.verificationResourceRef,
+          actionIndicator = requested.actionIndicator
+        )
+      },
       requestedVerifications = requestedVerifications
     )
 
@@ -117,4 +131,74 @@ object VerificationSubmissionContextBuilder {
       }
     sequence(requested)
   }
+
+  private def buildRequestedVerificationsFromFormp(
+    verifications: Seq[Verification],
+    subcontractors: Seq[Subcontractor]
+  ): Either[String, Seq[StoredRequestedVerification]] = {
+    val subcontractorsById =
+      subcontractors.map(s => s.subcontractorId -> s).toMap
+
+    sequence(
+      verifications.map { verification =>
+        for {
+          subcontractorId         <- verification.subcontractorId.toRight(
+                                       s"Missing subcontractorId for verificationId: ${verification.verificationId}"
+                                     )
+          subcontractor           <- subcontractorsById
+                                       .get(subcontractorId)
+                                       .toRight(s"No subcontractor found for subcontractorId: $subcontractorId")
+          verificationResourceRef <-
+            subcontractor.subbieResourceRef.toRight(s"Missing subbieResourceRef for subcontractorId: $subcontractorId")
+          actionIndicator         <- verification.actionIndicator
+                                       .map(_.trim)
+                                       .filter(_.nonEmpty)
+                                       .toRight(s"Missing actionIndicator for subcontractorId: $subcontractorId")
+          proceedVerification     <-
+            parseYesNo(verification.proceed, s"proceedVerification for subcontractorId: $subcontractorId")
+        } yield StoredRequestedVerification(
+          verificationResourceRef = verificationResourceRef,
+          subcontractorId = subcontractorId,
+          subbieResourceRef = subcontractor.subbieResourceRef,
+          subcontractorName = subcontractor.displayName,
+          actionIndicator = actionIndicator,
+          proceedVerification = proceedVerification,
+          foreName = subcontractor.firstName,
+          middleName = subcontractor.secondName,
+          surname = subcontractor.surname,
+          tradingName = subcontractor.tradingName,
+          utr = subcontractor.utr,
+          nino = subcontractor.nino,
+          crn = subcontractor.crn,
+          partnershipUtr = subcontractor.partnerUtr,
+          subcontractorType = subcontractor.subcontractorType
+        )
+      }
+    )
+  }
+
+  private def parseLong(value: String, fieldName: String): Either[String, Long] =
+    try
+      Right(value.trim.toLong)
+    catch {
+      case _: NumberFormatException =>
+        Left(s"Invalid long value for $fieldName: '$value'")
+    }
+
+  private def sequence[A](values: Seq[Either[String, A]]): Either[String, Seq[A]] = {
+    val errors = values.collect { case Left(err) => err }
+    if errors.nonEmpty then Left(errors.mkString("; "))
+    else Right(values.collect { case Right(v) => v })
+  }
+
+  private def parseYesNo(
+    value: Option[String],
+    fieldName: String
+  ): Either[String, Boolean] =
+    value.map(_.trim.toUpperCase).filter(_.nonEmpty) match {
+      case Some("Y")   => Right(true)
+      case Some("N")   => Right(false)
+      case Some(other) => Left(s"Invalid value for $fieldName: '$other' (expected 'Y' or 'N')")
+      case None        => Left(s"Missing value for $fieldName")
+    }
 }
