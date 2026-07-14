@@ -126,4 +126,38 @@ class VerificationController @Inject() (
         )
     }
 
+  def updateVerificationSubmission(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      request.body
+        .validate[UpdateVerificationSubmissionRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          body =>
+            verificationService
+              .updateVerificationSubmission(body)
+              .map(_ => NoContent)
+              .recover { case ex =>
+                logger.error("[updateVerificationSubmission] formp-proxy update failed", ex)
+                BadGateway(Json.obj("message" -> "update-verification-submission-failed"))
+              }
+        )
+    }
+
+  def processVerificationResponseFromChris(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      request.body
+        .validate[ProcessVerificationResponseFromChrisRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          body =>
+            verificationService
+              .processVerificationResponseFromChris(body)
+              .map(_ => NoContent)
+              .recover { case ex =>
+                logger.error("[processVerificationResponseFromChris] formp-proxy update failed", ex)
+                BadGateway(Json.obj("message" -> "process-verification-response-from-chris-failed"))
+              }
+        )
+    }
+
 }

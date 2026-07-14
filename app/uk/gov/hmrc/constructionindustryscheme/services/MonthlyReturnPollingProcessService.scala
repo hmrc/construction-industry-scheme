@@ -49,18 +49,20 @@ class MonthlyReturnPollingProcessService @Inject() (
 
   private def processSubmission(
     submission: MonthlyReturnSubmissionToPoll
-  )(implicit hc: HeaderCarrier): Future[Unit] =
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
     logger.info(
-      s"[MonthlyReturnPollingProcessService][processSubmission] " +
+      s"[MonthlyReturnPollingProcessService][processSubmission] Processing in-flight return: " +
         s"instanceId=${submission.instanceId}, " +
-        s"submissionId=${submission.submissionId}"
+        s"submissionId=${submission.submissionId}, " +
+        s"taxYear=${submission.taxYear}, " +
+        s"taxMonth=${submission.taxMonth}"
     )
     for {
       details      <- monthlyReturnService.getMonthlyReturnForEdit(
                         GetMonthlyReturnForEditRequest(
                           submission.instanceId,
-                          submission.taxYear.toInt,
-                          submission.taxMonth.toInt,
+                          submission.taxYear,
+                          submission.taxMonth,
                           isAmendment = Some(submission.amendment == "Y")
                         )
                       )
@@ -108,6 +110,7 @@ class MonthlyReturnPollingProcessService @Inject() (
                         submission.submissionId.toString
                       )
     } yield ()
+  }
 
   private def sendEmailIfRequired(
     status: SubmissionStatus,
