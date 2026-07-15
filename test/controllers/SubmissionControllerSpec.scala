@@ -53,6 +53,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "monthYear"             -> "2025-05",
     "email"                 -> "test@test.com",
     "isAgent"               -> true,
+    "isResubmission"        -> false,
     "clientTaxOfficeNumber" -> "123",
     "clientTaxOfficeRef"    -> "ABC456",
     "returnType"            -> "MonthlyNilReturn",
@@ -103,7 +104,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         any[Instant],
         any[ChrisPollJourney],
         any[ChrisSubmissionContext],
-        any[SubmissionResult]
+        any[SubmissionResult],
+        any[Boolean]
       )(any[HeaderCarrier])
     ).thenReturn(Future.successful(()))
 
@@ -123,7 +125,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         any[Instant],
         any[ChrisPollJourney],
         any[ChrisSubmissionContext],
-        any[SubmissionResult]
+        any[SubmissionResult],
+        any[Boolean]
       )(any[HeaderCarrier])
     ).thenReturn(Future.failed(ex))
 
@@ -1350,7 +1353,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Instant],
           eqTo(ChrisPollJourney.Verification),
           any[VerificationSubmissionContext],
-          any[SubmissionResult]
+          any[SubmissionResult],
+          any[Boolean]
         )(any[HeaderCarrier])
     }
 
@@ -1487,7 +1491,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[Instant],
           eqTo(ChrisPollJourney.Verification),
           any[VerificationSubmissionContext],
-          any[SubmissionResult]
+          any[SubmissionResult],
+          any[Boolean]
         )(any[HeaderCarrier])
     }
 
