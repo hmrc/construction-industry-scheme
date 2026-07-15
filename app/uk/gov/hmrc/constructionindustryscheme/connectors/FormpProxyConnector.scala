@@ -248,15 +248,11 @@ class FormpProxyConnector @Inject() (
 
   def getGovTalkStatus(
     request: GetGovTalkStatusRequest,
-    phase: ChrisSubmissionPhase,
-    batchPoll: Boolean = false
+    phase: ChrisSubmissionPhase
   )(implicit hc: HeaderCarrier): Future[Option[GetGovTalkStatusResponse]] = {
     val endpoint =
       if (appConfig.govTalkStatusStageQueryParamEnabled)
-        if (batchPoll)
-          url"$base/cis/govtalkstatus/get?stage=${phase.asQueryParam}&batchPoll=true"
-        else
-          url"$base/cis/govtalkstatus/get?stage=${phase.asQueryParam}"
+        url"$base/cis/govtalkstatus/get?stage=${phase.asQueryParam}"
       else
         url"$base/cis/govtalkstatus/get"
 
