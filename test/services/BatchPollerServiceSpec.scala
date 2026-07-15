@@ -104,8 +104,7 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
         taxYear = 2025,
         taxMonth = 6,
         instanceId = "instance-monthly-return-001",
-        agentId = Some("A123456"),
-        amendment = "N"
+        agentId = Some("A123456")
       )
 
     val nonEmptyResponse: GetBatchPollSubmissionsResponse =

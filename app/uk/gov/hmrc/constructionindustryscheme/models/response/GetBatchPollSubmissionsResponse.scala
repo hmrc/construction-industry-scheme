@@ -43,8 +43,7 @@ case class MonthlyReturnSubmissionToPoll(
   taxYear: Int,
   taxMonth: Int,
   instanceId: String,
-  agentId: Option[String],
-  amendment: String
+  agentId: Option[String]
 )
 
 object MonthlyReturnSubmissionToPoll {
