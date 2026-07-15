@@ -268,7 +268,7 @@ class SubmissionService @Inject() (
       s"[SubmissionService][processMonthlyReturnGovTalkStatusCheck] checking status for instanceId=$instanceId, submissionId=$submissionId"
     )
     for {
-      statusResponseOpt <- getInitialGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId))
+      statusResponseOpt <- getInitialGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId), batchPoll = true)
       statusResponse    <- Future.fromTry(
                              statusResponseOpt
                                .toRight(new RuntimeException("GovTalk status not found"))
@@ -422,10 +422,13 @@ class SubmissionService @Inject() (
   private def toLocalDateTime(i: Instant): LocalDateTime =
     LocalDateTime.ofInstant(i, ZoneOffset.UTC)
 
-  private def getInitialGovTalkStatus(request: GetGovTalkStatusRequest)(implicit
+  private def getInitialGovTalkStatus(
+    request: GetGovTalkStatusRequest,
+    batchPoll: Boolean = false
+  )(implicit
     hc: HeaderCarrier
   ): Future[Option[GetGovTalkStatusResponse]] =
-    formpProxyConnector.getGovTalkStatus(request, Initial)
+    formpProxyConnector.getGovTalkStatus(request, Initial, batchPoll)
 
   private def getPollingGovTalkStatus(request: GetGovTalkStatusRequest)(implicit
     hc: HeaderCarrier
