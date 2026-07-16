@@ -27,6 +27,7 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController
+import uk.gov.hmrc.constructionindustryscheme.models.Subcontractor
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.constructionindustryscheme.models.Subcontractor
