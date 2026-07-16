@@ -277,7 +277,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         chrisConnector.deleteSubmission(
           eqTo(correlation),
-          eqTo(pollUrl)
+          eqTo(pollUrl),
+          eqTo(ChrisPollJourney.MonthlyReturn)
         )(using any[HeaderCarrier])
       ).thenReturn(Future.unit)
 

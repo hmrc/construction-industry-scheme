@@ -719,10 +719,15 @@ final class ChrisConnectorIntegrationSpec
 
     "send delete request to the same polling url and return Unit on 200" in {
       val correlationId = "delete-cid-123"
-      val pollPath      = "/submission/ChRIS/poll/IR-CIS-CIS300MR/2"
-      val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}$pollPath?final=SUBMITTED"
+      val pollPath = "/submission/ChRIS/poll/IR-CIS-CIS300MR/2"
+      val pollUrl =
+        s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}$pollPath?final=SUBMITTED"
 
-      val expectedRequestXml = ChrisDeleteRequest(correlationId).payload.toString
+      val expectedRequestXml =
+        ChrisDeleteRequest(
+          correlationId,
+          ChrisPollJourney.MonthlyReturn
+        ).payload.toString
 
       stubFor(
         post(urlPathEqualTo(pollPath))
@@ -739,7 +744,13 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      connector.deleteSubmission(correlationId, pollUrl).futureValue mustBe ((): Unit)
+      connector
+        .deleteSubmission(
+          correlationId,
+          pollUrl,
+          ChrisPollJourney.MonthlyReturn
+        )
+        .futureValue mustBe ((): Unit)
 
       verify(
         postRequestedFor(urlPathEqualTo(pollPath))
@@ -747,6 +758,43 @@ final class ChrisConnectorIntegrationSpec
           .withHeader("CorrelationId", equalTo(correlationId))
           .withHeader("Content-Type", equalTo("application/xml"))
           .withHeader("Accept", equalTo("application/xml"))
+          .withRequestBody(equalToXml(expectedRequestXml))
+      )
+    }
+
+    "send verification delete request with verification GovTalk class" in {
+      val correlationId = "delete-cid-123"
+      val pollPath = "/submission/ChRIS/poll/IR-CIS-VERIFY/2"
+      val pollUrl =
+        s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}$pollPath?final=SUBMITTED"
+
+      val expectedRequestXml =
+        ChrisDeleteRequest(
+          correlationId,
+          ChrisPollJourney.Verification
+        ).payload.toString
+
+      stubFor(
+        post(urlPathEqualTo(pollPath))
+          .withQueryParam("final", equalTo("SUBMITTED"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withHeader("Content-Type", "application/xml")
+              .withBody("<GovTalkMessage/>")
+          )
+      )
+
+      connector
+        .deleteSubmission(
+          correlationId,
+          pollUrl,
+          ChrisPollJourney.Verification
+        )
+        .futureValue
+
+      verify(
+        postRequestedFor(urlPathEqualTo(pollPath))
           .withRequestBody(equalToXml(expectedRequestXml))
       )
     }

@@ -81,12 +81,13 @@ class SubmissionService @Inject() (
   private def deleteChrisResourcesIfNeeded(
     status: SubmissionStatus,
     correlationId: String,
-    pollUrl: String
+    pollUrl: String,
+    journey: ChrisPollJourney
   )(implicit hc: HeaderCarrier): Future[Unit] =
     status match {
       case SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR =>
         chrisConnector
-          .deleteSubmission(correlationId, pollUrl)
+          .deleteSubmission(correlationId, pollUrl, journey)
           .recover { case NonFatal(ex) =>
             logger.warn(
               s"[SubmissionService] Failed to delete Chris resources for corrId=$correlationId url=$pollUrl",
@@ -258,7 +259,7 @@ class SubmissionService @Inject() (
       _                  <- formPSubmissionUpdateProcessorRegistry
                               .processorFor(journey)
                               .handlePollResponse(session, result)
-      _                  <- deleteChrisResourcesIfNeeded(result.status, session.correlationId, pollUrl)
+      _                  <- deleteChrisResourcesIfNeeded(result.status, session.correlationId, pollUrl, journey)
       nextLastMessageDate = result.lastMessageDate
                               .flatMap(ts => Try(Instant.parse(ts)).toOption)
                               .getOrElse(session.lastMessageDate)
