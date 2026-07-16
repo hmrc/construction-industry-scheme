@@ -34,6 +34,7 @@ class VerificationControllerIntegrationSpec
   private val instanceId                     = "123"
   private val getCurrentVerificationBatchUrl = s"$base/verification-batch/current/$instanceId"
   private val postModifyVerificationsUrl     = s"$base/verification-batch/modify"
+  private val postSubmittedVerificationsUrl = s"$base/verification/submitted-verifications"
 
   "GET /verification-batch/current/:instanceId" should {
 
@@ -184,6 +185,85 @@ class VerificationControllerIntegrationSpec
 
       verify(
         postRequestedFor(urlPathEqualTo(s"/formp-proxy/cis/verification-batch/modify"))
+      )
+    }
+  }
+
+  "POST /verification/submitted-verifications" should {
+
+    "return submitted verification data when authorised and FormP Proxy succeeds" in {
+      AuthStub.authorisedWithCisEnrolment()
+
+      val payload = Json.obj(
+        "instanceId" -> "abc-123"
+      )
+
+      val responseJson = Json.parse(
+        """
+          |{
+          |  "scheme": [],
+          |  "subcontractors": [],
+          |  "verificationBatches": [],
+          |  "verifications": [],
+          |  "submissions": []
+          |}
+          |""".stripMargin
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submitted-verifications"))
+          .withRequestBody(equalToJson(payload.toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(OK)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val response = postJson(
+        postSubmittedVerificationsUrl,
+        payload,
+        "X-Session-Id" -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
+
+      response.status mustBe OK
+      response.json mustBe responseJson
+
+      verify(
+        postRequestedFor(urlPathEqualTo("/formp-proxy/cis/verification/submitted-verifications"))
+          .withRequestBody(equalToJson(payload.toString(), true, true))
+      )
+    }
+
+    "returns 502 when FormP Proxy fails" in {
+      AuthStub.authorisedWithCisEnrolment()
+
+      val payload = Json.obj(
+        "instanceId" -> "abc-123"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submitted-verifications"))
+          .willReturn(
+            aResponse()
+              .withStatus(BAD_GATEWAY)
+              .withBody("FormP error")
+          )
+      )
+
+      val response = postJson(
+        postSubmittedVerificationsUrl,
+        payload,
+        "X-Session-Id" -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
+
+      response.status mustBe BAD_GATEWAY
+      (response.json \ "message").as[String] mustBe "get-submitted-verifications-failed"
+
+      verify(
+        postRequestedFor(urlPathEqualTo("/formp-proxy/cis/verification/submitted-verifications"))
       )
     }
   }
