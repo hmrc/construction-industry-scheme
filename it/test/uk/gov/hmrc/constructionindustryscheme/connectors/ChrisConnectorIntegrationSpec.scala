@@ -243,7 +243,7 @@ final class ChrisConnectorIntegrationSpec
 
     "send IR-CIS-VERIFY class in request body when journey is Verification" in {
       val correlationId = "poll-cid-verification"
-      val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/verification"
+      val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/verification"
 
       val ackXml =
         s"""<GovTalkMessage>
@@ -283,9 +283,11 @@ final class ChrisConnectorIntegrationSpec
 
       verify(
         postRequestedFor(urlPathEqualTo("/poll/verification"))
-          .withRequestBody(matchingXPath(
-            "//*[local-name()='Class' and text()='IR-CIS-VERIFY']"
-          ))
+          .withRequestBody(
+            matchingXPath(
+              "//*[local-name()='Class' and text()='IR-CIS-VERIFY']"
+            )
+          )
       )
     }
 

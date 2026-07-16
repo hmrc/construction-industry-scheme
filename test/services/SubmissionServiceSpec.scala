@@ -22,6 +22,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers.eq as eqTo
 import org.scalatest.freespec.AnyFreeSpec
+import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.{ChrisPollJourney, *}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
@@ -38,6 +39,24 @@ import scala.xml.Elem
 final class SubmissionServiceSpec extends SpecBase {
 
   private def setup: Setup = new Setup {}
+
+  private def existingGovTalkStatus(
+    userIdentifier: String,
+    formResultID: String
+  ): GovTalkStatusRecord =
+    GovTalkStatusRecord(
+      userIdentifier = userIdentifier,
+      formResultID = formResultID,
+      correlationID = "123456",
+      formLock = "Y",
+      createDate = Some(LocalDateTime.of(2025, 1, 1, 0, 0)),
+      endStateDate = None,
+      lastMessageDate = LocalDateTime.of(2025, 1, 1, 0, 0),
+      numPolls = 0,
+      pollInterval = 5,
+      protocolStatus = "dataRequest",
+      gatewayURL = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+    )
 
   "createSubmission" - {
 
@@ -842,11 +861,11 @@ final class SubmissionServiceSpec extends SpecBase {
         formpProxyConnector.updateGovTalkStatusCorrelationId(
           eqTo(
             UpdateGovTalkStatusCorrelationIdRequest(
-              "instance-123",
-              submissionId,
-              expectedCorrelation,
-              pollInterval,
-              gatewayUrl
+              userIdentifier = "instance-123",
+              formResultID = submissionId,
+              correlationID = expectedCorrelation,
+              pollInterval = pollInterval,
+              gatewayURL = gatewayUrl
             )
           )
         )(any[HeaderCarrier])
@@ -856,12 +875,12 @@ final class SubmissionServiceSpec extends SpecBase {
         formpProxyConnector.updateGovTalkStatusStatistics(
           eqTo(
             UpdateGovTalkStatusStatisticsRequest(
-              "instance-123",
-              submissionId,
-              LocalDateTime.of(2025, 1, 1, 0, 0),
-              0,
-              pollInterval,
-              gatewayUrl
+              userIdentifier = "instance-123",
+              formResultID = submissionId,
+              lastMessageDate = LocalDateTime.of(2025, 1, 1, 0, 0),
+              numPolls = 0,
+              pollInterval = pollInterval,
+              gatewayURL = gatewayUrl
             )
           )
         )(any[HeaderCarrier])
@@ -895,7 +914,8 @@ final class SubmissionServiceSpec extends SpecBase {
           lastMessageDate,
           journey,
           context,
-          response
+          response,
+          isResubmission = false
         )
         .futureValue mustBe ()
     }
@@ -919,11 +939,15 @@ final class SubmissionServiceSpec extends SpecBase {
             hmrcMarkGenerated = "hmrc-mark",
             submissionRequestDate = LocalDateTime.of(2025, 1, 1, 0, 0)
           ),
-          mkResult(ACCEPTED, corrId = "corr-actual")
+          mkResult(ACCEPTED, corrId = "corr-actual"),
+          isResubmission = false
         )
         .failed
         .futureValue
         .getMessage must include("CorrelationId mismatch")
+
+      verifyNoInteractions(formpProxyConnector)
+      verifyNoInteractions(chrisSubmissionSessionRepository)
     }
   }
 
@@ -974,9 +998,10 @@ final class SubmissionServiceSpec extends SpecBase {
       val employerRef   = EmployerReference("", "")
       val submissionId  = "sub-123"
       val correlationId = "CORR-123"
-      val gatewayUrl    = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      val gatewayUrl    = chrisGatewayUrl
 
-      val taxpayer          = mkTaxpayer()
+      val taxpayer = mkTaxpayer()
+
       val expectedCreateReq = CreateGovTalkStatusRecordRequest(
         userIdentifier = taxpayer.uniqueId,
         formResultID = submissionId,
@@ -998,31 +1023,50 @@ final class SubmissionServiceSpec extends SpecBase {
         .thenReturn(Future.unit)
 
       service
-        .initialiseGovTalkStatus(employerRef, submissionId, correlationId, gatewayUrl)
+        .initialiseGovTalkStatus(
+          employerRef,
+          submissionId,
+          correlationId,
+          gatewayUrl
+        )
         .futureValue mustBe taxpayer.uniqueId
 
       verify(monthlyReturnService).getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier])
-      verify(formpProxyConnector)
-        .getGovTalkStatus(
-          eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
-          eqTo(Initial)
-        )(any[HeaderCarrier])
+
+      verify(formpProxyConnector).getGovTalkStatus(
+        eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
+        eqTo(Initial)
+      )(any[HeaderCarrier])
+
       verify(formpProxyConnector).createGovTalkStatusRecord(eqTo(expectedCreateReq))(any[HeaderCarrier])
+
+      verify(formpProxyConnector, never()).resetGovTalkStatus(any[ResetGovTalkStatusRequest])(
+        any[HeaderCarrier]
+      )
+
       verifyNoInteractions(chrisConnector)
       verifyNoInteractions(emailConnector)
     }
 
-    "fails when GovTalk status record already exists" in {
+    "fails when GovTalk status record already exists and this is not a resubmission" in {
       val s = setup
       import s._
 
       val employerRef   = EmployerReference("", "")
       val submissionId  = "sub-123"
       val correlationId = "CORR-123"
-      val gatewayUrl    = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      val gatewayUrl    = chrisGatewayUrl
 
       val taxpayer = mkTaxpayer()
-      val existing = GetGovTalkStatusResponse(govtalk_status = Seq.empty)
+
+      val existing = GetGovTalkStatusResponse(
+        govtalk_status = Seq(
+          existingGovTalkStatus(
+            userIdentifier = taxpayer.uniqueId,
+            formResultID = submissionId
+          )
+        )
+      )
 
       when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
         .thenReturn(Future.successful(taxpayer))
@@ -1035,12 +1079,211 @@ final class SubmissionServiceSpec extends SpecBase {
       ).thenReturn(Future.successful(Some(existing)))
 
       service
-        .initialiseGovTalkStatus(employerRef, submissionId, correlationId, gatewayUrl)
+        .initialiseGovTalkStatus(
+          employerRef,
+          submissionId,
+          correlationId,
+          gatewayUrl
+        )
         .failed
         .futureValue
         .getMessage mustBe "govtalk status already exists"
 
       verify(formpProxyConnector, never()).createGovTalkStatusRecord(any[CreateGovTalkStatusRecordRequest])(
+        any[HeaderCarrier]
+      )
+
+      verify(formpProxyConnector, never()).resetGovTalkStatus(any[ResetGovTalkStatusRequest])(
+        any[HeaderCarrier]
+      )
+    }
+
+    "fails when FormP returns an empty GovTalk status response and this is not a resubmission" in {
+      val s = setup
+      import s._
+
+      val employerRef   = EmployerReference("", "")
+      val submissionId  = "sub-123"
+      val correlationId = "CORR-123"
+      val gatewayUrl    = chrisGatewayUrl
+
+      val taxpayer = mkTaxpayer("instance-123")
+
+      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(taxpayer))
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
+          eqTo(Initial)
+        )(any[HeaderCarrier])
+      ).thenReturn(
+        Future.successful(
+          Some(GetGovTalkStatusResponse(govtalk_status = Seq.empty))
+        )
+      )
+
+      service
+        .initialiseGovTalkStatus(
+          employerRef,
+          submissionId,
+          correlationId,
+          gatewayUrl
+        )
+        .failed
+        .futureValue
+        .getMessage mustBe "govtalk status already exists"
+
+      verify(formpProxyConnector, never()).createGovTalkStatusRecord(any[CreateGovTalkStatusRecordRequest])(
+        any[HeaderCarrier]
+      )
+
+      verify(formpProxyConnector, never()).resetGovTalkStatus(any[ResetGovTalkStatusRequest])(
+        any[HeaderCarrier]
+      )
+    }
+
+    "resets existing GovTalk status when this is a resubmission" in {
+      val s = setup
+      import s._
+
+      val employerRef   = EmployerReference("", "")
+      val submissionId  = "sub-123"
+      val correlationId = "CORR-123"
+      val gatewayUrl    = chrisGatewayUrl
+
+      val taxpayer = mkTaxpayer("instance-123")
+
+      val existing = GetGovTalkStatusResponse(
+        govtalk_status = Seq(
+          existingGovTalkStatus(
+            userIdentifier = taxpayer.uniqueId,
+            formResultID = submissionId
+          )
+        )
+      )
+
+      val expectedResetReq = ResetGovTalkStatusRequest(
+        userIdentifier = taxpayer.uniqueId,
+        formResultID = submissionId,
+        oldProtocolStatus = "dataRequest",
+        gatewayURL = gatewayUrl
+      )
+
+      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(taxpayer))
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
+          eqTo(Initial)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(existing)))
+
+      when(formpProxyConnector.resetGovTalkStatus(eqTo(expectedResetReq))(any[HeaderCarrier]))
+        .thenReturn(Future.unit)
+
+      service
+        .initialiseGovTalkStatus(
+          employerRef,
+          submissionId,
+          correlationId,
+          gatewayUrl,
+          isResubmission = true
+        )
+        .futureValue mustBe taxpayer.uniqueId
+
+      verify(formpProxyConnector).resetGovTalkStatus(eqTo(expectedResetReq))(any[HeaderCarrier])
+
+      verify(formpProxyConnector, never()).createGovTalkStatusRecord(any[CreateGovTalkStatusRecordRequest])(
+        any[HeaderCarrier]
+      )
+    }
+
+    "fails when this is a resubmission but no GovTalk status record exists" in {
+      val s = setup
+      import s._
+
+      val employerRef   = EmployerReference("", "")
+      val submissionId  = "sub-123"
+      val correlationId = "CORR-123"
+      val gatewayUrl    = chrisGatewayUrl
+
+      val taxpayer = mkTaxpayer("instance-123")
+
+      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(taxpayer))
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
+          eqTo(Initial)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(None))
+
+      service
+        .initialiseGovTalkStatus(
+          employerRef,
+          submissionId,
+          correlationId,
+          gatewayUrl,
+          isResubmission = true
+        )
+        .failed
+        .futureValue
+        .getMessage mustBe "Expected govTalkStatus record for resubmission but none found"
+
+      verify(formpProxyConnector, never()).createGovTalkStatusRecord(any[CreateGovTalkStatusRecordRequest])(
+        any[HeaderCarrier]
+      )
+
+      verify(formpProxyConnector, never()).resetGovTalkStatus(any[ResetGovTalkStatusRequest])(
+        any[HeaderCarrier]
+      )
+    }
+
+    "fails when FormP returns an empty GovTalk status response for resubmission" in {
+      val s = setup
+      import s._
+
+      val employerRef   = EmployerReference("", "")
+      val submissionId  = "sub-123"
+      val correlationId = "CORR-123"
+      val gatewayUrl    = chrisGatewayUrl
+
+      val taxpayer = mkTaxpayer("instance-123")
+
+      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(taxpayer))
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
+          eqTo(Initial)
+        )(any[HeaderCarrier])
+      ).thenReturn(
+        Future.successful(
+          Some(GetGovTalkStatusResponse(govtalk_status = Seq.empty))
+        )
+      )
+
+      service
+        .initialiseGovTalkStatus(
+          employerRef,
+          submissionId,
+          correlationId,
+          gatewayUrl,
+          isResubmission = true
+        )
+        .failed
+        .futureValue
+        .getMessage mustBe "Expected govTalkStatus record for resubmission but none found"
+
+      verify(formpProxyConnector, never()).createGovTalkStatusRecord(any[CreateGovTalkStatusRecordRequest])(
+        any[HeaderCarrier]
+      )
+
+      verify(formpProxyConnector, never()).resetGovTalkStatus(any[ResetGovTalkStatusRequest])(
         any[HeaderCarrier]
       )
     }
@@ -1215,11 +1458,14 @@ final class SubmissionServiceSpec extends SpecBase {
   }
 
   trait Setup {
-    val chrisConnector: ChrisConnector                                                 = mock[ChrisConnector]
-    val formpProxyConnector: FormpProxyConnector                                       = mock[FormpProxyConnector]
-    val emailConnector: EmailConnector                                                 = mock[EmailConnector]
-    val monthlyReturnService: MonthlyReturnService                                     = mock[MonthlyReturnService]
-    val chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository             = mock[ChrisSubmissionSessionRepository]
+    val chrisConnector: ChrisConnector                                     = mock[ChrisConnector]
+    val formpProxyConnector: FormpProxyConnector                           = mock[FormpProxyConnector]
+    val emailConnector: EmailConnector                                     = mock[EmailConnector]
+    val monthlyReturnService: MonthlyReturnService                         = mock[MonthlyReturnService]
+    val chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository = mock[ChrisSubmissionSessionRepository]
+    val appConfig: AppConfig                                               = mock[AppConfig]
+
+    val chrisGatewayUrl                                                                = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
     val formPSubmissionUpdateProcessorRegistry: FormPSubmissionUpdateProcessorRegistry =
       mock[FormPSubmissionUpdateProcessorRegistry]
     val formPSubmissionUpdateProcessor: FormPSubmissionUpdateProcessor                 =
@@ -1231,8 +1477,12 @@ final class SubmissionServiceSpec extends SpecBase {
       emailConnector,
       monthlyReturnService,
       chrisSubmissionSessionRepository,
-      formPSubmissionUpdateProcessorRegistry
+      formPSubmissionUpdateProcessorRegistry,
+      appConfig
     )
+
+    when(appConfig.chrisGatewayUrl)
+      .thenReturn(chrisGatewayUrl)
 
     def mkPayload(
       corrId: String = "CID-123",

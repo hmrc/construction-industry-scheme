@@ -296,7 +296,8 @@ class SubmissionController @Inject() (
           MonthlyReturn,
           monthlyReturnContext,
           r => renderSubmissionResponse(submissionId, payload)(r),
-          errorLabel = ""
+          errorLabel = "",
+          isResubmission = csr.isResubmission
         )
       )
       .recoverWith { case NonFatal(ex) =>
@@ -321,7 +322,8 @@ class SubmissionController @Inject() (
     journey: ChrisPollJourney,
     context: ChrisSubmissionContext,
     render: SubmissionResult => Result,
-    errorLabel: String
+    errorLabel: String,
+    isResubmission: Boolean = false
   )(implicit hc: HeaderCarrier): Future[Result] =
     submissionService
       .processInitialChrisAck(
@@ -335,7 +337,8 @@ class SubmissionController @Inject() (
         lastMessageDate = chrisResponseTimestamp(res),
         journey = journey,
         context = context,
-        response = res
+        response = res,
+        isResubmission = isResubmission
       )
       .map(_ => render(res))
       .recover { case ex =>
