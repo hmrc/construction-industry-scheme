@@ -287,12 +287,12 @@ class SubmissionService @Inject() (
     instanceId: String,
     submissionId: String,
     lastMessageDate: Instant = Instant.now
-  )(implicit hc: HeaderCarrier): Future[Unit] = {
+  )(implicit hc: HeaderCarrier): Future[String] = {
     logger.info(
       s"[SubmissionService][processMonthlyReturnGovTalkStatusCheck] checking status for instanceId=$instanceId, submissionId=$submissionId"
     )
     for {
-      statusResponseOpt <- getInitialGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId))
+      statusResponseOpt <- getPollingGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId))
       statusResponse    <- Future.fromTry(
                              statusResponseOpt
                                .toRight(new RuntimeException("GovTalk status not found"))
@@ -320,7 +320,7 @@ class SubmissionService @Inject() (
                              statusRecord.pollInterval,
                              statusRecord.gatewayURL
                            )
-    } yield ()
+    } yield statusRecord.gatewayURL
   }
 
   private def fetchAndStoreGovTalkStatus(instanceId: String, submissionId: String)(implicit

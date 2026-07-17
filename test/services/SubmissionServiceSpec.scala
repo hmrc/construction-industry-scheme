@@ -1320,7 +1320,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
   "processMonthlyReturnGovTalkStatusCheck" - {
 
-    "get govtalk status, saves session, and runs govtalk update steps" in {
+    "get govtalk status, saves session, runs govtalk update steps, and returns gatewayURL" in {
       val s = setup
       import s._
 
@@ -1351,7 +1351,7 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
-          eqTo(Initial)
+          eqTo(Polling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Some(mockGovTalkResponse)))
 
@@ -1409,7 +1409,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
       service
         .processMonthlyReturnGovTalkStatusCheck(instanceId, submissionId, lastMessageDate)
-        .futureValue mustBe ()
+        .futureValue mustBe pollUrl
     }
 
     "failed when govTalkStatus response is None" in {
@@ -1423,7 +1423,7 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
-          eqTo(Initial)
+          eqTo(Polling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(None))
 
@@ -1445,7 +1445,7 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
-          eqTo(Initial)
+          eqTo(Polling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Some(GetGovTalkStatusResponse(govtalk_status = Seq.empty))))
 
