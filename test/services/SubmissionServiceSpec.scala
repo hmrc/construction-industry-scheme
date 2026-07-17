@@ -1578,6 +1578,31 @@ final class SubmissionServiceSpec extends SpecBase {
       verifyNoInteractions(chrisConnector)
       verifyNoInteractions(emailConnector)
     }
+
+    "must propagate the failure when retrieving the GovTalk status fails" in new Setup {
+      val exception = new RuntimeException("GetGovTalkStatus failed")
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.failed(exception))
+
+      when(
+        formpProxyConnector.getSubmissionWithVerificationBatch(
+          eqTo(snapshotRequest)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(snapshotResponse))
+
+      val result =
+        service
+          .syncVerificationSessionForPolling(submissionToPoll)
+          .failed
+          .futureValue
+
+      result mustBe exception
+    }
   }
 
   "getSubmissionsToPoll" - {

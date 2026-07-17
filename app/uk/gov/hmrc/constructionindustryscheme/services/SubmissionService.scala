@@ -284,6 +284,12 @@ class SubmissionService @Inject() (
               s"No polling GovTalk status found for instanceId: ${submission.instanceId}, submissionId: $submissionId"
             )
           )
+      }.recoverWith { case NonFatal(ex) =>
+        logger.error(
+          s"[SubmissionService][syncVerificationSessionForPolling] Failed to fetch GovTalk status for instanceId: ${submission.instanceId}, submissionId: $submissionId",
+          ex
+        )
+        Future.failed(ex)
       }
 
     val verificationContextFuture =
