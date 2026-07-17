@@ -438,6 +438,7 @@ class FormpProxyConnector @Inject() (
     http
       .get(url"$base/cis/subcontractors/$cisId")
       .execute[GetSubcontractorListResponse]
+
   def getSubmittedVerifications(
     request: GetSubmittedVerificationsRequest
   )(implicit hc: HeaderCarrier): Future[GetSubmittedVerificationsResponse] =
@@ -445,4 +446,13 @@ class FormpProxyConnector @Inject() (
       .post(url"$base/cis/verification/submitted-verifications")
       .withBody(Json.toJson(request))
       .execute[GetSubmittedVerificationsResponse]
+
+  def getSubmissionWithVerificationBatch(
+    request: GetSubmissionWithVerificationBatchRequest
+  )(implicit hc: HeaderCarrier): Future[GetSubmissionWithVerificationBatchResponse] =
+    http
+      .post(url"$base/cis/verification/submission-batch")
+      .withBody(Json.toJson(request))
+      .execute[GetSubmissionWithVerificationBatchResponse]
+
 }
