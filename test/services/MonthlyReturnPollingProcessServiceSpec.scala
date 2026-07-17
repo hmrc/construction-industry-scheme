@@ -174,6 +174,13 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         service.process(Seq(sub1, sub2)).futureValue mustBe ()
 
         verify(monthlyReturnService, times(2)).getMonthlyReturnForEdit(any())(any())
+
+        // The first submission fails at getMonthlyReturnForEdit, so only the second (inst-2)
+        // continues and completes the downstream steps.
+        verify(submissionService, times(1))
+          .processMonthlyReturnGovTalkStatusCheck(eqTo("inst-2"), any(), any())(any())
+        verify(submissionService, times(1)).pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any())
+        verify(submissionService, times(1)).updateSubmission(any())(any())
       }
     }
 
