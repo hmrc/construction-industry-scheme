@@ -160,4 +160,24 @@ class VerificationController @Inject() (
         )
     }
 
+  def getSubmittedVerifications(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      request.body
+        .validate[GetSubmittedVerificationsRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          body =>
+            verificationService
+              .getSubmittedVerifications(body)
+              .map(response => Ok(Json.toJson(response)))
+              .recover { case ex =>
+                logger.error(
+                  s"[getSubmittedVerifications] formp-proxy get failed (instanceId=${body.instanceId})",
+                  ex
+                )
+                BadGateway(Json.obj("message" -> "get-submitted-verifications-failed"))
+              }
+        )
+    }
+
 }

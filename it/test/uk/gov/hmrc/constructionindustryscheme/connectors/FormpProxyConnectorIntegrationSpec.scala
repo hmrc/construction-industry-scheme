@@ -2511,64 +2511,140 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
-  "FormpProxyConnector getSubmissionWithVerificationBatch" should {
+  "FormpProxyConnector getSubmittedVerifications" should {
 
-    val verificationBatchResourceRef = 456L
+    val req = GetSubmittedVerificationsRequest(instanceId = instanceId)
 
-    val endpoint =
-      s"/formp-proxy/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef"
-
-    "GET the submission with verification batch and map the populated response" in {
-
+    "POST /formp-proxy/cis/verification/submitted-verifications and return submitted verification data (200)" in {
       val responseJson = Json.parse(
         s"""
            |{
-           |  "scheme": {
-           |    "schemeId": 999,
-           |    "instanceId": "$instanceId",
-           |    "accountsOfficeReference": "123PA00123456",
-           |    "taxOfficeNumber": "163",
-           |    "taxOfficeReference": "AB0063",
-           |    "utr": "1234567890",
-           |    "name": "ABC Construction Ltd"
-           |  },
+           |  "scheme": [
+           |    {
+           |      "schemeId": 1,
+           |      "instanceId": "$instanceId",
+           |      "accountsOfficeReference": "123PA00123456",
+           |      "taxOfficeNumber": "123",
+           |      "taxOfficeReference": "AB456",
+           |      "name": "Test Contractor"
+           |    }
+           |  ],
            |  "subcontractors": [
            |    {
-           |      "subcontractorId": 10,
-           |      "utr": "9876543210",
-           |      "tradingName": "ABC Subcontractor Ltd",
-           |      "subcontractorType": "company",
-           |      "subbieResourceRef": 100
+           |      "subcontractorId": 999,
+           |      "utr": "1234567890",
+           |      "firstName": "John",
+           |      "surname": "Smith",
+           |      "subcontractorType": "soletrader",
+           |      "subbieResourceRef": 456,
+           |      "taxTreatment": "NET"
+           |    }
+           |  ],
+           |  "verificationBatches": [
+           |    {
+           |      "verificationBatchId": 99,
+           |      "schemeId": 1,
+           |      "verifBatchResourceRef": 222,
+           |      "status": "SUBMITTED"
            |    }
            |  ],
            |  "verifications": [
            |    {
-           |      "verificationId": 20,
+           |      "verificationId": 1001,
            |      "matched": "Y",
            |      "verificationNumber": "V123456",
-           |      "taxTreatment": "20",
-           |      "verificationBatchId": 30,
-           |      "subcontractorId": 10
+           |      "taxTreatment": "NET",
+           |      "verificationBatchId": 99,
+           |      "schemeId": 1,
+           |      "subcontractorId": 999,
+           |      "verificationResourceRef": 456
            |    }
            |  ],
-           |  "verificationBatch": {
-           |    "verificationBatchId": 30,
-           |    "status": "SUBMITTED",
-           |    "verificationNumber": "VB123456"
-           |  },
-           |  "submission": {
-           |    "submissionId": 40,
-           |    "submissionType": "VERIFY",
-           |    "status": "SUBMITTED",
-           |    "schemeId": 999,
-           |    "agentId": "A123456"
-           |  }
+           |  "submissions": [
+           |    {
+           |      "submissionId": 555,
+           |      "submissionType": "CISVERIFY",
+           |      "activeObjectId": 99,
+           |      "status": "SUBMITTED",
+           |      "schemeId": 1
+           |    }
+           |  ]
            |}
            |""".stripMargin
       )
 
       stubFor(
-        get(urlPathEqualTo(endpoint))
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submitted-verifications"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.getSubmittedVerifications(req).futureValue
+
+      out.scheme.head.instanceId mustBe instanceId
+      out.scheme.head.name mustBe Some("Test Contractor")
+      out.subcontractors.head.subcontractorId mustBe 999L
+      out.subcontractors.head.displayName mustBe "John Smith"
+      out.verificationBatches.head.verificationBatchId mustBe 99L
+      out.verifications.head.verificationId mustBe 1001L
+      out.submissions.head.submissionId mustBe 555L
+
+      verify(
+        postRequestedFor(urlPathEqualTo("/formp-proxy/cis/verification/submitted-verifications"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+      )
+    }
+
+    "fail the future when upstream returns non-2xx" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submitted-verifications"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.getSubmittedVerifications(req).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+      
+      
+  "FormpProxyConnector getSubmissionWithVerificationBatch" should {
+
+    "POST the request and return the response when upstream returns 200" in {
+      val request =
+        GetSubmissionWithVerificationBatchRequest(
+          instanceId = instanceId,
+          verificationBatchResourceRef = 77L
+        )
+
+      val responseJson =
+        Json.parse(
+          """{
+            |  "scheme": null,
+            |  "submission": null,
+            |  "verificationBatch": null,
+            |  "verifications": [],
+            |  "subcontractors": []
+            |}""".stripMargin
+        )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission-batch"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
+          )
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -2579,94 +2655,49 @@ class FormpProxyConnectorIntegrationSpec
 
       val result =
         connector
-          .getSubmissionWithVerificationBatch(
-            instanceId,
-            verificationBatchResourceRef
-          )
+          .getSubmissionWithVerificationBatch(request)
           .futureValue
 
-      result.scheme.value.schemeId mustBe 999
-      result.scheme.value.instanceId mustBe instanceId
-      result.scheme.value.name mustBe Some("ABC Construction Ltd")
-
-      result.subcontractors must have size 1
-      result.subcontractors.head.subcontractorId mustBe 10L
-      result.subcontractors.head.tradingName mustBe Some("ABC Subcontractor Ltd")
-
-      result.verifications must have size 1
-      result.verifications.head.verificationId mustBe 20L
-      result.verifications.head.verificationNumber mustBe Some("V123456")
-      result.verifications.head.subcontractorId mustBe Some(10L)
-
-      result.verificationBatch.value.verificationBatchId mustBe 30L
-      result.verificationBatch.value.status mustBe Some("SUBMITTED")
-
-      result.submission.value.submissionId mustBe 40L
-      result.submission.value.submissionType mustBe "VERIFY"
-      result.submission.value.schemeId mustBe 999L
+      result mustBe GetSubmissionWithVerificationBatchResponse(
+        scheme = None,
+        submission = None,
+        verificationBatch = None,
+        verifications = Seq.empty,
+        subcontractors = Seq.empty
+      )
     }
 
-    "return empty collections and optional values when the response contains no records" in {
-
-      val responseJson = Json.parse(
-        """
-          |{
-          |  "subcontractors": [],
-          |  "verifications": []
-          |}
-          |""".stripMargin
-      )
+    "fail the future when upstream returns 500" in {
+      val request =
+        GetSubmissionWithVerificationBatchRequest(
+          instanceId = instanceId,
+          verificationBatchResourceRef = 77L
+        )
 
       stubFor(
-        get(urlPathEqualTo(endpoint))
-          .willReturn(
-            aResponse()
-              .withStatus(200)
-              .withHeader("Content-Type", "application/json")
-              .withBody(responseJson.toString())
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission-batch"))
+          .withRequestBody(
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
           )
-      )
-
-      val result =
-        connector
-          .getSubmissionWithVerificationBatch(
-            instanceId,
-            verificationBatchResourceRef
-          )
-          .futureValue
-
-      result.scheme mustBe None
-      result.subcontractors mustBe Seq.empty
-      result.verifications mustBe Seq.empty
-      result.verificationBatch mustBe None
-      result.submission mustBe None
-    }
-
-    "fail with UpstreamErrorResponse when FormP returns a non-2xx response" in {
-
-      stubFor(
-        get(urlPathEqualTo(endpoint))
           .willReturn(
             aResponse()
               .withStatus(500)
-              .withHeader("Content-Type", "application/json")
-              .withBody("""{"message":"FormP failure"}""")
+              .withBody("formp error")
           )
       )
 
       val exception =
-        connector
-          .getSubmissionWithVerificationBatch(
-            instanceId,
-            verificationBatchResourceRef
-          )
-          .failed
-          .futureValue
+        intercept[Throwable] {
+          connector
+            .getSubmissionWithVerificationBatch(request)
+            .futureValue
+        }
 
-      exception mustBe a[UpstreamErrorResponse]
-      exception
-        .asInstanceOf[UpstreamErrorResponse]
-        .statusCode mustBe 500
+      exception.getMessage must include("500")
     }
   }
 }

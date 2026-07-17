@@ -445,4 +445,11 @@ class FormpProxyConnector @Inject() (
     http
       .get(url"$base/cis/subcontractors/$cisId")
       .execute[GetSubcontractorListResponse]
+  def getSubmittedVerifications(
+    request: GetSubmittedVerificationsRequest
+  )(implicit hc: HeaderCarrier): Future[GetSubmittedVerificationsResponse] =
+    http
+      .post(url"$base/cis/verification/submitted-verifications")
+      .withBody(Json.toJson(request))
+      .execute[GetSubmittedVerificationsResponse]
 }
