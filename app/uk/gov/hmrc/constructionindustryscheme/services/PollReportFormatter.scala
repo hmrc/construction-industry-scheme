@@ -44,7 +44,7 @@ object PollReportFormatter {
   private val Underline: String =
     "    ----------------------------------------------------------------------------------------------------------------------------------------------------------------------"
 
-  private val DateTimeFormatter: DateTimeFormatter =
+  private val dateTimeFormatter: DateTimeFormatter =
     java.time.format.DateTimeFormatter.ofPattern(
       "dd-MM-yy HH:mm:ss"
     )
@@ -115,7 +115,7 @@ object PollReportFormatter {
     (
       Seq(
         SectionSeparator,
-        s"BATCH POLLING RESULTS FOR ${generatedAt.format(DateTimeFormatter)}",
+        s"BATCH POLLING RESULTS FOR ${generatedAt.format(dateTimeFormatter)}",
         Header,
         Underline
       ) ++
@@ -125,7 +125,7 @@ object PollReportFormatter {
           Underline,
           SectionSeparator
         )
-    ).mkString(System.lineSeparator())
+    ).mkString("\n")
   }
 
   private def formatRow(
