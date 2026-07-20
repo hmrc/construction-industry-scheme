@@ -1,5 +1,10 @@
 # DTR-5655 end-to-end test scripts
 
+> **Note:** the maintained scenario runner is now the Scala e2e suite —
+> `sbt e2e/test`, see [`e2e/README.md`](../../../e2e/README.md). The scripts
+> below remain available for ad-hoc manual calls (`bearer-token.sh`,
+> `call-backend.sh`) and as a bash reference for the scenario matrix.
+
 ## Problem statement
 
 The DTR-5655 work adds verification routes to this backend that submit CIS
