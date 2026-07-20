@@ -178,6 +178,13 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         service.process(Seq(sub1, sub2), startTime).futureValue mustBe ()
 
         verify(monthlyReturnService, times(2)).getMonthlyReturnForEdit(any())(any())
+
+        // The first submission fails at getMonthlyReturnForEdit, so only the second (inst-2)
+        // continues and completes the downstream steps.
+        verify(submissionService, times(1))
+          .processMonthlyReturnGovTalkStatusCheck(eqTo("inst-2"), any(), any())(any())
+        verify(submissionService, times(1)).pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any())
+        verify(submissionService, times(1)).updateSubmission(any())(any())
       }
     }
 
@@ -291,6 +298,62 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       }
     }
 
+    "must log warning when submission has been polling for more than 24 hours" in {
+      val submission               = MonthlyReturnSubmissionToPoll(
+        submissionId = 100,
+        submissionType = "Original",
+        status = "Started",
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AZ123",
+        taxYear = 2026,
+        taxMonth = 4,
+        instanceId = "1",
+        agentId = None
+      )
+      val oldSubmissionRequestDate = LocalDateTime.now(ZoneId.of("Europe/London")).minusHours(25)
+      val response                 = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq(makeMonthlyReturn(testTaxYear, testTaxMonth, Some("N"))),
+        subcontractors = Seq.empty,
+        monthlyReturnItems = Seq.empty,
+        submission = Seq(
+          Submission(
+            submissionId = 100,
+            submissionType = "Original",
+            activeObjectId = None,
+            status = None,
+            hmrcMarkGenerated = None,
+            hmrcMarkGgis = None,
+            emailRecipient = None,
+            acceptedTime = None,
+            createDate = None,
+            lastUpdate = None,
+            schemeId = 1,
+            agentId = None,
+            l_Migrated = None,
+            submissionRequestDate = Some(oldSubmissionRequestDate),
+            govTalkErrorCode = None,
+            govTalkErrorType = None,
+            govTalkErrorMessage = None
+          )
+        )
+      )
+      when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
+        .thenReturn(Future.successful(response))
+      when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
+        .thenReturn(Future.successful(gatewayUrl))
+      when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any()))
+        .thenReturn(Future.successful(makePollResponse(ACCEPTED)))
+      when(submissionService.updateSubmission(any())(any()))
+        .thenReturn(Future.unit)
+      service.process(Seq(submission), System.currentTimeMillis()).futureValue mustBe ()
+      verify(submissionService).processMonthlyReturnGovTalkStatusCheck(
+        any(),
+        any(),
+        any()
+      )(any[HeaderCarrier])
+    }
+
     "email behaviour" - {
 
       "must send email when status is SUBMITTED and emailRecipient is present (AC5)" in {
@@ -396,68 +459,6 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           )(any())
         }
       }
-    }
-
-    "must log warning when submission has been polling for more than 24 hours" in {
-      val submission = MonthlyReturnSubmissionToPoll(
-        submissionId = 100,
-        submissionType = "Original",
-        status = "Started",
-        taxOfficeNumber = "123",
-        taxOfficeReference = "AZ123",
-        taxYear = 2026,
-        taxMonth = 4,
-        instanceId = "1",
-        agentId = None
-      )
-
-      val oldSubmissionRequestDate = LocalDateTime.now(ZoneId.of("Europe/London")).minusHours(25)
-
-      val response = GetMonthlyReturnForEditResponse(
-        scheme = Seq.empty,
-        monthlyReturn = Seq(makeMonthlyReturn(testTaxYear, testTaxMonth, Some("N"))),
-        subcontractors = Seq.empty,
-        monthlyReturnItems = Seq.empty,
-        submission = Seq(
-          Submission(
-            submissionId = 100,
-            submissionType = "Original",
-            activeObjectId = None,
-            status = None,
-            hmrcMarkGenerated = None,
-            hmrcMarkGgis = None,
-            emailRecipient = None,
-            acceptedTime = None,
-            createDate = None,
-            lastUpdate = None,
-            schemeId = 1,
-            agentId = None,
-            l_Migrated = None,
-            submissionRequestDate = Some(oldSubmissionRequestDate),
-            govTalkErrorCode = None,
-            govTalkErrorType = None,
-            govTalkErrorMessage = None
-          )
-        )
-      )
-
-      when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
-        .thenReturn(Future.successful(response))
-
-      when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
-        .thenReturn(Future.successful(gatewayUrl))
-      when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any()))
-        .thenReturn(Future.successful(makePollResponse(ACCEPTED)))
-      when(submissionService.updateSubmission(any())(any()))
-        .thenReturn(Future.unit)
-
-      service.process(Seq(submission), System.currentTimeMillis()).futureValue mustBe ()
-
-      verify(submissionService).processMonthlyReturnGovTalkStatusCheck(
-        any(),
-        any(),
-        any()
-      )(any[HeaderCarrier])
     }
   }
 }
