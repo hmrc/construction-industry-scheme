@@ -2510,4 +2510,107 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 502
     }
   }
+
+  "FormpProxyConnector getSubmittedVerifications" should {
+
+    val req = GetSubmittedVerificationsRequest(instanceId = instanceId)
+
+    "POST /formp-proxy/cis/verification/submitted-verifications and return submitted verification data (200)" in {
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "scheme": [
+           |    {
+           |      "schemeId": 1,
+           |      "instanceId": "$instanceId",
+           |      "accountsOfficeReference": "123PA00123456",
+           |      "taxOfficeNumber": "123",
+           |      "taxOfficeReference": "AB456",
+           |      "name": "Test Contractor"
+           |    }
+           |  ],
+           |  "subcontractors": [
+           |    {
+           |      "subcontractorId": 999,
+           |      "utr": "1234567890",
+           |      "firstName": "John",
+           |      "surname": "Smith",
+           |      "subcontractorType": "soletrader",
+           |      "subbieResourceRef": 456,
+           |      "taxTreatment": "NET"
+           |    }
+           |  ],
+           |  "verificationBatches": [
+           |    {
+           |      "verificationBatchId": 99,
+           |      "schemeId": 1,
+           |      "verifBatchResourceRef": 222,
+           |      "status": "SUBMITTED"
+           |    }
+           |  ],
+           |  "verifications": [
+           |    {
+           |      "verificationId": 1001,
+           |      "matched": "Y",
+           |      "verificationNumber": "V123456",
+           |      "taxTreatment": "NET",
+           |      "verificationBatchId": 99,
+           |      "schemeId": 1,
+           |      "subcontractorId": 999,
+           |      "verificationResourceRef": 456
+           |    }
+           |  ],
+           |  "submissions": [
+           |    {
+           |      "submissionId": 555,
+           |      "submissionType": "CISVERIFY",
+           |      "activeObjectId": 99,
+           |      "status": "SUBMITTED",
+           |      "schemeId": 1
+           |    }
+           |  ]
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submitted-verifications"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.getSubmittedVerifications(req).futureValue
+
+      out.scheme.head.instanceId mustBe instanceId
+      out.scheme.head.name mustBe Some("Test Contractor")
+      out.subcontractors.head.subcontractorId mustBe 999L
+      out.subcontractors.head.displayName mustBe "John Smith"
+      out.verificationBatches.head.verificationBatchId mustBe 99L
+      out.verifications.head.verificationId mustBe 1001L
+      out.submissions.head.submissionId mustBe 555L
+
+      verify(
+        postRequestedFor(urlPathEqualTo("/formp-proxy/cis/verification/submitted-verifications"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+      )
+    }
+
+    "fail the future when upstream returns non-2xx" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submitted-verifications"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.getSubmittedVerifications(req).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
 }
