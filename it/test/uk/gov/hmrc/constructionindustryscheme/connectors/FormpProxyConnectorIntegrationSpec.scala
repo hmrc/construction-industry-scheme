@@ -2613,91 +2613,78 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
-      
-      
+
   "FormpProxyConnector getSubmissionWithVerificationBatch" should {
 
-    "POST the request and return the response when upstream returns 200" in {
-      val request =
-        GetSubmissionWithVerificationBatchRequest(
-          instanceId = instanceId,
-          verificationBatchResourceRef = 77L
-        )
+    "GET /formp-proxy/cis/verification/submission-batch/:instanceId/:verificationBatchResourceRef and return response (200)" in {
+      val verificationBatchResourceRef = 77L
 
-      val responseJson =
-        Json.parse(
-          """{
-            |  "scheme": null,
-            |  "submission": null,
-            |  "verificationBatch": null,
-            |  "verifications": [],
-            |  "subcontractors": []
-            |}""".stripMargin
-        )
-
-      stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/verification/submission-batch"))
-          .withHeader("Content-Type", equalTo("application/json"))
-          .withRequestBody(
-            equalToJson(
-              Json.toJson(request).toString(),
-              true,
-              true
-            )
-          )
-          .willReturn(
-            aResponse()
-              .withStatus(200)
-              .withHeader("Content-Type", "application/json")
-              .withBody(responseJson.toString())
-          )
+      val responseJson = Json.parse(
+        """
+          |{
+          |  "scheme": null,
+          |  "subcontractors": [],
+          |  "verifications": [],
+          |  "verificationBatch": null,
+          |  "submission": null
+          |}
+          |""".stripMargin
       )
 
-      val result =
+      val expectedResponse =
+        responseJson.as[GetSubmissionWithVerificationBatchResponse]
+
+      stubFor(
+        get(
+          urlPathEqualTo(
+            s"/formp-proxy/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef"
+          )
+        ).willReturn(
+          aResponse()
+            .withStatus(200)
+            .withBody(responseJson.toString())
+        )
+      )
+
+      val out =
         connector
-          .getSubmissionWithVerificationBatch(request)
+          .getSubmissionWithVerificationBatch(instanceId, verificationBatchResourceRef)
           .futureValue
 
-      result mustBe GetSubmissionWithVerificationBatchResponse(
-        scheme = None,
-        submission = None,
-        verificationBatch = None,
-        verifications = Seq.empty,
-        subcontractors = Seq.empty
+      out mustBe expectedResponse
+
+      verify(
+        getRequestedFor(
+          urlPathEqualTo(
+            s"/formp-proxy/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef"
+          )
+        )
       )
     }
 
-    "fail the future when upstream returns 500" in {
-      val request =
-        GetSubmissionWithVerificationBatchRequest(
-          instanceId = instanceId,
-          verificationBatchResourceRef = 77L
-        )
+    "fail the future when upstream returns a non-2xx response" in {
+      val verificationBatchResourceRef = 77L
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/verification/submission-batch"))
-          .withRequestBody(
-            equalToJson(
-              Json.toJson(request).toString(),
-              true,
-              true
-            )
+        get(
+          urlPathEqualTo(
+            s"/formp-proxy/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef"
           )
-          .willReturn(
-            aResponse()
-              .withStatus(500)
-              .withBody("formp error")
-          )
+        ).willReturn(
+          aResponse()
+            .withStatus(500)
+            .withBody("""{"message":"boom"}""")
+        )
       )
 
-      val exception =
-        intercept[Throwable] {
-          connector
-            .getSubmissionWithVerificationBatch(request)
-            .futureValue
-        }
+      val ex =
+        connector
+          .getSubmissionWithVerificationBatch(instanceId, verificationBatchResourceRef)
+          .failed
+          .futureValue
 
-      exception.getMessage must include("500")
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
 }
