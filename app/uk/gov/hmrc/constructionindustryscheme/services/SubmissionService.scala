@@ -201,7 +201,8 @@ class SubmissionService @Inject() (
 
       case Right(_) =>
         for {
-          instanceId <- initialiseGovTalkStatus(employerReference, submissionId, expectedCorrelationId, gatewayURL)
+          instanceId <-
+            initialiseGovTalkStatus(employerReference, submissionId, expectedCorrelationId, gatewayURL, isResubmission)
           sessionData = ChrisSubmissionSessionData(
                           submissionId = submissionId,
                           instanceId = instanceId,
