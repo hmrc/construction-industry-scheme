@@ -317,21 +317,24 @@ class SubmissionService @Inject() (
                                .toRight(new RuntimeException("No GovTalk status records found"))
                                .toTry
                            )
-      _                 <- saveBatchPollingChrisSession(
-                             submissionId,
-                             instanceId,
-                             statusRecord.correlationID,
-                             statusRecord.numPolls,
-                             statusRecord.pollInterval,
-                             statusRecord.gatewayURL,
-                             lastMessageDate
+      _                 <- chrisSubmissionSessionRepository.upsert(
+                             ChrisSubmissionSessionData(
+                               submissionId,
+                               instanceId,
+                               statusRecord.correlationID,
+                               lastMessageDate,
+                               statusRecord.numPolls,
+                               statusRecord.pollInterval,
+                               statusRecord.gatewayURL,
+                               None
+                             )
                            )
       _                 <- runGovTalkStatusUpdateSteps(
                              instanceId,
                              submissionId,
                              statusRecord.correlationID,
                              lastMessageDate,
-                             0,
+                             statusRecord.numPolls,
                              statusRecord.pollInterval,
                              statusRecord.gatewayURL
                            )
@@ -350,28 +353,6 @@ class SubmissionService @Inject() (
           new RuntimeException(s"No GovTalk status found for instanceId: $instanceId, submissionId: $submissionId")
         )
     }
-
-  private def saveBatchPollingChrisSession(
-    submissionId: String,
-    instanceId: String,
-    correlationId: String,
-    numPolls: Int,
-    pollInterval: Int,
-    pollUrl: String,
-    lastMessageDate: Instant
-  ): Future[Unit] =
-    chrisSubmissionSessionRepository.upsert(
-      ChrisSubmissionSessionData(
-        submissionId = submissionId,
-        instanceId = instanceId,
-        correlationId = correlationId,
-        lastMessageDate = lastMessageDate,
-        numPolls = numPolls,
-        pollInterval = pollInterval,
-        pollUrl = pollUrl,
-        govTalkStatus = None
-      )
-    )
 
   private def updateChrisSessionAfterPoll(
     submissionId: String,
