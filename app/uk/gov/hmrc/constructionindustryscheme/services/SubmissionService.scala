@@ -26,7 +26,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository}
 import uk.gov.hmrc.http.HeaderCarrier
 
-import java.time.{Instant, LocalDateTime, ZoneOffset}
+import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -40,11 +40,13 @@ class SubmissionService @Inject() (
   monthlyReturnService: MonthlyReturnService,
   chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository,
   formPSubmissionUpdateProcessorRegistry: FormPSubmissionUpdateProcessorRegistry,
-  appConfig: AppConfig
+  appConfig: AppConfig,
+  clock: Clock
 )(implicit ec: ExecutionContext)
     extends Logging {
 
   import SubmissionService.ChrisDeletionOutcome
+  import SubmissionService.GovTalkStatusUpdate
 
   def createSubmission(request: CreateSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
     formpProxyConnector.createSubmission(request)
@@ -267,7 +269,7 @@ class SubmissionService @Inject() (
                               .processorFor(journey)
                               .handlePollResponse(session, result)
       deleteOutcome      <- deleteChrisResourcesIfNeeded(result.status, session.correlationId, pollUrl)
-      protocolStatus       = if (deleteOutcome == ChrisDeletionOutcome.Deleted) "endState" else "dataPoll"
+      govTalkStatusUpdate = toGovTalkStatusUpdate(deleteOutcome)
       nextLastMessageDate = result.lastMessageDate
                               .flatMap(ts => Try(Instant.parse(ts)).toOption)
                               .getOrElse(session.lastMessageDate)
@@ -289,7 +291,8 @@ class SubmissionService @Inject() (
                               updatedSession.numPolls,
                               nextPollInterval,
                               nextPollUrl,
-                              protocolStatus
+                              govTalkStatusUpdate.protocolStatus,
+                              govTalkStatusUpdate.endStateDate
                             )
       _                  <- fetchAndStoreGovTalkStatus(session.instanceId, submissionId)
     } yield result
@@ -418,7 +421,8 @@ class SubmissionService @Inject() (
     numPolls: Int,
     pollInterval: Int,
     gatewayURL: String,
-    protocolStatus: String = "dataPoll"
+    protocolStatus: String = "dataPoll",
+    endStateDate: Option[LocalDateTime] = None
   )(implicit hc: HeaderCarrier): Future[Unit] =
     for {
       _ <- updateGovTalkStatusCorrelationId(
@@ -444,11 +448,24 @@ class SubmissionService @Inject() (
              UpdateGovTalkStatusRequest(
                instanceId,
                submissionId,
-               None,
+               endStateDate,
                protocolStatus
              )
            )
     } yield ()
+
+  private def toGovTalkStatusUpdate(outcome: ChrisDeletionOutcome): GovTalkStatusUpdate = outcome match {
+    case ChrisDeletionOutcome.Deleted                                   =>
+      GovTalkStatusUpdate(
+        protocolStatus = "endState",
+        endStateDate = Some(LocalDateTime.now(clock))
+      )
+    case ChrisDeletionOutcome.NotRequired | ChrisDeletionOutcome.Failed =>
+      GovTalkStatusUpdate(
+        protocolStatus = "dataPoll",
+        endStateDate = None
+      )
+  }
 
   private def getChrisSubmissionSession(submissionId: String): Future[ChrisSubmissionSessionData] =
     chrisSubmissionSessionRepository.get(submissionId).map {
@@ -477,4 +494,9 @@ object SubmissionService {
     case NotRequired
     case Failed
   }
+
+  private[services] case class GovTalkStatusUpdate(
+    protocolStatus: String,
+    endStateDate: Option[LocalDateTime]
+  )
 }

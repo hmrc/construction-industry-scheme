@@ -32,7 +32,7 @@ import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessi
 import uk.gov.hmrc.constructionindustryscheme.services.*
 import uk.gov.hmrc.http.HeaderCarrier
 
-import java.time.{Instant, LocalDateTime}
+import java.time.{Clock, Instant, LocalDateTime, ZoneId}
 import scala.concurrent.Future
 import scala.xml.Elem
 
@@ -319,8 +319,8 @@ final class SubmissionServiceSpec extends SpecBase {
             UpdateGovTalkStatusRequest(
               userIdentifier = instanceId,
               formResultID = submissionId,
-              endStateDate = None,
-              protocolStatus = "dataPoll"
+              endStateDate = Some(expectedEndStateDate),
+              protocolStatus = "endState"
             )
           )
         )(any[HeaderCarrier])
@@ -1465,6 +1465,11 @@ final class SubmissionServiceSpec extends SpecBase {
     val chrisSubmissionSessionRepository: ChrisSubmissionSessionRepository = mock[ChrisSubmissionSessionRepository]
     val appConfig: AppConfig                                               = mock[AppConfig]
 
+    val ukZone: ZoneId                      = ZoneId.of("Europe/London")
+    val fixedInstant: Instant               = Instant.parse("2025-01-01T00:00:00Z")
+    val clock: Clock                        = Clock.fixed(fixedInstant, ukZone)
+    val expectedEndStateDate: LocalDateTime = LocalDateTime.ofInstant(fixedInstant, ukZone)
+
     val chrisGatewayUrl                                                                = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
     val formPSubmissionUpdateProcessorRegistry: FormPSubmissionUpdateProcessorRegistry =
       mock[FormPSubmissionUpdateProcessorRegistry]
@@ -1478,7 +1483,8 @@ final class SubmissionServiceSpec extends SpecBase {
       monthlyReturnService,
       chrisSubmissionSessionRepository,
       formPSubmissionUpdateProcessorRegistry,
-      appConfig
+      appConfig,
+      clock
     )
 
     when(appConfig.chrisGatewayUrl)
