@@ -40,14 +40,11 @@ class VerificationPollingProcessService @Inject() (
       s"[VerificationPollingProcessService][process] Calling F7 - Get Submission With Verification Batch for ${verificationSubmissions.size} submissions"
     )
 
-    /*
-     * TODO:
-     * Implement F6 - Verification Polling Process here.
-     */
-
     Future
       .traverse(verificationSubmissions) { submission =>
-        submissionService.getSubmissionWithVerificationBatch(submission)
+        submissionService
+          .getSubmissionWithVerificationBatch(submission)
+          .map(_ => ())
       }
       .map(_ => ())
   }
