@@ -2613,4 +2613,78 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
+
+  "FormpProxyConnector getSubmissionWithVerificationBatch" should {
+
+    "GET /formp-proxy/cis/verification/submission-batch/:instanceId/:verificationBatchResourceRef and return response (200)" in {
+      val verificationBatchResourceRef = 77L
+
+      val responseJson = Json.parse(
+        """
+          |{
+          |  "scheme": null,
+          |  "subcontractors": [],
+          |  "verifications": [],
+          |  "verificationBatch": null,
+          |  "submission": null
+          |}
+          |""".stripMargin
+      )
+
+      val expectedResponse =
+        responseJson.as[GetSubmissionWithVerificationBatchResponse]
+
+      stubFor(
+        get(
+          urlPathEqualTo(
+            s"/formp-proxy/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef"
+          )
+        ).willReturn(
+          aResponse()
+            .withStatus(200)
+            .withBody(responseJson.toString())
+        )
+      )
+
+      val out =
+        connector
+          .getSubmissionWithVerificationBatch(instanceId, verificationBatchResourceRef)
+          .futureValue
+
+      out mustBe expectedResponse
+
+      verify(
+        getRequestedFor(
+          urlPathEqualTo(
+            s"/formp-proxy/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef"
+          )
+        )
+      )
+    }
+
+    "fail the future when upstream returns a non-2xx response" in {
+      val verificationBatchResourceRef = 77L
+
+      stubFor(
+        get(
+          urlPathEqualTo(
+            s"/formp-proxy/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef"
+          )
+        ).willReturn(
+          aResponse()
+            .withStatus(500)
+            .withBody("""{"message":"boom"}""")
+        )
+      )
+
+      val ex =
+        connector
+          .getSubmissionWithVerificationBatch(instanceId, verificationBatchResourceRef)
+          .failed
+          .futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
 }

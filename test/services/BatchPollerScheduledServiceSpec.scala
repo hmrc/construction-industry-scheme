@@ -18,7 +18,7 @@ package services
 
 import base.SpecBase
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.{never, verify, when}
+import org.mockito.Mockito.{doReturn, never, reset, verify, when}
 import org.scalatest.BeforeAndAfterEach
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.services.{BatchPollerScheduledService, BatchPollerService}
@@ -37,14 +37,17 @@ class BatchPollerScheduledServiceSpec extends SpecBase with BeforeAndAfterEach {
   private val appConfig          = mock[AppConfig]
   private val batchPollerService = mock[BatchPollerService]
 
-  private val now = Instant.parse("2026-06-03T00:00:00Z")
+  private val now = Instant.parse("2026-06-29T12:00:00Z")
 
-  override def beforeEach(): Unit = {
+  override protected def beforeEach(): Unit = {
     super.beforeEach()
-    org.mockito.Mockito.reset(lockRepository, timestampSupport, appConfig, batchPollerService)
+    reset(lockRepository, timestampSupport, appConfig, batchPollerService)
     when(appConfig.batchPollerJobLockTtl).thenReturn(30.minutes)
     when(timestampSupport.timestamp()).thenReturn(now)
-    // ScheduledLockService refreshes first; returning false routes through takeLock
+    /*
+     * ScheduledLockService attempts to refresh an existing lock first.
+     * Returning false causes it to attempt takeLock.
+     */
     when(lockRepository.refreshExpiry(any(), any(), any())).thenReturn(Future.successful(false))
   }
 
@@ -57,26 +60,29 @@ class BatchPollerScheduledServiceSpec extends SpecBase with BeforeAndAfterEach {
       val lock = Lock("batch-poller-job", "owner", now, now.plusSeconds(1800))
       when(lockRepository.takeLock(any(), any(), any())).thenReturn(Future.successful(Some(lock)))
 
-      // body finished within the TTL window, so the lock is disowned (not released) to expire naturally
+      // After successful execution the lock is disowned and left to expire naturally.
       when(lockRepository.disownLock(any(), any(), any())).thenReturn(Future.unit)
 
-      when(batchPollerService.run()(any[HeaderCarrier])).thenReturn(Future.unit)
+      doReturn(Future.unit)
+        .when(batchPollerService)
+        .run()(any[HeaderCarrier])
 
-      service.invoke.futureValue // completes without failing
+      service.invoke.futureValue
 
       verify(lockRepository).takeLock(any(), any(), any())
       verify(lockRepository).disownLock(any(), any(), any())
-      verify(batchPollerService).run()(any[HeaderCarrier])
+      verify(batchPollerService)
+        .run()(any[HeaderCarrier])
     }
 
     "skip the job without failing when the lock is held by another instance" in {
       when(lockRepository.takeLock(any(), any(), any())).thenReturn(Future.successful(None))
 
-      service.invoke.futureValue // completes without failing
-
+      service.invoke.futureValue
       verify(lockRepository).takeLock(any(), any(), any())
       verify(lockRepository, never()).disownLock(any(), any(), any())
-      verify(batchPollerService, never()).run()(any[HeaderCarrier])
+      verify(batchPollerService, never())
+        .run()(any[HeaderCarrier])
     }
   }
 }

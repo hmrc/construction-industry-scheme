@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
+import uk.gov.hmrc.constructionindustryscheme.models.PollReportContent
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
@@ -26,38 +27,73 @@ import scala.util.control.NonFatal
 @Singleton
 class BatchPollerService @Inject() (
   submissionService: SubmissionService,
+  generatePollReportService: GeneratePollReportService,
+  verificationPollingProcessService: VerificationPollingProcessService,
   monthlyReturnPollingProcessService: MonthlyReturnPollingProcessService
 )(implicit ec: ExecutionContext)
     extends Logging {
 
   def run()(implicit hc: HeaderCarrier): Future[Unit] = {
-    logger.info("[BatchPollerService][run] Calling F1 - Get Submissions To Poll")
+    logger.info(
+      "[BatchPollerService][run] Calling F1 - Get Submissions To Poll"
+    )
+
     submissionService
       .getSubmissionsToPoll()
       .flatMap { submissions =>
+        val verificationSubmissions  = submissions.verificationSubmissions
+        val monthlyReturnSubmissions = submissions.monthlyReturnSubmissions
+
         logger.info(
           s"[BatchPollerService][run] GetBatchPollSubmissions returned " +
-            s"verificationSubmissions=${submissions.verificationSubmissions.size}, " +
-            s"monthlyReturnSubmissions=${submissions.monthlyReturnSubmissions.size}"
+            s"verificationSubmissions=${verificationSubmissions.size}, " +
+            s"monthlyReturnSubmissions=${monthlyReturnSubmissions.size}"
         )
 
-        // TODO:
-        // Future tickets:
-        // - If both lists are empty, call F8 - Generate Poll Report
-        // - If verificationSubmissions is non-empty, call F6 - Verification Polling Process
-        if (submissions.monthlyReturnSubmissions.nonEmpty) {
-          monthlyReturnPollingProcessService.process(
-            submissions.monthlyReturnSubmissions
+        if (
+          verificationSubmissions.isEmpty &&
+          monthlyReturnSubmissions.isEmpty
+        ) {
+          generatePollReportService.generatePollReport(
+            Seq.empty[PollReportContent]
           )
         } else {
-          Future.unit
+          val processes: Seq[Future[Unit]] =
+            Seq(
+              Option.when(verificationSubmissions.nonEmpty) {
+                runPollingProcess("Verification Polling Process") {
+                  verificationPollingProcessService.process(
+                    verificationSubmissions
+                  )
+                }
+              },
+              Option.when(monthlyReturnSubmissions.nonEmpty) {
+                runPollingProcess("Monthly Return Polling Process") {
+                  monthlyReturnPollingProcessService.process(
+                    monthlyReturnSubmissions
+                  )
+                }
+              }
+            ).flatten
+
+          Future.sequence(processes).map(_ => ())
         }
       }
       .recover { case NonFatal(exception) =>
         logger.error(
-          "[BatchPollerService][run] GetBatchPollSubmissions failed",
+          "[BatchPollerService][run] Failed to get submissions to poll",
           exception
         )
       }
   }
+
+  private def runPollingProcess(
+    processName: String
+  )(process: => Future[Unit]): Future[Unit] =
+    process.recover { case NonFatal(exception) =>
+      logger.error(
+        s"[BatchPollerService][run] $processName failed",
+        exception
+      )
+    }
 }

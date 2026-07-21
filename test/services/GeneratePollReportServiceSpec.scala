@@ -19,24 +19,83 @@ package services
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
+import uk.gov.hmrc.constructionindustryscheme.models.PollReportContent
 import uk.gov.hmrc.constructionindustryscheme.services.GeneratePollReportService
-import uk.gov.hmrc.http.HeaderCarrier
 
-import scala.concurrent.ExecutionContext
+import java.time.{Clock, LocalDateTime, ZoneId}
 
 class GeneratePollReportServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures {
 
-  "GeneratePollReportService generatePollReport" - {
+  "GeneratePollReportService.generatePollReport" - {
 
-    "must complete successfully" in new Setup {
-      service.generatePollReport().futureValue mustBe ()
+    "generate and log a populated report successfully" in new Setup {
+
+      service
+        .generatePollReport(
+          reportContent = Seq(reportContent)
+        )
+        .futureValue mustBe ()
+    }
+
+    "generate and log an empty report successfully" in new Setup {
+
+      service
+        .generatePollReport(
+          reportContent = Seq.empty
+        )
+        .futureValue mustBe ()
+    }
+
+    "generate and log recoverable-error report content successfully" in new Setup {
+
+      val recoverableErrorContent =
+        PollReportContent.forRecoverableError(
+          user = reportContent.user,
+          submissionType = reportContent.submissionType,
+          submissionId = reportContent.submissionId,
+          govTalkRequestStatus = reportContent.govTalkRequestStatus,
+          employerReference = reportContent.employerReference,
+          correlationId = reportContent.correlationId,
+          agentId = reportContent.agentId
+        )
+
+      service
+        .generatePollReport(
+          reportContent = Seq(recoverableErrorContent)
+        )
+        .futureValue mustBe ()
     }
   }
 
   private trait Setup {
-    given ExecutionContext = scala.concurrent.ExecutionContext.global
-    given HeaderCarrier    = HeaderCarrier()
 
-    val service = new GeneratePollReportService()
+    val generatedAt: LocalDateTime =
+      LocalDateTime.of(
+        2026, 5, 5, 14, 25, 38
+      )
+
+    val zoneId: ZoneId =
+      ZoneId.of("Europe/London")
+
+    val clock: Clock =
+      Clock.fixed(
+        generatedAt.atZone(zoneId).toInstant,
+        zoneId
+      )
+
+    val service =
+      new GeneratePollReportService(clock)
+
+    val reportContent =
+      PollReportContent(
+        user = "ONLINE",
+        submissionType = "CIS300MR",
+        submissionId = "90002",
+        govTalkRequestStatus = "SUBMITTED",
+        currentReturnStatus = "POLLING",
+        employerReference = "123/456789",
+        correlationId = "correlation-id-001",
+        agentId = "A123456"
+      )
   }
 }

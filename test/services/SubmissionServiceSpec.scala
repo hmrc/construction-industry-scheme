@@ -1512,4 +1512,44 @@ final class SubmissionServiceSpec extends SpecBase {
       )
   }
 
+  "getSubmissionWithVerificationBatch" - {
+
+    "must call FormpProxyConnector with instanceId and verificationBatchResourceRef" in new Setup {
+      val submission =
+        VerificationSubmissionToPoll(
+          submissionId = 90001L,
+          submissionType = "CISVERIFY",
+          agentId = Some("A123456"),
+          taxOfficeNumber = "123",
+          taxOfficeReference = "ABC123",
+          instanceId = "instance-verification-001",
+          status = "SUBMITTED",
+          verificationBatchResourceRef = 70001L
+        )
+
+      val response =
+        GetSubmissionWithVerificationBatchResponse(
+          scheme = None,
+          subcontractors = Seq.empty,
+          verifications = Seq.empty,
+          verificationBatch = None,
+          submission = None
+        )
+
+      when(
+        formpProxyConnector.getSubmissionWithVerificationBatch(
+          submission.instanceId,
+          submission.verificationBatchResourceRef
+        )
+      ).thenReturn(Future.successful(response))
+
+      service.getSubmissionWithVerificationBatch(submission).futureValue mustBe response
+
+      verify(formpProxyConnector).getSubmissionWithVerificationBatch(
+        submission.instanceId,
+        submission.verificationBatchResourceRef
+      )
+    }
+  }
+
 }

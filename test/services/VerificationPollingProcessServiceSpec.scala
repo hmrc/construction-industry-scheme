@@ -16,45 +16,90 @@
 
 package services
 
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers
-import uk.gov.hmrc.constructionindustryscheme.models.response.VerificationSubmissionToPoll
-import uk.gov.hmrc.constructionindustryscheme.services.VerificationPollingProcessService
+import base.SpecBase
+import org.mockito.Mockito.{verify, when}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubmissionWithVerificationBatchResponse, VerificationSubmissionToPoll}
+import uk.gov.hmrc.constructionindustryscheme.services.{SubmissionService, VerificationPollingProcessService}
 import uk.gov.hmrc.http.HeaderCarrier
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
-class VerificationPollingProcessServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures {
+class VerificationPollingProcessServiceSpec extends SpecBase {
 
   "VerificationPollingProcessService process" - {
 
-    "must complete successfully for verification submissions" in new Setup {
-      val submissions: Seq[VerificationSubmissionToPoll] = Seq(
-        VerificationSubmissionToPoll(
-          submissionId = 90001L,
-          submissionType = "CISVERIFY",
-          agentId = Some("A123456"),
-          taxOfficeNumber = "123",
-          taxOfficeReference = "ABC123",
-          instanceId = "instance-verification-001",
-          status = "SUBMITTED",
-          verificationBatchResourceRef = 70001L
-        )
-      )
+    "must call SubmissionService for each verification submission" in new Setup {
+      when(submissionService.getSubmissionWithVerificationBatch(verificationSubmission1))
+        .thenReturn(Future.successful(response))
 
-      service.process(submissions).futureValue mustBe ()
+      when(submissionService.getSubmissionWithVerificationBatch(verificationSubmission2))
+        .thenReturn(Future.successful(response))
+
+      service.process(Seq(verificationSubmission1, verificationSubmission2)).futureValue mustBe ()
+
+      verify(submissionService).getSubmissionWithVerificationBatch(verificationSubmission1)
+      verify(submissionService).getSubmissionWithVerificationBatch(verificationSubmission2)
     }
 
-    "must complete successfully for empty verification submissions" in new Setup {
-      service.process(Seq.empty).futureValue mustBe ()
+    "must fail when SubmissionService fails to get the submission with verification batch" in new Setup {
+
+      val exception =
+        new RuntimeException("Failed to get submission with verification batch")
+
+      when(
+        submissionService
+          .getSubmissionWithVerificationBatch(verificationSubmission1)
+      ).thenReturn(Future.failed(exception))
+
+      val result =
+        service
+          .process(Seq(verificationSubmission1))
+          .failed
+          .futureValue
+
+      result mustBe exception
+
+      verify(submissionService)
+        .getSubmissionWithVerificationBatch(verificationSubmission1)
     }
   }
 
   private trait Setup {
-    given ExecutionContext = scala.concurrent.ExecutionContext.global
-    given HeaderCarrier    = HeaderCarrier()
+    implicit val hc: HeaderCarrier    = HeaderCarrier()
+    implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
 
-    val service = new VerificationPollingProcessService()
+    val submissionService: SubmissionService =
+      mock[SubmissionService]
+
+    val service =
+      new VerificationPollingProcessService(submissionService)
+
+    val verificationSubmission1 =
+      VerificationSubmissionToPoll(
+        submissionId = 90001L,
+        submissionType = "CISVERIFY",
+        agentId = Some("A123456"),
+        taxOfficeNumber = "123",
+        taxOfficeReference = "ABC123",
+        instanceId = "instance-verification-001",
+        status = "SUBMITTED",
+        verificationBatchResourceRef = 70001L
+      )
+
+    val verificationSubmission2 =
+      verificationSubmission1.copy(
+        submissionId = 90002L,
+        instanceId = "instance-verification-002",
+        verificationBatchResourceRef = 70002L
+      )
+
+    val response =
+      GetSubmissionWithVerificationBatchResponse(
+        scheme = None,
+        subcontractors = Seq.empty,
+        verifications = Seq.empty,
+        verificationBatch = None,
+        submission = None
+      )
   }
 }

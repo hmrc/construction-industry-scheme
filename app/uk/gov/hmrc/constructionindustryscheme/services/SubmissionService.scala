@@ -284,6 +284,13 @@ class SubmissionService @Inject() (
       _                  <- fetchAndStoreGovTalkStatus(session.instanceId, submissionId)
     } yield result
 
+  def getSubmissionWithVerificationBatch(
+    submission: VerificationSubmissionToPoll
+  )(implicit hc: HeaderCarrier): Future[GetSubmissionWithVerificationBatchResponse] =
+    formpProxyConnector.getSubmissionWithVerificationBatch(
+      instanceId = submission.instanceId,
+      verificationBatchResourceRef = submission.verificationBatchResourceRef
+    )
   def processMonthlyReturnGovTalkStatusCheck(
     instanceId: String,
     submissionId: String,
