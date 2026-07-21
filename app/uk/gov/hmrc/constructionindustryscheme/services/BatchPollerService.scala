@@ -41,32 +41,36 @@ class BatchPollerService @Inject() (
     submissionService
       .getSubmissionsToPoll()
       .flatMap { submissions =>
+        val verificationSubmissions =
+          submissions.verificationSubmissions
+
+        val monthlyReturnSubmissions =
+          submissions.monthlyReturnSubmissions
+
         logger.info(
           s"[BatchPollerService][run] GetBatchPollSubmissions returned " +
-            s"verificationSubmissions=${submissions.verificationSubmissions.size}, " +
-            s"monthlyReturnSubmissions=${submissions.monthlyReturnSubmissions.size}"
+            s"verificationSubmissions=${verificationSubmissions.size}, " +
+            s"monthlyReturnSubmissions=${monthlyReturnSubmissions.size}"
         )
 
         if (
-          submissions.verificationSubmissions.isEmpty &&
-          submissions.monthlyReturnSubmissions.isEmpty
+          verificationSubmissions.isEmpty &&
+          monthlyReturnSubmissions.isEmpty
         ) {
           generatePollReportService.generatePollReport(
             Seq.empty[PollReportContent]
           )
-        } else if (submissions.monthlyReturnSubmissions.nonEmpty) {
-          monthlyReturnPollingProcessService.process(
-            submissions.monthlyReturnSubmissions
-          )
+        } else if (monthlyReturnSubmissions.nonEmpty) {
+          monthlyReturnPollingProcessService
+            .process(
+              monthlyReturnSubmissions
+            )
+            .flatMap { monthlyReturnReportContent =>
+              generatePollReportService.generatePollReport(
+                monthlyReturnReportContent
+              )
+            }
         } else {
-          /*
-           * F2 and F6 will return PollReportContent rows.
-           * After both complete, invoke:
-           *
-           * generatePollReportService.generatePollReport(
-           *   verificationRows ++ monthlyReturnRows
-           * )
-           */
           Future.unit
         }
       }
