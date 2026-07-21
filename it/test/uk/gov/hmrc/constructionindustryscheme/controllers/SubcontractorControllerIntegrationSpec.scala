@@ -33,6 +33,7 @@ class SubcontractorControllerIntegrationSpec
 
   private val createAndUpdateSubcontractorUrl = s"$base/subcontractor/create-and-update"
   private val getUtrUrl                       = s"$base/subcontractors/utr/123"
+  private val getSubcontractorListUrl         = s"$base/subcontractors/123"
 
   "POST /cis/subcontractor/create-and-update" should {
 
@@ -170,6 +171,109 @@ class SubcontractorControllerIntegrationSpec
 
       resp.status mustBe BAD_GATEWAY
       (resp.json \ "message").as[String] must include("get-subcontractorUTRs-failed")
+
+      verify(
+        getRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractors/123"))
+      )
+    }
+  }
+
+  "GET /cis/subcontractors/:cisId" should {
+
+    "return 200 with subcontractor list when authorised and formp proxy succeeds" in {
+      AuthStub.authorisedWithCisEnrolment()
+
+      val formpResponse =
+        """{
+          |  "subcontractors": [
+          |    {
+          |      "subcontractorId": 999,
+          |      "subbieResourceRef": 456,
+          |      "utr": "1234567890",
+          |      "firstName": "John",
+          |      "secondName": "Q",
+          |      "surname": "Smith",
+          |      "tradingName": "John Smith Trading",
+          |      "subcontractorType": "soletrader",
+          |      "country": "United Kingdom",
+          |      "postcode": "AA1 1AA",
+          |      "taxTreatment": "NET",
+          |      "verificationNumber": "V123456",
+          |      "verified": "Y",
+          |      "matched": "Y",
+          |      "version": 1
+          |    }
+          |  ]
+          |}""".stripMargin
+
+      stubFor(
+        get(urlPathEqualTo("/formp-proxy/cis/subcontractors/123"))
+          .willReturn(
+            aResponse()
+              .withStatus(OK)
+              .withBody(formpResponse)
+          )
+      )
+
+      val resp = getJson(
+        getSubcontractorListUrl,
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
+
+      resp.status mustBe OK
+      (resp.json \ "subcontractors").as[Seq[JsValue]].size mustBe 1
+      (resp.json \ "subcontractors" \ 0 \ "subcontractorId").as[Long] mustBe 999L
+      (resp.json \ "subcontractors" \ 0 \ "utr").as[String] mustBe "1234567890"
+      (resp.json \ "subcontractors" \ 0 \ "displayName").as[String] mustBe "John Smith"
+
+      verify(
+        getRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractors/123"))
+      )
+    }
+
+    "return 200 with empty subcontractor list when authorised and FormP returns none" in {
+      AuthStub.authorisedWithCisEnrolment()
+
+      stubFor(
+        get(urlPathEqualTo("/formp-proxy/cis/subcontractors/123"))
+          .willReturn(
+            aResponse()
+              .withStatus(OK)
+              .withBody("""{ "subcontractors": [] }""")
+          )
+      )
+
+      val resp = getJson(
+        getSubcontractorListUrl,
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
+
+      resp.status mustBe OK
+      (resp.json \ "subcontractors").as[Seq[JsValue]] mustBe empty
+
+      verify(
+        getRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractors/123"))
+      )
+    }
+
+    "return 502 when FormP fails" in {
+      AuthStub.authorisedWithCisEnrolment()
+
+      stubFor(
+        get(urlPathEqualTo("/formp-proxy/cis/subcontractors/123"))
+          .willReturn(aResponse().withStatus(BAD_GATEWAY).withBody("FormP error"))
+      )
+
+      val resp = getJson(
+        getSubcontractorListUrl,
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
+
+      resp.status mustBe BAD_GATEWAY
+      (resp.json \ "message").as[String] mustBe "get-subcontractor-list-failed"
 
       verify(
         getRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractors/123"))

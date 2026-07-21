@@ -126,6 +126,23 @@ class VerificationController @Inject() (
         )
     }
 
+  def updateVerificationSubmission(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      request.body
+        .validate[UpdateVerificationSubmissionRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          body =>
+            verificationService
+              .updateVerificationSubmission(body)
+              .map(_ => NoContent)
+              .recover { case ex =>
+                logger.error("[updateVerificationSubmission] formp-proxy update failed", ex)
+                BadGateway(Json.obj("message" -> "update-verification-submission-failed"))
+              }
+        )
+    }
+
   def processVerificationResponseFromChris(): Action[JsValue] =
     authorise(parse.json).async { implicit request =>
       request.body
@@ -139,6 +156,26 @@ class VerificationController @Inject() (
               .recover { case ex =>
                 logger.error("[processVerificationResponseFromChris] formp-proxy update failed", ex)
                 BadGateway(Json.obj("message" -> "process-verification-response-from-chris-failed"))
+              }
+        )
+    }
+
+  def getSubmittedVerifications(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      request.body
+        .validate[GetSubmittedVerificationsRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          body =>
+            verificationService
+              .getSubmittedVerifications(body)
+              .map(response => Ok(Json.toJson(response)))
+              .recover { case ex =>
+                logger.error(
+                  s"[getSubmittedVerifications] formp-proxy get failed (instanceId=${body.instanceId})",
+                  ex
+                )
+                BadGateway(Json.obj("message" -> "get-submitted-verifications-failed"))
               }
         )
     }

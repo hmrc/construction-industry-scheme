@@ -46,8 +46,7 @@ class FormpProxyConnectorIntegrationSpec
   "FormpProxyConnector getMonthlyReturns" should {
 
     "POST instanceId to /formp-proxy/monthly-returns and return wrapper (200)" in {
-      val responseJson = Json.parse(
-        """{
+      val responseJson = Json.parse("""{
           |  "monthlyReturnList": [
           |    { "monthlyReturnId": 66666, "taxYear": 2025, "taxMonth": 1 },
           |    { "monthlyReturnId": 66667, "taxYear": 2025, "taxMonth": 7 }
@@ -1749,7 +1748,7 @@ class FormpProxyConnectorIntegrationSpec
         instanceId = instanceId,
         verificationBatchId = 99L,
         verificationBatchResourceRef = 7L,
-        emailRecipient = "ops@example.com",
+        emailRecipient = Some("ops@example.com"),
         irMarkGenerated = Some("IR_MARK"),
         verifications = Seq(
           VerificationToUpdate(
@@ -1789,7 +1788,7 @@ class FormpProxyConnectorIntegrationSpec
         instanceId = instanceId,
         verificationBatchId = 99L,
         verificationBatchResourceRef = 7L,
-        emailRecipient = "ops@example.com",
+        emailRecipient = Some("ops@example.com"),
         irMarkGenerated = Some("IR_MARK"),
         verifications = Seq(
           VerificationToUpdate(
@@ -1935,6 +1934,127 @@ class FormpProxyConnectorIntegrationSpec
       val ex = connector.modifyVerifications(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector updateVerificationSubmission" should {
+
+    "POST request to /formp-proxy/cis/verification/submission/update and return Unit when upstream returns 204" in {
+      val request = UpdateVerificationSubmissionRequest(
+        instanceId = "1",
+        verificationBatchResourceRef = 2001L,
+        submittableStatus = "SUBMITTED",
+        submissionRequestDate = Some(LocalDateTime.parse("2026-06-15T03:30:52")),
+        hmrcMarkGenerated = Some("hmrc-mark")
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission/update"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(request).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(204)
+          )
+      )
+
+      connector.updateVerificationSubmission(request).futureValue mustBe()
+    }
+
+    "fail the future when upstream returns non-204" in {
+      val request = UpdateVerificationSubmissionRequest(
+        instanceId = "1",
+        verificationBatchResourceRef = 2001L,
+        submittableStatus = "SUBMITTED",
+        submissionRequestDate = None,
+        hmrcMarkGenerated = None
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submission/update"))
+          .withRequestBody(equalToJson(Json.toJson(request).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("formp error")
+          )
+      )
+
+      val ex = connector.updateVerificationSubmission(request).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+
+      val upstream = ex.asInstanceOf[UpstreamErrorResponse]
+      upstream.statusCode mustBe 500
+      upstream.message mustBe "formp error"
+    }
+  }
+
+  "FormpProxyConnector processVerificationResponseFromChris" should {
+
+    "POST request to /formp-proxy/cis/verification/response/process and return Unit when upstream returns 204" in {
+      val request = ProcessVerificationResponseFromChrisRequest(
+        instanceId = "1",
+        verificationBatchResourceRef = 5L,
+        submissionStatus = "SUBMITTED",
+        acceptedTime = "2017-04-06T08:46:08.081",
+        irMarkReceived = Some("hmrc-mark"),
+        verificationResults = Seq(
+          VerificationResult(
+            resourceRef = 13L,
+            matched = Some("Y"),
+            verified = Some("N"),
+            verificationNumber = Some("V1000000007"),
+            taxTreatment = "net",
+            verifiedDate = Some(LocalDateTime.parse("2017-04-06T08:46:08.081"))
+          )
+        )
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(
+            equalToJson(Json.toJson[ProcessVerificationResponseFromChrisRequest](request).toString(), true, true)
+          )
+          .willReturn(
+            aResponse()
+              .withStatus(204)
+          )
+      )
+
+      connector.processVerificationResponseFromChris(request).futureValue mustBe()
+    }
+
+    "fail the future when upstream returns non-204" in {
+      val request = ProcessVerificationResponseFromChrisRequest(
+        instanceId = "1",
+        verificationBatchResourceRef = 5L,
+        submissionStatus = "SUBMITTED",
+        acceptedTime = "2017-04-06T08:46:08.081",
+        irMarkReceived = Some("hmrc-mark"),
+        verificationResults = Seq.empty
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
+          .withRequestBody(
+            equalToJson(Json.toJson[ProcessVerificationResponseFromChrisRequest](request).toString(), true, true)
+          )
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("formp error")
+          )
+      )
+
+      val ex = connector.processVerificationResponseFromChris(request).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+
+      val upstream = ex.asInstanceOf[UpstreamErrorResponse]
+      upstream.statusCode mustBe 500
+      upstream.message mustBe "formp error"
     }
   }
 
@@ -2106,51 +2226,51 @@ class FormpProxyConnectorIntegrationSpec
 
     "POST /formp-proxy/cis/verification/response/process and return Unit on 204" in {
       val req = ProcessVerificationResponseFromChrisRequest(
-          instanceId = instanceId,
-          verificationBatchResourceRef = 77L,
-          acceptedTime = "2026-06-15T10:05:00Z",
-          submissionStatus = "ACCEPTED",
-          irMarkReceived = Some("IR_MARK_RECEIVED"),
-          verificationResults = Seq(
-            VerificationResult(
-              resourceRef = 111L,
-              matched = Some("Y"),
-              verified = Some("Y"),
-              verificationNumber = Some("V123456"),
-              taxTreatment = "NET",
-              verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
-            )
+        instanceId = instanceId,
+        verificationBatchResourceRef = 77L,
+        acceptedTime = "2026-06-15T10:05:00Z",
+        submissionStatus = "ACCEPTED",
+        irMarkReceived = Some("IR_MARK_RECEIVED"),
+        verificationResults = Seq(
+          VerificationResult(
+            resourceRef = 111L,
+            matched = Some("Y"),
+            verified = Some("Y"),
+            verificationNumber = Some("V123456"),
+            taxTreatment = "NET",
+            verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
           )
         )
+      )
 
-        stubFor(
-          post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
-            .withHeader("Content-Type", equalTo("application/json"))
-            .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
-            .willReturn(aResponse().withStatus(NO_CONTENT))
-        )
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(NO_CONTENT))
+      )
 
-        connector.processVerificationResponseFromChris(req).futureValue mustBe ((): Unit)
-      }
+      connector.processVerificationResponseFromChris(req).futureValue mustBe ((): Unit)
+    }
 
-      "fail with UpstreamErrorResponse when upstream returns non-204" in {
-        val req = ProcessVerificationResponseFromChrisRequest(
-          instanceId = instanceId,
-          verificationBatchResourceRef = 77L,
-          acceptedTime = "2026-06-15T10:05:00Z",
-          submissionStatus = "FAILED",
-          irMarkReceived = Some("IR_MARK_RECEIVED"),
-          verificationResults = Seq(
-            VerificationResult(
-              resourceRef = 111L,
-              matched = Some("N"),
-              verified = Some("N"),
-              verificationNumber = Some("V123456"),
-              taxTreatment = "GROSS",
-              verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
-            )
+    "fail with UpstreamErrorResponse when upstream returns non-204" in {
+      val req = ProcessVerificationResponseFromChrisRequest(
+        instanceId = instanceId,
+        verificationBatchResourceRef = 77L,
+        acceptedTime = "2026-06-15T10:05:00Z",
+        submissionStatus = "FAILED",
+        irMarkReceived = Some("IR_MARK_RECEIVED"),
+        verificationResults = Seq(
+          VerificationResult(
+            resourceRef = 111L,
+            matched = Some("N"),
+            verified = Some("N"),
+            verificationNumber = Some("V123456"),
+            taxTreatment = "GROSS",
+            verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
           )
         )
+      )
 
         stubFor(
           post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
@@ -2279,6 +2399,218 @@ class FormpProxyConnectorIntegrationSpec
       ex mustBe a[UpstreamErrorResponse]
 
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 400
+    }
+  }
+
+  "FormpProxyConnector getSubcontractorList" should {
+
+    val cisId = "cis-123"
+
+    "GET /formp-proxy/cis/subcontractors/:cisId and return the full subcontractor list" in {
+      val responseJson = Json.parse(
+        """
+          |{
+          |  "subcontractors": [
+          |    {
+          |      "subcontractorId": 999,
+          |      "subbieResourceRef": 456,
+          |      "utr": "1234567890",
+          |      "pageVisited": 1,
+          |      "firstName": "John",
+          |      "secondName": "Q",
+          |      "surname": "Smith",
+          |      "tradingName": "John Smith Trading",
+          |      "subcontractorType": "soletrader",
+          |      "addressLine1": "1 Test Street",
+          |      "addressLine2": "Flat 2",
+          |      "addressLine3": "London",
+          |      "country": "United Kingdom",
+          |      "postcode": "AA1 1AA",
+          |      "emailAddress": "subcontractor@example.com",
+          |      "phoneNumber": "01234567890",
+          |      "mobilePhoneNumber": "07123456789",
+          |      "worksReferenceNumber": "WR-123",
+          |      "matched": "Y",
+          |      "autoVerified": "N",
+          |      "verified": "Y",
+          |      "verificationNumber": "V123456",
+          |      "taxTreatment": "NET",
+          |      "verificationDate": "2026-06-15T10:05:00",
+          |      "version": 1,
+          |      "updatedTaxTreatment": "NET",
+          |      "lastMonthlyReturnDate": "2026-05-15T10:05:00",
+          |      "pendingVerifications": 0
+          |    }
+          |  ]
+          |}
+          |""".stripMargin
+      )
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val response = connector.getSubcontractorList(cisId).futureValue
+
+      response.subcontractors must have size 1
+
+      val subcontractor = response.subcontractors.head
+      subcontractor.subcontractorId mustBe 999L
+      subcontractor.subbieResourceRef mustBe Some(456L)
+      subcontractor.utr mustBe Some("1234567890")
+      subcontractor.firstName mustBe Some("John")
+      subcontractor.surname mustBe Some("Smith")
+      subcontractor.subcontractorType mustBe Some("soletrader")
+      subcontractor.taxTreatment mustBe Some("NET")
+      subcontractor.verificationNumber mustBe Some("V123456")
+      subcontractor.displayName mustBe "John Smith"
+
+      verify(
+        getRequestedFor(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+      )
+    }
+
+    "returns an empty subcontractor list when FormP returns no subcontractors" in {
+      val responseJson = Json.obj(
+        "subcontractors" -> Json.arr()
+      )
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val response = connector.getSubcontractorList(cisId).futureValue
+
+      response.subcontractors mustBe empty
+    }
+
+    "fails when FormP returns a non-2xx response" in {
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .willReturn(
+            aResponse()
+              .withStatus(502)
+              .withBody("""{"message":"bad gateway"}""")
+          )
+      )
+
+      val ex = connector.getSubcontractorList(cisId).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 502
+    }
+  }
+
+  "FormpProxyConnector getSubmittedVerifications" should {
+
+    val req = GetSubmittedVerificationsRequest(instanceId = instanceId)
+
+    "POST /formp-proxy/cis/verification/submitted-verifications and return submitted verification data (200)" in {
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "scheme": [
+           |    {
+           |      "schemeId": 1,
+           |      "instanceId": "$instanceId",
+           |      "accountsOfficeReference": "123PA00123456",
+           |      "taxOfficeNumber": "123",
+           |      "taxOfficeReference": "AB456",
+           |      "name": "Test Contractor"
+           |    }
+           |  ],
+           |  "subcontractors": [
+           |    {
+           |      "subcontractorId": 999,
+           |      "utr": "1234567890",
+           |      "firstName": "John",
+           |      "surname": "Smith",
+           |      "subcontractorType": "soletrader",
+           |      "subbieResourceRef": 456,
+           |      "taxTreatment": "NET"
+           |    }
+           |  ],
+           |  "verificationBatches": [
+           |    {
+           |      "verificationBatchId": 99,
+           |      "schemeId": 1,
+           |      "verifBatchResourceRef": 222,
+           |      "status": "SUBMITTED"
+           |    }
+           |  ],
+           |  "verifications": [
+           |    {
+           |      "verificationId": 1001,
+           |      "matched": "Y",
+           |      "verificationNumber": "V123456",
+           |      "taxTreatment": "NET",
+           |      "verificationBatchId": 99,
+           |      "schemeId": 1,
+           |      "subcontractorId": 999,
+           |      "verificationResourceRef": 456
+           |    }
+           |  ],
+           |  "submissions": [
+           |    {
+           |      "submissionId": 555,
+           |      "submissionType": "CISVERIFY",
+           |      "activeObjectId": 99,
+           |      "status": "SUBMITTED",
+           |      "schemeId": 1
+           |    }
+           |  ]
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submitted-verifications"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val out = connector.getSubmittedVerifications(req).futureValue
+
+      out.scheme.head.instanceId mustBe instanceId
+      out.scheme.head.name mustBe Some("Test Contractor")
+      out.subcontractors.head.subcontractorId mustBe 999L
+      out.subcontractors.head.displayName mustBe "John Smith"
+      out.verificationBatches.head.verificationBatchId mustBe 99L
+      out.verifications.head.verificationId mustBe 1001L
+      out.submissions.head.submissionId mustBe 555L
+
+      verify(
+        postRequestedFor(urlPathEqualTo("/formp-proxy/cis/verification/submitted-verifications"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+      )
+    }
+
+    "fail the future when upstream returns non-2xx" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/submitted-verifications"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.getSubmittedVerifications(req).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
 }

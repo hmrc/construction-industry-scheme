@@ -17,18 +17,10 @@
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.constructionindustryscheme.models.VerificationResult
 
-final case class ProcessVerificationResponseFromChrisRequest(
-  instanceId: String,
-  verificationBatchResourceRef: Long,
-  acceptedTime: String,
-  submissionStatus: String,
-  irMarkReceived: Option[String],
-  verificationResults: Seq[VerificationResult]
-)
+final case class GetSubmittedVerificationsRequest(instanceId: String)
 
-object ProcessVerificationResponseFromChrisRequest {
-  implicit val format: OFormat[ProcessVerificationResponseFromChrisRequest] =
-    Json.format[ProcessVerificationResponseFromChrisRequest]
+object GetSubmittedVerificationsRequest {
+  given format: OFormat[GetSubmittedVerificationsRequest] =
+    Json.format[GetSubmittedVerificationsRequest]
 }

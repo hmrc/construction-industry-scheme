@@ -25,6 +25,7 @@ case class ChrisSubmissionRequest(
   monthYear: String,
   email: Option[String],
   isAgent: Boolean,
+  isResubmission: Boolean,
   clientTaxOfficeNumber: String,
   clientTaxOfficeRef: String,
   returnType: MonthlyReturnType,
