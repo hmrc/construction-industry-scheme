@@ -303,10 +303,11 @@ class SubmissionService @Inject() (
                                .toRight(new RuntimeException("No GovTalk status records found"))
                                .toTry
                            )
-      _                 <- saveInitialChrisSession(
+      _                 <- saveBatchPollingChrisSession(
                              submissionId,
                              instanceId,
                              statusRecord.correlationID,
+                             statusRecord.numPolls,
                              statusRecord.pollInterval,
                              statusRecord.gatewayURL,
                              lastMessageDate
@@ -336,10 +337,11 @@ class SubmissionService @Inject() (
         )
     }
 
-  private def saveInitialChrisSession(
+  private def saveBatchPollingChrisSession(
     submissionId: String,
     instanceId: String,
     correlationId: String,
+    numPolls: Int,
     pollInterval: Int,
     pollUrl: String,
     lastMessageDate: Instant
@@ -350,7 +352,7 @@ class SubmissionService @Inject() (
         instanceId = instanceId,
         correlationId = correlationId,
         lastMessageDate = lastMessageDate,
-        numPolls = 0,
+        numPolls = numPolls,
         pollInterval = pollInterval,
         pollUrl = pollUrl,
         govTalkStatus = None
