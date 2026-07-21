@@ -248,7 +248,7 @@ final class SubmissionServiceSpec extends SpecBase {
     }
 
     "does not delete Chris resources for a non-terminal status" in {
-      val s = setup
+      val s        = setup
       val response = stubPollScenario(s, ACCEPTED)
 
       s.service
@@ -264,7 +264,7 @@ final class SubmissionServiceSpec extends SpecBase {
         any[String]
       )(using any[HeaderCarrier])
     }
-    
+
     "passes Verification journey to Chris connector" in {
       val s = setup
       import s._
@@ -1389,9 +1389,9 @@ final class SubmissionServiceSpec extends SpecBase {
     import s._
 
     val submissionId = "sub-123"
-    val instanceId = "instance-123"
-    val correlation = "corr-123"
-    val pollUrl = "/poll/123"
+    val instanceId   = "instance-123"
+    val correlation  = "corr-123"
+    val pollUrl      = "/poll/123"
 
     val session = ChrisSubmissionSessionData(
       submissionId = submissionId,
@@ -1404,7 +1404,7 @@ final class SubmissionServiceSpec extends SpecBase {
       govTalkStatus = None
     )
 
-    val govTalk = GetGovTalkStatusResponse(Seq.empty)
+    val govTalk            = GetGovTalkStatusResponse(Seq.empty)
     val sessionWithGovTalk = session.copy(govTalkStatus = Some(govTalk))
 
     val updatedSession = sessionWithGovTalk.copy(
