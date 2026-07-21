@@ -103,16 +103,34 @@ class SubmissionService @Inject() (
 
   def updateGovTalkStatusCorrelationId(request: UpdateGovTalkStatusCorrelationIdRequest)(implicit
     hc: HeaderCarrier
-  ): Future[Unit] =
+  ): Future[Unit] = {
+    logger.debug(
+      s"[SubmissionService][updateGovTalkStatusCorrelationId] Update GovTalk Correlation ID. " +
+        s"Parameters: instanceId=${request.userIdentifier}, submissionId=${request.formResultID}, " +
+        s"correlationId=${request.correlationID}, pollInterval=${request.pollInterval}, gatewayURL=${request.gatewayURL}"
+    )
     formpProxyConnector.updateGovTalkStatusCorrelationId(request)
+  }
 
   def updateGovTalkStatusStatistics(request: UpdateGovTalkStatusStatisticsRequest)(implicit
     hc: HeaderCarrier
-  ): Future[Unit] =
+  ): Future[Unit] = {
+    logger.debug(
+      s"[SubmissionService][updateGovTalkStatusStatistics] Update GovTalk Statistics. " +
+        s"Parameters: instanceId=${request.userIdentifier}, submissionId=${request.formResultID}, " +
+        s"lastMessageDate=${request.lastMessageDate}, numPolls=${request.numPolls}, pollInterval=${request.pollInterval}, gatewayURL=${request.gatewayURL}"
+    )
     formpProxyConnector.updateGovTalkStatusStatistics(request)
+  }
 
-  def updateGovTalkStatus(request: UpdateGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+  def updateGovTalkStatus(request: UpdateGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] = {
+    logger.debug(
+      s"[SubmissionService][updateGovTalkStatus] Update GovTalk Status. " +
+        s"Parameters: instanceId=${request.userIdentifier}, submissionId=${request.formResultID}, " +
+        s"endStateDate=${request.endStateDate}, protocolStatus=${request.protocolStatus}"
+    )
     formpProxyConnector.updateGovTalkStatus(request)
+  }
 
   def resetGovTalkStatus(request: ResetGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.resetGovTalkStatus(request)
@@ -183,7 +201,8 @@ class SubmissionService @Inject() (
 
       case Right(_) =>
         for {
-          instanceId <- initialiseGovTalkStatus(employerReference, submissionId, expectedCorrelationId, gatewayURL)
+          instanceId <-
+            initialiseGovTalkStatus(employerReference, submissionId, expectedCorrelationId, gatewayURL, isResubmission)
           sessionData = ChrisSubmissionSessionData(
                           submissionId = submissionId,
                           instanceId = instanceId,
@@ -272,6 +291,46 @@ class SubmissionService @Inject() (
       instanceId = submission.instanceId,
       verificationBatchResourceRef = submission.verificationBatchResourceRef
     )
+  def processMonthlyReturnGovTalkStatusCheck(
+    instanceId: String,
+    submissionId: String,
+    lastMessageDate: Instant = Instant.now
+  )(implicit hc: HeaderCarrier): Future[String] = {
+    logger.info(
+      s"[SubmissionService][processMonthlyReturnGovTalkStatusCheck] checking status for instanceId=$instanceId, submissionId=$submissionId"
+    )
+    for {
+      statusResponseOpt <- getPollingGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId))
+      statusResponse    <- Future.fromTry(
+                             statusResponseOpt
+                               .toRight(new RuntimeException("GovTalk status not found"))
+                               .toTry
+                           )
+      statusRecord      <- Future.fromTry(
+                             statusResponse.govtalk_status.headOption
+                               .toRight(new RuntimeException("No GovTalk status records found"))
+                               .toTry
+                           )
+      _                 <- saveBatchPollingChrisSession(
+                             submissionId,
+                             instanceId,
+                             statusRecord.correlationID,
+                             statusRecord.numPolls,
+                             statusRecord.pollInterval,
+                             statusRecord.gatewayURL,
+                             lastMessageDate
+                           )
+      _                 <- runGovTalkStatusUpdateSteps(
+                             instanceId,
+                             submissionId,
+                             statusRecord.correlationID,
+                             lastMessageDate,
+                             0,
+                             statusRecord.pollInterval,
+                             statusRecord.gatewayURL
+                           )
+    } yield statusRecord.gatewayURL
+  }
 
   private def fetchAndStoreGovTalkStatus(instanceId: String, submissionId: String)(implicit
     hc: HeaderCarrier
@@ -285,6 +344,28 @@ class SubmissionService @Inject() (
           new RuntimeException(s"No GovTalk status found for instanceId: $instanceId, submissionId: $submissionId")
         )
     }
+
+  private def saveBatchPollingChrisSession(
+    submissionId: String,
+    instanceId: String,
+    correlationId: String,
+    numPolls: Int,
+    pollInterval: Int,
+    pollUrl: String,
+    lastMessageDate: Instant
+  ): Future[Unit] =
+    chrisSubmissionSessionRepository.upsert(
+      ChrisSubmissionSessionData(
+        submissionId = submissionId,
+        instanceId = instanceId,
+        correlationId = correlationId,
+        lastMessageDate = lastMessageDate,
+        numPolls = numPolls,
+        pollInterval = pollInterval,
+        pollUrl = pollUrl,
+        govTalkStatus = None
+      )
+    )
 
   private def updateChrisSessionAfterPoll(
     submissionId: String,
