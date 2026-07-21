@@ -1318,6 +1318,145 @@ final class SubmissionServiceSpec extends SpecBase {
     }
   }
 
+  "processMonthlyReturnGovTalkStatusCheck" - {
+
+    "get govtalk status, saves session, runs govtalk update steps, and returns gatewayURL" in {
+      val s = setup
+      import s._
+
+      val instanceId          = "instance-123"
+      val submissionId        = "sub-123"
+      val lastMessageDate     = Instant.parse("2025-01-01T00:00:00Z")
+      val now                 = LocalDateTime.now()
+      val correlationID       = "CORR-123"
+      val pollInterval        = 10
+      val pollUrl             = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+      val mockGovTalkResponse = GetGovTalkStatusResponse(govtalk_status =
+        Seq(
+          GovTalkStatusRecord(
+            userIdentifier = instanceId,
+            formResultID = "123456",
+            correlationID = correlationID,
+            formLock = "N",
+            createDate = Some(now),
+            endStateDate = None,
+            lastMessageDate = now,
+            numPolls = 0,
+            pollInterval = pollInterval,
+            protocolStatus = "initial",
+            gatewayURL = pollUrl
+          )
+        )
+      )
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(mockGovTalkResponse)))
+
+      when(
+        chrisSubmissionSessionRepository.upsert(
+          eqTo(
+            ChrisSubmissionSessionData(
+              submissionId = submissionId,
+              instanceId = instanceId,
+              correlationId = correlationID,
+              lastMessageDate = lastMessageDate,
+              numPolls = 0,
+              pollInterval = pollInterval,
+              pollUrl = pollUrl,
+              govTalkStatus = None
+            )
+          )
+        )
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusCorrelationId(
+          eqTo(
+            UpdateGovTalkStatusCorrelationIdRequest(
+              instanceId,
+              submissionId,
+              correlationID,
+              pollInterval,
+              pollUrl
+            )
+          )
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusStatistics(
+          eqTo(
+            UpdateGovTalkStatusStatisticsRequest(
+              instanceId,
+              submissionId,
+              LocalDateTime.of(2025, 1, 1, 0, 0),
+              0,
+              pollInterval,
+              pollUrl
+            )
+          )
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatus(
+          eqTo(UpdateGovTalkStatusRequest(instanceId, submissionId, None, "dataPoll"))
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      service
+        .processMonthlyReturnGovTalkStatusCheck(instanceId, submissionId, lastMessageDate)
+        .futureValue mustBe pollUrl
+    }
+
+    "failed when govTalkStatus response is None" in {
+      val s = setup
+      import s._
+
+      val instanceId      = "instance-123"
+      val submissionId    = "sub-123"
+      val lastMessageDate = Instant.parse("2025-01-01T00:00:00Z")
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(None))
+
+      service
+        .processMonthlyReturnGovTalkStatusCheck(instanceId, submissionId, lastMessageDate)
+        .failed
+        .futureValue
+        .getMessage mustBe "GovTalk status not found"
+    }
+
+    "failed when govTalkStatus response is empty" in {
+      val s = setup
+      import s._
+
+      val instanceId      = "instance-123"
+      val submissionId    = "sub-123"
+      val lastMessageDate = Instant.parse("2025-01-01T00:00:00Z")
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(GetGovTalkStatusResponse(govtalk_status = Seq.empty))))
+
+      service
+        .processMonthlyReturnGovTalkStatusCheck(instanceId, submissionId, lastMessageDate)
+        .failed
+        .futureValue
+        .getMessage mustBe "No GovTalk status records found"
+    }
+  }
+
   trait Setup {
     val chrisConnector: ChrisConnector                                     = mock[ChrisConnector]
     val formpProxyConnector: FormpProxyConnector                           = mock[FormpProxyConnector]
