@@ -19,10 +19,10 @@ package uk.gov.hmrc.constructionindustryscheme.services
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{GetMonthlyReturnForEditResponse, MonthlyReturnSubmissionToPoll}
+import uk.gov.hmrc.constructionindustryscheme.models.response.MonthlyReturnSubmissionToPoll
 import uk.gov.hmrc.http.HeaderCarrier
 import java.time.{LocalDateTime, ZoneId}
-
+import scala.util.control.NonFatal
 import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.duration.*
@@ -45,18 +45,8 @@ class MonthlyReturnPollingProcessService @Inject() (
   )(implicit hc: HeaderCarrier): Future[Unit] =
     Future
       .traverse(monthlyReturnSubmissions) { sub =>
-        processSubmission(sub)
-          .map { submissionRequestDateOpt =>
-            submissionRequestDateOpt.foreach { submissionRequestDate =>
-              val submissionTime = submissionRequestDate.atZone(ukTimezone).toInstant.toEpochMilli
-              if (startTime > submissionTime + alertDuration) {
-                logger.warn(
-                  s"Submission in status ${sub.status} has been polling for more than ${alertDuration / 1.hour.toMillis} hours: ${sub.submissionId}"
-                )
-              }
-            }
-          }
-          .recover { case ex =>
+        processSubmission(sub, startTime)
+          .recover { case NonFatal(ex) =>
             logger.error(
               s"[MonthlyReturnPollingProcessService][process] Failed for instanceId=${sub.instanceId}, submissionId=${sub.submissionId}",
               ex
@@ -66,8 +56,10 @@ class MonthlyReturnPollingProcessService @Inject() (
       .map(_ => ())
 
   private def processSubmission(
-    submission: MonthlyReturnSubmissionToPoll
-  )(implicit hc: HeaderCarrier): Future[Option[LocalDateTime]] =
+    submission: MonthlyReturnSubmissionToPoll,
+    startTime: Long
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
+
     logger.info(
       s"[MonthlyReturnPollingProcessService][processSubmission] Processing in-flight return: " +
         s"instanceId=${submission.instanceId}, " +
@@ -75,6 +67,7 @@ class MonthlyReturnPollingProcessService @Inject() (
         s"taxYear=${submission.taxYear}, " +
         s"taxMonth=${submission.taxMonth}"
     )
+
     for {
       details      <- monthlyReturnService.getMonthlyReturnForEdit(
                         GetMonthlyReturnForEditRequest(
@@ -90,7 +83,7 @@ class MonthlyReturnPollingProcessService @Inject() (
                             s"No monthly return found for instanceId=${submission.instanceId}"
                           )
                         )
-      sub           = details.submission.headOption
+      subDetails    = details.submission.headOption
                         .getOrElse(
                           throw new RuntimeException(
                             s"No submission found for instanceId=${submission.instanceId}"
@@ -105,29 +98,57 @@ class MonthlyReturnPollingProcessService @Inject() (
                         gatewayUrl,
                         ChrisPollJourney.MonthlyReturn
                       )
+      _             = logPollDurationIfRequired(
+                        startTime = startTime,
+                        submissionRequestDate = subDetails.submissionRequestDate,
+                        submissionStatus = pollResponse.status,
+                        submissionId = submission.submissionId.toString
+                      )
       updateReq     = UpdateSubmissionRequest(
                         instanceId = submission.instanceId,
                         taxYear = monthlyReturn.taxYear,
                         taxMonth = monthlyReturn.taxMonth,
-                        hmrcMarkGenerated = sub.hmrcMarkGenerated,
+                        hmrcMarkGenerated = subDetails.hmrcMarkGenerated,
                         submittableStatus = pollResponse.status.toString,
                         amendment = monthlyReturn.amendment.getOrElse("N"),
                         hmrcMarkGgis = pollResponse.irMarkReceived,
-                        submissionRequestDate = sub.submissionRequestDate,
+                        submissionRequestDate = subDetails.submissionRequestDate,
                         acceptedTime = pollResponse.acceptedTime,
-                        emailRecipient = sub.emailRecipient,
-                        agentId = sub.agentId,
+                        emailRecipient = subDetails.emailRecipient,
+                        agentId = subDetails.agentId,
                         govTalkResponse = pollResponse.govTalkErrorStatus
                       )
       _            <- submissionService.updateSubmission(updateReq)
       _            <- sendEmailIfRequired(
                         pollResponse.status,
-                        sub.emailRecipient,
+                        subDetails.emailRecipient,
                         monthlyReturn.taxMonth,
                         monthlyReturn.taxYear,
                         submission.submissionId.toString
                       )
-    } yield sub.submissionRequestDate
+    } yield ()
+  }
+
+  private def logPollDurationIfRequired(
+    startTime: Long,
+    submissionRequestDate: Option[LocalDateTime],
+    submissionStatus: SubmissionStatus,
+    submissionId: String
+  ): Unit =
+    submissionRequestDate match {
+      case Some(requestDate) =>
+        val submissionTime = requestDate.atZone(ukTimezone).toInstant.toEpochMilli
+        if (startTime > submissionTime + alertDuration) {
+          logger.warn(
+            s"Submission in status $submissionStatus has been polling for more than " +
+              s"${alertDuration / 1.hour.toMillis} hours: $submissionId"
+          )
+        }
+      case None              =>
+        logger.warn(
+          s"Unable to check polling duration because submissionRequestDate is missing: $submissionId"
+        )
+    }
 
   private def sendEmailIfRequired(
     status: SubmissionStatus,
