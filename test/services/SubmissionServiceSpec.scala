@@ -18,9 +18,8 @@ package services
 
 import base.SpecBase
 import org.apache.pekko.Done
-import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.{any, argThat, eq as eqTo}
 import org.mockito.Mockito.*
-import org.mockito.ArgumentMatchers.eq as eqTo
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
@@ -28,6 +27,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.{ChrisPollJourney, *}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
+import uk.gov.hmrc.constructionindustryscheme.models.GovTalkProtocolStatus.{DataPoll, DataRequest, EndState}
 import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository}
 import uk.gov.hmrc.constructionindustryscheme.services.*
 import uk.gov.hmrc.http.HeaderCarrier
@@ -268,11 +268,12 @@ final class SubmissionServiceSpec extends SpecBase {
         .thenReturn(Future.unit)
 
       when(
-        chrisConnector.pollSubmission(eqTo(correlation), eqTo(pollUrl), eqTo(ChrisPollJourney.MonthlyReturn))(using
-          any[HeaderCarrier]
-        )
-      )
-        .thenReturn(Future.successful(pollResponse))
+        chrisConnector.pollSubmission(
+          eqTo(correlation),
+          eqTo(pollUrl),
+          eqTo(ChrisPollJourney.MonthlyReturn)
+        )(using any[HeaderCarrier])
+      ).thenReturn(Future.successful(pollResponse))
 
       when(
         chrisConnector.deleteSubmission(
@@ -316,34 +317,52 @@ final class SubmissionServiceSpec extends SpecBase {
 
       when(
         formpProxyConnector.updateGovTalkStatus(
-          eqTo(
-            UpdateGovTalkStatusRequest(
-              userIdentifier = instanceId,
-              formResultID = submissionId,
-              endStateDate = None,
-              protocolStatus = "dataPoll"
-            )
-          )
+          any[UpdateGovTalkStatusRequest]
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
       when(chrisSubmissionSessionRepository.upsert(eqTo(updatedSessionWithGovTalk)))
         .thenReturn(Future.unit)
 
-      when(formPSubmissionUpdateProcessorRegistry.processorFor(eqTo(ChrisPollJourney.MonthlyReturn)))
-        .thenReturn(formPSubmissionUpdateProcessor)
+      when(
+        formPSubmissionUpdateProcessorRegistry.processorFor(
+          eqTo(ChrisPollJourney.MonthlyReturn)
+        )
+      ).thenReturn(formPSubmissionUpdateProcessor)
 
       when(
-        formPSubmissionUpdateProcessor.handlePollResponse(any[ChrisSubmissionSessionData], any[ChrisPollResponse])(
-          any[HeaderCarrier]
-        )
+        formPSubmissionUpdateProcessor.handlePollResponse(
+          any[ChrisSubmissionSessionData],
+          any[ChrisPollResponse]
+        )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
-      service
-        .pollSubmissionAndUpdateGovTalkStatus(submissionId, pollUrl, ChrisPollJourney.MonthlyReturn)
-        .futureValue mustBe pollResponse
-    }
+      val result =
+        service
+          .pollSubmissionAndUpdateGovTalkStatus(
+            submissionId,
+            pollUrl,
+            ChrisPollJourney.MonthlyReturn
+          )
+          .futureValue
 
+      result mustBe pollResponse
+
+      verify(formpProxyConnector).updateGovTalkStatus(
+        argThat[UpdateGovTalkStatusRequest] { req =>
+          req.userIdentifier == instanceId &&
+          req.formResultID == submissionId &&
+          req.protocolStatus == EndState.value &&
+          req.endStateDate.nonEmpty
+        }
+      )(any[HeaderCarrier])
+
+      verify(chrisConnector).deleteSubmission(
+        eqTo(correlation),
+        eqTo(pollUrl),
+        eqTo(ChrisPollJourney.MonthlyReturn)
+      )(using any[HeaderCarrier])
+    }
     "passes Verification journey to Chris connector" in {
       val s = setup
       import s._
@@ -532,6 +551,163 @@ final class SubmissionServiceSpec extends SpecBase {
       verify(chrisSubmissionSessionRepository, never()).upsert(any[ChrisSubmissionSessionData])
       verifyNoInteractions(chrisConnector)
     }
+
+    "updates GovTalk status as DataPoll for non-terminal statuses" in {
+      val s = setup
+      import s._
+
+      val submissionId = "sub-123"
+      val instanceId   = "instance-123"
+      val correlation  = "corr-123"
+      val pollUrl      = "/poll/123"
+
+      val session = ChrisSubmissionSessionData(
+        submissionId = submissionId,
+        instanceId = instanceId,
+        correlationId = correlation,
+        lastMessageDate = Instant.parse("2025-01-01T00:00:00Z"),
+        numPolls = 0,
+        pollInterval = 10,
+        pollUrl = pollUrl,
+        govTalkStatus = None
+      )
+
+      val govTalk = GetGovTalkStatusResponse(
+        govtalk_status = Seq.empty
+      )
+
+      val sessionWithGovTalk = session.copy(
+        govTalkStatus = Some(govTalk)
+      )
+
+      val updatedSession = sessionWithGovTalk.copy(
+        lastMessageDate = Instant.parse("2025-01-02T00:00:00Z"),
+        numPolls = 1,
+        pollInterval = 20,
+        pollUrl = "/poll/999"
+      )
+
+      val updatedSessionWithGovTalk = updatedSession.copy(
+        govTalkStatus = Some(govTalk)
+      )
+
+      val pollResponse = ChrisPollResponse(
+        status = ACCEPTED,
+        correlationId = correlation,
+        pollUrl = Some("/poll/999"),
+        pollInterval = Some(20),
+        error = None,
+        irMarkReceived = None,
+        lastMessageDate = Some("2025-01-02T00:00:00Z"),
+        acceptedTime = Some("2025-01-02T00:00:00Z")
+      )
+
+      when(chrisSubmissionSessionRepository.get(eqTo(submissionId)))
+        .thenReturn(Future.successful(Some(session)))
+        .thenReturn(Future.successful(Some(session)))
+        .thenReturn(Future.successful(Some(sessionWithGovTalk)))
+        .thenReturn(Future.successful(Some(updatedSession)))
+        .thenReturn(Future.successful(Some(updatedSession)))
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(govTalk)))
+        .thenReturn(Future.successful(Some(govTalk)))
+
+      when(chrisSubmissionSessionRepository.upsert(eqTo(sessionWithGovTalk)))
+        .thenReturn(Future.unit)
+
+      when(
+        chrisConnector.pollSubmission(
+          eqTo(correlation),
+          eqTo(pollUrl),
+          eqTo(ChrisPollJourney.MonthlyReturn)
+        )(using any[HeaderCarrier])
+      ).thenReturn(Future.successful(pollResponse))
+
+      when(chrisSubmissionSessionRepository.upsert(eqTo(updatedSession)))
+        .thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusCorrelationId(
+          eqTo(
+            UpdateGovTalkStatusCorrelationIdRequest(
+              userIdentifier = instanceId,
+              formResultID = submissionId,
+              correlationID = correlation,
+              pollInterval = 20,
+              gatewayURL = "/poll/999"
+            )
+          )
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusStatistics(
+          eqTo(
+            UpdateGovTalkStatusStatisticsRequest(
+              userIdentifier = instanceId,
+              formResultID = submissionId,
+              lastMessageDate = LocalDateTime.of(2025, 1, 2, 0, 0),
+              numPolls = 1,
+              pollInterval = 20,
+              gatewayURL = "/poll/999"
+            )
+          )
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatus(
+          any[UpdateGovTalkStatusRequest]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(chrisSubmissionSessionRepository.upsert(eqTo(updatedSessionWithGovTalk)))
+        .thenReturn(Future.unit)
+
+      when(
+        formPSubmissionUpdateProcessorRegistry.processorFor(
+          eqTo(ChrisPollJourney.MonthlyReturn)
+        )
+      ).thenReturn(formPSubmissionUpdateProcessor)
+
+      when(
+        formPSubmissionUpdateProcessor.handlePollResponse(
+          any[ChrisSubmissionSessionData],
+          any[ChrisPollResponse]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      val result =
+        service
+          .pollSubmissionAndUpdateGovTalkStatus(
+            submissionId,
+            pollUrl,
+            ChrisPollJourney.MonthlyReturn
+          )
+          .futureValue
+
+      result mustBe pollResponse
+
+      verify(formpProxyConnector).updateGovTalkStatus(
+        argThat[UpdateGovTalkStatusRequest] { req =>
+          req.userIdentifier == instanceId &&
+          req.formResultID == submissionId &&
+          req.protocolStatus == DataPoll.value &&
+          req.endStateDate.isEmpty
+        }
+      )(any[HeaderCarrier])
+
+      verify(chrisConnector, never()).deleteSubmission(
+        any[String],
+        any[String],
+        any[ChrisPollJourney]
+      )(using any[HeaderCarrier])
+    }
   }
 
   "sendSuccessfulEmail" - {
@@ -684,7 +860,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val req = UpdateGovTalkStatusRequest(
         userIdentifier = "instance-123",
         formResultID = "sub-123",
-        protocolStatus = "dataRequest"
+        protocolStatus = DataRequest.value
       )
 
       when(formpProxyConnector.updateGovTalkStatus(eqTo(req))(any[HeaderCarrier]))
@@ -704,7 +880,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val req = UpdateGovTalkStatusRequest(
         userIdentifier = "instance-123",
         formResultID = "sub-123",
-        protocolStatus = "dataRequest"
+        protocolStatus = DataRequest.value
       )
 
       when(formpProxyConnector.updateGovTalkStatus(eqTo(req))(any[HeaderCarrier]))
@@ -889,7 +1065,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
       when(
         formpProxyConnector.updateGovTalkStatus(
-          eqTo(UpdateGovTalkStatusRequest("instance-123", submissionId, None, "dataPoll"))
+          eqTo(UpdateGovTalkStatusRequest("instance-123", submissionId, None, DataPoll.value))
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
@@ -1404,7 +1580,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
       when(
         formpProxyConnector.updateGovTalkStatus(
-          eqTo(UpdateGovTalkStatusRequest(instanceId, submissionId, None, "dataPoll"))
+          eqTo(UpdateGovTalkStatusRequest(instanceId, submissionId, None, DataPoll.value))
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
