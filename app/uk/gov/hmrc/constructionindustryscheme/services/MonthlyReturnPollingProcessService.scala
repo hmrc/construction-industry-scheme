@@ -21,8 +21,11 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, MonthlyReturnSubmissionToPoll}
 import uk.gov.hmrc.http.HeaderCarrier
-
+import java.time.{LocalDateTime, ZoneId}
+import scala.util.control.NonFatal
 import javax.inject.{Inject, Singleton}
+
+import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
@@ -33,25 +36,30 @@ class MonthlyReturnPollingProcessService @Inject() (
 )(implicit ec: ExecutionContext)
     extends Logging {
 
-  def process(
-    monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll]
-  )(implicit hc: HeaderCarrier): Future[Seq[PollReportContent]] =
-    Future.traverse(monthlyReturnSubmissions) { submission =>
-      processSubmission(submission).recover { case NonFatal(exception) =>
-        logger.error(
-          s"[MonthlyReturnPollingProcessService][process] Failed for " +
-            s"instanceId=${submission.instanceId}, " +
-            s"submissionId=${submission.submissionId}",
-          exception
-        )
+  private val ukTimezone: ZoneId = ZoneId.of("Europe/London")
+  private val alertDuration      = 24.hours.toMillis
 
-        toRecoverableErrorReportContent(submission)
+  def process(
+    monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll],
+    startTime: Long
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    Future
+      .traverse(monthlyReturnSubmissions) { sub =>
+        processSubmission(sub, startTime)
+          .recover { case NonFatal(ex) =>
+            logger.error(
+              s"[MonthlyReturnPollingProcessService][process] Failed for instanceId=${sub.instanceId}, submissionId=${sub.submissionId}",
+              ex
+            )
+          }
       }
     }
 
   private def processSubmission(
-    submission: MonthlyReturnSubmissionToPoll
-  )(implicit hc: HeaderCarrier): Future[PollReportContent] = {
+    submission: MonthlyReturnSubmissionToPoll,
+    startTime: Long
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
+
     logger.info(
       s"[MonthlyReturnPollingProcessService][processSubmission] Processing in-flight return: " +
         s"instanceId=${submission.instanceId}, " +
@@ -61,18 +69,25 @@ class MonthlyReturnPollingProcessService @Inject() (
     )
 
     for {
-      details <- monthlyReturnService.getMonthlyReturnForEdit(
-                   GetMonthlyReturnForEditRequest(
-                     submission.instanceId,
-                     submission.taxYear,
-                     submission.taxMonth,
-                     isAmendment = Some(false)
-                   )
-                 )
-
-      monthlyReturn = details.monthlyReturn.headOption.getOrElse(
-                        throw new RuntimeException(
-                          s"No monthly return found for instanceId=${submission.instanceId}"
+      details      <- monthlyReturnService.getMonthlyReturnForEdit(
+                        GetMonthlyReturnForEditRequest(
+                          submission.instanceId,
+                          submission.taxYear,
+                          submission.taxMonth,
+                          isAmendment = Some(false)
+                        )
+                      )
+      monthlyReturn = details.monthlyReturn.headOption
+                        .getOrElse(
+                          throw new RuntimeException(
+                            s"No monthly return found for instanceId=${submission.instanceId}"
+                          )
+                        )
+      subDetails    = details.submission.headOption
+                        .getOrElse(
+                          throw new RuntimeException(
+                            s"No submission found for instanceId=${submission.instanceId}"
+                          )
                         )
                       )
 
@@ -153,6 +168,57 @@ class MonthlyReturnPollingProcessService @Inject() (
       correlationId = "",
       agentId = submission.agentId.getOrElse("")
     )
+      _             = logPollDurationIfRequired(
+                        startTime = startTime,
+                        submissionRequestDate = subDetails.submissionRequestDate,
+                        submissionStatus = pollResponse.status,
+                        submissionId = submission.submissionId.toString
+                      )
+      updateReq     = UpdateSubmissionRequest(
+                        instanceId = submission.instanceId,
+                        taxYear = monthlyReturn.taxYear,
+                        taxMonth = monthlyReturn.taxMonth,
+                        hmrcMarkGenerated = subDetails.hmrcMarkGenerated,
+                        submittableStatus = pollResponse.status.toString,
+                        amendment = monthlyReturn.amendment.getOrElse("N"),
+                        hmrcMarkGgis = pollResponse.irMarkReceived,
+                        submissionRequestDate = subDetails.submissionRequestDate,
+                        acceptedTime = pollResponse.acceptedTime,
+                        emailRecipient = subDetails.emailRecipient,
+                        agentId = subDetails.agentId,
+                        govTalkResponse = pollResponse.govTalkErrorStatus
+                      )
+      _            <- submissionService.updateSubmission(updateReq)
+      _            <- sendEmailIfRequired(
+                        pollResponse.status,
+                        subDetails.emailRecipient,
+                        monthlyReturn.taxMonth,
+                        monthlyReturn.taxYear,
+                        submission.submissionId.toString
+                      )
+    } yield ()
+  }
+
+  private def logPollDurationIfRequired(
+    startTime: Long,
+    submissionRequestDate: Option[LocalDateTime],
+    submissionStatus: SubmissionStatus,
+    submissionId: String
+  ): Unit =
+    submissionRequestDate match {
+      case Some(requestDate) =>
+        val submissionTime = requestDate.atZone(ukTimezone).toInstant.toEpochMilli
+        if (startTime > submissionTime + alertDuration) {
+          logger.warn(
+            s"Submission in status $submissionStatus has been polling for more than " +
+              s"${alertDuration / 1.hour.toMillis} hours: $submissionId"
+          )
+        }
+      case None              =>
+        logger.warn(
+          s"Unable to check polling duration because submissionRequestDate is missing: $submissionId"
+        )
+    }
 
   private def sendEmailIfRequired(
     status: SubmissionStatus,

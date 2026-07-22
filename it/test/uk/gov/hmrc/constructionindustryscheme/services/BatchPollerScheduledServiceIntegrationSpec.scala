@@ -73,12 +73,11 @@ class BatchPollerScheduledServiceIntegrationSpec
 
       lockDocFor(lockId).map(_.owner) shouldBe Some(otherOwner)
 
-      verify(batchPollerService, never()).run()(any[HeaderCarrier])
+      verify(batchPollerService, never()).run(any())(any[HeaderCarrier])
     }
 
     "acquire the lock and run when no other instance holds it" in {
-
-      when(batchPollerService.run()(any[HeaderCarrier])).thenReturn(Future.unit)
+      when(batchPollerService.run(any())(any[HeaderCarrier])).thenReturn(Future.unit)
 
       lockDocFor(lockId) shouldBe None
 
@@ -87,7 +86,7 @@ class BatchPollerScheduledServiceIntegrationSpec
       // The lock is disowned and remains until natural expiry.
       lockDocFor(lockId) shouldBe defined
 
-      verify(batchPollerService).run()(any[HeaderCarrier])
+      verify(batchPollerService).run(any())(any[HeaderCarrier])
     }
   }
 }
