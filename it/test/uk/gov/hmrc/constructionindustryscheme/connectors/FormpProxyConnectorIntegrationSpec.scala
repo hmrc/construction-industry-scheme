@@ -259,7 +259,7 @@ class FormpProxyConnectorIntegrationSpec
 
   "FormpProxyConnector updateSubmission" should {
 
-    "returns Unit when upstream responds 204/200" in {
+    "returns Unit when upstream responds with 204" in {
       val req = UpdateSubmissionRequest(
         instanceId = instanceId,
         taxYear = 2024,
@@ -767,7 +767,7 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = intercept[Throwable](connector.createAndUpdateSubcontractor(request).futureValue)
-      ex.getMessage.toLowerCase must include("500")
+      ex.getMessage.toLowerCase must include("boom")
     }
   }
 

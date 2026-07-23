@@ -36,3 +36,18 @@ lazy val it = project
   .dependsOn(microservice % "test->test")
   .settings(DefaultBuildSettings.itSettings())
   .settings(libraryDependencies ++= AppDependencies.it)
+
+// Opt-in e2e suite against locally running services (see e2e/README.md).
+// Not aggregated by the root project: runs only via `sbt e2e/test`.
+lazy val e2e = project
+  .disablePlugins(JUnitXmlReportPlugin)
+  .settings(DefaultBuildSettings.itSettings())
+  .settings(
+    // tests live in e2e/test (Play-style layout, like it/test) - without the
+    // PlayScala plugin this must be set explicitly
+    Test / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
+    Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test" / "resources"),
+    Compile / scalafmtOnCompile := true,
+    Test / scalafmtOnCompile := true,
+    libraryDependencies ++= AppDependencies.e2e
+  )

@@ -25,9 +25,10 @@ import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.*
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, ChrisPollJourney, ChrisSubmissionContext, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkErrorStatus, MonthlyReturnSubmissionContext, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult, VerificationSubmissionContextBuilder}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, ChrisPollJourney, ChrisSubmissionContext, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkError, GovTalkErrorStatus, MonthlyReturnSubmissionContext, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult, VerificationSubmissionContextBuilder}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.GovTalkErrorStatusClassifier
+import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHelper
+import uk.gov.hmrc.constructionindustryscheme.services.chris.{GovTalkErrorMapper, GovTalkErrorStatusClassifier}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.constructionindustryscheme.utils.{UriHelper, XmlToJsonConvertor, XmlValidator}
 import uk.gov.hmrc.http.HeaderCarrier
@@ -282,7 +283,7 @@ class SubmissionController @Inject() (
         )
     }
 
-    val employerRef = EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef)
+    val employerRef = resolveEmployerRef(csr.isAgent, csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef)
 
     submissionService
       .submitToChris(payload)
@@ -361,11 +362,12 @@ class SubmissionController @Inject() (
     startedErrorText: String
   )(implicit hc: HeaderCarrier): Future[Result] = {
     logger.error(
-      s"Received 5xx/Exception from ChRIS$errorLabel, treating as RESUBMIT for submissionId=$submissionId",
+      s"Received 5xx/Exception from ChRIS$errorLabel, treating as FATAL_ERROR for submissionId=$submissionId, startedErrorText: $startedErrorText",
       ex
     )
 
     val classified: GovTalkErrorStatus = classifyChrisFailure(ex)
+    val govTalkError: GovTalkError     = classifyChrisFailureError(ex)
 
     submissionService
       .processInitialChrisFailure(
@@ -376,18 +378,18 @@ class SubmissionController @Inject() (
       )
       .map { _ =>
         Ok(
-          withError(
-            baseSubmissionResponseJson(submissionId, irMark, correlationId, "STARTED", Some(classified)),
-            startedErrorText
+          withGovTalkError(
+            baseSubmissionResponseJson(submissionId, irMark, correlationId, "FATAL_ERROR", Some(classified)),
+            govTalkError
           )
         )
       }
       .recover { case e =>
         logger.error(s"Failed to initialise/update GovTalk status after ChRIS$errorLabel 5xx", e)
         InternalServerError(
-          withError(
+          withGovTalkError(
             baseSubmissionResponseJson(submissionId, irMark, correlationId, "FATAL_ERROR", Some(classified)),
-            "GovTalk status already exists"
+            govTalkError
           )
         )
       }
@@ -398,6 +400,11 @@ class SubmissionController @Inject() (
       GovTalkErrorStatusClassifier.fromHttpStatus(err.statusCode)
     case _                                                                           =>
       GovTalkErrorStatusClassifier.noResponse
+  }
+
+  private def classifyChrisFailureError(ex: Throwable): GovTalkError = ex match {
+    case _: UpstreamErrorResponse => GovTalkErrorMapper.fromHttpTimeout()
+    case _                        => GovTalkErrorMapper.fromConnectionRefused()
   }
 
   private def baseSubmissionResponseJson(
@@ -419,6 +426,26 @@ class SubmissionController @Inject() (
 
   private def withError(json: JsObject, text: String): JsObject =
     json ++ Json.obj("error" -> Json.obj("text" -> text))
+
+  private def withGovTalkError(json: JsObject, error: GovTalkError): JsObject =
+    json ++ Json.obj(
+      "error" -> Json.obj("number" -> error.errorNumber, "type" -> error.errorType, "text" -> error.errorText)
+    )
+
+  private def resolveEmployerRef(isAgent: Boolean, clientTaxOfficeNumber: String, clientTaxOfficeRef: String)(implicit
+    req: AuthenticatedRequest[_]
+  ): EmployerReference =
+    if (isAgent) EmployerReference(clientTaxOfficeNumber, clientTaxOfficeRef)
+    else {
+      val (ton, tor) = CisEnrolmentHelper
+        .extractTaxOfficeIdentifiers(req.enrolments)
+        .getOrElse(
+          throw new IllegalStateException(
+            "Missing CIS enrolment identifiers (TaxOfficeNumber/TaxOfficeReference) in HMRC-CIS-ORG"
+          )
+        )
+      EmployerReference(ton, tor)
+    }
 
   private def chrisResponseTimestamp(res: SubmissionResult): Instant =
     res.meta.gatewayTimestamp

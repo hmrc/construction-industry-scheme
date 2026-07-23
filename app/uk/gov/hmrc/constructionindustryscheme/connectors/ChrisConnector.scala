@@ -17,12 +17,13 @@
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
 import javax.inject.{Inject, Singleton}
+import play.api.libs.json.Json
 import play.api.libs.ws.DefaultBodyWritables.writeableOf_String
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.constructionindustryscheme.models.{ChrisPollJourney, *}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisPollXmlMapper, ChrisSubmissionXmlMapper, ChrisVerificationPollXmlMapper, GovTalkErrorStatusClassifier}
+import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.services.chris.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps, UpstreamErrorResponse}
@@ -87,13 +88,17 @@ class ChrisConnector @Inject() (
           logger.error(
             s"[ChrisConnector] 5xx polling corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
           )
+          val errorOpt = journey match {
+            case ChrisPollJourney.Verification => Some(Json.toJson(GovTalkErrorMapper.fromHttpTimeout()))
+            case _                             => None
+          }
           Future.successful(
             ChrisPollResponse(
               ACCEPTED,
               correlationId,
               None,
               None,
-              None,
+              errorOpt,
               None,
               None,
               None,
@@ -123,12 +128,16 @@ class ChrisConnector @Inject() (
         logger.error(
           s"[ChrisConnector] Transport exception calling $pollUrl corrId=$correlationId: ${e.getClass.getSimpleName}: ${e.getMessage}"
         )
+        val errorOpt = journey match {
+          case ChrisPollJourney.Verification => Some(Json.toJson(GovTalkErrorMapper.fromConnectionRefused()))
+          case _                             => None
+        }
         ChrisPollResponse(
           ACCEPTED,
           correlationId,
           None,
           None,
-          None,
+          errorOpt,
           None,
           None,
           None,
@@ -154,7 +163,8 @@ class ChrisConnector @Inject() (
   private def submit(
     url: String,
     envelope: Elem,
-    correlationId: String
+    correlationId: String,
+    xmlMapper: String => Either[String, SubmissionResult]
   )(implicit hc: HeaderCarrier): Future[SubmissionResult] =
     httpClient
       .post(url"$url")
@@ -169,7 +179,7 @@ class ChrisConnector @Inject() (
         logger.info("[ChrisConnector] submit response:\n" + resp.body)
         if (is2xx(resp.status)) {
           logger.info(s"[ChrisConnector] corrId=$correlationId status=${resp.status}")
-          Future.successful(handle2xxResponse(resp, correlationId))
+          Future.successful(handle2xxResponse(resp, correlationId, xmlMapper))
         } else if (resp.status >= 500) {
           Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
         } else {
@@ -178,12 +188,12 @@ class ChrisConnector @Inject() (
       }
 
   def submitEnvelope(envelope: Elem, correlationId: String)(implicit hc: HeaderCarrier): Future[SubmissionResult] =
-    submit(chrisCisReturnUrl, envelope, correlationId)
+    submit(chrisCisReturnUrl, envelope, correlationId, ChrisSubmissionXmlMapper.parse)
 
   def submitEnvelopeForVerification(envelope: Elem, correlationId: String)(implicit
     hc: HeaderCarrier
   ): Future[SubmissionResult] =
-    submit(chrisCisVerifyUrl, envelope, correlationId)
+    submit(chrisCisVerifyUrl, envelope, correlationId, ChrisVerificationSubmissionXmlMapper.parse)
 
   private def parsePollResponse(
     journey: ChrisPollJourney,
@@ -194,14 +204,16 @@ class ChrisConnector @Inject() (
       case ChrisPollJourney.Verification  => ChrisVerificationPollXmlMapper.parse(body)
     }
 
-  private def handle2xxResponse(resp: HttpResponse, correlationId: String): SubmissionResult = {
+  private def handle2xxResponse(
+    resp: HttpResponse,
+    correlationId: String,
+    xmlMapper: String => Either[String, SubmissionResult]
+  ): SubmissionResult = {
     val body = resp.body
-    ChrisSubmissionXmlMapper
-      .parse(body)
-      .fold(
-        err => parseError(correlationId, body, err),
-        ok => ok
-      )
+    xmlMapper(body).fold(
+      err => parseError(correlationId, body, err),
+      ok => ok
+    )
   }
 
   private def is2xx(status: Int): Boolean =

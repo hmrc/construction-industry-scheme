@@ -79,15 +79,16 @@ trait ChrisXmlMapper {
       endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
       errOpt                        <- parseError(qualifier, doc)
     } yield {
-      val status = deriveStatus(qualifier, errOpt)
-      val meta   = GovTalkMeta(
+      val status       = deriveStatus(qualifier, errOpt)
+      val mappedErrOpt = errOpt.map(GovTalkErrorMapper.map)
+      val meta         = GovTalkMeta(
         qualifier = qualifier,
         function = function,
         className = className,
         correlationId = correlationId,
         gatewayTimestamp = gatewayTimestampOpt,
         responseEndPoint = ResponseEndPoint(endpointUrlOpt.getOrElse(""), pollIntervalOpt.getOrElse(0)),
-        error = errOpt,
+        error = mappedErrOpt,
         acceptedTime = acceptedTime
       )
 
@@ -117,6 +118,7 @@ trait ChrisXmlMapper {
                                        )
     } yield {
       val status                    = deriveStatus(qualifier, errOpt, doc)
+      val mappedErrOpt              = errOpt.map(GovTalkErrorMapper.map)
       val cisResponseSubcontractors = parseCisVerificationResults(doc)
 
       ChrisPollResponse(
@@ -124,7 +126,7 @@ trait ChrisXmlMapper {
         correlationId,
         endpointUrlOpt,
         pollIntervalOpt,
-        errOpt.map(Json.toJson(_)),
+        mappedErrOpt.map(Json.toJson(_)),
         irMark,
         lastMessageDateOpt,
         acceptedTime,
