@@ -35,21 +35,33 @@ class MonthlyReturnPollingProcessService @Inject() (
 )(implicit ec: ExecutionContext)
     extends Logging {
 
-  private val ukTimezone: ZoneId = ZoneId.of("Europe/London")
-  private val alertDuration      = 24.hours.toMillis
+  private val ukTimezone: ZoneId =
+    ZoneId.of("Europe/London")
+
+  private val alertDuration =
+    24.hours.toMillis
+
+  private val unavailableReportValue =
+    "-"
+
+  private val notPolledCorrelationId =
+    "(not polled)"
 
   def process(
     monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll],
     startTime: Long
   )(implicit hc: HeaderCarrier): Future[Seq[PollReportContent]] =
-    Future.traverse(monthlyReturnSubmissions) { sub =>
-      processSubmission(sub, startTime)
-        .recover { case NonFatal(ex) =>
+    Future.traverse(monthlyReturnSubmissions) { submission =>
+      processSubmission(submission, startTime)
+        .recover { case NonFatal(exception) =>
           logger.error(
-            s"[MonthlyReturnPollingProcessService][process] Failed for instanceId=${sub.instanceId}, submissionId=${sub.submissionId}",
-            ex
+            s"[MonthlyReturnPollingProcessService][process] Failed for " +
+              s"instanceId=${submission.instanceId}, " +
+              s"submissionId=${submission.submissionId}",
+            exception
           )
-          toRecoverableErrorReportContent(sub)
+
+          toFailedReportContent(submission)
         }
     }
 
@@ -57,7 +69,6 @@ class MonthlyReturnPollingProcessService @Inject() (
     submission: MonthlyReturnSubmissionToPoll,
     startTime: Long
   )(implicit hc: HeaderCarrier): Future[PollReportContent] = {
-
     logger.info(
       s"[MonthlyReturnPollingProcessService][processSubmission] Processing in-flight return: " +
         s"instanceId=${submission.instanceId}, " +
@@ -67,69 +78,121 @@ class MonthlyReturnPollingProcessService @Inject() (
     )
 
     for {
-      details      <- monthlyReturnService.getMonthlyReturnForEdit(
-                        GetMonthlyReturnForEditRequest(
-                          submission.instanceId,
-                          submission.taxYear,
-                          submission.taxMonth,
-                          isAmendment = Some(false)
-                        )
-                      )
-      monthlyReturn = details.monthlyReturn.headOption
-                        .getOrElse(
-                          throw new RuntimeException(
-                            s"No monthly return found for instanceId=${submission.instanceId}"
-                          )
-                        )
-      subDetails    = details.submission.headOption
-                        .getOrElse(
-                          throw new RuntimeException(
-                            s"No submission found for instanceId=${submission.instanceId}"
-                          )
-                        )
-      gatewayUrl   <- submissionService.processMonthlyReturnGovTalkStatusCheck(
-                        submission.instanceId,
-                        submission.submissionId.toString
-                      )
+      details <- monthlyReturnService.getMonthlyReturnForEdit(
+                   GetMonthlyReturnForEditRequest(
+                     submission.instanceId,
+                     submission.taxYear,
+                     submission.taxMonth,
+                     isAmendment = Some(false)
+                   )
+                 )
+
+      monthlyReturn =
+        details.monthlyReturn.headOption
+          .getOrElse(
+            throw new RuntimeException(
+              s"No monthly return found for instanceId=${submission.instanceId}"
+            )
+          )
+
+      submissionDetails =
+        details.submission.headOption
+          .getOrElse(
+            throw new RuntimeException(
+              s"No submission found for instanceId=${submission.instanceId}"
+            )
+          )
+
+      reportContent <-
+        if (hasMatchingStatus(submission, submissionDetails)) {
+          pollAndUpdateSubmission(
+            submission = submission,
+            monthlyReturn = monthlyReturn,
+            submissionDetails = submissionDetails,
+            startTime = startTime
+          )
+        } else {
+          logger.warn(
+            s"[MonthlyReturnPollingProcessService][processSubmission] " +
+              s"Skipping ChRIS poll because F1 status does not match DB status for " +
+              s"instanceId=${submission.instanceId}, " +
+              s"submissionId=${submission.submissionId}, " +
+              s"f1Status=${submission.status}, " +
+              s"dbStatus=${submissionDetails.status.getOrElse(unavailableReportValue)}"
+          )
+
+          Future.successful(
+            toNotPolledReportContent(
+              submission = submission,
+              dbSubmission = submissionDetails
+            )
+          )
+        }
+    } yield reportContent
+  }
+
+  private def pollAndUpdateSubmission(
+    submission: MonthlyReturnSubmissionToPoll,
+    monthlyReturn: MonthlyReturn,
+    submissionDetails: Submission,
+    startTime: Long
+  )(implicit hc: HeaderCarrier): Future[PollReportContent] =
+    for {
+      gatewayUrl <- submissionService.processMonthlyReturnGovTalkStatusCheck(
+                      submission.instanceId,
+                      submission.submissionId.toString
+                    )
+
       pollResponse <- submissionService.pollSubmissionAndUpdateGovTalkStatus(
                         submission.submissionId.toString,
                         gatewayUrl,
                         ChrisPollJourney.MonthlyReturn
                       )
-      _             = logPollDurationIfRequired(
-                        startTime = startTime,
-                        submissionRequestDate = subDetails.submissionRequestDate,
-                        submissionStatus = pollResponse.status,
-                        submissionId = submission.submissionId.toString
-                      )
-      updateReq     = UpdateSubmissionRequest(
-                        instanceId = submission.instanceId,
-                        taxYear = monthlyReturn.taxYear,
-                        taxMonth = monthlyReturn.taxMonth,
-                        hmrcMarkGenerated = subDetails.hmrcMarkGenerated,
-                        submittableStatus = pollResponse.status.toString,
-                        amendment = monthlyReturn.amendment.getOrElse("N"),
-                        hmrcMarkGgis = pollResponse.irMarkReceived,
-                        submissionRequestDate = subDetails.submissionRequestDate,
-                        acceptedTime = pollResponse.acceptedTime,
-                        emailRecipient = subDetails.emailRecipient,
-                        agentId = subDetails.agentId,
-                        govTalkResponse = pollResponse.govTalkErrorStatus
-                      )
-      _            <- submissionService.updateSubmission(updateReq)
-      _            <- sendEmailIfRequired(
-                        pollResponse.status,
-                        subDetails.emailRecipient,
-                        monthlyReturn.taxMonth,
-                        monthlyReturn.taxYear,
-                        submission.submissionId.toString
-                      )
+
+      _ = logPollDurationIfRequired(
+            startTime = startTime,
+            submissionRequestDate = submissionDetails.submissionRequestDate,
+            submissionStatus = pollResponse.status,
+            submissionId = submission.submissionId.toString
+          )
+
+      updateRequest =
+        UpdateSubmissionRequest(
+          instanceId = submission.instanceId,
+          taxYear = monthlyReturn.taxYear,
+          taxMonth = monthlyReturn.taxMonth,
+          hmrcMarkGenerated = submissionDetails.hmrcMarkGenerated,
+          submittableStatus = currentReturnStatus(pollResponse),
+          amendment = monthlyReturn.amendment.getOrElse("N"),
+          hmrcMarkGgis = pollResponse.irMarkReceived,
+          submissionRequestDate = submissionDetails.submissionRequestDate,
+          acceptedTime = pollResponse.acceptedTime,
+          emailRecipient = submissionDetails.emailRecipient,
+          agentId = submissionDetails.agentId,
+          govTalkResponse = pollResponse.govTalkErrorStatus
+        )
+
+      _ <- submissionService.updateSubmission(updateRequest)
+
+      _ <- sendEmailIfRequired(
+             pollResponse.status,
+             submissionDetails.emailRecipient,
+             monthlyReturn.taxMonth,
+             monthlyReturn.taxYear,
+             submission.submissionId.toString
+           )
     } yield toPollReportContent(
       submission = submission,
-      dbSubmission = subDetails,
+      dbSubmission = submissionDetails,
       pollResponse = pollResponse
     )
-  }
+
+  private def hasMatchingStatus(
+    submission: MonthlyReturnSubmissionToPoll,
+    dbSubmission: Submission
+  ): Boolean =
+    dbSubmission.status
+      .exists(_.equalsIgnoreCase(submission.status))
 
   private def toPollReportContent(
     submission: MonthlyReturnSubmissionToPoll,
@@ -140,27 +203,59 @@ class MonthlyReturnPollingProcessService @Inject() (
       user = submission.instanceId,
       submissionType = submission.submissionType,
       submissionId = submission.submissionId.toString,
-      govTalkRequestStatus = submission.status,
-      currentReturnStatus = pollResponse.status.toString,
+      govTalkRequestStatus = reportValue(submission.status),
+      currentReturnStatus = currentReturnStatus(pollResponse),
       employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
-      correlationId = pollResponse.correlationId,
+      correlationId = reportValue(pollResponse.correlationId),
       agentId = dbSubmission.agentId
         .orElse(submission.agentId)
-        .getOrElse("")
+        .getOrElse(unavailableReportValue)
     )
 
-  private def toRecoverableErrorReportContent(
-    submission: MonthlyReturnSubmissionToPoll
+  private def toNotPolledReportContent(
+    submission: MonthlyReturnSubmissionToPoll,
+    dbSubmission: Submission
   ): PollReportContent =
-    PollReportContent.forRecoverableError(
+    PollReportContent(
       user = submission.instanceId,
       submissionType = submission.submissionType,
       submissionId = submission.submissionId.toString,
-      govTalkRequestStatus = submission.status,
+      govTalkRequestStatus = reportValue(submission.status),
+      currentReturnStatus = unavailableReportValue,
       employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
-      correlationId = "",
-      agentId = submission.agentId.getOrElse("")
+      correlationId = notPolledCorrelationId,
+      agentId = dbSubmission.agentId
+        .orElse(submission.agentId)
+        .getOrElse(unavailableReportValue)
     )
+
+  private def toFailedReportContent(
+    submission: MonthlyReturnSubmissionToPoll
+  ): PollReportContent =
+    PollReportContent(
+      user = submission.instanceId,
+      submissionType = submission.submissionType,
+      submissionId = submission.submissionId.toString,
+      govTalkRequestStatus = reportValue(submission.status),
+      currentReturnStatus = unavailableReportValue,
+      employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
+      correlationId = unavailableReportValue,
+      agentId = submission.agentId.getOrElse(unavailableReportValue)
+    )
+
+  private def currentReturnStatus(
+    pollResponse: ChrisPollResponse
+  ): String =
+    Option(pollResponse.status)
+      .map(_.toString)
+      .getOrElse(unavailableReportValue)
+
+  private def reportValue(
+    value: String
+  ): String =
+    Option(value)
+      .filter(_.nonEmpty)
+      .getOrElse(unavailableReportValue)
 
   private def logPollDurationIfRequired(
     startTime: Long,
@@ -170,7 +265,12 @@ class MonthlyReturnPollingProcessService @Inject() (
   ): Unit =
     submissionRequestDate match {
       case Some(requestDate) =>
-        val submissionTime = requestDate.atZone(ukTimezone).toInstant.toEpochMilli
+        val submissionTime =
+          requestDate
+            .atZone(ukTimezone)
+            .toInstant
+            .toEpochMilli
+
         if (startTime > submissionTime + alertDuration) {
           logger.warn(
             s"Submission in status $submissionStatus has been polling for more than " +
@@ -196,15 +296,23 @@ class MonthlyReturnPollingProcessService @Inject() (
           case Some(email) =>
             submissionService.sendSuccessfulEmail(
               submissionId,
-              SendSuccessEmailRequest(email, taxMonth.toString, taxYear.toString)
+              SendSuccessEmailRequest(
+                email,
+                taxMonth.toString,
+                taxYear.toString
+              )
             )
-          case None        =>
+
+          case None =>
             logger.warn(
-              s"[MonthlyReturnPollingProcessService][sendEmailIfRequired] No emailRecipient for submissionId=$submissionId, skipping email"
+              s"[MonthlyReturnPollingProcessService][sendEmailIfRequired] " +
+                s"No emailRecipient for submissionId=$submissionId, skipping email"
             )
+
             Future.unit
         }
-      case _                                                     =>
+
+      case _ =>
         Future.unit
     }
 }
