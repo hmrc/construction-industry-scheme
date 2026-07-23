@@ -19,10 +19,7 @@ package models.response
 import org.scalatestplus.play.PlaySpec
 import play.api.libs.json.{JsSuccess, Json}
 import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, Subcontractor}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{
-  GetSubcontractorOtherInfo,
-  GetSubcontractorResponse
-}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorOtherInfo, GetSubcontractorResponse}
 
 import java.time.LocalDateTime
 
@@ -197,7 +194,8 @@ final class GetSubcontractorResponseSpec extends PlaySpec {
     }
 
     "fail to deserialize when required fields are missing" in {
-      Json.obj()
+      Json
+        .obj()
         .validate[GetSubcontractorResponse]
         .isError mustBe true
     }
@@ -212,7 +210,8 @@ final class GetSubcontractorResponseSpec extends PlaySpec {
     }
 
     "deserialize from JSON" in {
-      Json.obj("utr" -> "1111111111")
+      Json
+        .obj("utr" -> "1111111111")
         .validate[GetSubcontractorOtherInfo] mustBe JsSuccess(
         GetSubcontractorOtherInfo("1111111111")
       )

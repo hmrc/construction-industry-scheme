@@ -19,11 +19,10 @@ package uk.gov.hmrc.constructionindustryscheme.models.response
 import play.api.libs.json.{Json, OFormat}
 import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, Subcontractor}
 
-
 final case class GetSubcontractorResponse(
-   scheme: Option[ContractorScheme],
-   subcontractor: Option[Subcontractor],
-   otherInfo: Seq[GetSubcontractorOtherInfo]
+  scheme: Option[ContractorScheme],
+  subcontractor: Option[Subcontractor],
+  otherInfo: Seq[GetSubcontractorOtherInfo]
 )
 
 object GetSubcontractorResponse {
