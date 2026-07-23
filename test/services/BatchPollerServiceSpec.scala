@@ -16,6 +16,7 @@
 
 package services
 
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
@@ -33,31 +34,24 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
   "BatchPollerService run" - {
 
     val startTime = System.currentTimeMillis()
-    
+
     "must process monthly return submissions and call GeneratePollReportService with report content" in new Setup {
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(nonEmptyResponse))
 
-      when(mockMonthlyReturnPollingProcessService.process(Seq(monthlyReturnSubmission))(using hc))
-        .thenReturn(
-          Future.successful(
-            monthlyReturnReportContent
-          )
-        )
+      when(mockMonthlyReturnPollingProcessService.process(Seq(monthlyReturnSubmission), startTime)(using hc))
+        .thenReturn(Future.successful(monthlyReturnReportContent))
 
-      when(
-        mockGeneratePollReportService.generatePollReport(
-          monthlyReturnReportContent
-        )
-      ).thenReturn(Future.unit)
+      when(mockGeneratePollReportService.generatePollReport(monthlyReturnReportContent))
+        .thenReturn(Future.unit)
 
-      service.run().futureValue mustBe ()
+      service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService)
         .getSubmissionsToPoll()(using hc)
 
       verify(mockMonthlyReturnPollingProcessService)
-        .process(Seq(monthlyReturnSubmission))(using hc)
+        .process(Seq(monthlyReturnSubmission), startTime)(using hc)
 
       verify(mockGeneratePollReportService)
         .generatePollReport(monthlyReturnReportContent)
@@ -72,7 +66,12 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
     "must call SubmissionService and complete successfully when submissions are returned" in new Setup {
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(nonEmptyResponse))
-      when(mockMonthlyReturnPollingProcessService.process(any(), any())(any())).thenReturn(Future.unit)
+
+      when(mockMonthlyReturnPollingProcessService.process(any(), any())(any()))
+        .thenReturn(Future.successful(monthlyReturnReportContent))
+
+      when(mockGeneratePollReportService.generatePollReport(any()))
+        .thenReturn(Future.unit)
 
       service.run(startTime).futureValue mustBe ()
 
@@ -85,13 +84,9 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(emptyResponse))
 
-      when(
-        mockGeneratePollReportService.generatePollReport(
-          Seq.empty[PollReportContent]
-        )
-      ).thenReturn(Future.unit)
+      when(mockGeneratePollReportService.generatePollReport(Seq.empty[PollReportContent]))
+        .thenReturn(Future.unit)
 
-      service.run().futureValue mustBe ()
       service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService)
@@ -113,7 +108,7 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(verificationOnlyResponse))
 
-      service.run().futureValue mustBe ()
+      service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService)
         .getSubmissionsToPoll()(using hc)
@@ -151,21 +146,16 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(monthlyReturnOnlyResponse))
 
-      when(
-        mockMonthlyReturnPollingProcessService.process(
-          Seq(monthlyReturnSubmission)
-        )(using hc)
-      ).thenReturn(
-        Future.failed(new RuntimeException("monthly polling failed"))
-      )
+      when(mockMonthlyReturnPollingProcessService.process(Seq(monthlyReturnSubmission), startTime)(using hc))
+        .thenReturn(Future.failed(new RuntimeException("monthly polling failed")))
 
-      service.run().futureValue mustBe ()
+      service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService)
         .getSubmissionsToPoll()(using hc)
 
       verify(mockMonthlyReturnPollingProcessService)
-        .process(Seq(monthlyReturnSubmission))(using hc)
+        .process(Seq(monthlyReturnSubmission), startTime)(using hc)
 
       verifyNoInteractions(mockGeneratePollReportService)
 
@@ -224,7 +214,7 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
     val monthlyReturnReportContent: Seq[PollReportContent] =
       Seq(
         PollReportContent(
-          user = "",
+          user = "instance-monthly-return-001",
           submissionType = "CIS300MR",
           submissionId = "90002",
           govTalkRequestStatus = "SUBMITTED",

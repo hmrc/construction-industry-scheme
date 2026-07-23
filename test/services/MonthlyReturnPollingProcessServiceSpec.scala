@@ -164,7 +164,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     "process" - {
 
       "must not interact with any service when there are no submissions" in {
-        service.process(Seq.empty, startTime).futureValue mustBe ()
+        service.process(Seq.empty, startTime).futureValue mustBe empty
 
         verifyNoInteractions(monthlyReturnService)
         verifyNoInteractions(submissionService)
@@ -228,12 +228,12 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
         val result =
           service
-            .process(Seq(submission))
+            .process(Seq(submission), startTime)
             .futureValue
 
         result mustBe Seq(
           PollReportContent(
-            user = "",
+            user = testInstanceId,
             submissionType = submission.submissionType,
             submissionId = submission.submissionId.toString,
             govTalkRequestStatus = submission.status,
@@ -423,7 +423,9 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         .thenReturn(Future.successful(makePollResponse(ACCEPTED)))
       when(submissionService.updateSubmission(any())(any()))
         .thenReturn(Future.unit)
-      service.process(Seq(submission), System.currentTimeMillis()).futureValue mustBe ()
+
+      service.process(Seq(submission), System.currentTimeMillis()).futureValue must have size 1
+
       verify(submissionService).processMonthlyReturnGovTalkStatusCheck(
         any(),
         any(),
@@ -436,12 +438,12 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       "must send email when status is SUBMITTED and emailRecipient is present (AC5)" in {
         val dbSub = makeDbSubmission(emailRecipient = Some("user@example.com"))
         val mr    = makeMonthlyReturn(taxYear = 2026, taxMonth = 4)
-        setupHappyPath(makeDetails(mr, dbSub), makePollResponse(SUBMITTED))
 
         setupHappyPath(
           makeDetails(mr, dbSub),
           makePollResponse(SUBMITTED)
         )
+
         service.process(Seq(makeSubmission()), startTime).futureValue must have size 1
 
         verify(submissionService).sendSuccessfulEmail(
@@ -453,12 +455,12 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       "must send email when status is SUBMITTED_NO_RECEIPT and emailRecipient is present (AC6)" in {
         val dbSub = makeDbSubmission(emailRecipient = Some("user@example.com"))
         val mr    = makeMonthlyReturn(taxYear = 2026, taxMonth = 7)
-        setupHappyPath(makeDetails(mr, dbSub), makePollResponse(SUBMITTED_NO_RECEIPT))
 
         setupHappyPath(
           makeDetails(mr, dbSub),
           makePollResponse(SUBMITTED_NO_RECEIPT)
         )
+
         service.process(Seq(makeSubmission(taxMonth = 7)), startTime).futureValue must have size 1
 
         verify(submissionService).sendSuccessfulEmail(
@@ -470,7 +472,6 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       "must send email when status is DEPARTMENTAL_ERROR and emailRecipient is present (AC7)" in {
         val dbSub = makeDbSubmission(emailRecipient = Some("user@example.com"))
         val mr    = makeMonthlyReturn(taxYear = 2026, taxMonth = 10)
-        setupHappyPath(makeDetails(mr, dbSub), makePollResponse(DEPARTMENTAL_ERROR))
 
         setupHappyPath(
           makeDetails(mr, dbSub),
@@ -525,6 +526,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           makeDetails(dbSubmission = dbSub),
           makePollResponse(SUBMITTED)
         )
+
         service.process(Seq(makeSubmission()), startTime).futureValue must have size 1
 
         verify(submissionService, never()).sendSuccessfulEmail(any(), any())(any())

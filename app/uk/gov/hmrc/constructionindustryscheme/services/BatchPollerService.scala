@@ -34,14 +34,12 @@ class BatchPollerService @Inject() (
 
   def run(startTime: Long)(implicit hc: HeaderCarrier): Future[Unit] = {
     logger.info("[BatchPollerService][run] Calling F1 - Get Submissions To Poll")
+
     submissionService
       .getSubmissionsToPoll()
       .flatMap { submissions =>
-        val verificationSubmissions =
-          submissions.verificationSubmissions
-
-        val monthlyReturnSubmissions =
-          submissions.monthlyReturnSubmissions
+        val verificationSubmissions  = submissions.verificationSubmissions
+        val monthlyReturnSubmissions = submissions.monthlyReturnSubmissions
 
         logger.info(
           s"[BatchPollerService][run] GetBatchPollSubmissions returned " +
