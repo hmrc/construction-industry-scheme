@@ -21,7 +21,7 @@ import org.scalatest.OptionValues.convertOptionToValuable
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
-import play.api.http.Status.NO_CONTENT
+import play.api.http.Status.{BAD_GATEWAY, NO_CONTENT, OK}
 import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
@@ -39,9 +39,9 @@ class FormpProxyConnectorIntegrationSpec
 
   private val connector = app.injector.instanceOf[FormpProxyConnector]
 
-  private val instanceId      = "123"
+  private val instanceId        = "123"
   private val subbieResourceRef = 456L
-  private val instanceReqJson = Json.obj("instanceId" -> instanceId)
+  private val instanceReqJson   = Json.obj("instanceId" -> instanceId)
 
   "FormpProxyConnector getMonthlyReturns" should {
 
@@ -1958,7 +1958,7 @@ class FormpProxyConnectorIntegrationSpec
           )
       )
 
-      connector.updateVerificationSubmission(request).futureValue mustBe()
+      connector.updateVerificationSubmission(request).futureValue mustBe ()
     }
 
     "fail the future when upstream returns non-204" in {
@@ -2023,7 +2023,7 @@ class FormpProxyConnectorIntegrationSpec
           )
       )
 
-      connector.processVerificationResponseFromChris(request).futureValue mustBe()
+      connector.processVerificationResponseFromChris(request).futureValue mustBe ()
     }
 
     "fail the future when upstream returns non-204" in {
@@ -2272,15 +2272,15 @@ class FormpProxyConnectorIntegrationSpec
         )
       )
 
-        stubFor(
-          post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
-            .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
-            .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
-        )
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
 
-        val ex = connector.processVerificationResponseFromChris(req).failed.futureValue
-        ex mustBe a[UpstreamErrorResponse]
-        ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+      val ex = connector.processVerificationResponseFromChris(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
 
@@ -2611,6 +2611,94 @@ class FormpProxyConnectorIntegrationSpec
 
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector getSubcontractor" should {
+
+    val cisId             = "123"
+    val subbieResourceRef = 456L
+
+    "GET /formp-proxy/cis/subcontractor/:cisId/:subbieResourceRef and return subcontractor response" in {
+      val responseJson = Json.parse(
+        """
+          |{
+          |  "scheme": {
+          |    "schemeId": 123,
+          |    "instanceId": "123",
+          |    "accountsOfficeReference": "123PA00123456",
+          |    "taxOfficeNumber": "123",
+          |    "taxOfficeReference": "AB456",
+          |    "utr": "1234567890",
+          |    "name": "Test Contractor Ltd",
+          |    "version": 1
+          |  },
+          |  "subcontractor": {
+          |    "subcontractorId": 999,
+          |    "subbieResourceRef": 456,
+          |    "utr": "0987654321",
+          |    "firstName": "John",
+          |    "surname": "Smith",
+          |    "tradingName": "John Smith Trading",
+          |    "subcontractorType": "soletrader",
+          |    "country": "United Kingdom",
+          |    "taxTreatment": "NET",
+          |    "verified": "Y",
+          |    "version": 1
+          |  },
+          |  "otherInfo": [
+          |    {
+          |      "utr": "1111111111"
+          |    }
+          |  ]
+          |}
+          |""".stripMargin
+      )
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractor/$cisId/$subbieResourceRef"))
+          .willReturn(
+            aResponse()
+              .withStatus(OK)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val response =
+        connector.getSubcontractor(cisId, subbieResourceRef).futureValue
+
+      response.scheme.value.schemeId mustBe 123
+      response.scheme.value.instanceId mustBe "123"
+
+      response.subcontractor.value.subcontractorId mustBe 999L
+      response.subcontractor.value.subbieResourceRef mustBe Some(456L)
+      response.subcontractor.value.utr mustBe Some("0987654321")
+      response.subcontractor.value.displayName mustBe "John Smith"
+
+      response.otherInfo mustBe Seq(
+        GetSubcontractorOtherInfo("1111111111")
+      )
+
+      verify(
+        getRequestedFor(urlPathEqualTo(s"/formp-proxy/cis/subcontractor/$cisId/$subbieResourceRef"))
+      )
+    }
+
+    "fails with UpstreamErrorResponse when FormP returns non-2xx" in {
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/subcontractor/$cisId/$subbieResourceRef"))
+          .willReturn(
+            aResponse()
+              .withStatus(BAD_GATEWAY)
+              .withBody("FormP error")
+          )
+      )
+
+      val ex =
+        connector.getSubcontractor(cisId, subbieResourceRef).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_GATEWAY
     }
   }
 }
