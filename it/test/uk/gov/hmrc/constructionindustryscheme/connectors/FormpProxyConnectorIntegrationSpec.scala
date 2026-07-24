@@ -538,7 +538,32 @@ class FormpProxyConnectorIntegrationSpec
         prePopCount = 5,
         prePopSuccessful = "Y",
         version = 1,
-        subcontractorTypes = Seq(SoleTrader, Company)
+        subcontractors = Seq(
+          PrepopulationSubcontractor(
+            subcontractorType = SoleTrader,
+            utr = "1111111111",
+            verificationNumber = Some("V1"),
+            firstName = Some("A"),
+            secondName = None,
+            surname = Some("B"),
+            tradingName = None,
+            partnershipTradingName = None,
+            verified = Some("Y"),
+            autoVerified = Some("Y")
+          ),
+          PrepopulationSubcontractor(
+            subcontractorType = Company,
+            utr = "2222222222",
+            verificationNumber = Some("V2"),
+            firstName = None,
+            secondName = None,
+            surname = None,
+            tradingName = Some("Acme"),
+            partnershipTradingName = None,
+            verified = Some("Y"),
+            autoVerified = Some("Y")
+          )
+        )
       )
 
       val responseJson = Json.obj("version" -> 2)
@@ -572,7 +597,32 @@ class FormpProxyConnectorIntegrationSpec
         prePopCount = 5,
         prePopSuccessful = "Y",
         version = 1,
-        subcontractorTypes = Seq(SoleTrader, Company)
+        subcontractors = Seq(
+          PrepopulationSubcontractor(
+            subcontractorType = SoleTrader,
+            utr = "1111111111",
+            verificationNumber = Some("V1"),
+            firstName = Some("A"),
+            secondName = None,
+            surname = Some("B"),
+            tradingName = None,
+            partnershipTradingName = None,
+            verified = Some("Y"),
+            autoVerified = Some("Y")
+          ),
+          PrepopulationSubcontractor(
+            subcontractorType = Company,
+            utr = "2222222222",
+            verificationNumber = Some("V2"),
+            firstName = None,
+            secondName = None,
+            surname = None,
+            tradingName = Some("Acme"),
+            partnershipTradingName = None,
+            verified = Some("Y"),
+            autoVerified = Some("Y")
+          )
+        )
       )
 
       stubFor(

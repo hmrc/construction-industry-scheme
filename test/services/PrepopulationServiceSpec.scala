@@ -22,8 +22,8 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, Company, ContractorScheme, CreateContractorSchemeParams, EmployerReference, PrePopContractorBody, PrePopSubcontractor, PrepopKnownFacts, SoleTrader, UpdateContractorSchemeParams}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, UpdateSchemeVersionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, Company, ContractorScheme, CreateContractorSchemeParams, EmployerReference, Partnership, PrePopContractorBody, PrePopSubcontractor, PrepopKnownFacts, SoleTrader, UpdateContractorSchemeParams}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, PrepopulationSubcontractor, UpdateSchemeVersionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnService, PrepopulationService}
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
@@ -184,7 +184,7 @@ class PrepopulationServiceSpec extends SpecBase {
       verify(formpProxy, never).applyPrepopulation(any())(any[HeaderCarrier])
     }
 
-    "when contractor prepop exists, calls applyPrepopulation with mapped subcontractor types and returns Unit" in new Setup {
+    "when contractor prepop exists, calls applyPrepopulation with mapped subcontractors and returns Unit" in new Setup {
       val cis      = mkCis()
       val existing = mkExistingScheme("123AB456789", cis.taxOfficeNumber, cis.taxOfficeRef).copy(
         prePopCount = Some(0),
@@ -207,7 +207,8 @@ class PrepopulationServiceSpec extends SpecBase {
 
       val subs = Seq(
         PrePopSubcontractor("S", "1111111111", "V1", "A", "Mr", "A", "B", "C"),
-        PrePopSubcontractor("C", "2222222222", "V2", "B", "Ms", "D", "E", "F")
+        PrePopSubcontractor("C", "2222222222", "V2", "B", "Ms", "D", "E", "F", Some("Acme Ltd")),
+        PrePopSubcontractor("P", "3333333333", "V3", "C", "Mr", "X", "Y", "Z", Some("Partners Trading"))
       )
 
       when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
@@ -236,7 +237,44 @@ class PrepopulationServiceSpec extends SpecBase {
       sentReq.prePopCount mustBe 1
       sentReq.prePopSuccessful mustBe "Y"
       sentReq.version mustBe 7
-      sentReq.subcontractorTypes mustBe Seq(SoleTrader, Company)
+      sentReq.subcontractors mustBe Seq(
+        PrepopulationSubcontractor(
+          subcontractorType = SoleTrader,
+          utr = "1111111111",
+          verificationNumber = Some("V1"),
+          firstName = Some("A"),
+          secondName = Some("B"),
+          surname = Some("C"),
+          tradingName = None,
+          partnershipTradingName = None,
+          verified = Some("Y"),
+          autoVerified = Some("Y")
+        ),
+        PrepopulationSubcontractor(
+          subcontractorType = Company,
+          utr = "2222222222",
+          verificationNumber = Some("V2"),
+          firstName = None,
+          secondName = None,
+          surname = None,
+          tradingName = Some("Acme Ltd"),
+          partnershipTradingName = None,
+          verified = Some("Y"),
+          autoVerified = Some("Y")
+        ),
+        PrepopulationSubcontractor(
+          subcontractorType = Partnership,
+          utr = "3333333333",
+          verificationNumber = Some("V3"),
+          firstName = None,
+          secondName = None,
+          surname = None,
+          tradingName = None,
+          partnershipTradingName = Some("Partners Trading"),
+          verified = Some("Y"),
+          autoVerified = Some("Y")
+        )
+      )
 
       verify(formpProxy, never).updateContractorScheme(any())(any[HeaderCarrier])
       verify(formpProxy, never).updateSchemeVersion(any())(any[HeaderCarrier])
