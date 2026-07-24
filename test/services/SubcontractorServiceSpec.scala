@@ -26,6 +26,8 @@ import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.models.Subcontractor
 import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorListResponse
+import uk.gov.hmrc.constructionindustryscheme.models.ContractorScheme
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorOtherInfo, GetSubcontractorResponse}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.Future
@@ -275,6 +277,70 @@ final class SubcontractorServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.getSubcontractorList(cisId).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "getSubcontractor" - {
+
+    val cisId             = "cis-123"
+    val subbieResourceRef = 456L
+
+    val subcontractor =
+      Json
+        .obj(
+          "subcontractorId"   -> 999L,
+          "subbieResourceRef" -> subbieResourceRef,
+          "utr"               -> "0987654321",
+          "firstName"         -> "John",
+          "surname"           -> "Smith",
+          "tradingName"       -> "John Smith Trading",
+          "subcontractorType" -> "soletrader",
+          "country"           -> "United Kingdom",
+          "taxTreatment"      -> "NET",
+          "verified"          -> "Y",
+          "version"           -> 1
+        )
+        .as[Subcontractor]
+
+    val response = GetSubcontractorResponse(
+      scheme = Some(
+        ContractorScheme(
+          schemeId = 123,
+          instanceId = cisId,
+          accountsOfficeReference = "123PA00123456",
+          taxOfficeNumber = "123",
+          taxOfficeReference = "AB456",
+          utr = Some("1234567890"),
+          name = Some("Test Contractor Ltd"),
+          version = Some(1)
+        )
+      ),
+      subcontractor = Some(subcontractor),
+      otherInfo = Seq(GetSubcontractorOtherInfo("1111111111"))
+    )
+
+    "delegates to FormpProxyConnector and returns the response" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new SubcontractorService(connector)
+
+      when(connector.getSubcontractor(eqTo(cisId), eqTo(subbieResourceRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      service.getSubcontractor(cisId, subbieResourceRef).futureValue mustBe response
+
+      verify(connector).getSubcontractor(eqTo(cisId), eqTo(subbieResourceRef))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new SubcontractorService(connector)
+
+      when(connector.getSubcontractor(eqTo(cisId), eqTo(subbieResourceRef))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.getSubcontractor(cisId, subbieResourceRef).failed.futureValue.getMessage must include("boom")
+
+      verify(connector).getSubcontractor(eqTo(cisId), eqTo(subbieResourceRef))(any[HeaderCarrier])
     }
   }
 

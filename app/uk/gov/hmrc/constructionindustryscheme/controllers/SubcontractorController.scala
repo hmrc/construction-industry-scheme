@@ -21,6 +21,7 @@ import play.api.libs.json.{JsError, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.requests.CreateAndUpdateSubcontractorRequest
+import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorResponse
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -89,6 +90,31 @@ class SubcontractorController @Inject() (
         .recover { case ex =>
           logger.error(s"[getSubcontractorList] formp-proxy get failed (cisId=$cisId)", ex)
           BadGateway(Json.obj("message" -> "get-subcontractor-list-failed"))
+        }
+    }
+
+  def getSubcontractor(
+    cisId: String,
+    subbieResourceRef: Long
+  ): Action[AnyContent] =
+    authorise.async { implicit request =>
+      subcontractorService
+        .getSubcontractor(cisId, subbieResourceRef)
+        .map(response => Ok(Json.toJson(response)))
+        .recover {
+          case u: UpstreamErrorResponse =>
+            logger.error(
+              s"[getSubcontractor] formp-proxy get failed (cisId=$cisId, subbieResourceRef=$subbieResourceRef)",
+              u
+            )
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+
+          case NonFatal(t) =>
+            logger.error(
+              s"[getSubcontractor] formp-proxy get failed (cisId=$cisId, subbieResourceRef=$subbieResourceRef)",
+              t
+            )
+            BadGateway(Json.obj("message" -> "get-subcontractor-failed"))
         }
     }
 
