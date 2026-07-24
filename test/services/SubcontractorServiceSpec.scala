@@ -19,15 +19,12 @@ package services
 import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
-import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorForDeleteResponse
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest}
-import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import play.api.libs.json.Json
-import uk.gov.hmrc.constructionindustryscheme.models.Subcontractor
-import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorListResponse
-import uk.gov.hmrc.constructionindustryscheme.models.ContractorScheme
-import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorOtherInfo, GetSubcontractorResponse}
+import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
+import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, Subcontractor}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorForDeleteResponse, GetSubcontractorListResponse, GetSubcontractorOtherInfo, GetSubcontractorResponse}
+import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.Future

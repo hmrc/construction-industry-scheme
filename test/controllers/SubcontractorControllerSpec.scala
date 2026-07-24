@@ -20,20 +20,17 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, verifyNoInteractions, when}
 import org.scalatest.EitherValues
-import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, NO_CONTENT, OK, SERVICE_UNAVAILABLE}
+import play.api.http.Status.*
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.AnyContentAsEmpty
 import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController
-import uk.gov.hmrc.constructionindustryscheme.models.Subcontractor
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest}
-import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
-import uk.gov.hmrc.constructionindustryscheme.models.Subcontractor
-import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, Subcontractor}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorForDeleteResponse, GetSubcontractorListResponse, GetSubcontractorOtherInfo, GetSubcontractorResponse}
+import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
 import scala.concurrent.Future
