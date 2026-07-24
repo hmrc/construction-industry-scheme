@@ -52,12 +52,12 @@ class BatchPollerService @Inject() (
           val processes: Seq[Future[Unit]] = Seq(
             Option.when(verificationSubmissions.nonEmpty) {
               runPollingProcess("Verification Polling Process") {
-                verificationPollingProcessService.process(verificationSubmissions, startTime)
+                verificationPollingProcessService.process(verificationSubmissions)
               }
             },
             Option.when(monthlyReturnSubmissions.nonEmpty) {
               runPollingProcess("Monthly Return Polling Process") {
-                monthlyReturnPollingProcessService.process(monthlyReturnSubmissions)
+                monthlyReturnPollingProcessService.process(monthlyReturnSubmissions, startTime)
               }
             }
           ).flatten

@@ -34,7 +34,6 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
 
     val startTime = System.currentTimeMillis()
 
-    "must call SubmissionService and complete successfully when submissions are returned" in new Setup {
     "must call both polling process services and complete successfully when both submission types are returned" in new Setup {
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(nonEmptyResponse))
@@ -42,29 +41,32 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       when(mockVerificationPollingProcessService.process(Seq(verificationSubmission))(using hc))
         .thenReturn(Future.unit)
 
-      when(mockMonthlyReturnPollingProcessService.process(any(), any())(using hc))
+      when(mockMonthlyReturnPollingProcessService.process(any(), any())(any()))
         .thenReturn(Future.unit)
 
       service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
       verify(mockVerificationPollingProcessService).process(Seq(verificationSubmission))(using hc)
-      verify(mockMonthlyReturnPollingProcessService).process(any(), any())(using hc)
+      verify(mockMonthlyReturnPollingProcessService).process(any(), any())(any())
     }
 
     "must call SubmissionService and complete successfully when empty lists are returned" in new Setup {
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(emptyResponse))
 
-      service.run(startTime).futureValue mustBe ()
-
       when(mockGeneratePollReportService.generatePollReport()(using hc))
         .thenReturn(Future.unit)
 
-      service.run().futureValue mustBe ()
+      service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
       verify(mockGeneratePollReportService).generatePollReport()(using hc)
+
+      verifyNoInteractions(
+        mockVerificationPollingProcessService,
+        mockMonthlyReturnPollingProcessService
+      )
     }
 
     "must recover and complete successfully when SubmissionService fails" in new Setup {
@@ -83,7 +85,7 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       when(mockVerificationPollingProcessService.process(Seq(verificationSubmission))(using hc))
         .thenReturn(Future.unit)
 
-      service.run().futureValue mustBe ()
+      service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
       verify(mockVerificationPollingProcessService).process(Seq(verificationSubmission))(using hc)
@@ -93,13 +95,13 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(monthlyReturnOnlyResponse))
 
-      when(mockMonthlyReturnPollingProcessService.process(Seq(monthlyReturnSubmission))(using hc))
+      when(mockMonthlyReturnPollingProcessService.process(any(), any())(any()))
         .thenReturn(Future.unit)
 
       service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
-      verify(mockMonthlyReturnPollingProcessService).process(any(), any())(using hc)
+      verify(mockMonthlyReturnPollingProcessService).process(any(), any())(any())
     }
 
     "must attempt monthly return polling when verification polling fails" in new Setup {
@@ -109,14 +111,14 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       when(mockVerificationPollingProcessService.process(Seq(verificationSubmission))(using hc))
         .thenReturn(Future.failed(new RuntimeException("verification polling failed")))
 
-      when(mockMonthlyReturnPollingProcessService.process(any(), any())(using hc))
+      when(mockMonthlyReturnPollingProcessService.process(any(), any())(any()))
         .thenReturn(Future.unit)
 
       service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
       verify(mockVerificationPollingProcessService).process(Seq(verificationSubmission))(using hc)
-      verify(mockMonthlyReturnPollingProcessService).process(any(), any())(using hc)
+      verify(mockMonthlyReturnPollingProcessService).process(any(), any())(any())
     }
 
     "must complete successfully when monthly return polling fails" in new Setup {
@@ -126,14 +128,14 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       when(mockVerificationPollingProcessService.process(Seq(verificationSubmission))(using hc))
         .thenReturn(Future.unit)
 
-      when(mockMonthlyReturnPollingProcessService.process(any(), any())(using hc))
+      when(mockMonthlyReturnPollingProcessService.process(any(), any())(any()))
         .thenReturn(Future.failed(new RuntimeException("monthly return polling failed")))
 
       service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
       verify(mockVerificationPollingProcessService).process(Seq(verificationSubmission))(using hc)
-      verify(mockMonthlyReturnPollingProcessService).process(any(), any())(using hc)
+      verify(mockMonthlyReturnPollingProcessService).process(any(), any())(any())
     }
   }
 
