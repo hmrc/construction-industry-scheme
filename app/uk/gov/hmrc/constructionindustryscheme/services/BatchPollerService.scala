@@ -32,7 +32,7 @@ class BatchPollerService @Inject() (
 )(implicit ec: ExecutionContext)
     extends Logging {
 
-  def run()(implicit hc: HeaderCarrier): Future[Unit] = {
+  def run(startTime: Long)(implicit hc: HeaderCarrier): Future[Unit] = {
     logger.info("[BatchPollerService][run] Calling F1 - Get Submissions To Poll")
     submissionService
       .getSubmissionsToPoll()
@@ -52,7 +52,7 @@ class BatchPollerService @Inject() (
           val processes: Seq[Future[Unit]] = Seq(
             Option.when(verificationSubmissions.nonEmpty) {
               runPollingProcess("Verification Polling Process") {
-                verificationPollingProcessService.process(verificationSubmissions)
+                verificationPollingProcessService.process(verificationSubmissions, startTime)
               }
             },
             Option.when(monthlyReturnSubmissions.nonEmpty) {
