@@ -21,6 +21,7 @@ import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
+import uk.gov.hmrc.constructionindustryscheme.models.GovTalkProtocolStatus.{DataPoll, DataRequest, EndState}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository}
@@ -81,12 +82,13 @@ class SubmissionService @Inject() (
   private def deleteChrisResourcesIfNeeded(
     status: SubmissionStatus,
     correlationId: String,
-    pollUrl: String
+    pollUrl: String,
+    journey: ChrisPollJourney
   )(implicit hc: HeaderCarrier): Future[Unit] =
     status match {
       case SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR =>
         chrisConnector
-          .deleteSubmission(correlationId, pollUrl)
+          .deleteSubmission(correlationId, pollUrl, journey)
           .recover { case NonFatal(ex) =>
             logger.warn(
               s"[SubmissionService] Failed to delete Chris resources for corrId=$correlationId url=$pollUrl",
@@ -226,7 +228,8 @@ class SubmissionService @Inject() (
                           lastMessageDate = lastMessageDate,
                           numPolls = 0,
                           pollInterval = pollInterval,
-                          gatewayURL = gatewayURL
+                          gatewayURL = gatewayURL,
+                          protocolStatus = DataPoll.value
                         )
         } yield ()
     }
@@ -239,7 +242,7 @@ class SubmissionService @Inject() (
   )(implicit hc: HeaderCarrier): Future[Unit] =
     for {
       instanceId <- initialiseGovTalkStatus(employerReference, submissionId, correlationId, gatewayURL)
-      _          <- updateGovTalkStatus(UpdateGovTalkStatusRequest(instanceId, submissionId, None, "dataRequest"))
+      _          <- updateGovTalkStatus(UpdateGovTalkStatusRequest(instanceId, submissionId, None, DataRequest.value))
     } yield ()
 
   def pollSubmissionAndUpdateGovTalkStatus(
@@ -258,7 +261,7 @@ class SubmissionService @Inject() (
       _                  <- formPSubmissionUpdateProcessorRegistry
                               .processorFor(journey)
                               .handlePollResponse(session, result)
-      _                  <- deleteChrisResourcesIfNeeded(result.status, session.correlationId, pollUrl)
+      _                  <- deleteChrisResourcesIfNeeded(result.status, session.correlationId, pollUrl, journey)
       nextLastMessageDate = result.lastMessageDate
                               .flatMap(ts => Try(Instant.parse(ts)).toOption)
                               .getOrElse(session.lastMessageDate)
@@ -272,17 +275,32 @@ class SubmissionService @Inject() (
                               nextPollUrl
                             )
       updatedSession     <- getChrisSubmissionSession(submissionId)
-      _                  <- runGovTalkStatusUpdateSteps(
-                              updatedSession.instanceId,
-                              submissionId,
-                              updatedSession.correlationId,
-                              nextLastMessageDate,
-                              updatedSession.numPolls,
-                              nextPollInterval,
-                              nextPollUrl
-                            )
-      _                  <- fetchAndStoreGovTalkStatus(session.instanceId, submissionId)
+
+      (protocolStatus, endStateDate) = govTalkStatusDetails(result.status)
+      _                             <- runGovTalkStatusUpdateSteps(
+                                         updatedSession.instanceId,
+                                         submissionId,
+                                         updatedSession.correlationId,
+                                         nextLastMessageDate,
+                                         updatedSession.numPolls,
+                                         nextPollInterval,
+                                         nextPollUrl,
+                                         protocolStatus.value,
+                                         endStateDate
+                                       )
+      _                             <- fetchAndStoreGovTalkStatus(session.instanceId, submissionId)
     } yield result
+
+  private def govTalkStatusDetails(
+    status: SubmissionStatus
+  ): (GovTalkProtocolStatus, Option[LocalDateTime]) =
+    status match {
+      case SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR =>
+        (EndState, Some(LocalDateTime.now(ZoneOffset.UTC)))
+
+      case _ =>
+        (DataPoll, None)
+    }
 
   def processMonthlyReturnGovTalkStatusCheck(
     instanceId: String,
@@ -320,7 +338,8 @@ class SubmissionService @Inject() (
                              lastMessageDate,
                              0,
                              statusRecord.pollInterval,
-                             statusRecord.gatewayURL
+                             statusRecord.gatewayURL,
+                             DataPoll.value
                            )
     } yield statusRecord.gatewayURL
   }
@@ -408,7 +427,8 @@ class SubmissionService @Inject() (
     numPolls: Int,
     pollInterval: Int,
     gatewayURL: String,
-    protocolStatus: String = "dataPoll"
+    protocolStatus: String,
+    endStateDate: Option[LocalDateTime] = None
   )(implicit hc: HeaderCarrier): Future[Unit] =
     for {
       _ <- updateGovTalkStatusCorrelationId(
@@ -434,7 +454,7 @@ class SubmissionService @Inject() (
              UpdateGovTalkStatusRequest(
                instanceId,
                submissionId,
-               None,
+               endStateDate,
                protocolStatus
              )
            )
