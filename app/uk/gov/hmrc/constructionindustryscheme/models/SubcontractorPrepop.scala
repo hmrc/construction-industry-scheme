@@ -26,11 +26,13 @@ final case class PrePopSubcontractor(
   title: String,
   firstName: String,
   secondName: String,
-  surname: String
+  surname: String,
+  tradingName: Option[String] = None
 )
 
 object PrePopSubcontractor {
-  implicit val format: OFormat[PrePopSubcontractor] = Json.format[PrePopSubcontractor]
+  implicit val format: OFormat[PrePopSubcontractor] =
+    Json.using[Json.WithDefaultValues].format[PrePopSubcontractor]
 }
 
 final case class PrePopSubcontractorsBody(
