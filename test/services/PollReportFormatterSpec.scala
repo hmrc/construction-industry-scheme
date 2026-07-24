@@ -61,35 +61,6 @@ class PollReportFormatterSpec extends AnyFreeSpec with Matchers {
       lines(4) mustBe expectedRow
     }
 
-    "show FATAL ERROR as the current status for recoverable ChRIS content" in new Setup {
-
-      val recoverableErrorContent =
-        PollReportContent.forRecoverableError(
-          user = "ONLINE",
-          submissionType = "CIS300MR",
-          submissionId = "90002",
-          govTalkRequestStatus = "SUBMITTED",
-          employerReference = "123/456789",
-          correlationId = "correlation-id-001",
-          agentId = "A123456"
-        )
-
-      val result =
-        PollReportFormatter.format(
-          reportContent = Seq(recoverableErrorContent),
-          generatedAt = generatedAt
-        )
-
-      val reportRow =
-        result.linesIterator
-          .find(_.contains("90002"))
-          .getOrElse(
-            fail("Expected report row for submission 90002")
-          )
-
-      reportRow must include("FATAL ERROR")
-    }
-
     "truncate an oversized value to width minus three followed by ellipsis" in new Setup {
 
       val oversizedContent =

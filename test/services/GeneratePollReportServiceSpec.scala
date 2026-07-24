@@ -45,26 +45,6 @@ class GeneratePollReportServiceSpec extends AnyFreeSpec with Matchers with Scala
         )
         .futureValue mustBe ()
     }
-
-    "generate and log recoverable-error report content successfully" in new Setup {
-
-      val recoverableErrorContent =
-        PollReportContent.forRecoverableError(
-          user = reportContent.user,
-          submissionType = reportContent.submissionType,
-          submissionId = reportContent.submissionId,
-          govTalkRequestStatus = reportContent.govTalkRequestStatus,
-          employerReference = reportContent.employerReference,
-          correlationId = reportContent.correlationId,
-          agentId = reportContent.agentId
-        )
-
-      service
-        .generatePollReport(
-          reportContent = Seq(recoverableErrorContent)
-        )
-        .futureValue mustBe ()
-    }
   }
 
   private trait Setup {

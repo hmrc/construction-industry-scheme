@@ -104,7 +104,7 @@ class MonthlyReturnPollingProcessService @Inject() (
           )
 
       reportContent <-
-        if (hasMatchingStatus(submission, submissionDetails)) {
+        if (hasMatchingStatus(monthlyReturn, submissionDetails)) {
           pollAndUpdateSubmission(
             submission = submission,
             monthlyReturn = monthlyReturn,
@@ -117,8 +117,8 @@ class MonthlyReturnPollingProcessService @Inject() (
               s"Skipping ChRIS poll because F1 status does not match DB status for " +
               s"instanceId=${submission.instanceId}, " +
               s"submissionId=${submission.submissionId}, " +
-              s"f1Status=${submission.status}, " +
-              s"dbStatus=${submissionDetails.status.getOrElse(unavailableReportValue)}"
+              s"monthlyReturnStatus=${monthlyReturn.status.getOrElse(unavailableReportValue)}, " +
+              s"submissionStatus=${submissionDetails.status.getOrElse(unavailableReportValue)}"
           )
 
           Future.successful(
@@ -149,11 +149,18 @@ class MonthlyReturnPollingProcessService @Inject() (
                         ChrisPollJourney.MonthlyReturn
                       )
 
+      reportContent =
+        toPollReportContent(
+          submission,
+          submissionDetails,
+          pollResponse
+        )
+
       _ = logPollDurationIfRequired(
-            startTime = startTime,
-            submissionRequestDate = submissionDetails.submissionRequestDate,
-            submissionStatus = pollResponse.status,
-            submissionId = submission.submissionId.toString
+            startTime,
+            submissionDetails.submissionRequestDate,
+            pollResponse.status,
+            submission.submissionId.toString
           )
 
       updateRequest =
@@ -172,7 +179,14 @@ class MonthlyReturnPollingProcessService @Inject() (
           govTalkResponse = pollResponse.govTalkErrorStatus
         )
 
-      _ <- submissionService.updateSubmission(updateRequest)
+      _ <- submissionService
+             .updateSubmission(updateRequest)
+             .recover { case NonFatal(exception) =>
+               logger.error(
+                 s"[MonthlyReturnPollingProcessService] Failed to update submissionId=${submission.submissionId}",
+                 exception
+               )
+             }
 
       _ <- sendEmailIfRequired(
              pollResponse.status,
@@ -180,19 +194,25 @@ class MonthlyReturnPollingProcessService @Inject() (
              monthlyReturn.taxMonth,
              monthlyReturn.taxYear,
              submission.submissionId.toString
-           )
-    } yield toPollReportContent(
-      submission = submission,
-      dbSubmission = submissionDetails,
-      pollResponse = pollResponse
-    )
+           ).recover { case NonFatal(exception) =>
+             logger.error(
+               s"[MonthlyReturnPollingProcessService] Failed to send email for submissionId=${submission.submissionId}",
+               exception
+             )
+           }
+    } yield reportContent
 
   private def hasMatchingStatus(
-    submission: MonthlyReturnSubmissionToPoll,
+    monthlyReturn: MonthlyReturn,
     dbSubmission: Submission
   ): Boolean =
-    dbSubmission.status
-      .exists(_.equalsIgnoreCase(submission.status))
+    (monthlyReturn.status, dbSubmission.status) match {
+      case (Some(monthlyReturnStatus), Some(submissionStatus)) =>
+        monthlyReturnStatus.equalsIgnoreCase(submissionStatus)
+
+      case _ =>
+        false
+    }
 
   private def toPollReportContent(
     submission: MonthlyReturnSubmissionToPoll,
@@ -239,7 +259,7 @@ class MonthlyReturnPollingProcessService @Inject() (
       govTalkRequestStatus = reportValue(submission.status),
       currentReturnStatus = unavailableReportValue,
       employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
-      correlationId = unavailableReportValue,
+      correlationId = notPolledCorrelationId,
       agentId = submission.agentId.getOrElse(unavailableReportValue)
     )
 

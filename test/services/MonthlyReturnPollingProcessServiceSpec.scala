@@ -79,13 +79,15 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
   private def makeMonthlyReturn(
     taxYear: Int = testTaxYear,
     taxMonth: Int = testTaxMonth,
-    amendment: Option[String] = None
+    amendment: Option[String] = None,
+    status: Option[String] = Some("STARTED")
   ): MonthlyReturn =
     MonthlyReturn(
       monthlyReturnId = 1L,
       taxYear = taxYear,
       taxMonth = taxMonth,
-      amendment = amendment
+      amendment = amendment,
+      status = status
     )
 
   private def makeDbSubmission(
@@ -195,7 +197,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
         result.head.submissionId mustBe sub1.submissionId.toString
         result.head.currentReturnStatus mustBe "-"
-        result.head.correlationId mustBe "-"
+        result.head.correlationId mustBe "(not polled)"
         result.head.agentId mustBe "-"
 
         result(1).submissionId mustBe sub2.submissionId.toString
@@ -361,7 +363,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
         result must have size 1
         result.head.currentReturnStatus mustBe "-"
-        result.head.correlationId mustBe "-"
+        result.head.correlationId mustBe "(not polled)"
         result.head.agentId mustBe "-"
 
         verify(submissionService, never()).updateSubmission(any())(any())
@@ -375,20 +377,23 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
         result must have size 1
         result.head.currentReturnStatus mustBe "-"
-        result.head.correlationId mustBe "-"
+        result.head.correlationId mustBe "(not polled)"
         result.head.agentId mustBe "-"
 
         verify(submissionService, never()).updateSubmission(any())(any())
       }
 
-      "must not poll ChRIS when F1 status does not match DB submission status" in {
+      "must not poll ChRIS when monthly return status does not match DB submission status" in {
         val submission =
           makeSubmission()
 
         val details =
           makeDetails(
-            dbSubmission = makeDbSubmission(
+            monthlyReturn = makeMonthlyReturn(
               status = Some("ACCEPTED")
+            ),
+            dbSubmission = makeDbSubmission(
+              status = Some("STARTED")
             )
           )
 
@@ -427,6 +432,41 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
         verify(submissionService, never())
           .sendSuccessfulEmail(any(), any())(any())
+      }
+
+      "must return not polled report content when ChRIS polling fails" in {
+        setupHappyPath()
+        when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any()))
+          .thenReturn(Future.failed(new RuntimeException("ChRIS polling failed")))
+
+        val result = service.process(Seq(makeSubmission()), startTime).futureValue
+
+        result.head.currentReturnStatus mustBe "-"
+        result.head.correlationId mustBe "(not polled)"
+        verify(submissionService, never()).updateSubmission(any())(any())
+        verify(submissionService, never()).sendSuccessfulEmail(any(), any())(any())
+      }
+
+      "must preserve poll status and correlation ID when update submission fails" in {
+        setupHappyPath(pollResponse = makePollResponse(ACCEPTED))
+        when(submissionService.updateSubmission(any())(any()))
+          .thenReturn(Future.failed(new RuntimeException("update submission failed")))
+
+        val result = service.process(Seq(makeSubmission()), startTime).futureValue
+
+        result.head.currentReturnStatus mustBe "ACCEPTED"
+        result.head.correlationId mustBe "corr-123"
+      }
+
+      "must preserve poll status and correlation ID when sending email fails" in {
+        setupHappyPath(pollResponse = makePollResponse(SUBMITTED))
+        when(submissionService.sendSuccessfulEmail(any(), any())(any()))
+          .thenReturn(Future.failed(new RuntimeException("send email failed")))
+
+        val result = service.process(Seq(makeSubmission()), startTime).futureValue
+
+        result.head.currentReturnStatus mustBe "SUBMITTED"
+        result.head.correlationId mustBe "corr-123"
       }
 
       "must set currentReturnStatus to '-' when ChRIS poll response status is null" in {
