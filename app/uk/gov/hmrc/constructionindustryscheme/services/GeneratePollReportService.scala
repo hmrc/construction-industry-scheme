@@ -17,25 +17,27 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.constructionindustryscheme.models.PollReportContent
 
+import java.time.{Clock, LocalDateTime}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.Future
 
 @Singleton
-class GeneratePollReportService @Inject() () extends Logging {
+class GeneratePollReportService @Inject() (
+  clock: Clock
+) extends Logging {
 
-  def generatePollReport()(implicit hc: HeaderCarrier): Future[Unit] = {
-    logger.info("[GeneratePollReportService][generatePollReport] Calling F8 - Generate Poll Report")
+  def generatePollReport(
+    reportContent: Seq[PollReportContent]
+  ): Future[Unit] = {
+    val report =
+      PollReportFormatter.format(
+        reportContent = reportContent,
+        generatedAt = LocalDateTime.now(clock)
+      )
 
-    /*
-     * TODO:
-     * Implement F8 - Generate Poll Report here.
-     *
-     * This should be called only when both:
-     * - verification submissions list is empty
-     * - monthly return submissions list is empty
-     */
+    logger.info(report)
 
     Future.unit
   }

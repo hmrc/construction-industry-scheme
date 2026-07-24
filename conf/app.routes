@@ -56,9 +56,9 @@ POST          /verification-batch/create                                 uk.gov.
 POST          /verification/submission/create                            uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createSubmissionAndUpdateVerifications()
 POST          /verification/submission/update                            uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.updateVerificationSubmission()
 POST          /verification-batch/send-email                             uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.sendEmailForVerification
-POST          /verification/response/process                       uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.processVerificationResponseFromChris()
-POST          /verification/submitted-verifications                    uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getSubmittedVerifications()
+POST          /verification/response/process                             uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.processVerificationResponseFromChris()
+POST          /verification/submitted-verifications                      uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getSubmittedVerifications()
 
-GET          /journey-handoffs/:journeyType/:id                          uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.get(journeyType: String, id: String)
-POST         /journey-handoffs/:journeyType                              uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.create(journeyType: String)
-DELETE       /journey-handoffs/:journeyType/:id                          uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.delete(journeyType: String, id: String)
+GET           /journey-handoffs/:journeyType/:id                         uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.get(journeyType: String, id: String)
+POST          /journey-handoffs/:journeyType                             uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.create(journeyType: String)
+DELETE        /journey-handoffs/:journeyType/:id                         uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.delete(journeyType: String, id: String)
