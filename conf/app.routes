@@ -40,6 +40,7 @@ GET        /subcontractors/utr/:cisId                                    uk.gov.
 GET        /subcontractors/:cisId                                        uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractorList(cisId: String)
 GET        /subcontractor/:cisId/:subbieResourceRef/delete-status        uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractorDeleteStatus(cisId: String, subbieResourceRef: Long)
 GET        /subcontractor/:cisId/:subbieResourceRef                      uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractor(cisId: String, subbieResourceRef: Long)
+POST       /subcontractor/delete                                         uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.deleteSubcontractor()
 
 POST       /amend-monthly-return/create                                  uk.gov.hmrc.constructionindustryscheme.controllers.AmendMonthlyReturnController.createAmendedMonthlyReturn()
 
