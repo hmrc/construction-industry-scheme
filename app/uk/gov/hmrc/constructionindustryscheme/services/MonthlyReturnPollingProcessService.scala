@@ -137,12 +137,43 @@ class MonthlyReturnPollingProcessService @Inject() (
     submissionDetails: Submission,
     startTime: Long
   )(implicit hc: HeaderCarrier): Future[PollReportContent] =
-    for {
-      gatewayUrl <- submissionService.processMonthlyReturnGovTalkStatusCheck(
-                      submission.instanceId,
-                      submission.submissionId.toString
-                    )
+    submissionService
+      .processMonthlyReturnGovTalkStatusCheck(
+        submission.instanceId,
+        submission.submissionId.toString
+      )
+      .flatMap { gatewayUrl =>
+        pollSubmissionAndBuildReportContent(
+          submission = submission,
+          monthlyReturn = monthlyReturn,
+          submissionDetails = submissionDetails,
+          startTime = startTime,
+          gatewayUrl = gatewayUrl
+        )
+      }
+      .recover { case NonFatal(exception) =>
+        logger.error(
+          s"[MonthlyReturnPollingProcessService][pollAndUpdateSubmission] " +
+            s"Skipping ChRIS poll because GovTalk status check failed for " +
+            s"instanceId=${submission.instanceId}, " +
+            s"submissionId=${submission.submissionId}",
+          exception
+        )
 
+        toNotPolledReportContent(
+          submission = submission,
+          dbSubmission = submissionDetails
+        )
+      }
+
+  private def pollSubmissionAndBuildReportContent(
+    submission: MonthlyReturnSubmissionToPoll,
+    monthlyReturn: MonthlyReturn,
+    submissionDetails: Submission,
+    startTime: Long,
+    gatewayUrl: String
+  )(implicit hc: HeaderCarrier): Future[PollReportContent] =
+    for {
       batchPollResult <- submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
                            submission.submissionId.toString,
                            gatewayUrl,
@@ -177,7 +208,7 @@ class MonthlyReturnPollingProcessService @Inject() (
 
              case BatchChRISPollResult.PostProcessingFailed(_, exception) =>
                logger.error(
-                 s"[MonthlyReturnPollingProcessService][pollAndUpdateSubmission] " +
+                 s"[MonthlyReturnPollingProcessService][pollSubmissionAndBuildReportContent] " +
                    s"Post-poll processing failed for submissionId=${submission.submissionId}. " +
                    s"Skipping submission table update and email, but returning poll report content.",
                  exception

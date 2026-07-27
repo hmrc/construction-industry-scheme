@@ -55,39 +55,43 @@ class BatchPollerService @Inject() (
           generatePollReportService.generatePollReport(
             Seq.empty[PollReportContent]
           )
-        } else if (monthlyReturnSubmissions.nonEmpty) {
+        } else {
           val verificationPollingProcess =
             Option
               .when(verificationSubmissions.nonEmpty) {
-                runPollingProcess("Verification Polling Process") {
-                  verificationPollingProcessService.process(verificationSubmissions)
+                runPollingProcess(
+                  "Verification Polling Process",
+                  Seq.empty[PollReportContent]
+                ) {
+                  verificationPollingProcessService.process(
+                    verificationSubmissions
+                  )
                 }
               }
-              .getOrElse(Future.unit)
+              .getOrElse(Future.successful(Seq.empty[PollReportContent]))
+
+          val monthlyReturnPollingProcess =
+            Option
+              .when(monthlyReturnSubmissions.nonEmpty) {
+                runPollingProcess(
+                  "Monthly Return Polling Process",
+                  Seq.empty[PollReportContent]
+                ) {
+                  monthlyReturnPollingProcessService.process(
+                    monthlyReturnSubmissions,
+                    startTime
+                  )
+                }
+              }
+              .getOrElse(Future.successful(Seq.empty[PollReportContent]))
 
           for {
-            monthlyReturnReportContent <-
-              monthlyReturnPollingProcessService.process(
-                monthlyReturnSubmissions,
-                startTime
-              )
-
-            _ <- verificationPollingProcess
-
-            _ <- generatePollReportService.generatePollReport(
-                   monthlyReturnReportContent
-                 )
+            verificationReportContent  <- verificationPollingProcess
+            monthlyReturnReportContent <- monthlyReturnPollingProcess
+            _                          <- generatePollReportService.generatePollReport(
+                                            verificationReportContent ++ monthlyReturnReportContent
+                                          )
           } yield ()
-        } else {
-          val processes: Seq[Future[Unit]] = Seq(
-            Option.when(verificationSubmissions.nonEmpty) {
-              runPollingProcess("Verification Polling Process") {
-                verificationPollingProcessService.process(verificationSubmissions)
-              }
-            }
-          ).flatten
-
-          Future.sequence(processes).map(_ => ())
         }
       }
       .recover { case NonFatal(exception) =>
@@ -98,8 +102,18 @@ class BatchPollerService @Inject() (
       }
   }
 
-  private def runPollingProcess(processName: String)(process: Future[Unit]): Future[Unit] =
+  private def runPollingProcess[A](
+    processName: String,
+    fallback: => A
+  )(
+    process: => Future[A]
+  ): Future[A] =
     process.recover { case NonFatal(exception) =>
-      logger.error(s"[BatchPollerService][run] $processName failed", exception)
+      logger.error(
+        s"[BatchPollerService][run] $processName failed",
+        exception
+      )
+
+      fallback
     }
 }

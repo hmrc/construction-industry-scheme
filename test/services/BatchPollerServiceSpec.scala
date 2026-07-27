@@ -32,7 +32,8 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
 
   "BatchPollerService run" - {
 
-    val startTime = System.currentTimeMillis()
+    val startTime =
+      System.currentTimeMillis()
 
     "must call GeneratePollReportService with empty report when empty submission lists are returned" in new Setup {
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
@@ -54,24 +55,26 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
 
       verifyNoInteractions(mockMonthlyReturnPollingProcessService)
       verifyNoInteractions(mockVerificationPollingProcessService)
-
-      verifyNoMoreInteractions(
-        mockSubmissionService,
-        mockMonthlyReturnPollingProcessService,
-        mockVerificationPollingProcessService,
-        mockGeneratePollReportService
-      )
     }
 
-    "must process monthly return submissions and call GeneratePollReportService with report content" in new Setup {
+    "must process monthly return submissions and call GeneratePollReportService with monthly report content" in new Setup {
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(monthlyReturnOnlyResponse))
 
-      when(mockMonthlyReturnPollingProcessService.process(Seq(monthlyReturnSubmission), startTime)(using hc))
-        .thenReturn(Future.successful(monthlyReturnReportContent))
+      when(
+        mockMonthlyReturnPollingProcessService.process(
+          Seq(monthlyReturnSubmission),
+          startTime
+        )(using hc)
+      ).thenReturn(
+        Future.successful(monthlyReturnReportContent)
+      )
 
-      when(mockGeneratePollReportService.generatePollReport(monthlyReturnReportContent))
-        .thenReturn(Future.unit)
+      when(
+        mockGeneratePollReportService.generatePollReport(
+          monthlyReturnReportContent
+        )
+      ).thenReturn(Future.unit)
 
       service.run(startTime).futureValue mustBe ()
 
@@ -79,27 +82,34 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
         .getSubmissionsToPoll()(using hc)
 
       verify(mockMonthlyReturnPollingProcessService)
-        .process(Seq(monthlyReturnSubmission), startTime)(using hc)
-
-      verify(mockGeneratePollReportService)
-        .generatePollReport(monthlyReturnReportContent)
+        .process(
+          Seq(monthlyReturnSubmission),
+          startTime
+        )(using hc)
 
       verifyNoInteractions(mockVerificationPollingProcessService)
 
-      verifyNoMoreInteractions(
-        mockSubmissionService,
-        mockMonthlyReturnPollingProcessService,
-        mockVerificationPollingProcessService,
-        mockGeneratePollReportService
-      )
+      verify(mockGeneratePollReportService)
+        .generatePollReport(monthlyReturnReportContent)
     }
 
-    "must process verification submissions without calling GeneratePollReportService when only verification submissions are returned" in new Setup {
+    "must process verification submissions and call GeneratePollReportService with verification report content" in new Setup {
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(verificationOnlyResponse))
 
-      when(mockVerificationPollingProcessService.process(Seq(verificationSubmission))(using hc))
-        .thenReturn(Future.unit)
+      when(
+        mockVerificationPollingProcessService.process(
+          Seq(verificationSubmission)
+        )(using hc)
+      ).thenReturn(
+        Future.successful(verificationReportContent)
+      )
+
+      when(
+        mockGeneratePollReportService.generatePollReport(
+          verificationReportContent
+        )
+      ).thenReturn(Future.unit)
 
       service.run(startTime).futureValue mustBe ()
 
@@ -110,65 +120,15 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
         .process(Seq(verificationSubmission))(using hc)
 
       verifyNoInteractions(mockMonthlyReturnPollingProcessService)
-      verifyNoInteractions(mockGeneratePollReportService)
-
-      verifyNoMoreInteractions(
-        mockSubmissionService,
-        mockMonthlyReturnPollingProcessService,
-        mockVerificationPollingProcessService,
-        mockGeneratePollReportService
-      )
-    }
-
-    "must process verification and monthly return submissions and generate report with monthly report content" in new Setup {
-      when(mockSubmissionService.getSubmissionsToPoll()(using hc))
-        .thenReturn(Future.successful(nonEmptyResponse))
-
-      when(
-        mockVerificationPollingProcessService.process(
-          Seq(verificationSubmission)
-        )(using hc)
-      ).thenReturn(Future.unit)
-
-      when(
-        mockMonthlyReturnPollingProcessService.process(
-          Seq(monthlyReturnSubmission),
-          startTime
-        )(using hc)
-      ).thenReturn(Future.successful(monthlyReturnReportContent))
-
-      when(
-        mockGeneratePollReportService.generatePollReport(
-          monthlyReturnReportContent
-        )
-      ).thenReturn(Future.unit)
-
-      service.run(startTime).futureValue mustBe ()
-
-      verify(mockSubmissionService)
-        .getSubmissionsToPoll()(using hc)
-
-      verify(mockVerificationPollingProcessService)
-        .process(Seq(verificationSubmission))(using hc)
-
-      verify(mockMonthlyReturnPollingProcessService)
-        .process(
-          Seq(monthlyReturnSubmission),
-          startTime
-        )(using hc)
 
       verify(mockGeneratePollReportService)
-        .generatePollReport(monthlyReturnReportContent)
-
-      verifyNoMoreInteractions(
-        mockSubmissionService,
-        mockMonthlyReturnPollingProcessService,
-        mockVerificationPollingProcessService,
-        mockGeneratePollReportService
-      )
+        .generatePollReport(verificationReportContent)
     }
 
-    "must attempt monthly return polling and generate report when verification polling fails" in new Setup {
+    "must process verification and monthly return submissions and call GeneratePollReportService with combined report content" in new Setup {
+      val combinedReportContent =
+        verificationReportContent ++ monthlyReturnReportContent
+
       when(mockSubmissionService.getSubmissionsToPoll()(using hc))
         .thenReturn(Future.successful(nonEmptyResponse))
 
@@ -177,9 +137,7 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
           Seq(verificationSubmission)
         )(using hc)
       ).thenReturn(
-        Future.failed(
-          new RuntimeException("verification polling failed")
-        )
+        Future.successful(verificationReportContent)
       )
 
       when(
@@ -187,11 +145,13 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
           Seq(monthlyReturnSubmission),
           startTime
         )(using hc)
-      ).thenReturn(Future.successful(monthlyReturnReportContent))
+      ).thenReturn(
+        Future.successful(monthlyReturnReportContent)
+      )
 
       when(
         mockGeneratePollReportService.generatePollReport(
-          monthlyReturnReportContent
+          combinedReportContent
         )
       ).thenReturn(Future.unit)
 
@@ -210,7 +170,7 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
         )(using hc)
 
       verify(mockGeneratePollReportService)
-        .generatePollReport(monthlyReturnReportContent)
+        .generatePollReport(combinedReportContent)
     }
 
     "must recover and complete when SubmissionService fails" in new Setup {
@@ -229,13 +189,40 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       verifyNoInteractions(mockMonthlyReturnPollingProcessService)
       verifyNoInteractions(mockVerificationPollingProcessService)
       verifyNoInteractions(mockGeneratePollReportService)
+    }
 
-      verifyNoMoreInteractions(
-        mockSubmissionService,
-        mockMonthlyReturnPollingProcessService,
-        mockVerificationPollingProcessService,
-        mockGeneratePollReportService
+    "must recover and complete when verification polling fails" in new Setup {
+      when(mockSubmissionService.getSubmissionsToPoll()(using hc))
+        .thenReturn(Future.successful(verificationOnlyResponse))
+
+      when(
+        mockVerificationPollingProcessService.process(
+          Seq(verificationSubmission)
+        )(using hc)
+      ).thenReturn(
+        Future.failed(
+          new RuntimeException("verification polling failed")
+        )
       )
+
+      when(
+        mockGeneratePollReportService.generatePollReport(
+          Seq.empty[PollReportContent]
+        )
+      ).thenReturn(Future.unit)
+
+      service.run(startTime).futureValue mustBe ()
+
+      verify(mockSubmissionService)
+        .getSubmissionsToPoll()(using hc)
+
+      verify(mockVerificationPollingProcessService)
+        .process(Seq(verificationSubmission))(using hc)
+
+      verifyNoInteractions(mockMonthlyReturnPollingProcessService)
+
+      verify(mockGeneratePollReportService)
+        .generatePollReport(Seq.empty[PollReportContent])
     }
 
     "must recover and complete when monthly return polling fails" in new Setup {
@@ -253,6 +240,12 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
         )
       )
 
+      when(
+        mockGeneratePollReportService.generatePollReport(
+          Seq.empty[PollReportContent]
+        )
+      ).thenReturn(Future.unit)
+
       service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService)
@@ -265,14 +258,9 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
         )(using hc)
 
       verifyNoInteractions(mockVerificationPollingProcessService)
-      verifyNoInteractions(mockGeneratePollReportService)
 
-      verifyNoMoreInteractions(
-        mockSubmissionService,
-        mockMonthlyReturnPollingProcessService,
-        mockVerificationPollingProcessService,
-        mockGeneratePollReportService
-      )
+      verify(mockGeneratePollReportService)
+        .generatePollReport(Seq.empty[PollReportContent])
     }
   }
 
@@ -329,16 +317,30 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
         agentId = Some("A123456")
       )
 
+    val verificationReportContent: Seq[PollReportContent] =
+      Seq(
+        PollReportContent(
+          user = "instance-verification-001",
+          submissionType = "VERIFICATIONS",
+          submissionId = "90001",
+          govTalkRequestStatus = "ACCEPTED",
+          currentReturnStatus = "ACCEPTED",
+          employerReference = "123/ABC123",
+          correlationId = "verification-correlation-id-001",
+          agentId = "A123456"
+        )
+      )
+
     val monthlyReturnReportContent: Seq[PollReportContent] =
       Seq(
         PollReportContent(
           user = "instance-monthly-return-001",
-          submissionType = "CIS300MR",
+          submissionType = "MONTHLY_RETURN",
           submissionId = "90002",
-          govTalkRequestStatus = "SUBMITTED",
+          govTalkRequestStatus = "ACCEPTED",
           currentReturnStatus = "ACCEPTED",
           employerReference = "123/456789",
-          correlationId = "correlation-id-001",
+          correlationId = "monthly-correlation-id-001",
           agentId = "A123456"
         )
       )
