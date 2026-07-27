@@ -29,7 +29,7 @@ class BatchPollerService @Inject() (
   submissionService: SubmissionService,
   generatePollReportService: GeneratePollReportService,
   monthlyReturnPollingProcessService: MonthlyReturnPollingProcessService,
-  verificationPollingProcessService: VerificationPollingProcessService,
+  verificationPollingProcessService: VerificationPollingProcessService
 )(implicit ec: ExecutionContext)
     extends Logging {
 
@@ -56,26 +56,33 @@ class BatchPollerService @Inject() (
             Seq.empty[PollReportContent]
           )
         } else if (monthlyReturnSubmissions.nonEmpty) {
-          monthlyReturnPollingProcessService
-            .process(
-              monthlyReturnSubmissions,
-              startTime
-            )
-            .flatMap { monthlyReturnReportContent =>
-              generatePollReportService.generatePollReport(
-                monthlyReturnReportContent
+          val verificationPollingProcess =
+            Option
+              .when(verificationSubmissions.nonEmpty) {
+                runPollingProcess("Verification Polling Process") {
+                  verificationPollingProcessService.process(verificationSubmissions)
+                }
+              }
+              .getOrElse(Future.unit)
+
+          for {
+            monthlyReturnReportContent <-
+              monthlyReturnPollingProcessService.process(
+                monthlyReturnSubmissions,
+                startTime
               )
-            }
+
+            _ <- verificationPollingProcess
+
+            _ <- generatePollReportService.generatePollReport(
+                   monthlyReturnReportContent
+                 )
+          } yield ()
         } else {
           val processes: Seq[Future[Unit]] = Seq(
             Option.when(verificationSubmissions.nonEmpty) {
               runPollingProcess("Verification Polling Process") {
                 verificationPollingProcessService.process(verificationSubmissions)
-              }
-            },
-            Option.when(monthlyReturnSubmissions.nonEmpty) {
-              runPollingProcess("Monthly Return Polling Process") {
-                monthlyReturnPollingProcessService.process(monthlyReturnSubmissions, startTime)
               }
             }
           ).flatten
