@@ -20,6 +20,7 @@ import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, MonthlyReturnSubmissionToPoll}
+//import uk.gov.hmrc.constructionindustryscheme.services.BatchChRISPollResult.{Completed, PostProcessingFailed}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import java.time.{LocalDateTime, ZoneId}
@@ -143,11 +144,14 @@ class MonthlyReturnPollingProcessService @Inject() (
                       submission.submissionId.toString
                     )
 
-      pollResponse <- submissionService.pollSubmissionAndUpdateGovTalkStatus(
-                        submission.submissionId.toString,
-                        gatewayUrl,
-                        ChrisPollJourney.MonthlyReturn
-                      )
+      batchPollResult <- submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
+                           submission.submissionId.toString,
+                           gatewayUrl,
+                           ChrisPollJourney.MonthlyReturn
+                         )
+
+      pollResponse =
+        batchPollResult.response
 
       reportContent =
         toPollReportContent(
@@ -163,30 +167,51 @@ class MonthlyReturnPollingProcessService @Inject() (
             submission.submissionId.toString
           )
 
-      updateRequest =
-        UpdateSubmissionRequest(
-          instanceId = submission.instanceId,
-          taxYear = monthlyReturn.taxYear,
-          taxMonth = monthlyReturn.taxMonth,
-          hmrcMarkGenerated = submissionDetails.hmrcMarkGenerated,
-          submittableStatus = currentReturnStatus(pollResponse),
-          amendment = monthlyReturn.amendment.getOrElse("N"),
-          hmrcMarkGgis = pollResponse.irMarkReceived,
-          submissionRequestDate = submissionDetails.submissionRequestDate,
-          acceptedTime = pollResponse.acceptedTime,
-          emailRecipient = submissionDetails.emailRecipient,
-          agentId = submissionDetails.agentId,
-          govTalkResponse = pollResponse.govTalkErrorStatus
-        )
+      _ <- batchPollResult match {
+             case BatchChRISPollResult.Completed(_) =>
+               updateSubmissionAndSendEmail(
+                 submission = submission,
+                 monthlyReturn = monthlyReturn,
+                 submissionDetails = submissionDetails,
+                 pollResponse = pollResponse
+               )
 
-      _ <- submissionService
-             .updateSubmission(updateRequest)
-             .recover { case NonFatal(exception) =>
+             case BatchChRISPollResult.PostProcessingFailed(_, exception) =>
                logger.error(
-                 s"[MonthlyReturnPollingProcessService] Failed to update submissionId=${submission.submissionId}",
+                 s"[MonthlyReturnPollingProcessService][pollAndUpdateSubmission] " +
+                   s"Post-poll processing failed for submissionId=${submission.submissionId}. " +
+                   s"Skipping submission table update and email, but returning poll report content.",
                  exception
                )
-             }
+
+               Future.unit
+           }
+    } yield reportContent
+
+  private def updateSubmissionAndSendEmail(
+    submission: MonthlyReturnSubmissionToPoll,
+    monthlyReturn: MonthlyReturn,
+    submissionDetails: Submission,
+    pollResponse: ChrisPollResponse
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
+    val updateRequest =
+      UpdateSubmissionRequest(
+        instanceId = submission.instanceId,
+        taxYear = monthlyReturn.taxYear,
+        taxMonth = monthlyReturn.taxMonth,
+        hmrcMarkGenerated = submissionDetails.hmrcMarkGenerated,
+        submittableStatus = currentReturnStatus(pollResponse),
+        amendment = monthlyReturn.amendment.getOrElse("N"),
+        hmrcMarkGgis = pollResponse.irMarkReceived,
+        submissionRequestDate = submissionDetails.submissionRequestDate,
+        acceptedTime = pollResponse.acceptedTime,
+        emailRecipient = submissionDetails.emailRecipient,
+        agentId = submissionDetails.agentId,
+        govTalkResponse = pollResponse.govTalkErrorStatus
+      )
+
+    for {
+      _ <- submissionService.updateSubmission(updateRequest)
 
       _ <- sendEmailIfRequired(
              pollResponse.status,
@@ -194,13 +219,9 @@ class MonthlyReturnPollingProcessService @Inject() (
              monthlyReturn.taxMonth,
              monthlyReturn.taxYear,
              submission.submissionId.toString
-           ).recover { case NonFatal(exception) =>
-             logger.error(
-               s"[MonthlyReturnPollingProcessService] Failed to send email for submissionId=${submission.submissionId}",
-               exception
-             )
-           }
-    } yield reportContent
+           )
+    } yield ()
+  }
 
   private def hasMatchingStatus(
     monthlyReturn: MonthlyReturn,
