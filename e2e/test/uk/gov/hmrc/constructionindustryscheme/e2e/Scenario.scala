@@ -33,6 +33,11 @@ enum Mode(val label: String) {
   * @param pollUrlOverride
   *   poll this URL instead of the submit's responseEndPoint.url (still after a successful submit, so the GovTalk record
   *   for the submissionId exists)
+  * @param expectSubmitErrorText
+  *   expected `error.text` of the submit body, when checked; distinguishes the connection-refused branch ("timed out")
+  *   from the HTTP-5xx branch ("timeOut"), which otherwise share error number/type
+  * @param expectPollErrorText
+  *   expected `error.errorText` of the poll body, when checked (see expectSubmitErrorText)
   */
 final case class Scenario(
   ton: String,
@@ -42,5 +47,7 @@ final case class Scenario(
   expectSubmitStatus: Option[String],
   expectPollStatus: Option[String],
   expectPollErrorNumber: Option[Int] = None,
-  pollUrlOverride: Option[String] = None
+  pollUrlOverride: Option[String] = None,
+  expectSubmitErrorText: Option[String] = None,
+  expectPollErrorText: Option[String] = None
 )

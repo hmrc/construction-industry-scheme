@@ -53,6 +53,10 @@ abstract class E2eBaseSpec extends AnyFunSuite with Matchers {
     withClue(s"submit response body: ${submit.body}\n") {
       submit.status shouldBe s.expectSubmitHttp
       s.expectSubmitStatus.foreach(expected => (submit.json \ "status").asOpt[String] shouldBe Some(expected))
+      // submit renders the GovTalk error as error.{number,type,text}
+      s.expectSubmitErrorText.foreach(expected =>
+        (submit.json \ "error" \ "text").asOpt[String] shouldBe Some(expected)
+      )
     }
 
     s.expectPollStatus.foreach { expectedPollStatus =>
@@ -73,6 +77,10 @@ abstract class E2eBaseSpec extends AnyFunSuite with Matchers {
           }
           actual shouldBe Some(n.toString)
         }
+        // poll renders the GovTalk error via Json.toJson(GovTalkError) -> error.{errorNumber,errorType,errorText}
+        s.expectPollErrorText.foreach(expected =>
+          (poll.json \ "error" \ "errorText").asOpt[String] shouldBe Some(expected)
+        )
       }
     }
   }

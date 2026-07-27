@@ -27,6 +27,33 @@ object Scenarios {
 
   private val s3PollUrl = s"${E2eConfig.stubHost}/submission/ChRIS/poll/IR-CIS-VERIFY/2?final=SERVER_ERROR_500"
 
+  // Poll leg for the connection-abort scenario: the stub aborts the connection mid-stream on this crafted URL (count>=2),
+  // so the backend hits its transport-failure branch (ACCEPTED + "timed out"). Mirrors s3PollUrl.
+  private val abortPollUrl = s"${E2eConfig.stubHost}/submission/ChRIS/poll/IR-CIS-VERIFY/2?final=CONNECTION_ABORT"
+
+  private val connectionAbortRows: Seq[Scenario] = Seq(
+    Scenario(
+      "781",
+      "EZ00100",
+      "F18 s8: connection abort on submit -> FATAL_ERROR (transport failure, not 5xx)",
+      200,
+      Some("FATAL_ERROR"),
+      None,
+      expectSubmitErrorText = Some("timed out")
+    ),
+    Scenario(
+      "123",
+      "EZ00100",
+      "F18 s9: connection abort on poll -> ACCEPTED (transport failure, not 5xx)",
+      202,
+      Some("ACCEPTED"),
+      Some("ACCEPTED"),
+      Some(500),
+      Some(abortPollUrl),
+      expectPollErrorText = Some("timed out")
+    )
+  )
+
   val enrolment: Seq[Scenario] = Seq(
     Scenario("123", "EZ00100", "happy path (success on poll)", 202, Some("ACCEPTED"), Some("SUBMITTED")),
     Scenario(
@@ -79,7 +106,7 @@ object Scenarios {
     ),
     Scenario("777", "EZ00100", "SUBMITTED_NO_RECEIPT on poll", 202, Some("ACCEPTED"), Some("SUBMITTED_NO_RECEIPT")),
     Scenario("778", "EZ00100", "forever-pending ack (poll succeeds)", 202, Some("ACCEPTED"), Some("SUBMITTED"))
-  )
+  ) ++ connectionAbortRows
 
   val agent: Seq[Scenario] = Seq(
     Scenario("123", "EZ00100", "happy path (success on poll)", 202, Some("ACCEPTED"), Some("SUBMITTED")),
@@ -126,7 +153,7 @@ object Scenarios {
     ),
     Scenario("777", "EZ00100", "SUBMITTED_NO_RECEIPT on poll", 202, Some("ACCEPTED"), Some("SUBMITTED_NO_RECEIPT")),
     Scenario("778", "EZ00100", "forever-pending ack (poll succeeds)", 202, Some("ACCEPTED"), Some("SUBMITTED"))
-  )
+  ) ++ connectionAbortRows
 
   val noEnrolment: Scenario =
     Scenario("123", "EZ00100", "isAgent=false without HMRC-CIS-ORG -> 500", 500, None, None)
