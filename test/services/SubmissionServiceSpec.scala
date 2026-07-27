@@ -28,7 +28,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.{ChrisPollJourney, *}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
-import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository}
+import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository, StoredRequestedVerification, StoredVerificationContext}
 import uk.gov.hmrc.constructionindustryscheme.services.*
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -1286,6 +1286,322 @@ final class SubmissionServiceSpec extends SpecBase {
       verify(formpProxyConnector, never()).resetGovTalkStatus(any[ResetGovTalkStatusRequest])(
         any[HeaderCarrier]
       )
+    }
+  }
+
+  "syncVerificationSessionForPolling" - {
+
+    val instanceId                   = "instance-123"
+    val submissionId                 = 123L
+    val submissionIdString           = submissionId.toString
+    val verificationBatchResourceRef = 5L
+    val submissionRequestDate        = LocalDateTime.of(2025, 1, 1, 10, 0)
+
+    val submissionToPoll =
+      VerificationSubmissionToPoll(
+        submissionId = submissionId,
+        submissionType = "VERIFICATIONS",
+        agentId = None,
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AB456",
+        instanceId = instanceId,
+        status = "SUBMITTED",
+        verificationBatchResourceRef = verificationBatchResourceRef
+      )
+
+    val snapshotRequest =
+      GetSubmissionWithVerificationBatchRequest(
+        instanceId = instanceId,
+        verificationBatchResourceRef = verificationBatchResourceRef
+      )
+
+    val snapshotResponse =
+      GetSubmissionWithVerificationBatchResponse(
+        scheme = None,
+        submission = Some(
+          Submission(
+            submissionId = submissionId,
+            submissionType = "VERIFICATIONS",
+            activeObjectId = Some(100L),
+            status = Some("SUBMITTED"),
+            hmrcMarkGenerated = Some("hmrc-mark"),
+            hmrcMarkGgis = None,
+            emailRecipient = None,
+            acceptedTime = None,
+            createDate = None,
+            lastUpdate = None,
+            schemeId = 200L,
+            agentId = None,
+            l_Migrated = None,
+            submissionRequestDate = Some(submissionRequestDate),
+            govTalkErrorCode = None,
+            govTalkErrorType = None,
+            govTalkErrorMessage = None
+          )
+        ),
+        verificationBatch = None,
+        verifications = Seq(
+          Verification(
+            verificationId = 1L,
+            matched = None,
+            verificationNumber = None,
+            taxTreatment = None,
+            verificationBatchId = Some(100L),
+            subcontractorId = Some(10L),
+            actionIndicator = Some("verify"),
+            proceed = Some("Y")
+          )
+        ),
+        subcontractors = Seq(
+          Subcontractor(
+            subcontractorId = 10L,
+            utr = Some("1234567890"),
+            pageVisited = None,
+            partnerUtr = None,
+            crn = None,
+            firstName = Some("John"),
+            nino = Some("AB123456C"),
+            secondName = None,
+            surname = Some("Smith"),
+            partnershipTradingName = None,
+            tradingName = None,
+            subcontractorType = Some("soletrader"),
+            addressLine1 = None,
+            addressLine2 = None,
+            addressLine3 = None,
+            addressLine4 = None,
+            country = None,
+            postcode = None,
+            emailAddress = None,
+            phoneNumber = None,
+            mobilePhoneNumber = None,
+            worksReferenceNumber = None,
+            createDate = None,
+            lastUpdate = None,
+            subbieResourceRef = Some(13L),
+            matched = None,
+            autoVerified = None,
+            verified = None,
+            verificationNumber = None,
+            taxTreatment = None,
+            verificationDate = None,
+            version = None,
+            updatedTaxTreatment = None,
+            lastMonthlyReturnDate = None,
+            pendingVerifications = None
+          )
+        )
+      )
+
+    "must retrieve fresh data, upsert the session and return it" in new Setup {
+      val correlationId = "corr-123"
+      val pollUrl       = "/poll/123"
+
+      val statusRecord =
+        GovTalkStatusRecord(
+          userIdentifier = instanceId,
+          formResultID = submissionIdString,
+          correlationID = correlationId,
+          formLock = "N",
+          createDate = Some(LocalDateTime.of(2025, 1, 1, 10, 0)),
+          endStateDate = None,
+          lastMessageDate = LocalDateTime.of(2025, 1, 1, 12, 30),
+          numPolls = 2,
+          pollInterval = 5,
+          protocolStatus = "dataPoll",
+          gatewayURL = pollUrl
+        )
+
+      val statusResponse =
+        GetGovTalkStatusResponse(
+          govtalk_status = Seq(statusRecord)
+        )
+
+      val expectedContext =
+        StoredVerificationContext(
+          verificationBatchResourceRef = verificationBatchResourceRef,
+          hmrcMarkGenerated = "hmrc-mark",
+          submissionRequestDate = submissionRequestDate,
+          actionIndicators = Seq(
+            VerificationActionIndicator(
+              verificationResourceRef = 13L,
+              actionIndicator = "verify"
+            )
+          ),
+          requestedVerifications = Seq(
+            StoredRequestedVerification(
+              verificationResourceRef = 13L,
+              subcontractorId = 10L,
+              subbieResourceRef = Some(13L),
+              subcontractorName = "John Smith",
+              actionIndicator = "verify",
+              proceedVerification = true,
+              foreName = Some("John"),
+              middleName = None,
+              surname = Some("Smith"),
+              tradingName = None,
+              utr = Some("1234567890"),
+              nino = Some("AB123456C"),
+              crn = None,
+              partnershipUtr = None,
+              subcontractorType = Some("soletrader")
+            )
+          )
+        )
+
+      val expectedSession =
+        ChrisSubmissionSessionData(
+          submissionId = submissionIdString,
+          instanceId = instanceId,
+          correlationId = correlationId,
+          lastMessageDate = Instant.parse("2025-01-01T12:30:00Z"),
+          numPolls = 2,
+          pollInterval = 5,
+          pollUrl = pollUrl,
+          govTalkStatus = Some(statusResponse),
+          monthlyReturnContext = None,
+          verificationContext = Some(expectedContext)
+        )
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(statusResponse)))
+
+      when(
+        formpProxyConnector.getSubmissionWithVerificationBatch(
+          eqTo(snapshotRequest)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(snapshotResponse))
+
+      when(chrisSubmissionSessionRepository.upsert(eqTo(expectedSession)))
+        .thenReturn(Future.unit)
+
+      service
+        .syncVerificationSessionForPolling(submissionToPoll)
+        .futureValue mustBe expectedSession
+
+      verify(formpProxyConnector).getGovTalkStatus(
+        eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
+        eqTo(Polling)
+      )(any[HeaderCarrier])
+
+      verify(formpProxyConnector).getSubmissionWithVerificationBatch(
+        eqTo(snapshotRequest)
+      )(any[HeaderCarrier])
+
+      verify(chrisSubmissionSessionRepository).upsert(eqTo(expectedSession))
+
+      verifyNoInteractions(chrisConnector)
+      verifyNoInteractions(emailConnector)
+    }
+
+    "must fail when no polling GovTalk status is found" in new Setup {
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(None))
+
+      when(
+        formpProxyConnector.getSubmissionWithVerificationBatch(
+          eqTo(snapshotRequest)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(snapshotResponse))
+
+      val result =
+        service
+          .syncVerificationSessionForPolling(submissionToPoll)
+          .failed
+          .futureValue
+
+      result mustBe a[RuntimeException]
+      result.getMessage mustBe
+        s"No polling GovTalk status found for instanceId: $instanceId, submissionId: $submissionIdString"
+
+      verify(formpProxyConnector).getGovTalkStatus(
+        eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
+        eqTo(Polling)
+      )(any[HeaderCarrier])
+
+      verify(formpProxyConnector).getSubmissionWithVerificationBatch(
+        eqTo(snapshotRequest)
+      )(any[HeaderCarrier])
+
+      verifyNoInteractions(chrisSubmissionSessionRepository)
+      verifyNoInteractions(chrisConnector)
+      verifyNoInteractions(emailConnector)
+    }
+
+    "must fail when polling GovTalk status contains no records" in new Setup {
+      val emptyStatusResponse =
+        GetGovTalkStatusResponse(
+          govtalk_status = Seq.empty
+        )
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(emptyStatusResponse)))
+
+      when(
+        formpProxyConnector.getSubmissionWithVerificationBatch(
+          eqTo(snapshotRequest)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(snapshotResponse))
+
+      val result =
+        service
+          .syncVerificationSessionForPolling(submissionToPoll)
+          .failed
+          .futureValue
+
+      result mustBe a[RuntimeException]
+      result.getMessage mustBe
+        s"No polling GovTalk status found for instanceId: $instanceId, submissionId: $submissionIdString"
+
+      verify(formpProxyConnector).getGovTalkStatus(
+        eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
+        eqTo(Polling)
+      )(any[HeaderCarrier])
+
+      verify(formpProxyConnector).getSubmissionWithVerificationBatch(
+        eqTo(snapshotRequest)
+      )(any[HeaderCarrier])
+
+      verifyNoInteractions(chrisSubmissionSessionRepository)
+      verifyNoInteractions(chrisConnector)
+      verifyNoInteractions(emailConnector)
+    }
+
+    "must propagate the failure when retrieving the GovTalk status fails" in new Setup {
+      val exception = new RuntimeException("GetGovTalkStatus failed")
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.failed(exception))
+
+      when(
+        formpProxyConnector.getSubmissionWithVerificationBatch(
+          eqTo(snapshotRequest)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(snapshotResponse))
+
+      val result =
+        service
+          .syncVerificationSessionForPolling(submissionToPoll)
+          .failed
+          .futureValue
+
+      result mustBe exception
     }
   }
 
