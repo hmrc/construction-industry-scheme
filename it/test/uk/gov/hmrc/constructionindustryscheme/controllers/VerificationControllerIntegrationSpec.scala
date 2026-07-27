@@ -34,7 +34,7 @@ class VerificationControllerIntegrationSpec
   private val instanceId                     = "123"
   private val getCurrentVerificationBatchUrl = s"$base/verification-batch/current/$instanceId"
   private val postModifyVerificationsUrl     = s"$base/verification-batch/modify"
-  private val postSubmittedVerificationsUrl = s"$base/verification/submitted-verifications"
+  private val postSubmittedVerificationsUrl  = s"$base/verification/submitted-verifications"
 
   "GET /verification-batch/current/:instanceId" should {
 
@@ -223,7 +223,7 @@ class VerificationControllerIntegrationSpec
       val response = postJson(
         postSubmittedVerificationsUrl,
         payload,
-        "X-Session-Id" -> "Session-123",
+        "X-Session-Id"  -> "Session-123",
         "Authorization" -> "Bearer it-token"
       )
 
@@ -255,7 +255,7 @@ class VerificationControllerIntegrationSpec
       val response = postJson(
         postSubmittedVerificationsUrl,
         payload,
-        "X-Session-Id" -> "Session-123",
+        "X-Session-Id"  -> "Session-123",
         "Authorization" -> "Bearer it-token"
       )
 

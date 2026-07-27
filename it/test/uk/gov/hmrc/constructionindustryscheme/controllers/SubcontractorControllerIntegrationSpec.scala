@@ -34,6 +34,7 @@ class SubcontractorControllerIntegrationSpec
   private val createAndUpdateSubcontractorUrl = s"$base/subcontractor/create-and-update"
   private val getUtrUrl                       = s"$base/subcontractors/utr/123"
   private val getSubcontractorListUrl         = s"$base/subcontractors/123"
+  private val getSubcontractorUrl             = s"$base/subcontractor/123/456"
 
   "POST /cis/subcontractor/create-and-update" should {
 
@@ -277,6 +278,101 @@ class SubcontractorControllerIntegrationSpec
 
       verify(
         getRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractors/123"))
+      )
+    }
+  }
+
+  "GET /cis/subcontractor/:cisId/:subbieResourceRef" should {
+
+    "return 200 with subcontractor when authorised and formp proxy succeeds" in {
+      AuthStub.authorisedWithCisEnrolment()
+
+      val formpResponse =
+        """{
+          |  "scheme": {
+          |    "schemeId": 123,
+          |    "instanceId": "123",
+          |    "accountsOfficeReference": "123PA00123456",
+          |    "taxOfficeNumber": "123",
+          |    "taxOfficeReference": "AB456",
+          |    "utr": "1234567890",
+          |    "name": "Test Contractor Ltd",
+          |    "version": 1
+          |  },
+          |  "subcontractor": {
+          |    "subcontractorId": 999,
+          |    "subbieResourceRef": 456,
+          |    "utr": "0987654321",
+          |    "firstName": "John",
+          |    "secondName": "Q",
+          |    "surname": "Smith",
+          |    "tradingName": "John Smith Trading",
+          |    "subcontractorType": "soletrader",
+          |    "country": "United Kingdom",
+          |    "postcode": "AA1 1AA",
+          |    "taxTreatment": "NET",
+          |    "verificationNumber": "V123456",
+          |    "verified": "Y",
+          |    "matched": "Y",
+          |    "version": 1
+          |  },
+          |  "otherInfo": [
+          |    {
+          |      "utr": "1111111111"
+          |    }
+          |  ]
+          |}""".stripMargin
+
+      stubFor(
+        get(urlPathEqualTo("/formp-proxy/cis/subcontractor/123/456"))
+          .willReturn(
+            aResponse()
+              .withStatus(OK)
+              .withBody(formpResponse)
+          )
+      )
+
+      val resp = getJson(
+        getSubcontractorUrl,
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
+
+      resp.status mustBe OK
+      (resp.json \ "scheme" \ "schemeId").as[Int] mustBe 123
+      (resp.json \ "subcontractor" \ "subcontractorId").as[Long] mustBe 999L
+      (resp.json \ "subcontractor" \ "utr").as[String] mustBe "0987654321"
+      (resp.json \ "subcontractor" \ "displayName").as[String] mustBe "John Smith"
+      (resp.json \ "otherInfo" \ 0 \ "utr").as[String] mustBe "1111111111"
+
+      verify(
+        getRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractor/123/456"))
+      )
+    }
+
+    "return upstream status when FormP fails" in {
+      AuthStub.authorisedWithCisEnrolment()
+
+      stubFor(
+        get(urlPathEqualTo("/formp-proxy/cis/subcontractor/123/456"))
+          .willReturn(
+            aResponse()
+              .withStatus(SERVICE_UNAVAILABLE)
+              .withBody("FormP unavailable")
+          )
+      )
+
+      val resp = getJson(
+        getSubcontractorUrl,
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
+
+      resp.status mustBe SERVICE_UNAVAILABLE
+      (resp.json \ "message").as[String] must include("FormP unavailable")
+
+      verify(
+        getRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractor/123/456"))
       )
     }
   }
