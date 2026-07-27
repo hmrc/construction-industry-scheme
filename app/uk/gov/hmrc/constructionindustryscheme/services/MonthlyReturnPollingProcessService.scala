@@ -199,12 +199,22 @@ class MonthlyReturnPollingProcessService @Inject() (
 
       _ <- batchPollResult match {
              case BatchChRISPollResult.Completed(_) =>
-               updateSubmissionAndSendEmail(
-                 submission = submission,
-                 monthlyReturn = monthlyReturn,
-                 submissionDetails = submissionDetails,
-                 pollResponse = pollResponse
-               )
+               for {
+                 _ <- updateSubmission(
+                        submission = submission,
+                        monthlyReturn = monthlyReturn,
+                        submissionDetails = submissionDetails,
+                        pollResponse = pollResponse
+                      )
+
+                 _ <- sendEmailAndRecover(
+                        status = pollResponse.status,
+                        emailRecipient = submissionDetails.emailRecipient,
+                        taxMonth = monthlyReturn.taxMonth,
+                        taxYear = monthlyReturn.taxYear,
+                        submissionId = submission.submissionId.toString
+                      )
+               } yield ()
 
              case BatchChRISPollResult.PostProcessingFailed(_, exception) =>
                logger.error(
@@ -218,7 +228,7 @@ class MonthlyReturnPollingProcessService @Inject() (
            }
     } yield reportContent
 
-  private def updateSubmissionAndSendEmail(
+  private def updateSubmission(
     submission: MonthlyReturnSubmissionToPoll,
     monthlyReturn: MonthlyReturn,
     submissionDetails: Submission,
@@ -240,18 +250,30 @@ class MonthlyReturnPollingProcessService @Inject() (
         govTalkResponse = pollResponse.govTalkErrorStatus
       )
 
-    for {
-      _ <- submissionService.updateSubmission(updateRequest)
-
-      _ <- sendEmailIfRequired(
-             pollResponse.status,
-             submissionDetails.emailRecipient,
-             monthlyReturn.taxMonth,
-             monthlyReturn.taxYear,
-             submission.submissionId.toString
-           )
-    } yield ()
+    submissionService.updateSubmission(updateRequest)
   }
+
+  private def sendEmailAndRecover(
+    status: SubmissionStatus,
+    emailRecipient: Option[String],
+    taxMonth: Int,
+    taxYear: Int,
+    submissionId: String
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    sendEmailIfRequired(
+      status = status,
+      emailRecipient = emailRecipient,
+      taxMonth = taxMonth,
+      taxYear = taxYear,
+      submissionId = submissionId
+    ).recover { case NonFatal(exception) =>
+      logger.error(
+        s"[MonthlyReturnPollingProcessService][sendEmailAndRecover] " +
+          s"Failed to send success email for submissionId=$submissionId, " +
+          s"but monthly return polling has completed successfully.",
+        exception
+      )
+    }
 
   private def hasMatchingStatus(
     monthlyReturn: MonthlyReturn,
