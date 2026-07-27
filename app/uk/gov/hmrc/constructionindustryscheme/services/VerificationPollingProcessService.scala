@@ -50,74 +50,38 @@ class VerificationPollingProcessService @Inject() (
       .traverse(verificationSubmissions) { submission =>
         val submissionId = submission.submissionId.toString
 
-      (for {
-        session <- submissionService.syncVerificationSessionForPolling(submission)
+        (for {
+          session <- submissionService.syncVerificationSessionForPolling(submission)
 
-        batchPollResult <- submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
-                             submissionId = submissionId,
-                             pollUrl = session.pollUrl,
-                             journey = Verification
-                           )
+          batchPollResult <- submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
+                               submissionId = submissionId,
+                               pollUrl = session.pollUrl,
+                               journey = Verification
+                             )
 
-        reportContent =
-          batchPollResult match {
-            case BatchChRISPollResult.Completed(response) =>
-              toPollReportContent(submission, response)
+          reportContent =
+            batchPollResult match {
+              case BatchChRISPollResult.Completed(response) =>
+                toPollReportContent(submission, response)
 
-            case BatchChRISPollResult.PostProcessingFailed(response, exception) =>
-              logger.error(
-                s"[VerificationPollingProcessService][process] Post-poll processing failed for verification submissionId=$submissionId, but returning poll report content.",
-                exception
-              )
+              case BatchChRISPollResult.PostProcessingFailed(response, exception) =>
+                logger.error(
+                  s"[VerificationPollingProcessService][process] Post-poll processing failed for verification submissionId=$submissionId, but returning poll report content.",
+                  exception
+                )
 
-              toPollReportContent(submission, response)
-          }
-      } yield reportContent).recover { case NonFatal(ex) =>
-        logger.error(
-          s"[VerificationPollingProcessService][process] Failed for verification submission: " +
-            s"instanceId=${submission.instanceId}, submissionId=${submission.submissionId}",
-          ex
-        )
+                toPollReportContent(submission, response)
+            }
+        } yield reportContent).recover { case NonFatal(ex) =>
+          logger.error(
+            s"[VerificationPollingProcessService][process] Failed for verification submission: " +
+              s"instanceId=${submission.instanceId}, submissionId=${submission.submissionId}",
+            ex
+          )
 
-        toFailedReportContent(submission)
+          toFailedReportContent(submission)
+        }
       }
-      }
-  }
-
-  private def processSubmission(
-    submission: VerificationSubmissionToPoll
-  )(implicit hc: HeaderCarrier): Future[PollReportContent] = {
-    val submissionId =
-      submission.submissionId.toString
-
-    for {
-      session <- submissionService.syncVerificationSessionForPolling(submission)
-
-      batchPollResult <- submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
-                           submissionId = submissionId,
-                           pollUrl = session.pollUrl,
-                           journey = Verification
-                         )
-
-      reportContent =
-        toPollReportContent(
-          submission,
-          batchPollResult.response
-        )
-
-      _ = batchPollResult match {
-            case BatchChRISPollResult.Completed(_) =>
-              ()
-
-            case BatchChRISPollResult.PostProcessingFailed(_, exception) =>
-              logger.error(
-                s"[VerificationPollingProcessService][processSubmission] " +
-                  s"Post-poll processing failed for verification submissionId=$submissionId, " +
-                  s"but returning poll report content.",
-                exception
-              )
-          }
-    } yield reportContent
   }
 
   private def toPollReportContent(

@@ -827,6 +827,101 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           .sendSuccessfulEmail(any(), any())(any())
       }
 
+      "must preserve poll report content when sending email fails" in {
+        val submission =
+          makeSubmission()
+
+        val dbSubmission =
+          makeDbSubmission(
+            emailRecipient = Some("user@example.com")
+          )
+
+        val monthlyReturn =
+          makeMonthlyReturn(
+            taxYear = testTaxYear,
+            taxMonth = testTaxMonth
+          )
+
+        val pollResponse =
+          makePollResponse(SUBMITTED)
+
+        when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
+          .thenReturn(
+            Future.successful(
+              makeDetails(
+                monthlyReturn = monthlyReturn,
+                dbSubmission = dbSubmission
+              )
+            )
+          )
+
+        when(
+          submissionService.processMonthlyReturnGovTalkStatusCheck(
+            any(),
+            any(),
+            any()
+          )(any())
+        ).thenReturn(Future.successful(gatewayUrl))
+
+        when(
+          submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
+            any(),
+            any(),
+            any()
+          )(any())
+        ).thenReturn(
+          Future.successful(
+            BatchChRISPollResult.Completed(pollResponse)
+          )
+        )
+
+        when(submissionService.updateSubmission(any())(any()))
+          .thenReturn(Future.unit)
+
+        when(submissionService.sendSuccessfulEmail(any(), any())(any()))
+          .thenReturn(
+            Future.failed(
+              new RuntimeException("send email failed")
+            )
+          )
+
+        val result =
+          service
+            .process(
+              Seq(submission),
+              startTime
+            )
+            .futureValue
+
+        result mustBe Seq(
+          PollReportContent(
+            user = submission.instanceId,
+            submissionType = submission.submissionType,
+            submissionId = submission.submissionId.toString,
+            govTalkRequestStatus = submission.status,
+            currentReturnStatus = "SUBMITTED",
+            employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
+            correlationId = "corr-123",
+            agentId = "-"
+          )
+        )
+
+        verify(submissionService)
+          .updateSubmission(any())(any())
+
+        verify(submissionService)
+          .sendSuccessfulEmail(
+            eqTo(testSubmissionId.toString),
+            eqTo(
+              SendSuccessEmailRequest(
+                "user@example.com",
+                testTaxMonth.toString,
+                testTaxYear.toString
+              )
+            )
+          )(any())
+      }
+
       "must not send email when emailRecipient is None even for SUBMITTED status" in {
         val dbSub =
           makeDbSubmission(
