@@ -60,13 +60,13 @@ class BatchPollerScheduledServiceSpec extends SpecBase with BeforeAndAfterEach {
       // body finished within the TTL window, so the lock is disowned (not released) to expire naturally
       when(lockRepository.disownLock(any(), any(), any())).thenReturn(Future.unit)
 
-      when(batchPollerService.run()(any[HeaderCarrier])).thenReturn(Future.unit)
+      when(batchPollerService.run(any())(any[HeaderCarrier])).thenReturn(Future.unit)
 
       service.invoke.futureValue // completes without failing
 
       verify(lockRepository).takeLock(any(), any(), any())
       verify(lockRepository).disownLock(any(), any(), any())
-      verify(batchPollerService).run()(any[HeaderCarrier])
+      verify(batchPollerService).run(any())(any[HeaderCarrier])
     }
 
     "skip the job without failing when the lock is held by another instance" in {
@@ -76,7 +76,7 @@ class BatchPollerScheduledServiceSpec extends SpecBase with BeforeAndAfterEach {
 
       verify(lockRepository).takeLock(any(), any(), any())
       verify(lockRepository, never()).disownLock(any(), any(), any())
-      verify(batchPollerService, never()).run()(any[HeaderCarrier])
+      verify(batchPollerService, never()).run(any())(any[HeaderCarrier])
     }
   }
 }

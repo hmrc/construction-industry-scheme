@@ -468,7 +468,7 @@ final class ChrisConnectorIntegrationSpec
     "return FATAL_ERROR when response is unparsable XML" in {
       val correlationId = "poll-cid-parse-err"
       val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/bad"
-      val journey = ChrisPollJourney.Verification
+      val journey       = ChrisPollJourney.Verification
 
       stubFor(
         post(urlPathEqualTo("/poll/bad"))
@@ -599,8 +599,8 @@ final class ChrisConnectorIntegrationSpec
 
       "return ACCEPTED for an acknowledgement response" in {
         val correlationId = "mr-poll-cid-ack"
-        val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/mr/poll/ack"
-        val ackXml =
+        val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/mr/poll/ack"
+        val ackXml        =
           s"""<GovTalkMessage>
              |  <Header>
              |    <MessageDetails>
@@ -614,7 +614,9 @@ final class ChrisConnectorIntegrationSpec
 
         stubFor(
           post(urlPathEqualTo("/mr/poll/ack"))
-            .withRequestBody(equalToXml(ChrisPollRequest(correlationId, ChrisPollJourney.MonthlyReturn).payload.toString))
+            .withRequestBody(
+              equalToXml(ChrisPollRequest(correlationId, ChrisPollJourney.MonthlyReturn).payload.toString)
+            )
             .willReturn(
               aResponse()
                 .withStatus(200)
@@ -633,8 +635,8 @@ final class ChrisConnectorIntegrationSpec
 
       "return STARTED for a recoverable error 3000 (retryable — differs from Verification which returns DEPARTMENTAL_ERROR)" in {
         val correlationId = "mr-poll-cid-3000"
-        val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/mr/poll/3000"
-        val errorXml =
+        val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/mr/poll/3000"
+        val errorXml      =
           s"""<GovTalkMessage>
              |  <Header>
              |    <MessageDetails>
@@ -657,7 +659,9 @@ final class ChrisConnectorIntegrationSpec
 
         stubFor(
           post(urlPathEqualTo("/mr/poll/3000"))
-            .withRequestBody(equalToXml(ChrisPollRequest(correlationId, ChrisPollJourney.MonthlyReturn).payload.toString))
+            .withRequestBody(
+              equalToXml(ChrisPollRequest(correlationId, ChrisPollJourney.MonthlyReturn).payload.toString)
+            )
             .willReturn(
               aResponse()
                 .withStatus(200)
@@ -674,8 +678,8 @@ final class ChrisConnectorIntegrationSpec
 
       "return STARTED for a recoverable error 2005 (retryable — differs from Verification which returns FATAL_ERROR)" in {
         val correlationId = "mr-poll-cid-2005"
-        val pollUrl = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/mr/poll/2005"
-        val errorXml =
+        val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/mr/poll/2005"
+        val errorXml      =
           s"""<GovTalkMessage>
              |  <Header>
              |    <MessageDetails>
@@ -698,7 +702,9 @@ final class ChrisConnectorIntegrationSpec
 
         stubFor(
           post(urlPathEqualTo("/mr/poll/2005"))
-            .withRequestBody(equalToXml(ChrisPollRequest(correlationId, ChrisPollJourney.MonthlyReturn).payload.toString))
+            .withRequestBody(
+              equalToXml(ChrisPollRequest(correlationId, ChrisPollJourney.MonthlyReturn).payload.toString)
+            )
             .willReturn(
               aResponse()
                 .withStatus(200)

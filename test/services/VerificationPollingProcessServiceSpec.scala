@@ -16,38 +16,57 @@
 
 package services
 
-import org.scalatest.concurrent.ScalaFutures
+import base.SpecBase
+import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers
+import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
 import uk.gov.hmrc.constructionindustryscheme.models.response.VerificationSubmissionToPoll
-import uk.gov.hmrc.constructionindustryscheme.services.VerificationPollingProcessService
+import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
+import uk.gov.hmrc.constructionindustryscheme.services.{SubmissionService, VerificationPollingProcessService}
 import uk.gov.hmrc.http.HeaderCarrier
 
-import scala.concurrent.ExecutionContext
+import java.time.Instant
+import scala.concurrent.{ExecutionContext, Future}
 
-class VerificationPollingProcessServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures {
+class VerificationPollingProcessServiceSpec extends SpecBase {
 
   "VerificationPollingProcessService process" - {
 
     "must complete successfully for verification submissions" in new Setup {
-      val submissions: Seq[VerificationSubmissionToPoll] = Seq(
-        VerificationSubmissionToPoll(
-          submissionId = 90001L,
-          submissionType = "CISVERIFY",
-          agentId = Some("A123456"),
-          taxOfficeNumber = "123",
-          taxOfficeReference = "ABC123",
-          instanceId = "instance-verification-001",
-          status = "SUBMITTED",
-          verificationBatchResourceRef = 70001L
+      val submissions = Seq(verificationSubmission)
+
+      when(
+        mockSubmissionService
+          .syncVerificationSessionForPolling(verificationSubmission)
+      ).thenReturn(Future.successful(chrisSession))
+
+      when(
+        mockSubmissionService.pollSubmissionAndUpdateGovTalkStatus(
+          verificationSubmission.submissionId.toString,
+          chrisSession.pollUrl,
+          Verification
         )
-      )
+      ).thenReturn(Future.unit)
 
       service.process(submissions).futureValue mustBe ()
+
+      verify(mockSubmissionService)
+        .syncVerificationSessionForPolling(verificationSubmission)
+
+      verify(mockSubmissionService)
+        .pollSubmissionAndUpdateGovTalkStatus(
+          verificationSubmission.submissionId.toString,
+          chrisSession.pollUrl,
+          Verification
+        )
+
+      verifyNoMoreInteractions(mockSubmissionService)
     }
 
     "must complete successfully for empty verification submissions" in new Setup {
       service.process(Seq.empty).futureValue mustBe ()
+
+      verifyNoInteractions(mockSubmissionService)
     }
   }
 
@@ -55,6 +74,34 @@ class VerificationPollingProcessServiceSpec extends AnyFreeSpec with Matchers wi
     given ExecutionContext = scala.concurrent.ExecutionContext.global
     given HeaderCarrier    = HeaderCarrier()
 
-    val service = new VerificationPollingProcessService()
+    val mockSubmissionService: SubmissionService =
+      mock[SubmissionService]
+
+    val service =
+      new VerificationPollingProcessService(mockSubmissionService)
+
+    val verificationSubmission: VerificationSubmissionToPoll =
+      VerificationSubmissionToPoll(
+        submissionId = 90001L,
+        submissionType = "VERIFICATIONS",
+        agentId = Some("A123456"),
+        taxOfficeNumber = "123",
+        taxOfficeReference = "ABC123",
+        instanceId = "instance-verification-001",
+        status = "ACCEPTED",
+        verificationBatchResourceRef = 70001L
+      )
+
+    val chrisSession: ChrisSubmissionSessionData =
+      ChrisSubmissionSessionData(
+        submissionId = verificationSubmission.submissionId.toString,
+        instanceId = verificationSubmission.instanceId,
+        correlationId = "corr-123",
+        lastMessageDate = Instant.parse("2025-01-01T00:00:00Z"),
+        numPolls = 1,
+        pollInterval = 5,
+        pollUrl = "http://localhost:6997/submission/ChRIS/poll/IR-CIS-VERIFY/0?final=SUBMITTED",
+        govTalkStatus = None
+      )
   }
 }
