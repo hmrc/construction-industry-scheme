@@ -69,6 +69,9 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
 
       when(mockMonthlyReturnPollingProcessService.process(any(), any())(any()))
         .thenReturn(Future.successful(monthlyReturnReportContent))
+      
+       when(mockVerificationPollingProcessService.process(Seq(verificationSubmission))(using hc))
+        .thenReturn(Future.unit)
 
       when(mockGeneratePollReportService.generatePollReport(any()))
         .thenReturn(Future.unit)
@@ -76,8 +79,8 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
       service.run(startTime).futureValue mustBe ()
 
       verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+      verify(mockVerificationPollingProcessService).process(Seq(verificationSubmission))(using hc)
       verify(mockMonthlyReturnPollingProcessService).process(any(), any())(any())
-      verifyNoMoreInteractions(mockSubmissionService)
     }
 
     "must call GeneratePollReportService with empty report when empty submission lists are returned" in new Setup {
@@ -164,6 +167,67 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
         mockMonthlyReturnPollingProcessService,
         mockGeneratePollReportService
       )
+      verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+    }
+
+    "must only call VerificationPollingProcessService when only verification submissions are returned" in new Setup {
+      when(mockSubmissionService.getSubmissionsToPoll()(using hc))
+        .thenReturn(Future.successful(verificationOnlyResponse))
+
+      when(mockVerificationPollingProcessService.process(Seq(verificationSubmission))(using hc))
+        .thenReturn(Future.unit)
+
+      service.run(startTime).futureValue mustBe ()
+
+      verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+      verify(mockVerificationPollingProcessService).process(Seq(verificationSubmission))(using hc)
+    }
+
+    "must only call MonthlyReturnPollingProcessService when only monthly return submissions are returned" in new Setup {
+      when(mockSubmissionService.getSubmissionsToPoll()(using hc))
+        .thenReturn(Future.successful(monthlyReturnOnlyResponse))
+
+      when(mockMonthlyReturnPollingProcessService.process(any(), any())(any()))
+        .thenReturn(Future.unit)
+
+      service.run(startTime).futureValue mustBe ()
+
+      verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+      verify(mockMonthlyReturnPollingProcessService).process(any(), any())(any())
+    }
+
+    "must attempt monthly return polling when verification polling fails" in new Setup {
+      when(mockSubmissionService.getSubmissionsToPoll()(using hc))
+        .thenReturn(Future.successful(nonEmptyResponse))
+
+      when(mockVerificationPollingProcessService.process(Seq(verificationSubmission))(using hc))
+        .thenReturn(Future.failed(new RuntimeException("verification polling failed")))
+
+      when(mockMonthlyReturnPollingProcessService.process(any(), any())(any()))
+        .thenReturn(Future.unit)
+
+      service.run(startTime).futureValue mustBe ()
+
+      verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+      verify(mockVerificationPollingProcessService).process(Seq(verificationSubmission))(using hc)
+      verify(mockMonthlyReturnPollingProcessService).process(any(), any())(any())
+    }
+
+    "must complete successfully when monthly return polling fails" in new Setup {
+      when(mockSubmissionService.getSubmissionsToPoll()(using hc))
+        .thenReturn(Future.successful(nonEmptyResponse))
+
+      when(mockVerificationPollingProcessService.process(Seq(verificationSubmission))(using hc))
+        .thenReturn(Future.unit)
+
+      when(mockMonthlyReturnPollingProcessService.process(any(), any())(any()))
+        .thenReturn(Future.failed(new RuntimeException("monthly return polling failed")))
+
+      service.run(startTime).futureValue mustBe ()
+
+      verify(mockSubmissionService).getSubmissionsToPoll()(using hc)
+      verify(mockVerificationPollingProcessService).process(Seq(verificationSubmission))(using hc)
+      verify(mockMonthlyReturnPollingProcessService).process(any(), any())(any())
     }
   }
 
@@ -176,33 +240,39 @@ class BatchPollerServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures
 
     val mockGeneratePollReportService: GeneratePollReportService =
       mock[GeneratePollReportService]
+    val mockVerificationPollingProcessService: VerificationPollingProcessService =
+      mock[VerificationPollingProcessService]
 
     val mockMonthlyReturnPollingProcessService: MonthlyReturnPollingProcessService =
       mock[MonthlyReturnPollingProcessService]
 
+    val mockGeneratePollReportService: GeneratePollReportService =
+      mock[GeneratePollReportService]
+
     val service = new BatchPollerService(
       submissionService = mockSubmissionService,
-      generatePollReportService = mockGeneratePollReportService,
-      monthlyReturnPollingProcessService = mockMonthlyReturnPollingProcessService
+      verificationPollingProcessService = mockVerificationPollingProcessService,
+      monthlyReturnPollingProcessService = mockMonthlyReturnPollingProcessService,
+      generatePollReportService = mockGeneratePollReportService
     )
 
     val verificationSubmission: VerificationSubmissionToPoll =
       VerificationSubmissionToPoll(
         submissionId = 90001L,
-        submissionType = "CISVERIFY",
+        submissionType = "VERIFICATIONS",
         agentId = Some("A123456"),
         taxOfficeNumber = "123",
         taxOfficeReference = "ABC123",
         instanceId = "instance-verification-001",
-        status = "SUBMITTED",
+        status = "ACCEPTED",
         verificationBatchResourceRef = 70001L
       )
 
     val monthlyReturnSubmission: MonthlyReturnSubmissionToPoll =
       MonthlyReturnSubmissionToPoll(
         submissionId = 90002L,
-        submissionType = "CIS300MR",
-        status = "SUBMITTED",
+        submissionType = "MONTHLY_RETURN",
+        status = "ACCEPTED",
         taxOfficeNumber = "123",
         taxOfficeReference = "456789",
         taxYear = 2025,

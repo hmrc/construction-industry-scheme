@@ -28,7 +28,8 @@ import scala.util.control.NonFatal
 class BatchPollerService @Inject() (
   submissionService: SubmissionService,
   generatePollReportService: GeneratePollReportService,
-  monthlyReturnPollingProcessService: MonthlyReturnPollingProcessService
+  monthlyReturnPollingProcessService: MonthlyReturnPollingProcessService,
+  verificationPollingProcessService: VerificationPollingProcessService,
 )(implicit ec: ExecutionContext)
     extends Logging {
 
@@ -66,14 +67,32 @@ class BatchPollerService @Inject() (
               )
             }
         } else {
-          Future.unit
+          val processes: Seq[Future[Unit]] = Seq(
+            Option.when(verificationSubmissions.nonEmpty) {
+              runPollingProcess("Verification Polling Process") {
+                verificationPollingProcessService.process(verificationSubmissions)
+              }
+            },
+            Option.when(monthlyReturnSubmissions.nonEmpty) {
+              runPollingProcess("Monthly Return Polling Process") {
+                monthlyReturnPollingProcessService.process(monthlyReturnSubmissions, startTime)
+              }
+            }
+          ).flatten
+
+          Future.sequence(processes).map(_ => ())
         }
       }
       .recover { case NonFatal(exception) =>
         logger.error(
-          "[BatchPollerService][run] GetBatchPollSubmissions failed",
+          "[BatchPollerService][run] Failed to get submission to poll",
           exception
         )
       }
   }
+
+  private def runPollingProcess(processName: String)(process: Future[Unit]): Future[Unit] =
+    process.recover { case NonFatal(exception) =>
+      logger.error(s"[BatchPollerService][run] $processName failed", exception)
+    }
 }

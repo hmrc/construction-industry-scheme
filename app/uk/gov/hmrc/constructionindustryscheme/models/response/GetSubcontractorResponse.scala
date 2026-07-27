@@ -14,20 +14,25 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models
+package uk.gov.hmrc.constructionindustryscheme.models.response
 
 import play.api.libs.json.{Json, OFormat}
+import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, Subcontractor}
 
-final case class Verification(
-  verificationId: Long,
-  matched: Option[String],
-  verificationNumber: Option[String],
-  taxTreatment: Option[String],
-  verificationBatchId: Option[Long],
-  subcontractorId: Option[Long],
-  actionIndicator: Option[String] = None,
-  proceed: Option[String] = None
+final case class GetSubcontractorResponse(
+  scheme: Option[ContractorScheme],
+  subcontractor: Option[Subcontractor],
+  otherInfo: Seq[GetSubcontractorOtherInfo]
 )
 
-object Verification:
-  given format: OFormat[Verification] = Json.format[Verification]
+object GetSubcontractorResponse {
+  given format: OFormat[GetSubcontractorResponse] =
+    Json.format[GetSubcontractorResponse]
+}
+
+final case class GetSubcontractorOtherInfo(utr: String)
+
+object GetSubcontractorOtherInfo {
+  given format: OFormat[GetSubcontractorOtherInfo] =
+    Json.format[GetSubcontractorOtherInfo]
+}

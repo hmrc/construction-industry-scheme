@@ -17,9 +17,10 @@
 package models
 
 import base.SpecBase
-import uk.gov.hmrc.constructionindustryscheme.models.{SubcontractorCurrentVerification, VerificationActionIndicator, VerificationSubmissionContext, VerificationSubmissionContextBuilder}
+import uk.gov.hmrc.constructionindustryscheme.models.{Subcontractor, SubcontractorCurrentVerification, Submission, Verification, VerificationActionIndicator, VerificationSubmissionContext, VerificationSubmissionContextBuilder}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisVerificationRequest, VerificationDetails}
-import uk.gov.hmrc.constructionindustryscheme.repositories.StoredRequestedVerification
+import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubmissionWithVerificationBatchResponse
+import uk.gov.hmrc.constructionindustryscheme.repositories.{StoredRequestedVerification, StoredVerificationContext}
 
 import java.time.LocalDateTime
 
@@ -129,6 +130,126 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
         hmrcMarkGenerated = "hmrc-mark",
         submissionRequestDate = LocalDateTime.parse("2026-06-19T10:00:00")
       ) mustBe Left("Invalid long value for verificationBatchResourceRef: 'invalid'")
+    }
+
+    "build stored verification context from FormP snapshot" in {
+      val submissionRequestDate =
+        LocalDateTime.parse("2026-07-14T10:00:00")
+
+      val response =
+        GetSubmissionWithVerificationBatchResponse(
+          scheme = None,
+          submission = Some(
+            Submission(
+              submissionId = 100L,
+              submissionType = "VERIFICATIONS",
+              activeObjectId = Some(200L),
+              status = Some("SUBMITTED"),
+              hmrcMarkGenerated = Some("hmrc-mark"),
+              hmrcMarkGgis = None,
+              emailRecipient = None,
+              acceptedTime = None,
+              createDate = None,
+              lastUpdate = None,
+              schemeId = 300L,
+              agentId = None,
+              l_Migrated = None,
+              submissionRequestDate = Some(submissionRequestDate),
+              govTalkErrorCode = None,
+              govTalkErrorType = None,
+              govTalkErrorMessage = None
+            )
+          ),
+          verificationBatch = None,
+          verifications = Seq(
+            Verification(
+              verificationId = 1L,
+              matched = None,
+              verificationNumber = None,
+              taxTreatment = None,
+              verificationBatchId = Some(200L),
+              subcontractorId = Some(10L),
+              actionIndicator = Some("verify"),
+              proceed = Some("Y")
+            )
+          ),
+          subcontractors = Seq(
+            Subcontractor(
+              subcontractorId = 10L,
+              utr = Some("1234567890"),
+              pageVisited = None,
+              partnerUtr = None,
+              crn = None,
+              firstName = Some("John"),
+              nino = Some("AB123456C"),
+              secondName = Some("A"),
+              surname = Some("Smith"),
+              partnershipTradingName = None,
+              tradingName = Some("Test Trading"),
+              subcontractorType = Some("soletrader"),
+              addressLine1 = None,
+              addressLine2 = None,
+              addressLine3 = None,
+              addressLine4 = None,
+              country = None,
+              postcode = None,
+              emailAddress = None,
+              phoneNumber = None,
+              mobilePhoneNumber = None,
+              worksReferenceNumber = None,
+              createDate = None,
+              lastUpdate = None,
+              subbieResourceRef = Some(13L),
+              matched = None,
+              autoVerified = None,
+              verified = None,
+              verificationNumber = None,
+              taxTreatment = None,
+              verificationDate = None,
+              version = None,
+              updatedTaxTreatment = None,
+              lastMonthlyReturnDate = None,
+              pendingVerifications = None
+            )
+          )
+        )
+
+      VerificationSubmissionContextBuilder
+        .buildFromFormpSnapshot(
+          response = response,
+          verificationBatchResourceRef = 5L
+        ) mustBe Right(
+        StoredVerificationContext(
+          verificationBatchResourceRef = 5L,
+          hmrcMarkGenerated = "hmrc-mark",
+          submissionRequestDate = submissionRequestDate,
+          actionIndicators = Seq(
+            VerificationActionIndicator(
+              verificationResourceRef = 13L,
+              actionIndicator = "verify"
+            )
+          ),
+          requestedVerifications = Seq(
+            StoredRequestedVerification(
+              verificationResourceRef = 13L,
+              subcontractorId = 10L,
+              subbieResourceRef = Some(13L),
+              subcontractorName = "John Smith",
+              actionIndicator = "verify",
+              proceedVerification = true,
+              foreName = Some("John"),
+              middleName = Some("A"),
+              surname = Some("Smith"),
+              tradingName = Some("Test Trading"),
+              utr = Some("1234567890"),
+              nino = Some("AB123456C"),
+              crn = None,
+              partnershipUtr = None,
+              subcontractorType = Some("soletrader")
+            )
+          )
+        )
+      )
     }
   }
 }
