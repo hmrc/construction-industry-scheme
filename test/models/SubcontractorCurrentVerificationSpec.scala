@@ -20,6 +20,8 @@ import base.SpecBase
 import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.models.SubcontractorCurrentVerification
 
+import java.time.LocalDateTime
+
 class SubcontractorCurrentVerificationSpec extends SpecBase {
 
   "SubcontractorCurrentVerification" - {
@@ -45,7 +47,20 @@ class SubcontractorCurrentVerificationSpec extends SpecBase {
         addressLine4 = Some("Line 4"),
         country = Some("UK"),
         postcode = Some("NE1 1AA"),
-        worksReferenceNumber = Some("WRN123")
+        emailAddress = Some("john@test.com"),
+        phoneNumber = Some("01911234567"),
+        mobilePhoneNumber = Some("07123456789"),
+        worksReferenceNumber = Some("WRN123"),
+        matched = Some("Y"),
+        autoVerified = Some("N"),
+        verified = Some("Y"),
+        verificationNumber = Some("V123456"),
+        taxTreatment = Some("0"),
+        verificationDate = Some(LocalDateTime.parse("2026-07-23T10:15:30")),
+        version = Some(1),
+        updatedTaxTreatment = Some("1"),
+        lastMonthlyReturnDate = Some(LocalDateTime.parse("2026-06-30T00:00:00")),
+        pendingVerifications = Some(2)
       )
 
       val json = Json.toJson(subcontractor)
@@ -69,6 +84,19 @@ class SubcontractorCurrentVerificationSpec extends SpecBase {
       (json \ "country").as[String] mustBe "UK"
       (json \ "postcode").as[String] mustBe "NE1 1AA"
       (json \ "worksReferenceNumber").as[String] mustBe "WRN123"
+      (json \ "emailAddress").as[String] mustBe "john@test.com"
+      (json \ "phoneNumber").as[String] mustBe "01911234567"
+      (json \ "mobilePhoneNumber").as[String] mustBe "07123456789"
+      (json \ "matched").as[String] mustBe "Y"
+      (json \ "autoVerified").as[String] mustBe "N"
+      (json \ "verified").as[String] mustBe "Y"
+      (json \ "verificationNumber").as[String] mustBe "V123456"
+      (json \ "taxTreatment").as[String] mustBe "0"
+      (json \ "verificationDate").as[String] mustBe "2026-07-23T10:15:30"
+      (json \ "version").as[Int] mustBe 1
+      (json \ "updatedTaxTreatment").as[String] mustBe "1"
+      (json \ "lastMonthlyReturnDate").as[String] mustBe "2026-06-30T00:00:00"
+      (json \ "pendingVerifications").as[Int] mustBe 2
     }
 
     "deserialize from JSON correctly" in {
@@ -94,7 +122,20 @@ class SubcontractorCurrentVerificationSpec extends SpecBase {
           |  "addressLine4": "Line 4",
           |  "country": "UK",
           |  "postcode": "NE1 1AA",
-          |  "worksReferenceNumber": "WRN123"
+          |  "worksReferenceNumber": "WRN123",
+          |  "emailAddress": "john@test.com",
+          |  "phoneNumber": "01911234567",
+          |  "mobilePhoneNumber": "07123456789",
+          |  "matched": "Y",
+          |  "autoVerified": "N",
+          |  "verified": "Y",
+          |  "verificationNumber": "V123456",
+          |  "taxTreatment": "0",
+          |  "verificationDate": "2026-07-23T10:15:30",
+          |  "version": 1,
+          |  "updatedTaxTreatment": "1",
+          |  "lastMonthlyReturnDate": "2026-06-30T00:00:00",
+          |  "pendingVerifications": 2,
           |}
           |""".stripMargin
       )
@@ -120,6 +161,19 @@ class SubcontractorCurrentVerificationSpec extends SpecBase {
       result.country mustBe Some("UK")
       result.postcode mustBe Some("NE1 1AA")
       result.worksReferenceNumber mustBe Some("WRN123")
+      result.emailAddress mustBe Some("john@test.com")
+      result.phoneNumber mustBe Some("01911234567")
+      result.mobilePhoneNumber mustBe Some("07123456789")
+      result.matched mustBe Some("Y")
+      result.autoVerified mustBe Some("N")
+      result.verified mustBe Some("Y")
+      result.verificationNumber mustBe Some("V123456")
+      result.taxTreatment mustBe Some("0")
+      result.verificationDate mustBe Some(LocalDateTime.parse("2026-07-23T10:15:30"))
+      result.version mustBe Some(1)
+      result.updatedTaxTreatment mustBe Some("1")
+      result.lastMonthlyReturnDate mustBe Some(LocalDateTime.parse("2026-06-30T00:00:00"))
+      result.pendingVerifications mustBe Some(2)
     }
 
     "round-trip serialize and deserialize correctly" in {
@@ -143,10 +197,23 @@ class SubcontractorCurrentVerificationSpec extends SpecBase {
         addressLine4 = Some("Line 4"),
         country = Some("UK"),
         postcode = Some("NE1 1AA"),
-        worksReferenceNumber = Some("WRN123")
+        emailAddress = Some("john@test.com"),
+        phoneNumber = Some("01911234567"),
+        mobilePhoneNumber = Some("07123456789"),
+        worksReferenceNumber = Some("WRN123"),
+        matched = Some("Y"),
+        autoVerified = Some("N"),
+        verified = Some("Y"),
+        verificationNumber = Some("V123456"),
+        taxTreatment = Some("0"),
+        verificationDate = Some(LocalDateTime.parse("2026-07-23T10:15:30")),
+        version = Some(1),
+        updatedTaxTreatment = Some("1"),
+        lastMonthlyReturnDate = Some(LocalDateTime.parse("2026-06-30T00:00:00")),
+        pendingVerifications = Some(2)
       )
 
-      val json   = Json.toJson(subcontractor)
+      val json = Json.toJson(subcontractor)
       val result = json.as[SubcontractorCurrentVerification]
 
       result mustBe subcontractor
@@ -183,6 +250,19 @@ class SubcontractorCurrentVerificationSpec extends SpecBase {
       result.country mustBe None
       result.postcode mustBe None
       result.worksReferenceNumber mustBe None
+      result.emailAddress mustBe None
+      result.phoneNumber mustBe None
+      result.mobilePhoneNumber mustBe None
+      result.matched mustBe None
+      result.autoVerified mustBe None
+      result.verified mustBe None
+      result.verificationNumber mustBe None
+      result.taxTreatment mustBe None
+      result.verificationDate mustBe None
+      result.version mustBe None
+      result.updatedTaxTreatment mustBe None
+      result.lastMonthlyReturnDate mustBe None
+      result.pendingVerifications mustBe None
     }
   }
 }
