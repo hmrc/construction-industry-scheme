@@ -28,7 +28,7 @@ case class VerificationCurrentVerification(
   taxTreatment: Option[String],
   actionIndicator: Option[String],
   proceed: Option[String],
-  matched: Option[String]                                        
+  matched: Option[String]
 )
 
 object VerificationCurrentVerification {

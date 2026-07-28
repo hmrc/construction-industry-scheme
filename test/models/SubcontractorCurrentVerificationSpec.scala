@@ -213,7 +213,7 @@ class SubcontractorCurrentVerificationSpec extends SpecBase {
         pendingVerifications = Some(2)
       )
 
-      val json = Json.toJson(subcontractor)
+      val json   = Json.toJson(subcontractor)
       val result = json.as[SubcontractorCurrentVerification]
 
       result mustBe subcontractor

@@ -98,7 +98,7 @@ class VerificationCurrentVerificationSpec extends SpecBase {
         matched = Some("Y")
       )
 
-      val json = Json.toJson(verification)
+      val json   = Json.toJson(verification)
       val result = json.as[VerificationCurrentVerification]
 
       result mustBe verification
