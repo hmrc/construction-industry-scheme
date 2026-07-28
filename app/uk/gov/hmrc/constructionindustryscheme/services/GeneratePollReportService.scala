@@ -37,7 +37,7 @@ class GeneratePollReportService @Inject() (
         generatedAt = LocalDateTime.now(clock)
       )
 
-    logger.info(s"\n$report")
+    logger.info(s"\n$report\n")
 
     Future.unit
   }
