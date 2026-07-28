@@ -985,7 +985,36 @@ final class SubmissionServiceSpec extends SpecBase {
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
-      service.processInitialChrisFailure(employerRef, submissionId, correlationId, gatewayUrl).futureValue mustBe ()
+      val journey      = ChrisPollJourney.MonthlyReturn
+      val context      = MonthlyReturnSubmissionContext(
+        hmrcMarkGenerated = "hmrc-mark",
+        submissionRequestDate = LocalDateTime.of(2025, 1, 1, 0, 0)
+      )
+      val govTalkError = GovTalkError("500", "timeOut", "timed out")
+
+      when(formPSubmissionUpdateProcessorRegistry.processorFor(eqTo(journey)))
+        .thenReturn(formPSubmissionUpdateProcessor)
+
+      when(
+        formPSubmissionUpdateProcessor.handleInitialFailure(any[ChrisSubmissionSessionData], eqTo(govTalkError))(
+          any[HeaderCarrier]
+        )
+      ).thenReturn(Future.unit)
+
+      service
+        .processInitialChrisFailure(
+          employerRef,
+          submissionId,
+          correlationId,
+          gatewayUrl,
+          journey,
+          context,
+          govTalkError
+        )
+        .futureValue mustBe ()
+
+      verify(formPSubmissionUpdateProcessor)
+        .handleInitialFailure(any[ChrisSubmissionSessionData], eqTo(govTalkError))(any[HeaderCarrier])
     }
   }
 

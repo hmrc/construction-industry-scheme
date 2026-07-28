@@ -235,11 +235,29 @@ class SubmissionService @Inject() (
     employerReference: EmployerReference,
     submissionId: String,
     correlationId: String,
-    gatewayURL: String
+    gatewayURL: String,
+    journey: ChrisPollJourney,
+    context: ChrisSubmissionContext,
+    govTalkError: GovTalkError
   )(implicit hc: HeaderCarrier): Future[Unit] =
     for {
       instanceId <- initialiseGovTalkStatus(employerReference, submissionId, correlationId, gatewayURL)
       _          <- updateGovTalkStatus(UpdateGovTalkStatusRequest(instanceId, submissionId, None, "dataRequest"))
+      sessionData = ChrisSubmissionSessionData(
+                      submissionId = submissionId,
+                      instanceId = instanceId,
+                      correlationId = correlationId,
+                      lastMessageDate = Instant.now,
+                      numPolls = 0,
+                      pollInterval = 0,
+                      pollUrl = "",
+                      govTalkStatus = None,
+                      monthlyReturnContext = context.monthlyReturnContext,
+                      verificationContext = context.verificationContext
+                    )
+      _          <- formPSubmissionUpdateProcessorRegistry
+                      .processorFor(journey)
+                      .handleInitialFailure(sessionData, govTalkError)
     } yield ()
 
   def pollSubmissionAndUpdateGovTalkStatus(

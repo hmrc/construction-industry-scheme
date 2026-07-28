@@ -62,6 +62,31 @@ class VerificationFormPUpdateProcessor @Inject() (
     )
   }
 
+  override def handleInitialFailure(
+    session: ChrisSubmissionSessionData,
+    govTalkError: GovTalkError
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
+    val ctx =
+      session.verificationContext.getOrElse(
+        throw new IllegalStateException(
+          s"Verification context is missing for submissionId: ${session.submissionId}"
+        )
+      )
+
+    formpProxyConnector.updateVerificationSubmission(
+      UpdateVerificationSubmissionRequest(
+        instanceId = session.instanceId,
+        verificationBatchResourceRef = ctx.verificationBatchResourceRef,
+        submittableStatus = FATAL_ERROR.toString,
+        submissionRequestDate = Some(ctx.submissionRequestDate),
+        hmrcMarkGenerated = Some(ctx.hmrcMarkGenerated),
+        govtalkErrorCode = Some(govTalkError.errorNumber),
+        govtalkErrorType = Some(govTalkError.errorType),
+        govtalkErrorMessage = Some(govTalkError.errorText)
+      )
+    )
+  }
+
   override def handlePollResponse(
     session: ChrisSubmissionSessionData,
     response: ChrisPollResponse

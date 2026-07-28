@@ -448,7 +448,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[EmployerReference],
           any[String],
           any[String],
-          any[String]
+          any[String],
+          any[ChrisPollJourney],
+          any[ChrisSubmissionContext],
+          any[GovTalkError]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -495,7 +498,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[EmployerReference],
           any[String],
           any[String],
-          any[String]
+          any[String],
+          any[ChrisPollJourney],
+          any[ChrisSubmissionContext],
+          any[GovTalkError]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -576,7 +582,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[EmployerReference],
           any[String],
           any[String],
-          any[String]
+          any[String],
+          any[ChrisPollJourney],
+          any[ChrisSubmissionContext],
+          any[GovTalkError]
         )(any[HeaderCarrier])
       ).thenReturn(Future.failed(new RuntimeException("govtalk failure")))
 
@@ -1528,7 +1537,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[EmployerReference],
           any[String],
           any[String],
-          any[String]
+          any[String],
+          any[ChrisPollJourney],
+          any[ChrisSubmissionContext],
+          any[GovTalkError]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -1556,7 +1568,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           eqTo(EmployerReference("999", "XYZ123")),
           eqTo(submissionId),
           any[String],
-          eqTo("http://chris.example/gateway")
+          eqTo("http://chris.example/gateway"),
+          eqTo(ChrisPollJourney.Verification),
+          any[ChrisSubmissionContext],
+          any[GovTalkError]
         )(any[HeaderCarrier])
     }
 

@@ -308,6 +308,8 @@ class SubmissionController @Inject() (
           payload.irMark,
           payload.correlationId,
           ex,
+          MonthlyReturn,
+          monthlyReturnContext,
           errorLabel = "",
           startedErrorText = "Chris failure"
         )
@@ -358,6 +360,8 @@ class SubmissionController @Inject() (
     irMark: String,
     correlationId: String,
     ex: Throwable,
+    journey: ChrisPollJourney,
+    context: ChrisSubmissionContext,
     errorLabel: String,
     startedErrorText: String
   )(implicit hc: HeaderCarrier): Future[Result] = {
@@ -374,7 +378,10 @@ class SubmissionController @Inject() (
         employerRef,
         submissionId,
         correlationId,
-        appConfig.chrisGatewayUrl
+        appConfig.chrisGatewayUrl,
+        journey,
+        context,
+        govTalkError
       )
       .map { _ =>
         Ok(
@@ -517,6 +524,8 @@ class SubmissionController @Inject() (
               payload.irMark,
               payload.correlationId,
               ex,
+              Verification,
+              verificationContext,
               errorLabel = " verification",
               startedErrorText = "Chris verification failure"
             )

@@ -59,12 +59,19 @@ object Scenarios {
     Scenario(
       "500",
       "EZ00100",
-      "F18 s1: ChRIS HTTP 500 on submit (taxpayer benign: body ref=123)",
-      200,
+      "F18 s1: ChRIS HTTP 500 on submit + enrolment TON 500 trips formp-proxy outage -> 500 (body FATAL_ERROR)",
+      500,
       Some("FATAL_ERROR"),
       None
     ),
-    Scenario("502", "EZ00100", "F18 s1: ChRIS HTTP 502 on submit", 200, Some("FATAL_ERROR"), None),
+    Scenario(
+      "502",
+      "EZ00100",
+      "F18 s1: ChRIS HTTP 502 on submit + enrolment TON 502 trips formp-proxy outage -> 500 (body FATAL_ERROR)",
+      500,
+      Some("FATAL_ERROR"),
+      None
+    ),
     Scenario("503", "EZ00100", "F18 s1: ChRIS HTTP 503 on submit", 200, Some("FATAL_ERROR"), None),
     Scenario("779", "EZ00125", "F18 s2: immediate FATAL_ERROR from ChRIS", 200, Some("FATAL_ERROR"), None),
     Scenario(
