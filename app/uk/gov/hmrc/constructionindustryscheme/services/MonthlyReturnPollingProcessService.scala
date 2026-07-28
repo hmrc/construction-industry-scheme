@@ -18,8 +18,8 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.MonthlyReturnSubmissionToPoll
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.repositories.StoredMonthlyReturnContext
 import uk.gov.hmrc.http.HeaderCarrier
 
