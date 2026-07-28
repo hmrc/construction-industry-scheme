@@ -1760,7 +1760,8 @@ final class SubmissionServiceSpec extends SpecBase {
       numPolls = 0,
       pollInterval = 10,
       pollUrl = pollUrl,
-      govTalkStatus = None
+      govTalkStatus = None,
+      monthlyReturnContext = Some(pollMonthlyReturnContext)
     )
 
     val govTalk            = GetGovTalkStatusResponse(Seq.empty)
@@ -1805,7 +1806,8 @@ final class SubmissionServiceSpec extends SpecBase {
       chrisConnector.pollSubmission(
         eqTo(correlation),
         eqTo(pollUrl),
-        eqTo(ChrisPollJourney.MonthlyReturn)
+        eqTo(ChrisPollJourney.MonthlyReturn),
+        eqTo("monthly-hmrc-mark")
       )(using any[HeaderCarrier])
     ).thenReturn(Future.successful(pollResponse))
 
