@@ -18,6 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
+import uk.gov.hmrc.constructionindustryscheme.models.requests.SubcontractorVerificationEmailRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.VerificationSubmissionToPoll
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -47,9 +48,10 @@ class VerificationPollingProcessService @Inject() (
           session <- submissionService.syncVerificationSessionForPolling(submission)
           _       <- submissionService.pollSubmissionAndUpdateGovTalkStatus(
                        submissionId = submissionId,
-                       pollUrl = session.pollUrl,
+                       pollUrl = session.sessionData.pollUrl,
                        journey = Verification
                      )
+          _       <- sendVerificationEmailIfPresent(session.emailRecipient)
         } yield ()).recover { case NonFatal(ex) =>
           logger.error(
             s"[VerificationPollingProcessService][process] Failed for verification submission: " +
@@ -60,4 +62,22 @@ class VerificationPollingProcessService @Inject() (
       }
       .map(_ => ())
   }
+
+  private def sendVerificationEmailIfPresent(
+    emailRecipient: Option[String]
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    emailRecipient.fold {
+      logger.warn(
+        "[VerificationPollingProcessService][sendVerificationEmailIfPresent] No email recipient found, skipping email sending"
+      )
+      Future.unit
+    } { email =>
+      logger.info(
+        s"[VerificationPollingProcessService][sendVerificationEmailIfPresent] Sending verification email"
+      )
+      submissionService.sendEmailForVerification(
+        SubcontractorVerificationEmailRequest(email)
+      )
+    }
+
 }

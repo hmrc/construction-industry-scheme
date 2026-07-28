@@ -45,7 +45,7 @@ class ChrisConnector @Inject() (
   private val chrisCisVerifyUrl: String =
     servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.verify-submit-url")
 
-  def pollSubmission(correlationId: String, pollUrl: String, journey: ChrisPollJourney)(using
+  def pollSubmission(correlationId: String, pollUrl: String, journey: ChrisPollJourney, hmrcMarkGenerated: String)(using
     HeaderCarrier
   ): Future[ChrisPollResponse] =
     httpClient
@@ -62,7 +62,7 @@ class ChrisConnector @Inject() (
         logger.info("[ChrisConnector] pollSubmission request:\n" + ChrisPollRequest(correlationId, journey).payload)
         logger.info("[ChrisConnector] pollSubmission response:\n" + resp.body)
         if (is2xx(resp.status)) {
-          parsePollResponse(journey, resp.body) match {
+          parsePollResponse(journey, resp.body, hmrcMarkGenerated) match {
             case Left(err)     =>
               logger.error(
                 s"[ChrisConnector] Failed to parse 2xx polling response corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
@@ -187,11 +187,12 @@ class ChrisConnector @Inject() (
 
   private def parsePollResponse(
     journey: ChrisPollJourney,
-    body: String
+    body: String,
+    hmrcMarkGenerated: String
   ): Either[String, ChrisPollResponse] =
     journey match {
-      case ChrisPollJourney.MonthlyReturn => ChrisPollXmlMapper.parse(body)
-      case ChrisPollJourney.Verification  => ChrisVerificationPollXmlMapper.parse(body)
+      case ChrisPollJourney.MonthlyReturn => ChrisPollXmlMapper.parse(body, hmrcMarkGenerated)
+      case ChrisPollJourney.Verification  => ChrisVerificationPollXmlMapper.parse(body, hmrcMarkGenerated)
     }
 
   private def handle2xxResponse(resp: HttpResponse, correlationId: String): SubmissionResult = {

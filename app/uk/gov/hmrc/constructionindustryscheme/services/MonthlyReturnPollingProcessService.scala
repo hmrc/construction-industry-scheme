@@ -20,11 +20,12 @@ import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.MonthlyReturnSubmissionToPoll
+import uk.gov.hmrc.constructionindustryscheme.repositories.StoredMonthlyReturnContext
 import uk.gov.hmrc.http.HeaderCarrier
+
 import java.time.{LocalDateTime, ZoneId}
 import scala.util.control.NonFatal
 import javax.inject.{Inject, Singleton}
-
 import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -89,9 +90,18 @@ class MonthlyReturnPollingProcessService @Inject() (
                             s"No submission found for instanceId=${submission.instanceId}"
                           )
                         )
+      context       = StoredMonthlyReturnContext(
+                        subDetails.hmrcMarkGenerated.getOrElse(
+                          throw new RuntimeException(s"No hmrcMarkGenerated found in DB")
+                        ),
+                        subDetails.submissionRequestDate.getOrElse(
+                          throw new RuntimeException(s"No submissionRequestDate found in DB")
+                        )
+                      )
       gatewayUrl   <- submissionService.processMonthlyReturnGovTalkStatusCheck(
                         submission.instanceId,
-                        submission.submissionId.toString
+                        submission.submissionId.toString,
+                        context
                       )
       pollResponse <- submissionService.pollSubmissionAndUpdateGovTalkStatus(
                         submission.submissionId.toString,

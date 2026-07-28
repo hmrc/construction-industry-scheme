@@ -23,7 +23,8 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository}
+import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository, StoredMonthlyReturnContext}
+import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService.SyncedVerificationSession
 import uk.gov.hmrc.http.HeaderCarrier
 
 import java.time.{Instant, LocalDateTime, ZoneOffset}
@@ -250,7 +251,13 @@ class SubmissionService @Inject() (
     for {
       session            <- getChrisSubmissionSession(submissionId)
       _                  <- fetchAndStoreGovTalkStatus(session.instanceId, submissionId)
-      result             <- chrisConnector.pollSubmission(session.correlationId, pollUrl, journey)
+      hmrcMarkGenerated   = (journey match {
+                              case ChrisPollJourney.MonthlyReturn => session.monthlyReturnContext.map(_.hmrcMarkGenerated)
+                              case ChrisPollJourney.Verification  => session.verificationContext.map(_.hmrcMarkGenerated)
+                            }).getOrElse {
+                              throw new IllegalStateException("hmrcMarkGenerated not found in session")
+                            }
+      result             <- chrisConnector.pollSubmission(session.correlationId, pollUrl, journey, hmrcMarkGenerated)
       _                  <- validateCorrelationId(session.correlationId, result.correlationId) match {
                               case Right(_)     => Future.unit
                               case Left(reason) => Future.failed(new RuntimeException(reason))
@@ -287,6 +294,7 @@ class SubmissionService @Inject() (
   def processMonthlyReturnGovTalkStatusCheck(
     instanceId: String,
     submissionId: String,
+    monthlyReturnContext: StoredMonthlyReturnContext,
     lastMessageDate: Instant = Instant.now
   )(implicit hc: HeaderCarrier): Future[String] = {
     logger.info(
@@ -304,21 +312,25 @@ class SubmissionService @Inject() (
                                .toRight(new RuntimeException("No GovTalk status records found"))
                                .toTry
                            )
-      _                 <- saveBatchPollingChrisSession(
-                             submissionId,
-                             instanceId,
-                             statusRecord.correlationID,
-                             statusRecord.numPolls,
-                             statusRecord.pollInterval,
-                             statusRecord.gatewayURL,
-                             lastMessageDate
+      _                 <- chrisSubmissionSessionRepository.upsert(
+                             ChrisSubmissionSessionData(
+                               submissionId = submissionId,
+                               instanceId = instanceId,
+                               correlationId = statusRecord.correlationID,
+                               lastMessageDate = lastMessageDate,
+                               numPolls = statusRecord.numPolls,
+                               pollInterval = statusRecord.pollInterval,
+                               pollUrl = statusRecord.gatewayURL,
+                               govTalkStatus = None,
+                               monthlyReturnContext = Some(monthlyReturnContext)
+                             )
                            )
       _                 <- runGovTalkStatusUpdateSteps(
                              instanceId,
                              submissionId,
                              statusRecord.correlationID,
                              lastMessageDate,
-                             0,
+                             statusRecord.numPolls,
                              statusRecord.pollInterval,
                              statusRecord.gatewayURL
                            )
@@ -327,7 +339,7 @@ class SubmissionService @Inject() (
 
   def syncVerificationSessionForPolling(
     submission: VerificationSubmissionToPoll
-  )(implicit hc: HeaderCarrier): Future[ChrisSubmissionSessionData] = {
+  )(implicit hc: HeaderCarrier): Future[SyncedVerificationSession] = {
 
     val submissionId = submission.submissionId.toString
 
@@ -368,13 +380,16 @@ class SubmissionService @Inject() (
             )
             .fold(
               error => Future.failed(new RuntimeException(s"Failed to build verification context: $error")),
-              Future.successful
+              verificationContext =>
+                Future.successful(
+                  verificationContext -> response.submission.flatMap(_.emailRecipient)
+                )
             )
         }
 
     govTalkStatusFuture
       .zip(verificationContextFuture)
-      .flatMap { case (statusResponse, verificationContext) =>
+      .flatMap { case (statusResponse, (verificationContext, emailRecipient)) =>
         val statusRecord = statusResponse.govtalk_status.head
 
         val sessionData = ChrisSubmissionSessionData(
@@ -392,7 +407,12 @@ class SubmissionService @Inject() (
 
         chrisSubmissionSessionRepository
           .upsert(sessionData)
-          .map(_ => sessionData)
+          .map(_ =>
+            SyncedVerificationSession(
+              sessionData = sessionData,
+              emailRecipient = emailRecipient
+            )
+          )
       }
   }
 
@@ -408,28 +428,6 @@ class SubmissionService @Inject() (
           new RuntimeException(s"No GovTalk status found for instanceId: $instanceId, submissionId: $submissionId")
         )
     }
-
-  private def saveBatchPollingChrisSession(
-    submissionId: String,
-    instanceId: String,
-    correlationId: String,
-    numPolls: Int,
-    pollInterval: Int,
-    pollUrl: String,
-    lastMessageDate: Instant
-  ): Future[Unit] =
-    chrisSubmissionSessionRepository.upsert(
-      ChrisSubmissionSessionData(
-        submissionId = submissionId,
-        instanceId = instanceId,
-        correlationId = correlationId,
-        lastMessageDate = lastMessageDate,
-        numPolls = numPolls,
-        pollInterval = pollInterval,
-        pollUrl = pollUrl,
-        govTalkStatus = None
-      )
-    )
 
   private def updateChrisSessionAfterPoll(
     submissionId: String,
@@ -529,4 +527,11 @@ class SubmissionService @Inject() (
     hc: HeaderCarrier
   ): Future[Option[GetGovTalkStatusResponse]] =
     formpProxyConnector.getGovTalkStatus(request, Polling)
+}
+
+object SubmissionService {
+  final case class SyncedVerificationSession(
+    sessionData: ChrisSubmissionSessionData,
+    emailRecipient: Option[String]
+  )
 }

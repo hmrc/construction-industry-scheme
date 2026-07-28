@@ -43,11 +43,12 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     org.mockito.Mockito.reset(monthlyReturnService, submissionService)
   }
 
-  private val gatewayUrl       = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
-  private val testSubmissionId = 100L
-  private val testInstanceId   = "inst-1"
-  private val testTaxYear      = 2026
-  private val testTaxMonth     = 4
+  private val gatewayUrl                = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+  private val testSubmissionId          = 100L
+  private val testInstanceId            = "inst-1"
+  private val testTaxYear               = 2026
+  private val testTaxMonth              = 4
+  private val testSubmissionRequestDate = LocalDateTime.of(2026, 1, 1, 12, 0)
 
   private def makeSubmission(
     instanceId: String = testInstanceId,
@@ -81,7 +82,8 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
   private def makeDbSubmission(
     hmrcMarkGenerated: Option[String] = Some("irmark-gen"),
     emailRecipient: Option[String] = Some("user@example.com"),
-    agentId: Option[String] = None
+    agentId: Option[String] = None,
+    submissionRequestDate: Option[LocalDateTime] = Some(testSubmissionRequestDate)
   ) =
     Submission(
       submissionId = testSubmissionId,
@@ -97,7 +99,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       schemeId = 1L,
       agentId = agentId,
       l_Migrated = None,
-      submissionRequestDate = None,
+      submissionRequestDate = submissionRequestDate,
       govTalkErrorCode = None,
       govTalkErrorType = None,
       govTalkErrorMessage = None
@@ -138,7 +140,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
   ): Unit = {
     when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
       .thenReturn(Future.successful(details))
-    when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
+    when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any(), any())(any()))
       .thenReturn(Future.successful(gatewayUrl))
     when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any()))
       .thenReturn(Future.successful(pollResponse))
@@ -168,7 +170,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
             Future.failed(new RuntimeException("getMonthlyReturnForEdit failed")),
             Future.successful(makeDetails())
           )
-        when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
+        when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any(), any())(any()))
           .thenReturn(Future.successful(gatewayUrl))
         when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any()))
           .thenReturn(Future.successful(makePollResponse(ACCEPTED)))
@@ -182,7 +184,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         // The first submission fails at getMonthlyReturnForEdit, so only the second (inst-2)
         // continues and completes the downstream steps.
         verify(submissionService, times(1))
-          .processMonthlyReturnGovTalkStatusCheck(eqTo("inst-2"), any(), any())(any())
+          .processMonthlyReturnGovTalkStatusCheck(eqTo("inst-2"), any(), any(), any())(any())
         verify(submissionService, times(1)).pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any())
         verify(submissionService, times(1)).updateSubmission(any())(any())
       }
@@ -209,6 +211,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         verify(submissionService).processMonthlyReturnGovTalkStatusCheck(
           eqTo(testInstanceId),
           eqTo(testSubmissionId.toString),
+          any(),
           any()
         )(any())
       }
@@ -248,7 +251,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
               submittableStatus = "SUBMITTED",
               amendment = "Y",
               hmrcMarkGgis = Some("irmark-recv"),
-              submissionRequestDate = None,
+              submissionRequestDate = Some(testSubmissionRequestDate),
               acceptedTime = None,
               emailRecipient = Some("user@example.com"),
               agentId = Some("agent-1"),
@@ -273,6 +276,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
               hmrcMarkGenerated = Some("irmark-gen"),
               submittableStatus = "ACCEPTED",
               amendment = "N",
+              submissionRequestDate = Some(testSubmissionRequestDate),
               emailRecipient = Some("user@example.com")
             )
           )
@@ -322,7 +326,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
             submissionType = "Original",
             activeObjectId = None,
             status = None,
-            hmrcMarkGenerated = None,
+            hmrcMarkGenerated = Some("irmark-gen"),
             hmrcMarkGgis = None,
             emailRecipient = None,
             acceptedTime = None,
@@ -340,7 +344,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       )
       when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
         .thenReturn(Future.successful(response))
-      when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
+      when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(gatewayUrl))
       when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any()))
         .thenReturn(Future.successful(makePollResponse(ACCEPTED)))
@@ -348,6 +352,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         .thenReturn(Future.unit)
       service.process(Seq(submission), System.currentTimeMillis()).futureValue mustBe ()
       verify(submissionService).processMonthlyReturnGovTalkStatusCheck(
+        any(),
         any(),
         any(),
         any()
@@ -453,6 +458,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 hmrcMarkGenerated = Some("irmark-gen"),
                 submittableStatus = expectedStatusString,
                 amendment = "N",
+                submissionRequestDate = Some(testSubmissionRequestDate),
                 emailRecipient = Some("user@example.com")
               )
             )
