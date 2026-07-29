@@ -1230,13 +1230,6 @@ final class SubmissionServiceSpec extends SpecBase {
         status = "SUBMITTED",
         verificationBatchResourceRef = verificationBatchResourceRef
       )
-
-    val snapshotRequest =
-      GetSubmissionWithVerificationBatchRequest(
-        instanceId = instanceId,
-        verificationBatchResourceRef = verificationBatchResourceRef
-      )
-
     val snapshotResponse =
       GetSubmissionWithVerificationBatchResponse(
         scheme = None,
@@ -1318,8 +1311,7 @@ final class SubmissionServiceSpec extends SpecBase {
     "must retrieve fresh data, upsert the session and return it" in new Setup {
       val correlationId = "corr-123"
       val pollUrl       = "/poll/123"
-
-      val statusRecord =
+      val statusRecord  =
         GovTalkStatusRecord(
           userIdentifier = instanceId,
           formResultID = submissionIdString,
@@ -1394,7 +1386,8 @@ final class SubmissionServiceSpec extends SpecBase {
 
       when(
         formpProxyConnector.getSubmissionWithVerificationBatch(
-          eqTo(snapshotRequest)
+          eqTo(instanceId),
+          eqTo(verificationBatchResourceRef)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(snapshotResponse))
 
@@ -1411,7 +1404,8 @@ final class SubmissionServiceSpec extends SpecBase {
       )(any[HeaderCarrier])
 
       verify(formpProxyConnector).getSubmissionWithVerificationBatch(
-        eqTo(snapshotRequest)
+        eqTo(instanceId),
+        eqTo(verificationBatchResourceRef)
       )(any[HeaderCarrier])
 
       verify(chrisSubmissionSessionRepository).upsert(eqTo(expectedSession))
@@ -1430,7 +1424,8 @@ final class SubmissionServiceSpec extends SpecBase {
 
       when(
         formpProxyConnector.getSubmissionWithVerificationBatch(
-          eqTo(snapshotRequest)
+          eqTo(instanceId),
+          eqTo(verificationBatchResourceRef)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(snapshotResponse))
 
@@ -1450,7 +1445,8 @@ final class SubmissionServiceSpec extends SpecBase {
       )(any[HeaderCarrier])
 
       verify(formpProxyConnector).getSubmissionWithVerificationBatch(
-        eqTo(snapshotRequest)
+        eqTo(instanceId),
+        eqTo(verificationBatchResourceRef)
       )(any[HeaderCarrier])
 
       verifyNoInteractions(chrisSubmissionSessionRepository)
@@ -1473,7 +1469,8 @@ final class SubmissionServiceSpec extends SpecBase {
 
       when(
         formpProxyConnector.getSubmissionWithVerificationBatch(
-          eqTo(snapshotRequest)
+          eqTo(instanceId),
+          eqTo(verificationBatchResourceRef)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(snapshotResponse))
 
@@ -1493,7 +1490,8 @@ final class SubmissionServiceSpec extends SpecBase {
       )(any[HeaderCarrier])
 
       verify(formpProxyConnector).getSubmissionWithVerificationBatch(
-        eqTo(snapshotRequest)
+        eqTo(instanceId),
+        eqTo(verificationBatchResourceRef)
       )(any[HeaderCarrier])
 
       verifyNoInteractions(chrisSubmissionSessionRepository)
@@ -1513,7 +1511,8 @@ final class SubmissionServiceSpec extends SpecBase {
 
       when(
         formpProxyConnector.getSubmissionWithVerificationBatch(
-          eqTo(snapshotRequest)
+          eqTo(instanceId),
+          eqTo(verificationBatchResourceRef)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(snapshotResponse))
 

@@ -18,7 +18,6 @@ package services
 
 import base.SpecBase
 import org.mockito.Mockito.*
-import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BatchChRISPollResult, PollReportContent}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, VerificationSubmissionToPoll}
