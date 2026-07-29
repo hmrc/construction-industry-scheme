@@ -18,6 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
+import uk.gov.hmrc.constructionindustryscheme.models.{DEPARTMENTAL_ERROR, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionStatus}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.SubcontractorVerificationEmailRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.VerificationSubmissionToPoll
 import uk.gov.hmrc.http.HeaderCarrier
@@ -31,6 +32,13 @@ class VerificationPollingProcessService @Inject() (
   submissionService: SubmissionService
 )(implicit ec: ExecutionContext)
     extends Logging {
+
+  private val emailEligibleStatuses: Set[SubmissionStatus] =
+    Set(
+      SUBMITTED,
+      SUBMITTED_NO_RECEIPT,
+      DEPARTMENTAL_ERROR
+    )
 
   def process(
     verificationSubmissions: Seq[VerificationSubmissionToPoll]
@@ -46,12 +54,12 @@ class VerificationPollingProcessService @Inject() (
 
         (for {
           session <- submissionService.syncVerificationSessionForPolling(submission)
-          _       <- submissionService.pollSubmissionAndUpdateGovTalkStatus(
+          result  <- submissionService.pollSubmissionAndUpdateGovTalkStatus(
                        submissionId = submissionId,
                        pollUrl = session.sessionData.pollUrl,
                        journey = Verification
                      )
-          _       <- sendVerificationEmailIfPresent(session.emailRecipient)
+          _       <- sendVerificationEmailIfRequired(result.status, session.emailRecipient)
         } yield ()).recover { case NonFatal(ex) =>
           logger.error(
             s"[VerificationPollingProcessService][process] Failed for verification submission: " +
@@ -63,21 +71,30 @@ class VerificationPollingProcessService @Inject() (
       .map(_ => ())
   }
 
-  private def sendVerificationEmailIfPresent(
+  private def sendVerificationEmailIfRequired(
+    status: SubmissionStatus,
     emailRecipient: Option[String]
   )(implicit hc: HeaderCarrier): Future[Unit] =
-    emailRecipient.fold {
-      logger.warn(
-        "[VerificationPollingProcessService][sendVerificationEmailIfPresent] No email recipient found, skipping email sending"
-      )
-      Future.unit
-    } { email =>
-      logger.info(
-        s"[VerificationPollingProcessService][sendVerificationEmailIfPresent] Sending verification email"
-      )
-      submissionService.sendEmailForVerification(
-        SubcontractorVerificationEmailRequest(email)
-      )
+    (emailEligibleStatuses.contains(status), emailRecipient) match {
+      case (false, _) =>
+        logger.info(
+          s"[VerificationPollingProcessService][sendVerificationEmailIfRequired] Not sending email as status $status is not eligible for email"
+        )
+        Future.unit
+
+      case (true, None) =>
+        logger.warn(
+          s"[VerificationPollingProcessService][sendVerificationEmailIfRequired] Not sending email as no email recipient is available"
+        )
+        Future.unit
+
+      case (true, Some(email)) =>
+        logger.info(
+          s"[VerificationPollingProcessService][sendVerificationEmailIfRequired] Sending verification email for status $status"
+        )
+        submissionService.sendEmailForVerification(
+          SubcontractorVerificationEmailRequest(email)
+        )
     }
 
 }

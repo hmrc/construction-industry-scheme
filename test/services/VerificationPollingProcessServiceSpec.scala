@@ -21,7 +21,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
-import uk.gov.hmrc.constructionindustryscheme.models.SUBMITTED
+import uk.gov.hmrc.constructionindustryscheme.models.{SUBMITTED, SubmissionStatus}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.SubcontractorVerificationEmailRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, VerificationSubmissionToPoll}
 import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
@@ -72,6 +72,43 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
       verify(mockSubmissionService)
         .sendEmailForVerification(
           SubcontractorVerificationEmailRequest(emailRecipient)
+        )
+
+      verifyNoMoreInteractions(mockSubmissionService)
+    }
+
+    "must not send an email when submission status is not eligible" in new Setup {
+      val ineligibleStatus       = mock[SubmissionStatus]
+      val ineligiblePollResponse = pollResponse.copy(status = ineligibleStatus)
+
+      when(
+        mockSubmissionService
+          .syncVerificationSessionForPolling(verificationSubmission)
+      ).thenReturn(Future.successful(syncedSession))
+
+      when(
+        mockSubmissionService.pollSubmissionAndUpdateGovTalkStatus(
+          verificationSubmission.submissionId.toString,
+          chrisSession.pollUrl,
+          Verification
+        )
+      ).thenReturn(Future.successful(ineligiblePollResponse))
+
+      service.process(Seq(verificationSubmission)).futureValue mustBe ()
+
+      verify(mockSubmissionService)
+        .syncVerificationSessionForPolling(verificationSubmission)
+
+      verify(mockSubmissionService)
+        .pollSubmissionAndUpdateGovTalkStatus(
+          verificationSubmission.submissionId.toString,
+          chrisSession.pollUrl,
+          Verification
+        )
+
+      verify(mockSubmissionService, never)
+        .sendEmailForVerification(any[SubcontractorVerificationEmailRequest])(
+          any[HeaderCarrier]
         )
 
       verifyNoMoreInteractions(mockSubmissionService)
