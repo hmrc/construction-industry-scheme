@@ -29,7 +29,7 @@ import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController
 import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, Subcontractor}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorForDeleteResponse, GetSubcontractorListResponse, GetSubcontractorOtherInfo, GetSubcontractorResponse}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorForDeleteResponse, GetSubcontractorListResponse, GetSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
@@ -511,8 +511,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
           version = Some(1)
         )
       ),
-      subcontractor = Some(subcontractor),
-      otherInfo = Seq(GetSubcontractorOtherInfo("1111111111"))
+      subcontractor = Some(subcontractor)
     )
 
     "returns 200 with subcontractor response when the service succeeds" in {
@@ -535,7 +534,6 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
       (contentAsJson(result) \ "subcontractor" \ "subcontractorId").as[Long] mustBe 999L
       (contentAsJson(result) \ "subcontractor" \ "utr").as[String] mustBe "0987654321"
       (contentAsJson(result) \ "subcontractor" \ "displayName").as[String] mustBe "John Smith"
-      (contentAsJson(result) \ "otherInfo")(0).\("utr").as[String] mustBe "1111111111"
 
       verify(service).getSubcontractor(eqTo(cisId), eqTo(subbieResourceRef))(any[HeaderCarrier])
     }
