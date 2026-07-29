@@ -23,7 +23,7 @@ import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
 import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, Subcontractor}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorForDeleteResponse, GetSubcontractorListResponse, GetSubcontractorOtherInfo, GetSubcontractorResponse}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorForDeleteResponse, GetSubcontractorListResponse, GetSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -312,8 +312,7 @@ final class SubcontractorServiceSpec extends SpecBase {
           version = Some(1)
         )
       ),
-      subcontractor = Some(subcontractor),
-      otherInfo = Seq(GetSubcontractorOtherInfo("1111111111"))
+      subcontractor = Some(subcontractor)
     )
 
     "delegates to FormpProxyConnector and returns the response" in {
