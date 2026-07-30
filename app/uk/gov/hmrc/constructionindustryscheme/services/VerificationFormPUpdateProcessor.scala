@@ -64,7 +64,8 @@ class VerificationFormPUpdateProcessor @Inject() (
 
   override def handlePollResponse(
     session: ChrisSubmissionSessionData,
-    response: ChrisPollResponse
+    response: ChrisPollResponse,
+    authMode: FormpProxyAuthMode
   )(implicit hc: HeaderCarrier): Future[Unit] = {
     val ctx =
       session.verificationContext.getOrElse(
@@ -73,14 +74,15 @@ class VerificationFormPUpdateProcessor @Inject() (
         )
       )
 
-    if (isVerificationSuccess(response)) handleSuccess(session, ctx, response)
-    else handleNonSuccess(session, ctx, response)
+    if (isVerificationSuccess(response)) handleSuccess(session, ctx, response, authMode)
+    else handleNonSuccess(session, ctx, response, authMode)
   }
 
   private def handleSuccess(
     session: ChrisSubmissionSessionData,
     ctx: StoredVerificationContext,
-    response: ChrisPollResponse
+    response: ChrisPollResponse,
+    authMode: FormpProxyAuthMode
   )(implicit hc: HeaderCarrier): Future[Unit] = {
 
     val result =
@@ -115,7 +117,8 @@ class VerificationFormPUpdateProcessor @Inject() (
                                  submissionStatus = response.status.toString,
                                  irMarkReceived = response.irMarkReceived,
                                  verificationResults = mappedResults
-                               )
+                               ),
+                               authMode
                              )
           } yield ()
     }
@@ -124,7 +127,8 @@ class VerificationFormPUpdateProcessor @Inject() (
   private def handleNonSuccess(
     session: ChrisSubmissionSessionData,
     ctx: StoredVerificationContext,
-    response: ChrisPollResponse
+    response: ChrisPollResponse,
+    authMode: FormpProxyAuthMode
   )(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.updateVerificationSubmission(
       UpdateVerificationSubmissionRequest(
@@ -136,7 +140,8 @@ class VerificationFormPUpdateProcessor @Inject() (
         govtalkErrorCode = response.error.flatMap(error => (error \ "errorNumber").asOpt[String]),
         govtalkErrorType = response.error.flatMap(error => (error \ "errorType").asOpt[String]),
         govtalkErrorMessage = response.error.flatMap(error => (error \ "errorText").asOpt[String])
-      )
+      ),
+      authMode
     )
 
   private def isVerificationSuccess(response: ChrisPollResponse): Boolean =

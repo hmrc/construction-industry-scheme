@@ -751,8 +751,12 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(submissionService.updateSubmission(any[UpdateSubmissionRequest])(any[HeaderCarrier]))
-        .thenReturn(Future.unit)
+      when(
+        submissionService.updateSubmission(
+          any[UpdateSubmissionRequest],
+          any[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/update")
         .withBody(minimalUpdateJson)
@@ -761,7 +765,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val result = controller.updateSubmission(submissionId)(req)
 
       status(result) mustBe NO_CONTENT
-      verify(submissionService).updateSubmission(any[UpdateSubmissionRequest])(any[HeaderCarrier])
+
+      verify(submissionService).updateSubmission(
+        any[UpdateSubmissionRequest],
+        any[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
     }
 
     "returns 400 when JSON is invalid" in {
@@ -792,8 +800,12 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(submissionService.updateSubmission(any[UpdateSubmissionRequest])(any[HeaderCarrier]))
-        .thenReturn(Future.failed(new RuntimeException("formp update failed")))
+      when(
+        submissionService.updateSubmission(
+          any[UpdateSubmissionRequest],
+          any[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.failed(new RuntimeException("formp update failed")))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/update")
         .withBody(minimalUpdateJson)
@@ -802,7 +814,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val result = controller.updateSubmission(submissionId)(req)
 
       status(result) mustBe BAD_GATEWAY
+
       val js = contentAsJson(result)
+
       (js \ "submissionId").as[String] mustBe submissionId
       (js \ "message").as[String] mustBe "update-submission-failed"
     }
@@ -932,9 +946,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
         when(
           submissionService.pollSubmissionAndUpdateGovTalkStatus(
-            eqTo(submissionId),
-            eqTo(overridePollUrl),
-            eqTo(ChrisPollJourney.MonthlyReturn)
+            any[String],
+            any[String],
+            any[ChrisPollJourney],
+            any[FormpProxyAuthMode]
           )(any[HeaderCarrier])
         ).thenReturn(
           Future.successful(
@@ -951,21 +966,32 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           )
         )
 
-        val req = FakeRequest(GET, s"/cis/submissions/$submissionId/poll?pollUrl=$pollUrl")
+        val req =
+          FakeRequest(
+            GET,
+            s"/cis/submissions/$submissionId/poll?pollUrl=$pollUrl"
+          )
 
-        val result = controller.pollSubmission(RedirectUrl(pollUrl), submissionId)(req)
+        val result =
+          controller.pollSubmission(
+            RedirectUrl(pollUrl),
+            submissionId
+          )(req)
 
         status(result) mustBe OK
+
         val js = contentAsJson(result)
+
         (js \ "status").as[String] mustBe "ACCEPTED"
         (js \ "pollUrl").as[String] mustBe overridePollUrl
         (js \ "intervalSeconds").as[Int] mustBe 10
 
         verify(submissionService)
           .pollSubmissionAndUpdateGovTalkStatus(
-            eqTo(submissionId),
-            eqTo(overridePollUrl),
-            eqTo(ChrisPollJourney.MonthlyReturn)
+            any[String],
+            any[String],
+            any[ChrisPollJourney],
+            any[FormpProxyAuthMode]
           )(any[HeaderCarrier])
       }
     }
@@ -988,9 +1014,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(
         submissionService.pollSubmissionAndUpdateGovTalkStatus(
-          eqTo(submissionId),
-          eqTo(pollUrl),
-          eqTo(ChrisPollJourney.MonthlyReturn)
+          any[String],
+          any[String],
+          any[ChrisPollJourney],
+          any[FormpProxyAuthMode]
         )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
@@ -1007,12 +1034,22 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         )
       )
 
-      val req = FakeRequest(GET, s"/cis/submissions/$submissionId/poll?pollUrl=$pollUrl")
+      val req =
+        FakeRequest(
+          GET,
+          s"/cis/submissions/$submissionId/poll?pollUrl=$pollUrl"
+        )
 
-      val result = controller.pollSubmission(RedirectUrl(pollUrl), submissionId)(req)
+      val result =
+        controller.pollSubmission(
+          RedirectUrl(pollUrl),
+          submissionId
+        )(req)
 
       status(result) mustBe OK
+
       val js = contentAsJson(result)
+
       (js \ "status").as[String] mustBe "SUBMITTED"
       (js \ "pollUrl").asOpt[String] mustBe None
       (js \ "intervalSeconds").asOpt[Int] mustBe None
@@ -1031,12 +1068,22 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      val req = FakeRequest(GET, s"/cis/submissions/$submissionId/poll?pollUrl=http://bad.host/poll")
+      val req =
+        FakeRequest(
+          GET,
+          s"/cis/submissions/$submissionId/poll?pollUrl=http://bad.host/poll"
+        )
 
-      val result = controller.pollSubmission(RedirectUrl("http://bad.host/poll"), submissionId)(req)
+      val result =
+        controller.pollSubmission(
+          RedirectUrl("http://bad.host/poll"),
+          submissionId
+        )(req)
 
       status(result) mustBe BAD_REQUEST
-      (contentAsJson(result) \ "error").as[String] mustBe "pollUrl does not have the right host"
+
+      (contentAsJson(result) \ "error").as[String] mustBe
+        "pollUrl does not have the right host"
 
       verifyNoInteractions(submissionService)
     }
@@ -1052,9 +1099,17 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val pollUrl = "http://chris.test/poll"
 
-      val req = FakeRequest(GET, s"/cis/submissions/$submissionId/poll?pollUrl=$pollUrl")
+      val req =
+        FakeRequest(
+          GET,
+          s"/cis/submissions/$submissionId/poll?pollUrl=$pollUrl"
+        )
 
-      val result = controller.pollSubmission(RedirectUrl(pollUrl), submissionId)(req)
+      val result =
+        controller.pollSubmission(
+          RedirectUrl(pollUrl),
+          submissionId
+        )(req)
 
       status(result) mustBe UNAUTHORIZED
       verifyNoInteractions(submissionService)
@@ -1650,9 +1705,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(
         submissionService.pollSubmissionAndUpdateGovTalkStatus(
-          eqTo(submissionId),
-          eqTo(overridePollUrl),
-          eqTo(ChrisPollJourney.Verification)
+          any[String],
+          any[String],
+          any[ChrisPollJourney],
+          any[FormpProxyAuthMode]
         )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
@@ -1670,9 +1726,16 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       )
 
       val req =
-        FakeRequest(GET, s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=$pollUrl")
+        FakeRequest(
+          GET,
+          s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=$pollUrl"
+        )
 
-      val result = controller.pollVerificationSubmission(RedirectUrl(pollUrl), submissionId)(req)
+      val result =
+        controller.pollVerificationSubmission(
+          RedirectUrl(pollUrl),
+          submissionId
+        )(req)
 
       status(result) mustBe OK
 
@@ -1685,9 +1748,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       verify(submissionService)
         .pollSubmissionAndUpdateGovTalkStatus(
-          eqTo(submissionId),
-          eqTo(overridePollUrl),
-          eqTo(ChrisPollJourney.Verification)
+          any[String],
+          any[String],
+          any[ChrisPollJourney],
+          any[FormpProxyAuthMode]
         )(any[HeaderCarrier])
     }
 
@@ -1709,9 +1773,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(
         submissionService.pollSubmissionAndUpdateGovTalkStatus(
-          eqTo(submissionId),
-          eqTo(pollUrl),
-          eqTo(ChrisPollJourney.Verification)
+          any[String],
+          any[String],
+          any[ChrisPollJourney],
+          any[FormpProxyAuthMode]
         )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
@@ -1729,9 +1794,16 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       )
 
       val req =
-        FakeRequest(GET, s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=$pollUrl")
+        FakeRequest(
+          GET,
+          s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=$pollUrl"
+        )
 
-      val result = controller.pollVerificationSubmission(RedirectUrl(pollUrl), submissionId)(req)
+      val result =
+        controller.pollVerificationSubmission(
+          RedirectUrl(pollUrl),
+          submissionId
+        )(req)
 
       status(result) mustBe OK
 
@@ -1760,12 +1832,21 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       )
 
       val req =
-        FakeRequest(GET, s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=http://bad.host/poll")
+        FakeRequest(
+          GET,
+          s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=http://bad.host/poll"
+        )
 
-      val result = controller.pollVerificationSubmission(RedirectUrl("http://bad.host/poll"), submissionId)(req)
+      val result =
+        controller.pollVerificationSubmission(
+          RedirectUrl("http://bad.host/poll"),
+          submissionId
+        )(req)
 
       status(result) mustBe BAD_REQUEST
-      (contentAsJson(result) \ "error").as[String] mustBe "pollUrl does not have the right host"
+
+      (contentAsJson(result) \ "error").as[String] mustBe
+        "pollUrl does not have the right host"
 
       verifyNoInteractions(submissionService)
     }
@@ -1783,9 +1864,16 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val pollUrl = "http://chris.test/poll"
 
       val req =
-        FakeRequest(GET, s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=$pollUrl")
+        FakeRequest(
+          GET,
+          s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=$pollUrl"
+        )
 
-      val result = controller.pollVerificationSubmission(RedirectUrl(pollUrl), submissionId)(req)
+      val result =
+        controller.pollVerificationSubmission(
+          RedirectUrl(pollUrl),
+          submissionId
+        )(req)
 
       status(result) mustBe UNAUTHORIZED
       verifyNoInteractions(submissionService)

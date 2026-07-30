@@ -18,9 +18,8 @@ package services
 
 import base.SpecBase
 import org.apache.pekko.Done
-import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.{any, eq as eqTo, isNull}
 import org.mockito.Mockito.*
-import org.mockito.ArgumentMatchers.eq as eqTo
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
@@ -99,11 +98,11 @@ final class SubmissionServiceSpec extends SpecBase {
         submittableStatus = "ACCEPTED"
       )
 
-      when(formpProxyConnector.updateSubmission(eqTo(req))(any[HeaderCarrier]))
+      when(formpProxyConnector.updateSubmission(eqTo(req), eqTo(FormpProxyAuthMode.UserJourney))(any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
       service.updateSubmission(req).futureValue
-      verify(formpProxyConnector).updateSubmission(eqTo(req))(any[HeaderCarrier])
+      verify(formpProxyConnector).updateSubmission(eqTo(req), eqTo(FormpProxyAuthMode.UserJourney))(any[HeaderCarrier])
       verifyNoInteractions(chrisConnector)
     }
 
@@ -118,7 +117,7 @@ final class SubmissionServiceSpec extends SpecBase {
         submittableStatus = "REJECTED"
       )
 
-      when(formpProxyConnector.updateSubmission(eqTo(req))(any[HeaderCarrier]))
+      when(formpProxyConnector.updateSubmission(eqTo(req), eqTo(FormpProxyAuthMode.UserJourney))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new IllegalStateException("nope")))
 
       service.updateSubmission(req).failed.futureValue.getMessage must include("nope")
@@ -293,7 +292,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
-          eqTo(Polling)
+          eqTo(Polling),
+          eqTo(FormpProxyAuthMode.UserJourney)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Some(govTalk)))
 
@@ -391,7 +391,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
-          eqTo(Polling)
+          eqTo(Polling),
+          eqTo(FormpProxyAuthMode.UserJourney)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Some(govTalk)))
 
@@ -438,7 +439,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
-          eqTo(Polling)
+          eqTo(Polling),
+          eqTo(FormpProxyAuthMode.UserJourney)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(None))
 
@@ -608,12 +610,14 @@ final class SubmissionServiceSpec extends SpecBase {
         protocolStatus = "dataRequest"
       )
 
-      when(formpProxyConnector.updateGovTalkStatus(eqTo(req))(any[HeaderCarrier]))
+      when(formpProxyConnector.updateGovTalkStatus(eqTo(req), eqTo(FormpProxyAuthMode.UserJourney))(any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
       service.updateGovTalkStatus(req).futureValue
 
-      verify(formpProxyConnector).updateGovTalkStatus(eqTo(req))(any[HeaderCarrier])
+      verify(formpProxyConnector).updateGovTalkStatus(eqTo(req), eqTo(FormpProxyAuthMode.UserJourney))(
+        any[HeaderCarrier]
+      )
       verifyNoInteractions(chrisConnector)
       verifyNoInteractions(emailConnector)
     }
@@ -628,12 +632,14 @@ final class SubmissionServiceSpec extends SpecBase {
         protocolStatus = "dataRequest"
       )
 
-      when(formpProxyConnector.updateGovTalkStatus(eqTo(req))(any[HeaderCarrier]))
+      when(formpProxyConnector.updateGovTalkStatus(eqTo(req), eqTo(FormpProxyAuthMode.UserJourney))(any[HeaderCarrier]))
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.updateGovTalkStatus(req).failed.futureValue.getMessage must include("boom")
 
-      verify(formpProxyConnector).updateGovTalkStatus(eqTo(req))(any[HeaderCarrier])
+      verify(formpProxyConnector).updateGovTalkStatus(eqTo(req), eqTo(FormpProxyAuthMode.UserJourney))(
+        any[HeaderCarrier]
+      )
     }
   }
 
@@ -651,12 +657,18 @@ final class SubmissionServiceSpec extends SpecBase {
         gatewayURL = "/poll/123"
       )
 
-      when(formpProxyConnector.updateGovTalkStatusCorrelationId(eqTo(req))(any[HeaderCarrier]))
+      when(
+        formpProxyConnector.updateGovTalkStatusCorrelationId(eqTo(req), eqTo(FormpProxyAuthMode.UserJourney))(
+          any[HeaderCarrier]
+        )
+      )
         .thenReturn(Future.unit)
 
       service.updateGovTalkStatusCorrelationId(req).futureValue
 
-      verify(formpProxyConnector).updateGovTalkStatusCorrelationId(eqTo(req))(any[HeaderCarrier])
+      verify(formpProxyConnector).updateGovTalkStatusCorrelationId(eqTo(req), eqTo(FormpProxyAuthMode.UserJourney))(
+        any[HeaderCarrier]
+      )
       verifyNoInteractions(chrisConnector)
       verifyNoInteractions(emailConnector)
     }
@@ -673,7 +685,11 @@ final class SubmissionServiceSpec extends SpecBase {
         gatewayURL = "/poll/123"
       )
 
-      when(formpProxyConnector.updateGovTalkStatusCorrelationId(eqTo(req))(any[HeaderCarrier]))
+      when(
+        formpProxyConnector.updateGovTalkStatusCorrelationId(eqTo(req), eqTo(FormpProxyAuthMode.UserJourney))(
+          any[HeaderCarrier]
+        )
+      )
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.updateGovTalkStatusCorrelationId(req).failed.futureValue.getMessage must include("boom")
@@ -695,12 +711,18 @@ final class SubmissionServiceSpec extends SpecBase {
         gatewayURL = "/poll/123"
       )
 
-      when(formpProxyConnector.updateGovTalkStatusStatistics(eqTo(req))(any[HeaderCarrier]))
+      when(
+        formpProxyConnector.updateGovTalkStatusStatistics(eqTo(req), eqTo(FormpProxyAuthMode.UserJourney))(
+          any[HeaderCarrier]
+        )
+      )
         .thenReturn(Future.unit)
 
       service.updateGovTalkStatusStatistics(req).futureValue
 
-      verify(formpProxyConnector).updateGovTalkStatusStatistics(eqTo(req))(any[HeaderCarrier])
+      verify(formpProxyConnector).updateGovTalkStatusStatistics(eqTo(req), eqTo(FormpProxyAuthMode.UserJourney))(
+        any[HeaderCarrier]
+      )
       verifyNoInteractions(chrisConnector)
       verifyNoInteractions(emailConnector)
     }
@@ -718,7 +740,11 @@ final class SubmissionServiceSpec extends SpecBase {
         gatewayURL = "/poll/123"
       )
 
-      when(formpProxyConnector.updateGovTalkStatusStatistics(eqTo(req))(any[HeaderCarrier]))
+      when(
+        formpProxyConnector.updateGovTalkStatusStatistics(eqTo(req), eqTo(FormpProxyAuthMode.UserJourney))(
+          any[HeaderCarrier]
+        )
+      )
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.updateGovTalkStatusStatistics(req).failed.futureValue.getMessage must include("boom")
@@ -765,7 +791,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest("instance-123", submissionId)),
-          eqTo(Initial)
+          eqTo(Initial),
+          isNull[FormpProxyAuthMode]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(None))
 
@@ -789,7 +816,8 @@ final class SubmissionServiceSpec extends SpecBase {
               pollInterval = pollInterval,
               gatewayURL = gatewayUrl
             )
-          )
+          ),
+          eqTo(FormpProxyAuthMode.UserJourney)
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
@@ -804,13 +832,15 @@ final class SubmissionServiceSpec extends SpecBase {
               pollInterval = pollInterval,
               gatewayURL = gatewayUrl
             )
-          )
+          ),
+          eqTo(FormpProxyAuthMode.UserJourney)
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
       when(
         formpProxyConnector.updateGovTalkStatus(
-          eqTo(UpdateGovTalkStatusRequest("instance-123", submissionId, None, "dataPoll"))
+          eqTo(UpdateGovTalkStatusRequest("instance-123", submissionId, None, "dataPoll")),
+          eqTo(FormpProxyAuthMode.UserJourney)
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
@@ -891,7 +921,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest("instance-123", submissionId)),
-          eqTo(Initial)
+          eqTo(Initial),
+          isNull[FormpProxyAuthMode]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(None))
 
@@ -903,7 +934,8 @@ final class SubmissionServiceSpec extends SpecBase {
 
       when(
         formpProxyConnector.updateGovTalkStatus(
-          eqTo(UpdateGovTalkStatusRequest("instance-123", submissionId, None, "dataRequest"))
+          eqTo(UpdateGovTalkStatusRequest("instance-123", submissionId, None, "dataRequest")),
+          eqTo(FormpProxyAuthMode.UserJourney)
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
@@ -937,7 +969,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
-          eqTo(Initial)
+          eqTo(Initial),
+          isNull[FormpProxyAuthMode]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(None))
 
@@ -957,7 +990,8 @@ final class SubmissionServiceSpec extends SpecBase {
 
       verify(formpProxyConnector).getGovTalkStatus(
         eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
-        eqTo(Initial)
+        eqTo(Initial),
+        isNull[FormpProxyAuthMode]
       )(any[HeaderCarrier])
 
       verify(formpProxyConnector).createGovTalkStatusRecord(eqTo(expectedCreateReq))(any[HeaderCarrier])
@@ -996,7 +1030,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
-          eqTo(Initial)
+          eqTo(Initial),
+          isNull[FormpProxyAuthMode]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Some(existing)))
 
@@ -1037,7 +1072,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
-          eqTo(Initial)
+          eqTo(Initial),
+          isNull[FormpProxyAuthMode]
         )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
@@ -1098,7 +1134,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
-          eqTo(Initial)
+          eqTo(Initial),
+          isNull[FormpProxyAuthMode]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Some(existing)))
 
@@ -1139,7 +1176,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
-          eqTo(Initial)
+          eqTo(Initial),
+          isNull[FormpProxyAuthMode]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(None))
 
@@ -1181,7 +1219,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
-          eqTo(Initial)
+          eqTo(Initial),
+          isNull[FormpProxyAuthMode]
         )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
@@ -1388,13 +1427,15 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
-          eqTo(Polling)
+          eqTo(Polling),
+          eqTo(FormpProxyAuthMode.BatchPolling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Some(statusResponse)))
 
       when(
         formpProxyConnector.getSubmissionWithVerificationBatch(
-          eqTo(snapshotRequest)
+          eqTo(snapshotRequest),
+          eqTo(FormpProxyAuthMode.BatchPolling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(snapshotResponse))
 
@@ -1407,11 +1448,13 @@ final class SubmissionServiceSpec extends SpecBase {
 
       verify(formpProxyConnector).getGovTalkStatus(
         eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
-        eqTo(Polling)
+        eqTo(Polling),
+        eqTo(FormpProxyAuthMode.BatchPolling)
       )(any[HeaderCarrier])
 
       verify(formpProxyConnector).getSubmissionWithVerificationBatch(
-        eqTo(snapshotRequest)
+        eqTo(snapshotRequest),
+        eqTo(FormpProxyAuthMode.BatchPolling)
       )(any[HeaderCarrier])
 
       verify(chrisSubmissionSessionRepository).upsert(eqTo(expectedSession))
@@ -1424,13 +1467,15 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
-          eqTo(Polling)
+          eqTo(Polling),
+          eqTo(FormpProxyAuthMode.BatchPolling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(None))
 
       when(
         formpProxyConnector.getSubmissionWithVerificationBatch(
-          eqTo(snapshotRequest)
+          eqTo(snapshotRequest),
+          eqTo(FormpProxyAuthMode.BatchPolling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(snapshotResponse))
 
@@ -1446,11 +1491,13 @@ final class SubmissionServiceSpec extends SpecBase {
 
       verify(formpProxyConnector).getGovTalkStatus(
         eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
-        eqTo(Polling)
+        eqTo(Polling),
+        eqTo(FormpProxyAuthMode.BatchPolling)
       )(any[HeaderCarrier])
 
       verify(formpProxyConnector).getSubmissionWithVerificationBatch(
-        eqTo(snapshotRequest)
+        eqTo(snapshotRequest),
+        eqTo(FormpProxyAuthMode.BatchPolling)
       )(any[HeaderCarrier])
 
       verifyNoInteractions(chrisSubmissionSessionRepository)
@@ -1467,13 +1514,15 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
-          eqTo(Polling)
+          eqTo(Polling),
+          eqTo(FormpProxyAuthMode.BatchPolling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Some(emptyStatusResponse)))
 
       when(
         formpProxyConnector.getSubmissionWithVerificationBatch(
-          eqTo(snapshotRequest)
+          eqTo(snapshotRequest),
+          eqTo(FormpProxyAuthMode.BatchPolling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(snapshotResponse))
 
@@ -1489,11 +1538,13 @@ final class SubmissionServiceSpec extends SpecBase {
 
       verify(formpProxyConnector).getGovTalkStatus(
         eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
-        eqTo(Polling)
+        eqTo(Polling),
+        eqTo(FormpProxyAuthMode.BatchPolling)
       )(any[HeaderCarrier])
 
       verify(formpProxyConnector).getSubmissionWithVerificationBatch(
-        eqTo(snapshotRequest)
+        eqTo(snapshotRequest),
+        eqTo(FormpProxyAuthMode.BatchPolling)
       )(any[HeaderCarrier])
 
       verifyNoInteractions(chrisSubmissionSessionRepository)
@@ -1507,13 +1558,15 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
-          eqTo(Polling)
+          eqTo(Polling),
+          eqTo(FormpProxyAuthMode.BatchPolling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.failed(exception))
 
       when(
         formpProxyConnector.getSubmissionWithVerificationBatch(
-          eqTo(snapshotRequest)
+          eqTo(snapshotRequest),
+          eqTo(FormpProxyAuthMode.BatchPolling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(snapshotResponse))
 
@@ -1589,7 +1642,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
-          eqTo(Polling)
+          eqTo(Polling),
+          eqTo(FormpProxyAuthMode.BatchPolling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Some(mockGovTalkResponse)))
 
@@ -1620,7 +1674,8 @@ final class SubmissionServiceSpec extends SpecBase {
               pollInterval,
               pollUrl
             )
-          )
+          ),
+          eqTo(FormpProxyAuthMode.BatchPolling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
@@ -1635,13 +1690,15 @@ final class SubmissionServiceSpec extends SpecBase {
               pollInterval,
               pollUrl
             )
-          )
+          ),
+          eqTo(FormpProxyAuthMode.BatchPolling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
       when(
         formpProxyConnector.updateGovTalkStatus(
-          eqTo(UpdateGovTalkStatusRequest(instanceId, submissionId, None, "dataPoll"))
+          eqTo(UpdateGovTalkStatusRequest(instanceId, submissionId, None, "dataPoll")),
+          eqTo(FormpProxyAuthMode.BatchPolling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
@@ -1661,7 +1718,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
-          eqTo(Polling)
+          eqTo(Polling),
+          eqTo(FormpProxyAuthMode.BatchPolling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(None))
 
@@ -1683,7 +1741,8 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         formpProxyConnector.getGovTalkStatus(
           eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
-          eqTo(Polling)
+          eqTo(Polling),
+          eqTo(FormpProxyAuthMode.BatchPolling)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Some(GetGovTalkStatusResponse(govtalk_status = Seq.empty))))
 
@@ -1751,7 +1810,8 @@ final class SubmissionServiceSpec extends SpecBase {
     when(
       formpProxyConnector.getGovTalkStatus(
         eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
-        eqTo(Polling)
+        eqTo(Polling),
+        eqTo(FormpProxyAuthMode.UserJourney)
       )(any[HeaderCarrier])
     ).thenReturn(Future.successful(Some(govTalk)))
 
@@ -1775,7 +1835,8 @@ final class SubmissionServiceSpec extends SpecBase {
     when(
       formPSubmissionUpdateProcessor.handlePollResponse(
         any[ChrisSubmissionSessionData],
-        any[ChrisPollResponse]
+        any[ChrisPollResponse],
+        any[FormpProxyAuthMode]
       )(any[HeaderCarrier])
     ).thenReturn(Future.unit)
 
@@ -1790,13 +1851,15 @@ final class SubmissionServiceSpec extends SpecBase {
 
     when(
       formpProxyConnector.updateGovTalkStatusCorrelationId(
-        any[UpdateGovTalkStatusCorrelationIdRequest]
+        any[UpdateGovTalkStatusCorrelationIdRequest],
+        eqTo(FormpProxyAuthMode.UserJourney)
       )(any[HeaderCarrier])
     ).thenReturn(Future.unit)
 
     when(
       formpProxyConnector.updateGovTalkStatusStatistics(
-        any[UpdateGovTalkStatusStatisticsRequest]
+        any[UpdateGovTalkStatusStatisticsRequest],
+        eqTo(FormpProxyAuthMode.UserJourney)
       )(any[HeaderCarrier])
     ).thenReturn(Future.unit)
 
@@ -1809,7 +1872,8 @@ final class SubmissionServiceSpec extends SpecBase {
             expectedEndState,
             expectedProtocolStatus
           )
-        )
+        ),
+        eqTo(FormpProxyAuthMode.UserJourney)
       )(any[HeaderCarrier])
     ).thenReturn(Future.unit)
 

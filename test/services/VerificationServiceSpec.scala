@@ -17,10 +17,10 @@
 package services
 
 import base.SpecBase
-import org.mockito.ArgumentMatchers.{any, eq as eqTo}
+import org.mockito.ArgumentMatchers.{any, eq as eqTo, isNull}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.{CreateVerifications, DeleteVerifications, VerificationResult}
+import uk.gov.hmrc.constructionindustryscheme.models.{CreateVerifications, DeleteVerifications, FormpProxyAuthMode, VerificationResult}
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.services.VerificationService
@@ -230,22 +230,42 @@ final class VerificationServiceSpec extends SpecBase {
       val connector: FormpProxyConnector = mock[FormpProxyConnector]
       val service                        = new VerificationService(connector)
 
-      when(connector.updateVerificationSubmission(eqTo(request))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(()))
+      when(
+        connector.updateVerificationSubmission(
+          eqTo(request),
+          isNull[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
 
       service.updateVerificationSubmission(request).futureValue mustBe ()
 
-      verify(connector).updateVerificationSubmission(eqTo(request))(any[HeaderCarrier])
+      verify(connector).updateVerificationSubmission(
+        eqTo(request),
+        isNull[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
     }
 
     "propagates failures from FormpProxyConnector" in {
       val connector: FormpProxyConnector = mock[FormpProxyConnector]
       val service                        = new VerificationService(connector)
 
-      when(connector.updateVerificationSubmission(eqTo(request))(any[HeaderCarrier]))
-        .thenReturn(Future.failed(new RuntimeException("boom")))
+      when(
+        connector.updateVerificationSubmission(
+          eqTo(request),
+          isNull[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.failed(new RuntimeException("boom")))
 
-      service.updateVerificationSubmission(request).failed.futureValue.getMessage must include("boom")
+      service
+        .updateVerificationSubmission(request)
+        .failed
+        .futureValue
+        .getMessage must include("boom")
+
+      verify(connector).updateVerificationSubmission(
+        eqTo(request),
+        isNull[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
     }
   }
 
@@ -281,22 +301,42 @@ final class VerificationServiceSpec extends SpecBase {
       val connector: FormpProxyConnector = mock[FormpProxyConnector]
       val service                        = new VerificationService(connector)
 
-      when(connector.processVerificationResponseFromChris(eqTo(request))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(()))
+      when(
+        connector.processVerificationResponseFromChris(
+          eqTo(request),
+          isNull[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
 
       service.processVerificationResponseFromChris(request).futureValue mustBe ()
 
-      verify(connector).processVerificationResponseFromChris(eqTo(request))(any[HeaderCarrier])
+      verify(connector).processVerificationResponseFromChris(
+        eqTo(request),
+        isNull[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
     }
 
     "propagates failures from FormpProxyConnector" in {
       val connector: FormpProxyConnector = mock[FormpProxyConnector]
       val service                        = new VerificationService(connector)
 
-      when(connector.processVerificationResponseFromChris(eqTo(request))(any[HeaderCarrier]))
-        .thenReturn(Future.failed(new RuntimeException("boom")))
+      when(
+        connector.processVerificationResponseFromChris(
+          eqTo(request),
+          isNull[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.failed(new RuntimeException("boom")))
 
-      service.processVerificationResponseFromChris(request).failed.futureValue.getMessage must include("boom")
+      service
+        .processVerificationResponseFromChris(request)
+        .failed
+        .futureValue
+        .getMessage must include("boom")
+
+      verify(connector).processVerificationResponseFromChris(
+        eqTo(request),
+        isNull[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
     }
   }
 

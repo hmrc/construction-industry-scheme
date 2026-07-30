@@ -17,7 +17,7 @@
 package services
 
 import base.SpecBase
-import org.mockito.ArgumentMatchers.{any, eq as eqTo}
+import org.mockito.ArgumentMatchers.{any, eq as eqTo, isNull}
 import org.mockito.Mockito.*
 import org.scalatest.RecoverMethods.recoverToExceptionIf
 import org.scalatest.freespec.AnyFreeSpec
@@ -499,13 +499,61 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(request))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(expected))
+      when(
+        formpProxy.getMonthlyReturnForEdit(
+          eqTo(request),
+          eqTo(FormpProxyAuthMode.UserJourney)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(expected))
 
       val out = service.getMonthlyReturnForEdit(request).futureValue
       out mustBe expected
 
-      verify(formpProxy).getMonthlyReturnForEdit(eqTo(request))(any[HeaderCarrier])
+      verify(formpProxy).getMonthlyReturnForEdit(
+        eqTo(request),
+        eqTo(FormpProxyAuthMode.UserJourney)
+      )(any[HeaderCarrier])
+
+      verifyNoInteractions(datacacheProxy)
+    }
+
+    "passes BatchPolling to formp" in new Setup {
+      val request = GetMonthlyReturnForEditRequest(
+        instanceId = cisInstanceId,
+        taxYear = 2025,
+        taxMonth = 1
+      )
+
+      val expected = GetMonthlyReturnForEditResponse(
+        scheme = Seq.empty,
+        monthlyReturn = Seq.empty,
+        subcontractors = Seq.empty,
+        monthlyReturnItems = Seq.empty,
+        submission = Seq.empty
+      )
+
+      when(
+        formpProxy.getMonthlyReturnForEdit(
+          eqTo(request),
+          eqTo(FormpProxyAuthMode.BatchPolling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(expected))
+
+      val out =
+        service
+          .getMonthlyReturnForEdit(
+            request,
+            FormpProxyAuthMode.BatchPolling
+          )
+          .futureValue
+
+      out mustBe expected
+
+      verify(formpProxy).getMonthlyReturnForEdit(
+        eqTo(request),
+        eqTo(FormpProxyAuthMode.BatchPolling)
+      )(any[HeaderCarrier])
+
       verifyNoInteractions(datacacheProxy)
     }
 
@@ -518,13 +566,21 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
       val boom = UpstreamErrorResponse("formp proxy failure", 500)
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(request))(any[HeaderCarrier]))
-        .thenReturn(Future.failed(boom))
+      when(
+        formpProxy.getMonthlyReturnForEdit(
+          eqTo(request),
+          eqTo(FormpProxyAuthMode.UserJourney)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.failed(boom))
 
       val ex = service.getMonthlyReturnForEdit(request).failed.futureValue
       ex mustBe boom
 
-      verify(formpProxy).getMonthlyReturnForEdit(eqTo(request))(any[HeaderCarrier])
+      verify(formpProxy).getMonthlyReturnForEdit(
+        eqTo(request),
+        eqTo(FormpProxyAuthMode.UserJourney)
+      )(any[HeaderCarrier])
+
       verifyNoInteractions(datacacheProxy)
     }
   }
@@ -618,8 +674,11 @@ class MonthlyReturnServiceSpec extends SpecBase {
         isAmendment = Some(false)
       )
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(editResponse))
+      stubGetMonthlyReturnForEdit(
+        formpProxy,
+        editReq,
+        editResponse
+      )
 
       val expectedSyncReq = SyncMonthlyReturnItemsRequest(
         instanceId = cisInstanceId,
@@ -636,7 +695,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       val out = service.syncMonthlyReturnItems(req).futureValue
       out mustBe ()
 
-      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verifyGetMonthlyReturnForEdit(formpProxy, editReq)
       verify(formpProxy).syncMonthlyReturnItems(eqTo(expectedSyncReq))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
@@ -673,8 +732,11 @@ class MonthlyReturnServiceSpec extends SpecBase {
       val editReq =
         GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(false))
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(editResponse))
+      stubGetMonthlyReturnForEdit(
+        formpProxy,
+        editReq,
+        editResponse
+      )
 
       val expectedSyncReq = SyncMonthlyReturnItemsRequest(
         instanceId = cisInstanceId,
@@ -691,7 +753,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       val out = service.syncMonthlyReturnItems(req).futureValue
       out mustBe ()
 
-      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verifyGetMonthlyReturnForEdit(formpProxy, editReq)
       verify(formpProxy).syncMonthlyReturnItems(eqTo(expectedSyncReq))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
@@ -732,8 +794,11 @@ class MonthlyReturnServiceSpec extends SpecBase {
         isAmendment = Some(true)
       )
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(editResponse))
+      stubGetMonthlyReturnForEdit(
+        formpProxy,
+        editReq,
+        editResponse
+      )
 
       val expectedSyncReq = SyncMonthlyReturnItemsRequest(
         instanceId = cisInstanceId,
@@ -750,7 +815,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       val out = service.syncMonthlyReturnItems(req).futureValue
       out mustBe ()
 
-      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verifyGetMonthlyReturnForEdit(formpProxy, editReq)
       verify(formpProxy).syncMonthlyReturnItems(eqTo(expectedSyncReq))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
@@ -781,15 +846,18 @@ class MonthlyReturnServiceSpec extends SpecBase {
         isAmendment = Some(false)
       )
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(editResponse))
+      stubGetMonthlyReturnForEdit(
+        formpProxy,
+        editReq,
+        editResponse
+      )
 
       val ex = service.syncMonthlyReturnItems(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 400
       ex.getMessage must include("Subcontractor IDs not found")
 
-      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verifyGetMonthlyReturnForEdit(formpProxy, editReq)
       verify(formpProxy, never()).syncMonthlyReturnItems(any[SyncMonthlyReturnItemsRequest])(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
@@ -824,8 +892,11 @@ class MonthlyReturnServiceSpec extends SpecBase {
         isAmendment = Some(false)
       )
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(editResponse))
+      stubGetMonthlyReturnForEdit(
+        formpProxy,
+        editReq,
+        editResponse
+      )
 
       val expectedSyncReq = SyncMonthlyReturnItemsRequest(
         instanceId = cisInstanceId,
@@ -844,7 +915,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       val ex = service.syncMonthlyReturnItems(req).failed.futureValue
       ex mustBe boom
 
-      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verifyGetMonthlyReturnForEdit(formpProxy, editReq)
       verify(formpProxy).syncMonthlyReturnItems(eqTo(expectedSyncReq))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
@@ -877,8 +948,11 @@ class MonthlyReturnServiceSpec extends SpecBase {
       val editReq =
         GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(false))
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(editResponse))
+      stubGetMonthlyReturnForEdit(
+        formpProxy,
+        editReq,
+        editResponse
+      )
 
       val expectedDeleteReq = DeleteMonthlyReturnItemProxyRequest(
         instanceId = cisInstanceId,
@@ -894,7 +968,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       val out = service.deleteMonthlyReturnItem(req).futureValue
       out mustBe ()
 
-      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verifyGetMonthlyReturnForEdit(formpProxy, editReq)
       verify(formpProxy).deleteMonthlyReturnItem(eqTo(expectedDeleteReq))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
@@ -921,15 +995,18 @@ class MonthlyReturnServiceSpec extends SpecBase {
       val editReq =
         GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(false))
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(editResponse))
+      stubGetMonthlyReturnForEdit(
+        formpProxy,
+        editReq,
+        editResponse
+      )
 
       val ex = service.deleteMonthlyReturnItem(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 400
       ex.getMessage must include("Subcontractor ID not found")
 
-      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verifyGetMonthlyReturnForEdit(formpProxy, editReq)
       verify(formpProxy, never()).deleteMonthlyReturnItem(any[DeleteMonthlyReturnItemProxyRequest])(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
@@ -956,15 +1033,18 @@ class MonthlyReturnServiceSpec extends SpecBase {
       val editReq =
         GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(false))
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(editResponse))
+      stubGetMonthlyReturnForEdit(
+        formpProxy,
+        editReq,
+        editResponse
+      )
 
       val ex = service.deleteMonthlyReturnItem(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 400
       ex.getMessage must include("Subcontractor ID not found")
 
-      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verifyGetMonthlyReturnForEdit(formpProxy, editReq)
       verify(formpProxy, never()).deleteMonthlyReturnItem(any[DeleteMonthlyReturnItemProxyRequest])(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
@@ -993,8 +1073,11 @@ class MonthlyReturnServiceSpec extends SpecBase {
       val editReq =
         GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(false))
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(editResponse))
+      stubGetMonthlyReturnForEdit(
+        formpProxy,
+        editReq,
+        editResponse
+      )
 
       val expectedDeleteReq = DeleteMonthlyReturnItemProxyRequest(
         instanceId = cisInstanceId,
@@ -1012,7 +1095,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
       val ex = service.deleteMonthlyReturnItem(req).failed.futureValue
       ex mustBe boom
 
-      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verifyGetMonthlyReturnForEdit(formpProxy, editReq)
       verify(formpProxy).deleteMonthlyReturnItem(eqTo(expectedDeleteReq))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
@@ -1044,8 +1127,11 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(editResponse))
+      stubGetMonthlyReturnForEdit(
+        formpProxy,
+        editReq,
+        editResponse
+      )
 
       when(formpProxy.deleteMonthlyReturnItem(any[DeleteMonthlyReturnItemProxyRequest])(any[HeaderCarrier]))
         .thenReturn(Future.successful(()))
@@ -1110,8 +1196,11 @@ class MonthlyReturnServiceSpec extends SpecBase {
       val editReq =
         GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(false))
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(editResponse))
+      stubGetMonthlyReturnForEdit(
+        formpProxy,
+        editReq,
+        editResponse
+      )
 
       val expectedProxyReq = UpdateMonthlyReturnItemProxyRequest(
         instanceId = cisInstanceId,
@@ -1131,7 +1220,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
       service.updateMonthlyReturnItem(req).futureValue mustBe ()
 
-      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verifyGetMonthlyReturnForEdit(formpProxy, editReq)
       verify(formpProxy).updateMonthlyReturnItem(eqTo(expectedProxyReq))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
@@ -1162,8 +1251,11 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
       val editReq = GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(true))
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(editResponse))
+      stubGetMonthlyReturnForEdit(
+        formpProxy,
+        editReq,
+        editResponse
+      )
 
       val expectedProxyReq = UpdateMonthlyReturnItemProxyRequest(
         instanceId = cisInstanceId,
@@ -1183,7 +1275,7 @@ class MonthlyReturnServiceSpec extends SpecBase {
 
       service.updateMonthlyReturnItem(req).futureValue mustBe ()
 
-      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verifyGetMonthlyReturnForEdit(formpProxy, editReq)
       verify(formpProxy).updateMonthlyReturnItem(eqTo(expectedProxyReq))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
@@ -1215,15 +1307,18 @@ class MonthlyReturnServiceSpec extends SpecBase {
       val editReq =
         GetMonthlyReturnForEditRequest(instanceId = cisInstanceId, taxYear = 2025, taxMonth = 1, Some(false))
 
-      when(formpProxy.getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(editResponse))
+      stubGetMonthlyReturnForEdit(
+        formpProxy,
+        editReq,
+        editResponse
+      )
 
       val ex = service.updateMonthlyReturnItem(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 400
       ex.getMessage must include("Subcontractor ID not found")
 
-      verify(formpProxy).getMonthlyReturnForEdit(eqTo(editReq))(any[HeaderCarrier])
+      verifyGetMonthlyReturnForEdit(formpProxy, editReq)
       verify(formpProxy, never()).updateMonthlyReturnItem(any[UpdateMonthlyReturnItemProxyRequest])(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
@@ -1253,12 +1348,23 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      when(formpProxy.getMonthlyReturnForEdit(any())(any()))
-        .thenReturn(Future.successful(editResponse))
+      when(
+        formpProxy.getMonthlyReturnForEdit(
+          any[GetMonthlyReturnForEditRequest],
+          isNull[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(editResponse))
 
       service.updateMonthlyReturnItem(req).failed.futureValue
 
-      verify(formpProxy, never()).updateMonthlyReturnItem(any())(any())
+      verify(formpProxy).getMonthlyReturnForEdit(
+        any[GetMonthlyReturnForEditRequest],
+        isNull[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
+
+      verify(formpProxy, never()).updateMonthlyReturnItem(
+        any[UpdateMonthlyReturnItemProxyRequest]
+      )(any[HeaderCarrier])
     }
 
     "succeed when verification number is missing" in new Setup {
@@ -1286,15 +1392,29 @@ class MonthlyReturnServiceSpec extends SpecBase {
         submission = Seq.empty
       )
 
-      when(formpProxy.getMonthlyReturnForEdit(any())(any()))
-        .thenReturn(Future.successful(editResponse))
+      when(
+        formpProxy.getMonthlyReturnForEdit(
+          any[GetMonthlyReturnForEditRequest],
+          isNull[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(editResponse))
 
-      when(formpProxy.updateMonthlyReturnItem(any())(any()))
-        .thenReturn(Future.successful(()))
+      when(
+        formpProxy.updateMonthlyReturnItem(
+          any[UpdateMonthlyReturnItemProxyRequest]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
 
-      service.updateMonthlyReturnItem(req).futureValue
+      service.updateMonthlyReturnItem(req).futureValue mustBe ()
 
-      verify(formpProxy).updateMonthlyReturnItem(any())(any())
+      verify(formpProxy).getMonthlyReturnForEdit(
+        any[GetMonthlyReturnForEditRequest],
+        isNull[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
+
+      verify(formpProxy).updateMonthlyReturnItem(
+        any[UpdateMonthlyReturnItemProxyRequest]
+      )(any[HeaderCarrier])
     }
   }
 
@@ -1585,4 +1705,25 @@ class MonthlyReturnServiceSpec extends SpecBase {
       verificationNumber = None,
       itemResourceReference = itemResourceReference
     )
+
+  private def stubGetMonthlyReturnForEdit(
+    formpProxy: FormpProxyConnector,
+    request: GetMonthlyReturnForEditRequest,
+    response: GetMonthlyReturnForEditResponse
+  ): Unit =
+    when(
+      formpProxy.getMonthlyReturnForEdit(
+        eqTo(request),
+        isNull[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.successful(response))
+
+  private def verifyGetMonthlyReturnForEdit(
+    formpProxy: FormpProxyConnector,
+    request: GetMonthlyReturnForEditRequest
+  ): Unit =
+    verify(formpProxy).getMonthlyReturnForEdit(
+      eqTo(request),
+      isNull[FormpProxyAuthMode]
+    )(any[HeaderCarrier])
 }

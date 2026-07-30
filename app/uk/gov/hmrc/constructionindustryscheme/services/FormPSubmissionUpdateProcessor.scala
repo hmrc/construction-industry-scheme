@@ -16,10 +16,11 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services
 
-import uk.gov.hmrc.constructionindustryscheme.models.{ChrisPollJourney, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.models.{ChrisPollJourney, FormpProxyAuthMode, SubmissionResult}
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
 import uk.gov.hmrc.http.HeaderCarrier
+
 import scala.concurrent.Future
 
 trait FormPSubmissionUpdateProcessor {
@@ -32,6 +33,7 @@ trait FormPSubmissionUpdateProcessor {
 
   def handlePollResponse(
     session: ChrisSubmissionSessionData,
-    response: ChrisPollResponse
+    response: ChrisPollResponse,
+    authMode: FormpProxyAuthMode
   )(implicit hc: HeaderCarrier): Future[Unit]
 }

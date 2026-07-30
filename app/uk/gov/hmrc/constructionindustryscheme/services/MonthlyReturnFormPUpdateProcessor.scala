@@ -19,7 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.Future
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.constructionindustryscheme.models.{ChrisPollJourney, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.models.{ChrisPollJourney, FormpProxyAuthMode, SubmissionResult}
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
 
@@ -37,7 +37,8 @@ class MonthlyReturnFormPUpdateProcessor @Inject() extends FormPSubmissionUpdateP
 
   override def handlePollResponse(
     session: ChrisSubmissionSessionData,
-    response: ChrisPollResponse
+    response: ChrisPollResponse,
+    authMode: FormpProxyAuthMode
   )(implicit hc: HeaderCarrier): Future[Unit] =
     Future.unit
 }

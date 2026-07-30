@@ -18,13 +18,14 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.FormpProxyAuthMode.BatchPolling
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.http.HeaderCarrier
+
 import java.time.{LocalDateTime, ZoneId}
 import scala.util.control.NonFatal
 import javax.inject.{Inject, Singleton}
-
 import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -75,7 +76,8 @@ class MonthlyReturnPollingProcessService @Inject() (
                           submission.taxYear,
                           submission.taxMonth,
                           isAmendment = Some(false)
-                        )
+                        ),
+                        BatchPolling
                       )
       monthlyReturn = details.monthlyReturn.headOption
                         .getOrElse(
@@ -96,7 +98,8 @@ class MonthlyReturnPollingProcessService @Inject() (
       pollResponse <- submissionService.pollSubmissionAndUpdateGovTalkStatus(
                         submission.submissionId.toString,
                         gatewayUrl,
-                        ChrisPollJourney.MonthlyReturn
+                        ChrisPollJourney.MonthlyReturn,
+                        BatchPolling
                       )
       _             = logPollDurationIfRequired(
                         startTime = startTime,
@@ -118,7 +121,7 @@ class MonthlyReturnPollingProcessService @Inject() (
                         agentId = subDetails.agentId,
                         govTalkResponse = pollResponse.govTalkErrorStatus
                       )
-      _            <- submissionService.updateSubmission(updateReq)
+      _            <- submissionService.updateSubmission(updateReq, BatchPolling)
       _            <- sendEmailIfRequired(
                         pollResponse.status,
                         subDetails.emailRecipient,

@@ -17,12 +17,14 @@
 package services
 
 import base.SpecBase
+import org.mockito.ArgumentCaptor
 import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers.any
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ProcessVerificationResponseFromChrisRequest, UpdateVerificationSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.FormpProxyAuthMode.BatchPolling
 import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, StoredVerificationContext}
 import uk.gov.hmrc.constructionindustryscheme.services.{VerificationFormPUpdateProcessor, VerificationResultMapper}
 import uk.gov.hmrc.http.HeaderCarrier
@@ -49,14 +51,18 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
 
       when(
-        formpProxyConnector.updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(any[HeaderCarrier])
+        formpProxyConnector.updateVerificationSubmission(
+          any[UpdateVerificationSubmissionRequest],
+          any[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
       processor.handleInitialAccepted(sessionData(), submissionResult(ACCEPTED)).futureValue mustBe ()
 
-      verify(formpProxyConnector).updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(
-        any[HeaderCarrier]
-      )
+      verify(formpProxyConnector).updateVerificationSubmission(
+        any[UpdateVerificationSubmissionRequest],
+        any[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
     }
 
     "process verification response from ChRIS on successful poll response" in {
@@ -84,38 +90,17 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       ).thenReturn(Future.successful(Seq(mappedResult)))
 
       when(
-        formpProxyConnector.processVerificationResponseFromChris(any[ProcessVerificationResponseFromChrisRequest])(
-          any[HeaderCarrier]
-        )
+        formpProxyConnector.processVerificationResponseFromChris(
+          any[ProcessVerificationResponseFromChrisRequest],
+          any[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
       processor
         .handlePollResponse(
           sessionData(),
-          ChrisPollResponse(
-            status = SUBMITTED,
-            correlationId = "corr-123",
-            pollUrl = None,
-            pollInterval = None,
-            error = None,
-            irMarkReceived = Some("ir-mark"),
-            lastMessageDate = None,
-            acceptedTime = Some("2026-06-19T10:02:00"),
-            cisResponseSubcontractors = Seq(
-              CisResponseSubcontractor(
-                utr = Some("1234567890"),
-                partnershipUtr = None,
-                tradingName = Some("Test Trading"),
-                foreName = Some("John"),
-                middleName = None,
-                surname = Some("Smith"),
-                nino = Some("AB123456C"),
-                matched = Some("Y"),
-                taxTreatment = Some("net"),
-                verificationNumber = Some("V1000000007")
-              )
-            )
-          )
+          successfulPollResponse(),
+          BatchPolling
         )
         .futureValue mustBe ()
 
@@ -125,11 +110,14 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
         any[LocalDateTime]
       )
 
+      val authModeCaptor = ArgumentCaptor.forClass(classOf[FormpProxyAuthMode])
+
       verify(formpProxyConnector).processVerificationResponseFromChris(
-        any[ProcessVerificationResponseFromChrisRequest]
-      )(
-        any[HeaderCarrier]
-      )
+        any[ProcessVerificationResponseFromChrisRequest],
+        authModeCaptor.capture()
+      )(any[HeaderCarrier])
+
+      authModeCaptor.getValue mustBe BatchPolling
     }
 
     "process verification response from ChRIS with expected request body" in {
@@ -157,47 +145,30 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       ).thenReturn(Future.successful(Seq(mappedResult)))
 
       when(
-        formpProxyConnector.processVerificationResponseFromChris(any[ProcessVerificationResponseFromChrisRequest])(
-          any[HeaderCarrier]
-        )
+        formpProxyConnector.processVerificationResponseFromChris(
+          any[ProcessVerificationResponseFromChrisRequest],
+          any[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
       processor
         .handlePollResponse(
           sessionData(),
-          ChrisPollResponse(
-            status = SUBMITTED,
-            correlationId = "corr-123",
-            pollUrl = None,
-            pollInterval = None,
-            error = None,
-            irMarkReceived = Some("ir-mark"),
-            lastMessageDate = None,
-            acceptedTime = Some("2026-06-19T10:02:00"),
-            cisResponseSubcontractors = Seq(
-              CisResponseSubcontractor(
-                utr = Some("1234567890"),
-                partnershipUtr = None,
-                tradingName = Some("Test Trading"),
-                foreName = Some("John"),
-                middleName = None,
-                surname = Some("Smith"),
-                nino = Some("AB123456C"),
-                matched = Some("Y"),
-                taxTreatment = Some("net"),
-                verificationNumber = Some("V1000000007")
-              )
-            )
-          )
+          successfulPollResponse(),
+          BatchPolling
         )
         .futureValue mustBe ()
 
       val requestCaptor =
         org.mockito.ArgumentCaptor.forClass(classOf[ProcessVerificationResponseFromChrisRequest])
 
-      verify(formpProxyConnector).processVerificationResponseFromChris(requestCaptor.capture())(
-        any[HeaderCarrier]
-      )
+      val authModeCaptor =
+        org.mockito.ArgumentCaptor.forClass(classOf[FormpProxyAuthMode])
+
+      verify(formpProxyConnector).processVerificationResponseFromChris(
+        requestCaptor.capture(),
+        authModeCaptor.capture()
+      )(any[HeaderCarrier])
 
       requestCaptor.getValue mustBe ProcessVerificationResponseFromChrisRequest(
         instanceId = "instance-123",
@@ -207,6 +178,8 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
         irMarkReceived = Some("ir-mark"),
         verificationResults = Seq(mappedResult)
       )
+
+      authModeCaptor.getValue mustBe BatchPolling
     }
 
     "process verification response from ChRIS when submitted with no receipt" in {
@@ -215,9 +188,10 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
 
       when(
-        formpProxyConnector.updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(
-          any[HeaderCarrier]
-        )
+        formpProxyConnector.updateVerificationSubmission(
+          any[UpdateVerificationSubmissionRequest],
+          any[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
       processor
@@ -246,22 +220,29 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
                 verificationNumber = Some("V1000000007")
               )
             )
-          )
+          ),
+          BatchPolling
         )
         .futureValue mustBe ()
 
       val requestCaptor =
         org.mockito.ArgumentCaptor.forClass(classOf[UpdateVerificationSubmissionRequest])
 
-      verify(formpProxyConnector).updateVerificationSubmission(requestCaptor.capture())(
-        any[HeaderCarrier]
-      )
+      val authModeCaptor =
+        org.mockito.ArgumentCaptor.forClass(classOf[FormpProxyAuthMode])
+
+      verify(formpProxyConnector).updateVerificationSubmission(
+        requestCaptor.capture(),
+        authModeCaptor.capture()
+      )(any[HeaderCarrier])
 
       requestCaptor.getValue.submittableStatus mustBe SUBMITTED_NO_RECEIPT.toString
       requestCaptor.getValue.hmrcMarkGenerated mustBe Some("hmrc-mark")
+      authModeCaptor.getValue mustBe BatchPolling
 
       verify(formpProxyConnector, never()).processVerificationResponseFromChris(
-        any[ProcessVerificationResponseFromChrisRequest]
+        any[ProcessVerificationResponseFromChrisRequest],
+        any[FormpProxyAuthMode]
       )(any[HeaderCarrier])
     }
 
@@ -271,7 +252,10 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
 
       when(
-        formpProxyConnector.updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(any[HeaderCarrier])
+        formpProxyConnector.updateVerificationSubmission(
+          any[UpdateVerificationSubmissionRequest],
+          any[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
       processor
@@ -286,13 +270,20 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
             irMarkReceived = None,
             lastMessageDate = None,
             acceptedTime = None
-          )
+          ),
+          BatchPolling
         )
         .futureValue mustBe ()
 
-      verify(formpProxyConnector).updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(
-        any[HeaderCarrier]
-      )
+      val authModeCaptor =
+        org.mockito.ArgumentCaptor.forClass(classOf[FormpProxyAuthMode])
+
+      verify(formpProxyConnector).updateVerificationSubmission(
+        any[UpdateVerificationSubmissionRequest],
+        authModeCaptor.capture()
+      )(any[HeaderCarrier])
+
+      authModeCaptor.getValue mustBe BatchPolling
     }
 
     "fail when verification context is missing" in {
@@ -311,6 +302,32 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       ex.getMessage mustBe "Verification context is missing for submissionId: sub-123"
     }
   }
+
+  private def successfulPollResponse(): ChrisPollResponse =
+    ChrisPollResponse(
+      status = SUBMITTED,
+      correlationId = "corr-123",
+      pollUrl = None,
+      pollInterval = None,
+      error = None,
+      irMarkReceived = Some("ir-mark"),
+      lastMessageDate = None,
+      acceptedTime = Some("2026-06-19T10:02:00"),
+      cisResponseSubcontractors = Seq(
+        CisResponseSubcontractor(
+          utr = Some("1234567890"),
+          partnershipUtr = None,
+          tradingName = Some("Test Trading"),
+          foreName = Some("John"),
+          middleName = None,
+          surname = Some("Smith"),
+          nino = Some("AB123456C"),
+          matched = Some("Y"),
+          taxTreatment = Some("net"),
+          verificationNumber = Some("V1000000007")
+        )
+      )
+    )
 
   private def sessionData(): ChrisSubmissionSessionData =
     ChrisSubmissionSessionData(

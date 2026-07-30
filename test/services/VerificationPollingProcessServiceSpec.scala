@@ -20,7 +20,8 @@ import base.SpecBase
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
-import uk.gov.hmrc.constructionindustryscheme.models.response.VerificationSubmissionToPoll
+import uk.gov.hmrc.constructionindustryscheme.models.FormpProxyAuthMode.BatchPolling
+import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, VerificationSubmissionToPoll}
 import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
 import uk.gov.hmrc.constructionindustryscheme.services.{SubmissionService, VerificationPollingProcessService}
 import uk.gov.hmrc.http.HeaderCarrier
@@ -33,7 +34,8 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
   "VerificationPollingProcessService process" - {
 
     "must complete successfully for verification submissions" in new Setup {
-      val submissions = Seq(verificationSubmission)
+      val submissions  = Seq(verificationSubmission)
+      val pollResponse = mock[ChrisPollResponse]
 
       when(
         mockSubmissionService
@@ -44,9 +46,10 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
         mockSubmissionService.pollSubmissionAndUpdateGovTalkStatus(
           verificationSubmission.submissionId.toString,
           chrisSession.pollUrl,
-          Verification
+          Verification,
+          BatchPolling
         )
-      ).thenReturn(Future.unit)
+      ).thenReturn(Future.successful(pollResponse))
 
       service.process(submissions).futureValue mustBe ()
 
@@ -57,7 +60,8 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
         .pollSubmissionAndUpdateGovTalkStatus(
           verificationSubmission.submissionId.toString,
           chrisSession.pollUrl,
-          Verification
+          Verification,
+          BatchPolling
         )
 
       verifyNoMoreInteractions(mockSubmissionService)

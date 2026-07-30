@@ -76,4 +76,6 @@ class AppConfig @Inject() (
   val batchPollerJobLockTtl: Duration = Duration(
     config.get[String]("schedules.batch-poller-job.lockTtl").replaceAll("_", " ")
   )
+
+  val cisInternalServiceApiKey: String = config.get[String]("cis-internal-service-api-key")
 }

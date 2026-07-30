@@ -21,6 +21,7 @@ import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.FormpProxyAuthMode.{BatchPolling, UserJourney}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.http.*
@@ -53,9 +54,13 @@ class FormpProxyConnector @Inject() (
       .execute[CreateSubmissionResponse]
       .map(_.submissionId)
 
-  def updateSubmission(req: UpdateSubmissionRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+  def updateSubmission(
+    req: UpdateSubmissionRequest,
+    authMode: FormpProxyAuthMode = UserJourney
+  )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/submissions/update")
+      .setHeader(internalServiceApiKeyHeader(authMode)*)
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
       .flatMap { resp =>
@@ -187,10 +192,12 @@ class FormpProxyConnector @Inject() (
       }
 
   def getMonthlyReturnForEdit(
-    request: GetMonthlyReturnForEditRequest
+    request: GetMonthlyReturnForEditRequest,
+    authMode: FormpProxyAuthMode = UserJourney
   )(implicit hc: HeaderCarrier): Future[GetMonthlyReturnForEditResponse] =
     http
       .post(url"$base/cis/monthly-return-edit")
+      .setHeader(internalServiceApiKeyHeader(authMode)*)
       .withBody(Json.toJson(request))
       .execute[GetMonthlyReturnForEditResponse]
 
@@ -248,7 +255,8 @@ class FormpProxyConnector @Inject() (
 
   def getGovTalkStatus(
     request: GetGovTalkStatusRequest,
-    phase: ChrisSubmissionPhase
+    phase: ChrisSubmissionPhase,
+    authMode: FormpProxyAuthMode = UserJourney
   )(implicit hc: HeaderCarrier): Future[Option[GetGovTalkStatusResponse]] = {
     val endpoint =
       if (appConfig.govTalkStatusStageQueryParamEnabled)
@@ -258,6 +266,7 @@ class FormpProxyConnector @Inject() (
 
     http
       .post(endpoint)
+      .setHeader(internalServiceApiKeyHeader(authMode)*)
       .withBody(Json.toJson(request))
       .execute[GetGovTalkStatusResponse]
       .map(Some(_))
@@ -277,9 +286,13 @@ class FormpProxyConnector @Inject() (
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
 
-  def updateGovTalkStatus(request: UpdateGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+  def updateGovTalkStatus(
+    request: UpdateGovTalkStatusRequest,
+    authMode: FormpProxyAuthMode = UserJourney
+  )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/govtalkstatus/update-status")
+      .setHeader(internalServiceApiKeyHeader(authMode)*)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -288,10 +301,12 @@ class FormpProxyConnector @Inject() (
       }
 
   def updateGovTalkStatusCorrelationId(
-    request: UpdateGovTalkStatusCorrelationIdRequest
+    request: UpdateGovTalkStatusCorrelationIdRequest,
+    authMode: FormpProxyAuthMode = UserJourney
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/govtalkstatus/update-correlationID")
+      .setHeader(internalServiceApiKeyHeader(authMode)*)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -300,10 +315,12 @@ class FormpProxyConnector @Inject() (
       }
 
   def updateGovTalkStatusStatistics(
-    request: UpdateGovTalkStatusStatisticsRequest
+    request: UpdateGovTalkStatusStatisticsRequest,
+    authMode: FormpProxyAuthMode = UserJourney
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/govtalkstatus/update-statistics")
+      .setHeader(internalServiceApiKeyHeader(authMode)*)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -396,10 +413,12 @@ class FormpProxyConnector @Inject() (
       .execute[CreateSubmissionAndUpdateVerificationsResponse]
 
   def updateVerificationSubmission(
-    request: UpdateVerificationSubmissionRequest
+    request: UpdateVerificationSubmissionRequest,
+    authMode: FormpProxyAuthMode = UserJourney
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/verification/submission/update")
+      .setHeader(internalServiceApiKeyHeader(authMode)*)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -410,13 +429,16 @@ class FormpProxyConnector @Inject() (
   def getBatchPollSubmissions()(implicit hc: HeaderCarrier): Future[GetBatchPollSubmissionsResponse] =
     http
       .get(url"$base/cis/batchpoll-submissions")
+      .setHeader(InternalServiceApiKeyHeader -> appConfig.cisInternalServiceApiKey)
       .execute[GetBatchPollSubmissionsResponse]
 
   def processVerificationResponseFromChris(
-    request: ProcessVerificationResponseFromChrisRequest
+    request: ProcessVerificationResponseFromChrisRequest,
+    authMode: FormpProxyAuthMode = UserJourney
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/verification/response/process")
+      .setHeader(internalServiceApiKeyHeader(authMode)*)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -458,10 +480,12 @@ class FormpProxyConnector @Inject() (
       .execute[GetSubmittedVerificationsResponse]
 
   def getSubmissionWithVerificationBatch(
-    request: GetSubmissionWithVerificationBatchRequest
+    request: GetSubmissionWithVerificationBatchRequest,
+    authMode: FormpProxyAuthMode = UserJourney
   )(implicit hc: HeaderCarrier): Future[GetSubmissionWithVerificationBatchResponse] =
     http
       .post(url"$base/cis/verification/submission-batch")
+      .setHeader(internalServiceApiKeyHeader(authMode)*)
       .withBody(Json.toJson(request))
       .execute[GetSubmissionWithVerificationBatchResponse]
 
@@ -472,4 +496,15 @@ class FormpProxyConnector @Inject() (
     http
       .get(url"$base/cis/subcontractor/$cisId/$subbieResourceRef")
       .execute[GetSubcontractorResponse]
+
+  private val InternalServiceApiKeyHeader = "X-API-Key"
+
+  private def internalServiceApiKeyHeader(authMode: FormpProxyAuthMode): Seq[(String, String)] =
+    authMode match {
+      case UserJourney  =>
+        Seq.empty
+      case BatchPolling =>
+        Seq(InternalServiceApiKeyHeader -> appConfig.cisInternalServiceApiKey)
+    }
+
 }

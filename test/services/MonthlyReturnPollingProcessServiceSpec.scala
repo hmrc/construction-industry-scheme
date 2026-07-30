@@ -21,12 +21,13 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{never, times, verify, verifyNoInteractions, when}
 import org.scalatest.BeforeAndAfterEach
 import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.FormpProxyAuthMode.BatchPolling
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, GetMonthlyReturnForEditResponse, MonthlyReturnSubmissionToPoll}
 import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnPollingProcessService, MonthlyReturnService, SubmissionService}
 import uk.gov.hmrc.http.HeaderCarrier
 
-import java.time.{LocalDateTime, ZoneId}
+import java.time.{Instant, LocalDateTime, ZoneId}
 import scala.concurrent.Future
 
 class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfterEach {
@@ -136,16 +137,43 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     details: GetMonthlyReturnForEditResponse = makeDetails(),
     pollResponse: ChrisPollResponse = makePollResponse(ACCEPTED)
   ): Unit = {
-    when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
-      .thenReturn(Future.successful(details))
-    when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
-      .thenReturn(Future.successful(gatewayUrl))
-    when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any()))
-      .thenReturn(Future.successful(pollResponse))
-    when(submissionService.updateSubmission(any())(any()))
-      .thenReturn(Future.unit)
-    when(submissionService.sendSuccessfulEmail(any(), any())(any()))
-      .thenReturn(Future.unit)
+    when(
+      monthlyReturnService.getMonthlyReturnForEdit(
+        any[GetMonthlyReturnForEditRequest],
+        any[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.successful(details))
+
+    when(
+      submissionService.processMonthlyReturnGovTalkStatusCheck(
+        any[String],
+        any[String],
+        any[Instant]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.successful(gatewayUrl))
+
+    when(
+      submissionService.pollSubmissionAndUpdateGovTalkStatus(
+        any[String],
+        any[String],
+        any[ChrisPollJourney],
+        any[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.successful(pollResponse))
+
+    when(
+      submissionService.updateSubmission(
+        any[UpdateSubmissionRequest],
+        any[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.unit)
+
+    when(
+      submissionService.sendSuccessfulEmail(
+        any[String],
+        any[SendSuccessEmailRequest]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.unit)
   }
 
   "MonthlyReturnPollingProcessService" - {
@@ -163,28 +191,28 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         val sub1 = makeSubmission(instanceId = "inst-1", taxMonth = 1)
         val sub2 = makeSubmission(instanceId = "inst-2", taxMonth = 2)
 
-        when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
+        when(monthlyReturnService.getMonthlyReturnForEdit(any(), eqTo(BatchPolling))(any()))
           .thenReturn(
             Future.failed(new RuntimeException("getMonthlyReturnForEdit failed")),
             Future.successful(makeDetails())
           )
         when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
           .thenReturn(Future.successful(gatewayUrl))
-        when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any()))
+        when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any(), eqTo(BatchPolling))(any()))
           .thenReturn(Future.successful(makePollResponse(ACCEPTED)))
-        when(submissionService.updateSubmission(any())(any()))
+        when(submissionService.updateSubmission(any(), eqTo(BatchPolling))(any()))
           .thenReturn(Future.unit)
 
         service.process(Seq(sub1, sub2), startTime).futureValue mustBe ()
 
-        verify(monthlyReturnService, times(2)).getMonthlyReturnForEdit(any())(any())
-
-        // The first submission fails at getMonthlyReturnForEdit, so only the second (inst-2)
-        // continues and completes the downstream steps.
+        verify(monthlyReturnService, times(2))
+          .getMonthlyReturnForEdit(any(), eqTo(BatchPolling))(any())
         verify(submissionService, times(1))
           .processMonthlyReturnGovTalkStatusCheck(eqTo("inst-2"), any(), any())(any())
-        verify(submissionService, times(1)).pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any())
-        verify(submissionService, times(1)).updateSubmission(any())(any())
+        verify(submissionService, times(1))
+          .pollSubmissionAndUpdateGovTalkStatus(any(), any(), any(), eqTo(BatchPolling))(any())
+        verify(submissionService, times(1))
+          .updateSubmission(any(), eqTo(BatchPolling))(any())
       }
     }
 
@@ -197,7 +225,8 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         service.process(Seq(sub), startTime).futureValue
 
         verify(monthlyReturnService).getMonthlyReturnForEdit(
-          eqTo(GetMonthlyReturnForEditRequest("inst-99", taxYear = 2025, taxMonth = 6, isAmendment = Some(false)))
+          eqTo(GetMonthlyReturnForEditRequest("inst-99", taxYear = 2025, taxMonth = 6, isAmendment = Some(false))),
+          eqTo(BatchPolling)
         )(any())
       }
 
@@ -221,7 +250,8 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         verify(submissionService).pollSubmissionAndUpdateGovTalkStatus(
           eqTo(testSubmissionId.toString),
           eqTo(gatewayUrl),
-          eqTo(ChrisPollJourney.MonthlyReturn)
+          eqTo(ChrisPollJourney.MonthlyReturn),
+          eqTo(BatchPolling)
         )(any())
       }
 
@@ -254,7 +284,8 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
               agentId = Some("agent-1"),
               govTalkResponse = None
             )
-          )
+          ),
+          eqTo(BatchPolling)
         )(any())
       }
 
@@ -275,26 +306,27 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
               amendment = "N",
               emailRecipient = Some("user@example.com")
             )
-          )
+          ),
+          eqTo(BatchPolling)
         )(any())
       }
 
       "must fail and skip remaining steps when details contain no monthly return" in {
-        when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
+        when(monthlyReturnService.getMonthlyReturnForEdit(any(), eqTo(BatchPolling))(any()))
           .thenReturn(Future.successful(makeDetails().copy(monthlyReturn = Seq.empty)))
 
         service.process(Seq(makeSubmission()), startTime).futureValue mustBe ()
 
-        verify(submissionService, never).updateSubmission(any())(any())
+        verify(submissionService, never).updateSubmission(any(), any())(any())
       }
 
       "must fail and skip remaining steps when details contain no submission" in {
-        when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
+        when(monthlyReturnService.getMonthlyReturnForEdit(any(), eqTo(BatchPolling))(any()))
           .thenReturn(Future.successful(makeDetails().copy(submission = Seq.empty)))
 
         service.process(Seq(makeSubmission()), startTime).futureValue mustBe ()
 
-        verify(submissionService, never).updateSubmission(any())(any())
+        verify(submissionService, never).updateSubmission(any(), any())(any())
       }
     }
 
@@ -338,15 +370,17 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           )
         )
       )
-      when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
+      when(monthlyReturnService.getMonthlyReturnForEdit(any(), eqTo(BatchPolling))(any()))
         .thenReturn(Future.successful(response))
       when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
         .thenReturn(Future.successful(gatewayUrl))
-      when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any()))
+      when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any(), eqTo(BatchPolling))(any()))
         .thenReturn(Future.successful(makePollResponse(ACCEPTED)))
-      when(submissionService.updateSubmission(any())(any()))
+      when(submissionService.updateSubmission(any(), eqTo(BatchPolling))(any()))
         .thenReturn(Future.unit)
+
       service.process(Seq(submission), System.currentTimeMillis()).futureValue mustBe ()
+
       verify(submissionService).processMonthlyReturnGovTalkStatusCheck(
         any(),
         any(),
@@ -455,7 +489,8 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 amendment = "N",
                 emailRecipient = Some("user@example.com")
               )
-            )
+            ),
+            eqTo(BatchPolling)
           )(any())
         }
       }

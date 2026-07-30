@@ -23,6 +23,7 @@ import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
 import play.api.http.Status.{BAD_GATEWAY, NO_CONTENT, OK}
 import play.api.libs.json.{JsObject, Json}
+import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
@@ -42,6 +43,8 @@ class FormpProxyConnectorIntegrationSpec
   private val instanceId        = "123"
   private val subbieResourceRef = 456L
   private val instanceReqJson   = Json.obj("instanceId" -> instanceId)
+  private val InternalServiceApiKeyHeader = "X-API-Key"
+  private val cisInternalServiceApiKey = app.injector.instanceOf[AppConfig].cisInternalServiceApiKey
 
   "FormpProxyConnector getMonthlyReturns" should {
 
@@ -272,11 +275,12 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/submissions/update"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader(InternalServiceApiKeyHeader, equalTo(cisInternalServiceApiKey))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
 
-      connector.updateSubmission(req).futureValue mustBe ((): Unit)
+      connector.updateSubmission(req, FormpProxyAuthMode.BatchPolling).futureValue mustBe ((): Unit)
     }
 
     "fails with UpstreamErrorResponse when non-2xx" in {
@@ -795,6 +799,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/monthly-return-edit"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader(InternalServiceApiKeyHeader, equalTo(cisInternalServiceApiKey))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -803,7 +808,7 @@ class FormpProxyConnectorIntegrationSpec
           )
       )
 
-      val out = connector.getMonthlyReturnForEdit(req).futureValue
+      val out = connector.getMonthlyReturnForEdit(req, FormpProxyAuthMode.BatchPolling).futureValue
       Json.toJson(out) mustBe responseJson
     }
 
@@ -1118,6 +1123,7 @@ class FormpProxyConnectorIntegrationSpec
         post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/get"))
           .withQueryParam("stage", equalTo("polling"))
           .withHeader("Content-Type", containing("application/json"))
+          .withHeader(InternalServiceApiKeyHeader, equalTo(cisInternalServiceApiKey))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -1126,7 +1132,7 @@ class FormpProxyConnectorIntegrationSpec
           )
       )
 
-      val out = connector.getGovTalkStatus(req, ChrisSubmissionPhase.Polling).futureValue
+      val out = connector.getGovTalkStatus(req, ChrisSubmissionPhase.Polling, FormpProxyAuthMode.BatchPolling).futureValue
       out mustBe Some(responseJson.as[GetGovTalkStatusResponse])
     }
 
@@ -1228,11 +1234,12 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/update-status"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader(InternalServiceApiKeyHeader, equalTo(cisInternalServiceApiKey))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
 
-      connector.updateGovTalkStatus(req).futureValue mustBe ((): Unit)
+      connector.updateGovTalkStatus(req, FormpProxyAuthMode.BatchPolling).futureValue mustBe ((): Unit)
     }
 
     "fail with UpstreamErrorResponse when upstream returns non-204 (e.g. 500)" in {
@@ -1268,11 +1275,12 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/update-correlationID"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader(InternalServiceApiKeyHeader, equalTo(cisInternalServiceApiKey))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
 
-      connector.updateGovTalkStatusCorrelationId(req).futureValue mustBe ((): Unit)
+      connector.updateGovTalkStatusCorrelationId(req, FormpProxyAuthMode.BatchPolling).futureValue mustBe ((): Unit)
     }
 
     "fail with UpstreamErrorResponse when upstream returns non-204 (e.g. 500)" in {
@@ -1311,11 +1319,12 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/update-statistics"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader(InternalServiceApiKeyHeader, equalTo(cisInternalServiceApiKey))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
 
-      connector.updateGovTalkStatusStatistics(req).futureValue mustBe ((): Unit)
+      connector.updateGovTalkStatusStatistics(req, FormpProxyAuthMode.BatchPolling).futureValue mustBe ((): Unit)
     }
 
     "fail with UpstreamErrorResponse when upstream returns non-204 (e.g. 500)" in {
@@ -1951,6 +1960,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/submission/update"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader(InternalServiceApiKeyHeader, equalTo(cisInternalServiceApiKey))
           .withRequestBody(equalToJson(Json.toJson(request).toString(), true, true))
           .willReturn(
             aResponse()
@@ -1958,7 +1968,7 @@ class FormpProxyConnectorIntegrationSpec
           )
       )
 
-      connector.updateVerificationSubmission(request).futureValue mustBe ()
+      connector.updateVerificationSubmission(request, FormpProxyAuthMode.BatchPolling).futureValue mustBe()
     }
 
     "fail the future when upstream returns non-204" in {
@@ -1989,75 +1999,7 @@ class FormpProxyConnectorIntegrationSpec
       upstream.message mustBe "formp error"
     }
   }
-
-  "FormpProxyConnector processVerificationResponseFromChris" should {
-
-    "POST request to /formp-proxy/cis/verification/response/process and return Unit when upstream returns 204" in {
-      val request = ProcessVerificationResponseFromChrisRequest(
-        instanceId = "1",
-        verificationBatchResourceRef = 5L,
-        submissionStatus = "SUBMITTED",
-        acceptedTime = "2017-04-06T08:46:08.081",
-        irMarkReceived = Some("hmrc-mark"),
-        verificationResults = Seq(
-          VerificationResult(
-            resourceRef = 13L,
-            matched = Some("Y"),
-            verified = Some("N"),
-            verificationNumber = Some("V1000000007"),
-            taxTreatment = "net",
-            verifiedDate = Some(LocalDateTime.parse("2017-04-06T08:46:08.081"))
-          )
-        )
-      )
-
-      stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
-          .withHeader("Content-Type", equalTo("application/json"))
-          .withRequestBody(
-            equalToJson(Json.toJson[ProcessVerificationResponseFromChrisRequest](request).toString(), true, true)
-          )
-          .willReturn(
-            aResponse()
-              .withStatus(204)
-          )
-      )
-
-      connector.processVerificationResponseFromChris(request).futureValue mustBe ()
-    }
-
-    "fail the future when upstream returns non-204" in {
-      val request = ProcessVerificationResponseFromChrisRequest(
-        instanceId = "1",
-        verificationBatchResourceRef = 5L,
-        submissionStatus = "SUBMITTED",
-        acceptedTime = "2017-04-06T08:46:08.081",
-        irMarkReceived = Some("hmrc-mark"),
-        verificationResults = Seq.empty
-      )
-
-      stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
-          .withRequestBody(
-            equalToJson(Json.toJson[ProcessVerificationResponseFromChrisRequest](request).toString(), true, true)
-          )
-          .willReturn(
-            aResponse()
-              .withStatus(500)
-              .withBody("formp error")
-          )
-      )
-
-      val ex = connector.processVerificationResponseFromChris(request).failed.futureValue
-
-      ex mustBe a[UpstreamErrorResponse]
-
-      val upstream = ex.asInstanceOf[UpstreamErrorResponse]
-      upstream.statusCode mustBe 500
-      upstream.message mustBe "formp error"
-    }
-  }
-
+  
   "FormpProxyConnector getSchemeEmail" should {
 
     "POST to /formp-proxy/scheme/email and return Some(email) when upstream returns 200 with email JSON" in {
@@ -2246,11 +2188,12 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader(InternalServiceApiKeyHeader, equalTo(cisInternalServiceApiKey))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(NO_CONTENT))
       )
 
-      connector.processVerificationResponseFromChris(req).futureValue mustBe ((): Unit)
+      connector.processVerificationResponseFromChris(req, FormpProxyAuthMode.BatchPolling).futureValue mustBe ((): Unit)
     }
 
     "fail with UpstreamErrorResponse when upstream returns non-204" in {
@@ -2637,6 +2580,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/submission-batch"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader(InternalServiceApiKeyHeader, equalTo(cisInternalServiceApiKey))
           .withRequestBody(
             equalToJson(
               Json.toJson(request).toString(),
@@ -2654,7 +2598,7 @@ class FormpProxyConnectorIntegrationSpec
 
       val result =
         connector
-          .getSubmissionWithVerificationBatch(request)
+          .getSubmissionWithVerificationBatch(request, FormpProxyAuthMode.BatchPolling)
           .futureValue
 
       result mustBe GetSubmissionWithVerificationBatchResponse(

@@ -18,6 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
+import uk.gov.hmrc.constructionindustryscheme.models.FormpProxyAuthMode.BatchPolling
 import uk.gov.hmrc.constructionindustryscheme.models.response.VerificationSubmissionToPoll
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -48,7 +49,8 @@ class VerificationPollingProcessService @Inject() (
           _       <- submissionService.pollSubmissionAndUpdateGovTalkStatus(
                        submissionId = submissionId,
                        pollUrl = session.pollUrl,
-                       journey = Verification
+                       journey = Verification,
+                       authMode = BatchPolling
                      )
         } yield ()).recover { case NonFatal(ex) =>
           logger.error(

@@ -29,7 +29,7 @@ import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, EmployerReference, FormpProxyAuthMode, MonthlyReturn, NilMonthlyReturnRequest, UserMonthlyReturns}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
@@ -609,8 +609,12 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           submission = Seq.empty
         )
 
-        when(mockMonthlyReturnService.getMonthlyReturnForEdit(eqTo(reqBody))(any[HeaderCarrier]))
-          .thenReturn(Future.successful(payload))
+        when(
+          mockMonthlyReturnService.getMonthlyReturnForEdit(
+            any[GetMonthlyReturnForEditRequest],
+            any[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
+        ).thenReturn(Future.successful(payload))
 
         val request =
           FakeRequest(POST, "/")
@@ -628,8 +632,12 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         val reqBody = GetMonthlyReturnForEditRequest("abc-123", 2025, 1)
         val boom    = UpstreamErrorResponse("formp proxy failure", BAD_GATEWAY)
 
-        when(mockMonthlyReturnService.getMonthlyReturnForEdit(eqTo(reqBody))(any[HeaderCarrier]))
-          .thenReturn(Future.failed(boom))
+        when(
+          mockMonthlyReturnService.getMonthlyReturnForEdit(
+            any[GetMonthlyReturnForEditRequest],
+            any[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
+        ).thenReturn(Future.failed(boom))
 
         val request =
           FakeRequest(POST, "/")
@@ -646,8 +654,12 @@ class MonthlyReturnsControllerSpec extends SpecBase {
 
         val reqBody = GetMonthlyReturnForEditRequest("abc-123", 2025, 1)
 
-        when(mockMonthlyReturnService.getMonthlyReturnForEdit(eqTo(reqBody))(any[HeaderCarrier]))
-          .thenReturn(Future.failed(new RuntimeException("boom")))
+        when(
+          mockMonthlyReturnService.getMonthlyReturnForEdit(
+            any[GetMonthlyReturnForEditRequest],
+            any[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
+        ).thenReturn(Future.failed(new RuntimeException("boom")))
 
         val request =
           FakeRequest(POST, "/")

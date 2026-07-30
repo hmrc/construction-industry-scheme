@@ -21,6 +21,7 @@ import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnecto
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.models.FormpProxyAuthMode.UserJourney
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
 import java.time.{LocalDateTime, ZoneOffset}
@@ -127,10 +128,13 @@ class MonthlyReturnService @Inject() (
   def getSchemeEmail(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[String]] =
     formp.getSchemeEmail(instanceId)
 
-  def getMonthlyReturnForEdit(request: GetMonthlyReturnForEditRequest)(implicit
+  def getMonthlyReturnForEdit(
+    request: GetMonthlyReturnForEditRequest,
+    authMode: FormpProxyAuthMode = UserJourney
+  )(implicit
     hc: HeaderCarrier
   ): Future[GetMonthlyReturnForEditResponse] =
-    formp.getMonthlyReturnForEdit(request)
+    formp.getMonthlyReturnForEdit(request, authMode)
 
   def getMonthlyReturnComplete(request: GetMonthlyReturnCompleteRequest)(implicit
     hc: HeaderCarrier

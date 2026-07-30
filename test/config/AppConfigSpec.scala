@@ -34,5 +34,14 @@ class AppConfigSpec extends SpecBase {
         schema.getClass.getName must include("Schema")
       }
     }
+
+    "cisInternalServiceApiKey" - {
+
+      "must load the CIS internal service API key from config" in {
+        val appConfig = app.injector.instanceOf[AppConfig]
+
+        appConfig.cisInternalServiceApiKey mustBe "local-test-api-key"
+      }
+    }
   }
 }
