@@ -60,18 +60,18 @@ class BatchPollerScheduledServiceIntegrationSpec
 
   "BatchPollerScheduledService.invoke" - {
 
-    "skip the job, leaving the existing lock untouched, when another instance already holds the lock" in {
+    "skip the job and retain the existing lock when another instance holds it" in {
       val otherOwner = "another-instance"
 
-      // another instance takes the lock first
       repository.takeLock(lockId, otherOwner, appConfig.batchPollerJobLockTtl).futureValue mustBe defined
       repository.isLocked(lockId, otherOwner).futureValue shouldBe true
 
-      service.invoke.futureValue // completes without failing
+      service.invoke.futureValue
 
       // the lock is still owned by the other instance - our service did not acquire or steal it
       repository.isLocked(lockId, otherOwner).futureValue shouldBe true
-      lockDocFor(lockId).map(_.owner)                     shouldBe Some(otherOwner)
+
+      lockDocFor(lockId).map(_.owner) shouldBe Some(otherOwner)
 
       verify(batchPollerService, never()).run(any())(any[HeaderCarrier])
     }
@@ -81,9 +81,9 @@ class BatchPollerScheduledServiceIntegrationSpec
 
       lockDocFor(lockId) shouldBe None
 
-      service.invoke.futureValue // completes without failing
+      service.invoke.futureValue
 
-      // a lock has been created for the job (held/disowned to expire naturally, not released)
+      // The lock is disowned and remains until natural expiry.
       lockDocFor(lockId) shouldBe defined
 
       verify(batchPollerService).run(any())(any[HeaderCarrier])
