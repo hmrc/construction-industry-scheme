@@ -19,11 +19,10 @@ package uk.gov.hmrc.constructionindustryscheme.models.response
 import play.api.libs.json.{Json, OFormat}
 
 final case class UpdateSubcontractorResponse(
-                                              version: Int
-                                            )
+  version: Int
+)
 
 object UpdateSubcontractorResponse {
   given format: OFormat[UpdateSubcontractorResponse] =
     Json.format[UpdateSubcontractorResponse]
 }
-
