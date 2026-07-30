@@ -35,6 +35,8 @@ object GovTalkErrorMapper {
   def fromHttpTimeout(): GovTalkError =
     GovTalkError("500", "timeOut", "timeOut")
 
+  // Connection refused / transport failure: there is no ChRIS-provided error number, so per the F18 spec the GovTalk
+  // error code is the literal "xxxx" (contrast fromHttpTimeout, which carries the real 5xx-derived "500").
   def fromConnectionRefused(): GovTalkError =
-    GovTalkError("500", "timeOut", "timed out")
+    GovTalkError("xxxx", "timeOut", "timed out")
 }

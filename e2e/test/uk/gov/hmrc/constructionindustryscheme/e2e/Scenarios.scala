@@ -35,20 +35,21 @@ object Scenarios {
     Scenario(
       "781",
       "EZ00100",
-      "F18 s8: connection abort on submit -> FATAL_ERROR (transport failure, not 5xx)",
+      "F18 s8: connection abort on submit -> FATAL_ERROR (transport failure, not 5xx), govtalk code xxxx",
       200,
       Some("FATAL_ERROR"),
       None,
-      expectSubmitErrorText = Some("timed out")
+      expectSubmitErrorText = Some("timed out"),
+      expectSubmitErrorCode = Some("xxxx")
     ),
     Scenario(
       "123",
       "EZ00100",
-      "F18 s9: connection abort on poll -> ACCEPTED (transport failure, not 5xx)",
+      "F18 s9: connection abort on poll -> ACCEPTED (transport failure, not 5xx), govtalk code xxxx",
       202,
       Some("ACCEPTED"),
       Some("ACCEPTED"),
-      Some(500),
+      Some("xxxx"),
       Some(abortPollUrl),
       expectPollErrorText = Some("timed out")
     )
@@ -56,23 +57,11 @@ object Scenarios {
 
   val enrolment: Seq[Scenario] = Seq(
     Scenario("123", "EZ00100", "happy path (success on poll)", 202, Some("ACCEPTED"), Some("SUBMITTED")),
-    Scenario(
-      "500",
-      "EZ00100",
-      "F18 s1: ChRIS HTTP 500 on submit + enrolment TON 500 trips formp-proxy outage -> 500 (body FATAL_ERROR)",
-      500,
-      Some("FATAL_ERROR"),
-      None
-    ),
-    Scenario(
-      "502",
-      "EZ00100",
-      "F18 s1: ChRIS HTTP 502 on submit + enrolment TON 502 trips formp-proxy outage -> 500 (body FATAL_ERROR)",
-      500,
-      Some("FATAL_ERROR"),
-      None
-    ),
-    Scenario("503", "EZ00100", "F18 s1: ChRIS HTTP 503 on submit", 200, Some("FATAL_ERROR"), None),
+    // ChRIS 5xx on submit -> FATAL_ERROR persisted to a healthy FormP and returned to the user as HTTP 200. (The
+    // taxpayer/FormP downstream calls use the benign body ref 123, so no formp-proxy outage collides here.)
+    Scenario("500", "EZ00100", "F18 s1: ChRIS HTTP 500 on submit -> 200 FATAL_ERROR", 200, Some("FATAL_ERROR"), None),
+    Scenario("502", "EZ00100", "F18 s1: ChRIS HTTP 502 on submit -> 200 FATAL_ERROR", 200, Some("FATAL_ERROR"), None),
+    Scenario("503", "EZ00100", "F18 s1: ChRIS HTTP 503 on submit -> 200 FATAL_ERROR", 200, Some("FATAL_ERROR"), None),
     Scenario("779", "EZ00125", "F18 s2: immediate FATAL_ERROR from ChRIS", 200, Some("FATAL_ERROR"), None),
     Scenario(
       "123",
@@ -81,7 +70,7 @@ object Scenarios {
       202,
       Some("ACCEPTED"),
       Some("ACCEPTED"),
-      Some(500),
+      Some("500"),
       Some(s3PollUrl)
     ),
     Scenario(
@@ -91,7 +80,7 @@ object Scenarios {
       202,
       Some("ACCEPTED"),
       Some("FATAL_ERROR"),
-      Some(1001)
+      Some("1001")
     ),
     Scenario(
       "780",
@@ -100,7 +89,7 @@ object Scenarios {
       202,
       Some("ACCEPTED"),
       Some("DEPARTMENTAL_ERROR"),
-      Some(3000)
+      Some("3000")
     ),
     Scenario(
       "776",
@@ -109,7 +98,7 @@ object Scenarios {
       202,
       Some("ACCEPTED"),
       Some("DEPARTMENTAL_ERROR"),
-      Some(3001)
+      Some("3001")
     ),
     Scenario("777", "EZ00100", "SUBMITTED_NO_RECEIPT on poll", 202, Some("ACCEPTED"), Some("SUBMITTED_NO_RECEIPT")),
     Scenario("778", "EZ00100", "forever-pending ack (poll succeeds)", 202, Some("ACCEPTED"), Some("SUBMITTED"))
@@ -128,7 +117,7 @@ object Scenarios {
       202,
       Some("ACCEPTED"),
       Some("ACCEPTED"),
-      Some(500),
+      Some("500"),
       Some(s3PollUrl)
     ),
     Scenario(
@@ -138,7 +127,7 @@ object Scenarios {
       202,
       Some("ACCEPTED"),
       Some("FATAL_ERROR"),
-      Some(1001)
+      Some("1001")
     ),
     Scenario(
       "780",
@@ -147,7 +136,7 @@ object Scenarios {
       202,
       Some("ACCEPTED"),
       Some("DEPARTMENTAL_ERROR"),
-      Some(3000)
+      Some("3000")
     ),
     Scenario(
       "776",
@@ -156,7 +145,7 @@ object Scenarios {
       202,
       Some("ACCEPTED"),
       Some("DEPARTMENTAL_ERROR"),
-      Some(3001)
+      Some("3001")
     ),
     Scenario("777", "EZ00100", "SUBMITTED_NO_RECEIPT on poll", 202, Some("ACCEPTED"), Some("SUBMITTED_NO_RECEIPT")),
     Scenario("778", "EZ00100", "forever-pending ack (poll succeeds)", 202, Some("ACCEPTED"), Some("SUBMITTED"))

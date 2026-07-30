@@ -54,6 +54,9 @@ abstract class E2eBaseSpec extends AnyFunSuite with Matchers {
       submit.status shouldBe s.expectSubmitHttp
       s.expectSubmitStatus.foreach(expected => (submit.json \ "status").asOpt[String] shouldBe Some(expected))
       // submit renders the GovTalk error as error.{number,type,text}
+      s.expectSubmitErrorCode.foreach(expected =>
+        (submit.json \ "error" \ "number").asOpt[String] shouldBe Some(expected)
+      )
       s.expectSubmitErrorText.foreach(expected =>
         (submit.json \ "error" \ "text").asOpt[String] shouldBe Some(expected)
       )
@@ -70,12 +73,12 @@ abstract class E2eBaseSpec extends AnyFunSuite with Matchers {
         poll.status                          shouldBe 200
         (poll.json \ "status").asOpt[String] shouldBe Some(expectedPollStatus)
         // the backend renders errorNumber as a JSON string ("1001"); accept either form
-        s.expectPollErrorNumber.foreach { n =>
+        s.expectPollErrorNumber.foreach { expected =>
           val actual = (poll.json \ "error" \ "errorNumber").toOption.map {
             case JsString(v) => v
             case other       => other.toString
           }
-          actual shouldBe Some(n.toString)
+          actual shouldBe Some(expected)
         }
         // poll renders the GovTalk error via Json.toJson(GovTalkError) -> error.{errorNumber,errorType,errorText}
         s.expectPollErrorText.foreach(expected =>

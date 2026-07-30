@@ -468,7 +468,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       (js \ "submissionId").as[String] mustBe submissionId
       (js \ "status").as[String] mustBe "FATAL_ERROR"
-      (js \ "error" \ "number").as[String] mustBe "500"
+      (js \ "error" \ "number").as[String] mustBe "xxxx"
       (js \ "error" \ "type").as[String] mustBe "timeOut"
       (js \ "error" \ "text").as[String] mustBe "timed out"
 
@@ -600,7 +600,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val js = contentAsJson(result)
       (js \ "submissionId").as[String] mustBe submissionId
       (js \ "status").as[String] mustBe "FATAL_ERROR"
-      (js \ "error" \ "number").as[String] mustBe "500"
+      (js \ "error" \ "number").as[String] mustBe "xxxx"
       (js \ "error" \ "type").as[String] mustBe "timeOut"
       (js \ "error" \ "text").as[String] mustBe "timed out"
     }
@@ -1557,7 +1557,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       (js \ "submissionId").as[String] mustBe submissionId
       (js \ "status").as[String] mustBe "FATAL_ERROR"
-      (js \ "error" \ "number").as[String] mustBe "500"
+      (js \ "error" \ "number").as[String] mustBe "xxxx"
       (js \ "error" \ "type").as[String] mustBe "timeOut"
       (js \ "error" \ "text").as[String] mustBe "timed out"
 

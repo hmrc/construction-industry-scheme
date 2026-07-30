@@ -912,7 +912,7 @@ final class SubmissionServiceSpec extends SpecBase {
         hmrcMarkGenerated = "hmrc-mark",
         submissionRequestDate = LocalDateTime.of(2025, 1, 1, 0, 0)
       )
-      val govTalkError = GovTalkError("500", "timeOut", "timed out")
+      val govTalkError = GovTalkError("xxxx", "timeOut", "timed out")
 
       when(formPSubmissionUpdateProcessorRegistry.processorFor(eqTo(journey)))
         .thenReturn(formPSubmissionUpdateProcessor)

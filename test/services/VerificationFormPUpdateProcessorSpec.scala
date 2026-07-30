@@ -305,7 +305,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       ).thenReturn(Future.unit)
 
       processor
-        .handleInitialFailure(sessionData(), GovTalkError("500", "timeOut", "timed out"))
+        .handleInitialFailure(sessionData(), GovTalkError("xxxx", "timeOut", "timed out"))
         .futureValue mustBe ()
 
       val requestCaptor =
@@ -315,7 +315,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
 
       requestCaptor.getValue.submittableStatus mustBe FATAL_ERROR.toString
       requestCaptor.getValue.hmrcMarkGenerated mustBe Some("hmrc-mark")
-      requestCaptor.getValue.govtalkErrorCode mustBe Some("500")
+      requestCaptor.getValue.govtalkErrorCode mustBe Some("xxxx")
       requestCaptor.getValue.govtalkErrorType mustBe Some("timeOut")
       requestCaptor.getValue.govtalkErrorMessage mustBe Some("timed out")
 

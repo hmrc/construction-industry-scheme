@@ -63,7 +63,7 @@ class MonthlyReturnFormPUpdateProcessorSpec extends SpecBase {
         govTalkStatus = None
       )
 
-      processor.handleInitialFailure(session, GovTalkError("500", "timeOut", "timed out")).futureValue mustBe ()
+      processor.handleInitialFailure(session, GovTalkError("xxxx", "timeOut", "timed out")).futureValue mustBe ()
     }
 
     "handle poll response as no-op" in {
