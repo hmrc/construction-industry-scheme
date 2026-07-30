@@ -2777,4 +2777,64 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_GATEWAY
     }
   }
+
+  "FormpProxyConnector updateSubcontractor" should {
+
+    val updateUrl = "/formp-proxy/cis/subcontractor/update"
+
+    val request =
+      UpdateSubcontractorRequest(
+        cisId = "abc-123",
+        subcontractor = Json
+          .obj(
+            "subcontractorId"   -> 999L,
+            "subbieResourceRef" -> 10L,
+            "utr"               -> "1234567890",
+            "firstName"         -> "John",
+            "surname"           -> "Smith",
+            "subcontractorType" -> "soletrader",
+            "version"           -> 5
+          )
+          .as[Subcontractor]
+      )
+
+    "POST /formp-proxy/cis/subcontractor/update and return updated version" in {
+      stubFor(
+        post(urlPathEqualTo(updateUrl))
+          .withRequestBody(equalToJson(Json.toJson(request).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(OK)
+              .withBody("""{ "version": 6 }""")
+          )
+      )
+
+      val response =
+        connector.updateSubcontractor(request).futureValue
+
+      response mustBe UpdateSubcontractorResponse(version = 6)
+
+      verify(
+        postRequestedFor(urlPathEqualTo(updateUrl))
+          .withRequestBody(equalToJson(Json.toJson(request).toString(), true, true))
+      )
+    }
+
+    "fails with UpstreamErrorResponse when FormP returns non-2xx" in {
+      stubFor(
+        post(urlPathEqualTo(updateUrl))
+          .willReturn(
+            aResponse()
+              .withStatus(BAD_GATEWAY)
+              .withBody("FormP error")
+          )
+      )
+
+      val ex =
+        connector.updateSubcontractor(request).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_GATEWAY
+    }
+  }
 }

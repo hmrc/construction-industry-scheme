@@ -24,6 +24,10 @@ import org.scalatest.wordspec.AnyWordSpec
 import play.api.http.Status.*
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, AuthStub}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.UpdateSubcontractorRequest
+import uk.gov.hmrc.constructionindustryscheme.models.response.UpdateSubcontractorResponse
+import uk.gov.hmrc.constructionindustryscheme.models.Subcontractor
+import uk.gov.hmrc.http.UpstreamErrorResponse
 
 class SubcontractorControllerIntegrationSpec
     extends ApplicationWithWiremock
@@ -35,6 +39,7 @@ class SubcontractorControllerIntegrationSpec
   private val getUtrUrl                       = s"$base/subcontractors/utr/123"
   private val getSubcontractorListUrl         = s"$base/subcontractors/123"
   private val getSubcontractorUrl             = s"$base/subcontractor/123/456"
+  private val updateSubcontractorUrl          = s"$base/subcontractor/update"
 
   "POST /cis/subcontractor/create-and-update" should {
 
@@ -368,6 +373,92 @@ class SubcontractorControllerIntegrationSpec
       verify(
         getRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractor/123/456"))
       )
+    }
+  }
+
+  "POST /subcontractor/update" should {
+
+    "return 200 with updated version when authorised and formp proxy succeeds" in {
+      AuthStub.authorisedWithCisEnrolment()
+
+      val payload =
+        Json.parse(
+          """{
+            |  "cisId": "abc-123",
+            |  "subcontractor": {
+            |    "subcontractorId": 999,
+            |    "subbieResourceRef": 10,
+            |    "utr": "1234567890",
+            |    "firstName": "John",
+            |    "surname": "Smith",
+            |    "subcontractorType": "soletrader",
+            |    "version": 5
+            |  }
+            |}""".stripMargin
+        )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
+          .withRequestBody(equalToJson(payload.toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(OK)
+              .withBody("""{ "version": 6 }""")
+          )
+      )
+
+      val resp =
+        postJson(
+          updateSubcontractorUrl,
+          payload,
+          "X-Session-Id"  -> "Session-123",
+          "Authorization" -> "Bearer it-token"
+        )
+
+      resp.status mustBe OK
+      (resp.json \ "version").as[Int] mustBe 6
+
+      verify(
+        postRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
+          .withRequestBody(equalToJson(payload.toString(), true, true))
+      )
+    }
+
+    "return upstream status when FormP fails" in {
+      AuthStub.authorisedWithCisEnrolment()
+
+      val payload =
+        Json.parse(
+          """{
+            |  "cisId": "abc-123",
+            |  "subcontractor": {
+            |    "subcontractorId": 999,
+            |    "subbieResourceRef": 10,
+            |    "subcontractorType": "soletrader",
+            |    "version": 5
+            |  }
+            |}""".stripMargin
+        )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
+          .willReturn(
+            aResponse()
+              .withStatus(SERVICE_UNAVAILABLE)
+              .withBody("FormP unavailable")
+          )
+      )
+
+      val resp =
+        postJson(
+          updateSubcontractorUrl,
+          payload,
+          "X-Session-Id"  -> "Session-123",
+          "Authorization" -> "Bearer it-token"
+        )
+
+      resp.status mustBe SERVICE_UNAVAILABLE
+      (resp.json \ "message").as[String] must include("FormP unavailable")
     }
   }
 }
