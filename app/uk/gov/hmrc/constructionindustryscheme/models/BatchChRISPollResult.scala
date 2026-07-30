@@ -16,18 +16,20 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
-import play.api.libs.json.{Json, OFormat}
+import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 
-final case class Verification(
-  verificationId: Long,
-  matched: Option[String],
-  verificationNumber: Option[String],
-  taxTreatment: Option[String],
-  verificationBatchId: Option[Long],
-  subcontractorId: Option[Long],
-  actionIndicator: Option[String] = None,
-  proceed: Option[String] = None
-)
+sealed trait BatchChRISPollResult {
+  def response: ChrisPollResponse
+}
 
-object Verification:
-  given format: OFormat[Verification] = Json.format[Verification]
+object BatchChRISPollResult {
+
+  case class Completed(
+    response: ChrisPollResponse
+  ) extends BatchChRISPollResult
+
+  case class PostProcessingFailed(
+    response: ChrisPollResponse,
+    exception: Throwable
+  ) extends BatchChRISPollResult
+}

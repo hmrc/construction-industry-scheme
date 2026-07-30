@@ -31,16 +31,27 @@ import scala.concurrent.Future
 
 class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfterEach {
 
-  private val monthlyReturnService = mock[MonthlyReturnService]
-  private val submissionService    = mock[SubmissionService]
+  private val monthlyReturnService =
+    mock[MonthlyReturnService]
 
-  private val service = new MonthlyReturnPollingProcessService(monthlyReturnService, submissionService)
+  private val submissionService =
+    mock[SubmissionService]
+
+  private val service =
+    new MonthlyReturnPollingProcessService(
+      monthlyReturnService,
+      submissionService
+    )
 
   private val startTime = System.currentTimeMillis()
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    org.mockito.Mockito.reset(monthlyReturnService, submissionService)
+
+    org.mockito.Mockito.reset(
+      monthlyReturnService,
+      submissionService
+    )
   }
 
   private val gatewayUrl       = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
@@ -53,7 +64,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     instanceId: String = testInstanceId,
     taxYear: Int = testTaxYear,
     taxMonth: Int = testTaxMonth
-  ) =
+  ): MonthlyReturnSubmissionToPoll =
     MonthlyReturnSubmissionToPoll(
       submissionId = testSubmissionId,
       submissionType = "MONTHLY_RETURN",
@@ -69,25 +80,29 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
   private def makeMonthlyReturn(
     taxYear: Int = testTaxYear,
     taxMonth: Int = testTaxMonth,
-    amendment: Option[String] = None
-  ) =
+    amendment: Option[String] = None,
+    status: Option[String] = Some("STARTED")
+  ): MonthlyReturn =
     MonthlyReturn(
       monthlyReturnId = 1L,
       taxYear = taxYear,
       taxMonth = taxMonth,
-      amendment = amendment
+      amendment = amendment,
+      status = status
     )
 
   private def makeDbSubmission(
     hmrcMarkGenerated: Option[String] = Some("irmark-gen"),
     emailRecipient: Option[String] = Some("user@example.com"),
-    agentId: Option[String] = None
-  ) =
+    agentId: Option[String] = None,
+    status: Option[String] = Some("STARTED"),
+    submissionRequestDate: Option[LocalDateTime] = None
+  ): Submission =
     Submission(
       submissionId = testSubmissionId,
       submissionType = "MONTHLY_RETURN",
       activeObjectId = None,
-      status = Some("STARTED"),
+      status = status,
       hmrcMarkGenerated = hmrcMarkGenerated,
       hmrcMarkGgis = None,
       emailRecipient = emailRecipient,
@@ -97,7 +112,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       schemeId = 1L,
       agentId = agentId,
       l_Migrated = None,
-      submissionRequestDate = None,
+      submissionRequestDate = submissionRequestDate,
       govTalkErrorCode = None,
       govTalkErrorType = None,
       govTalkErrorMessage = None
@@ -106,7 +121,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
   private def makeDetails(
     monthlyReturn: MonthlyReturn = makeMonthlyReturn(),
     dbSubmission: Submission = makeDbSubmission()
-  ) =
+  ): GetMonthlyReturnForEditResponse =
     GetMonthlyReturnForEditResponse(
       scheme = Seq.empty,
       monthlyReturn = Seq(monthlyReturn),
@@ -119,7 +134,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     status: SubmissionStatus,
     irMarkReceived: Option[String] = None,
     acceptedTime: Option[String] = None
-  ) =
+  ): ChrisPollResponse =
     ChrisPollResponse(
       status = status,
       correlationId = "corr-123",
@@ -136,12 +151,11 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     details: GetMonthlyReturnForEditResponse = makeDetails(),
     pollResponse: ChrisPollResponse = makePollResponse(ACCEPTED)
   ): Unit = {
-    when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
-      .thenReturn(Future.successful(details))
+    when(monthlyReturnService.getMonthlyReturnForEdit(any())(any())).thenReturn(Future.successful(details))
     when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
       .thenReturn(Future.successful(gatewayUrl))
-    when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any()))
-      .thenReturn(Future.successful(pollResponse))
+    when(submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(any(), any(), any())(any()))
+      .thenReturn(Future.successful(BatchChRISPollResult.Completed(pollResponse)))
     when(submissionService.updateSubmission(any())(any()))
       .thenReturn(Future.unit)
     when(submissionService.sendSuccessfulEmail(any(), any())(any()))
@@ -153,7 +167,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     "process" - {
 
       "must not interact with any service when there are no submissions" in {
-        service.process(Seq.empty, startTime).futureValue mustBe ()
+        service.process(Seq.empty, startTime).futureValue mustBe empty
 
         verifyNoInteractions(monthlyReturnService)
         verifyNoInteractions(submissionService)
@@ -170,21 +184,93 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           )
         when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
           .thenReturn(Future.successful(gatewayUrl))
-        when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any()))
-          .thenReturn(Future.successful(makePollResponse(ACCEPTED)))
-        when(submissionService.updateSubmission(any())(any()))
-          .thenReturn(Future.unit)
+        when(submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(any(), any(), any())(any()))
+          .thenReturn(Future.successful(BatchChRISPollResult.Completed(makePollResponse(ACCEPTED))))
 
-        service.process(Seq(sub1, sub2), startTime).futureValue mustBe ()
+        when(
+          submissionService.updateSubmission(any())(any())
+        ).thenReturn(Future.unit)
 
-        verify(monthlyReturnService, times(2)).getMonthlyReturnForEdit(any())(any())
+        when(
+          submissionService.sendSuccessfulEmail(any(), any())(any())
+        ).thenReturn(Future.unit)
 
-        // The first submission fails at getMonthlyReturnForEdit, so only the second (inst-2)
-        // continues and completes the downstream steps.
+        val result =
+          service
+            .process(
+              Seq(
+                sub1,
+                sub2
+              ),
+              startTime
+            )
+            .futureValue
+
+        result must have size 2
+
+        result.head.user mustBe sub1.instanceId
+        result.head.submissionId mustBe sub1.submissionId.toString
+        result.head.currentReturnStatus mustBe "-"
+        result.head.correlationId mustBe "(not polled)"
+//        result.head.agentId mustBe "-"
+
+        result(1).user mustBe sub2.instanceId
+        result(1).submissionId mustBe sub2.submissionId.toString
+        result(1).currentReturnStatus mustBe "ACCEPTED"
+
+        verify(monthlyReturnService, times(2))
+          .getMonthlyReturnForEdit(any())(any())
+
         verify(submissionService, times(1))
-          .processMonthlyReturnGovTalkStatusCheck(eqTo("inst-2"), any(), any())(any())
-        verify(submissionService, times(1)).pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any())
-        verify(submissionService, times(1)).updateSubmission(any())(any())
+          .processMonthlyReturnGovTalkStatusCheck(
+            eqTo("inst-2"),
+            any(),
+            any()
+          )(any())
+
+        verify(submissionService, times(1))
+          .pollSubmissionAndUpdateGovTalkStatusForBatch(
+            any(),
+            any(),
+            any()
+          )(any())
+
+        verify(submissionService, times(1))
+          .updateSubmission(any())(any())
+      }
+
+      "must return PollReportContent after successfully polling and updating monthly return" in {
+        val submission =
+          makeSubmission()
+
+        setupHappyPath(
+          pollResponse = makePollResponse(
+            ACCEPTED,
+            irMarkReceived = Some("irmark-recv"),
+            acceptedTime = Some("2026-06-29T12:00:00Z")
+          )
+        )
+
+        val result =
+          service
+            .process(
+              Seq(submission),
+              startTime
+            )
+            .futureValue
+
+        result mustBe Seq(
+          PollReportContent(
+            user = submission.instanceId,
+            submissionType = submission.submissionType,
+            submissionId = submission.submissionId.toString,
+            govTalkRequestStatus = submission.status,
+            currentReturnStatus = "ACCEPTED",
+            employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
+            correlationId = "corr-123",
+            agentId = "-"
+          )
+        )
       }
     }
 
@@ -192,240 +278,672 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
       "must call getMonthlyReturnForEdit with isAmendment = false" in {
         setupHappyPath()
-        val sub = makeSubmission(instanceId = "inst-99", taxYear = 2025, taxMonth = 6)
 
-        service.process(Seq(sub), startTime).futureValue
+        val sub =
+          makeSubmission(
+            instanceId = "inst-99",
+            taxYear = 2025,
+            taxMonth = 6
+          )
 
-        verify(monthlyReturnService).getMonthlyReturnForEdit(
-          eqTo(GetMonthlyReturnForEditRequest("inst-99", taxYear = 2025, taxMonth = 6, isAmendment = Some(false)))
-        )(any())
+        service
+          .process(
+            Seq(sub),
+            startTime
+          )
+          .futureValue must have size 1
+
+        verify(monthlyReturnService)
+          .getMonthlyReturnForEdit(
+            eqTo(
+              GetMonthlyReturnForEditRequest(
+                "inst-99",
+                taxYear = 2025,
+                taxMonth = 6,
+                isAmendment = Some(false)
+              )
+            )
+          )(any())
       }
 
       "must call processMonthlyReturnGovTalkStatusCheck with instanceId and submissionId" in {
         setupHappyPath()
 
-        service.process(Seq(makeSubmission()), startTime).futureValue
+        service
+          .process(
+            Seq(makeSubmission()),
+            startTime
+          )
+          .futureValue must have size 1
 
-        verify(submissionService).processMonthlyReturnGovTalkStatusCheck(
-          eqTo(testInstanceId),
-          eqTo(testSubmissionId.toString),
-          any()
-        )(any())
+        verify(submissionService)
+          .processMonthlyReturnGovTalkStatusCheck(
+            eqTo(testInstanceId),
+            eqTo(testSubmissionId.toString),
+            any()
+          )(any())
       }
 
-      "must call pollSubmissionAndUpdateGovTalkStatus with gatewayUrl and MonthlyReturn journey" in {
+      "must call pollSubmissionAndUpdateGovTalkStatusForBatch with gatewayUrl and MonthlyReturn journey" in {
         setupHappyPath()
 
-        service.process(Seq(makeSubmission()), startTime).futureValue
+        service
+          .process(
+            Seq(makeSubmission()),
+            startTime
+          )
+          .futureValue must have size 1
 
-        verify(submissionService).pollSubmissionAndUpdateGovTalkStatus(
-          eqTo(testSubmissionId.toString),
-          eqTo(gatewayUrl),
-          eqTo(ChrisPollJourney.MonthlyReturn)
-        )(any())
+        verify(submissionService)
+          .pollSubmissionAndUpdateGovTalkStatusForBatch(
+            eqTo(testSubmissionId.toString),
+            eqTo(gatewayUrl),
+            eqTo(ChrisPollJourney.MonthlyReturn)
+          )(any())
       }
 
       "must call updateSubmission with correctly mapped fields from F3 details and poll response" in {
-        val mr       = makeMonthlyReturn(taxYear = 2026, taxMonth = 4, amendment = Some("Y"))
-        val dbSub    = makeDbSubmission(
-          hmrcMarkGenerated = Some("irmark-gen"),
-          emailRecipient = Some("user@example.com"),
-          agentId = Some("agent-1")
-        )
-        val pollResp = makePollResponse(SUBMITTED, irMarkReceived = Some("irmark-recv"))
-
-        setupHappyPath(makeDetails(mr, dbSub), pollResp)
-
-        service.process(Seq(makeSubmission(taxYear = 2026, taxMonth = 4)), startTime).futureValue
-
-        verify(submissionService).updateSubmission(
-          eqTo(
-            UpdateSubmissionRequest(
-              instanceId = testInstanceId,
-              taxYear = 2026,
-              taxMonth = 4,
-              hmrcMarkGenerated = Some("irmark-gen"),
-              submittableStatus = "SUBMITTED",
-              amendment = "Y",
-              hmrcMarkGgis = Some("irmark-recv"),
-              submissionRequestDate = None,
-              acceptedTime = None,
-              emailRecipient = Some("user@example.com"),
-              agentId = Some("agent-1"),
-              govTalkResponse = None
-            )
+        val mr =
+          makeMonthlyReturn(
+            taxYear = 2026,
+            taxMonth = 4,
+            amendment = Some("Y")
           )
-        )(any())
+
+        val dbSub =
+          makeDbSubmission(
+            hmrcMarkGenerated = Some("irmark-gen"),
+            emailRecipient = Some("user@example.com"),
+            agentId = Some("agent-1")
+          )
+
+        val pollResp =
+          makePollResponse(
+            SUBMITTED,
+            irMarkReceived = Some("irmark-recv")
+          )
+
+        setupHappyPath(
+          makeDetails(mr, dbSub),
+          pollResp
+        )
+
+        service
+          .process(
+            Seq(
+              makeSubmission(
+                taxYear = 2026,
+                taxMonth = 4
+              )
+            ),
+            startTime
+          )
+          .futureValue must have size 1
+
+        verify(submissionService)
+          .updateSubmission(
+            eqTo(
+              UpdateSubmissionRequest(
+                instanceId = testInstanceId,
+                taxYear = 2026,
+                taxMonth = 4,
+                hmrcMarkGenerated = Some("irmark-gen"),
+                submittableStatus = "SUBMITTED",
+                amendment = "Y",
+                hmrcMarkGgis = Some("irmark-recv"),
+                submissionRequestDate = None,
+                acceptedTime = None,
+                emailRecipient = Some("user@example.com"),
+                agentId = Some("agent-1"),
+                govTalkResponse = None
+              )
+            )
+          )(any())
       }
 
       "must default amendment to 'N' when it is None in monthly return" in {
-        val mr = makeMonthlyReturn(amendment = None)
-        setupHappyPath(makeDetails(mr))
-
-        service.process(Seq(makeSubmission()), startTime).futureValue
-
-        verify(submissionService).updateSubmission(
-          eqTo(
-            UpdateSubmissionRequest(
-              instanceId = testInstanceId,
-              taxYear = testTaxYear,
-              taxMonth = testTaxMonth,
-              hmrcMarkGenerated = Some("irmark-gen"),
-              submittableStatus = "ACCEPTED",
-              amendment = "N",
-              emailRecipient = Some("user@example.com")
-            )
+        val mr =
+          makeMonthlyReturn(
+            amendment = None
           )
-        )(any())
+
+        setupHappyPath(
+          makeDetails(mr)
+        )
+
+        service
+          .process(
+            Seq(makeSubmission()),
+            startTime
+          )
+          .futureValue must have size 1
+
+        verify(submissionService)
+          .updateSubmission(
+            eqTo(
+              UpdateSubmissionRequest(
+                instanceId = testInstanceId,
+                taxYear = testTaxYear,
+                taxMonth = testTaxMonth,
+                hmrcMarkGenerated = Some("irmark-gen"),
+                submittableStatus = "ACCEPTED",
+                amendment = "N",
+                emailRecipient = Some("user@example.com")
+              )
+            )
+          )(any())
       }
 
       "must fail and skip remaining steps when details contain no monthly return" in {
-        when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
-          .thenReturn(Future.successful(makeDetails().copy(monthlyReturn = Seq.empty)))
+        when(
+          monthlyReturnService.getMonthlyReturnForEdit(any())(any())
+        ).thenReturn(
+          Future.successful(
+            makeDetails().copy(
+              monthlyReturn = Seq.empty
+            )
+          )
+        )
 
-        service.process(Seq(makeSubmission()), startTime).futureValue mustBe ()
+        val result =
+          service
+            .process(
+              Seq(makeSubmission()),
+              startTime
+            )
+            .futureValue
 
-        verify(submissionService, never).updateSubmission(any())(any())
+        result must have size 1
+        result.head.currentReturnStatus mustBe "-"
+
+        verify(submissionService, never())
+          .updateSubmission(any())(any())
       }
 
       "must fail and skip remaining steps when details contain no submission" in {
-        when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
-          .thenReturn(Future.successful(makeDetails().copy(submission = Seq.empty)))
-
-        service.process(Seq(makeSubmission()), startTime).futureValue mustBe ()
-
-        verify(submissionService, never).updateSubmission(any())(any())
-      }
-    }
-
-    "must log warning when submission has been polling for more than 24 hours" in {
-      val submission               = MonthlyReturnSubmissionToPoll(
-        submissionId = 100,
-        submissionType = "Original",
-        status = "Started",
-        taxOfficeNumber = "123",
-        taxOfficeReference = "AZ123",
-        taxYear = 2026,
-        taxMonth = 4,
-        instanceId = "1",
-        agentId = None
-      )
-      val oldSubmissionRequestDate = LocalDateTime.now(ZoneId.of("Europe/London")).minusHours(25)
-      val response                 = GetMonthlyReturnForEditResponse(
-        scheme = Seq.empty,
-        monthlyReturn = Seq(makeMonthlyReturn(testTaxYear, testTaxMonth, Some("N"))),
-        subcontractors = Seq.empty,
-        monthlyReturnItems = Seq.empty,
-        submission = Seq(
-          Submission(
-            submissionId = 100,
-            submissionType = "Original",
-            activeObjectId = None,
-            status = None,
-            hmrcMarkGenerated = None,
-            hmrcMarkGgis = None,
-            emailRecipient = None,
-            acceptedTime = None,
-            createDate = None,
-            lastUpdate = None,
-            schemeId = 1,
-            agentId = None,
-            l_Migrated = None,
-            submissionRequestDate = Some(oldSubmissionRequestDate),
-            govTalkErrorCode = None,
-            govTalkErrorType = None,
-            govTalkErrorMessage = None
+        when(
+          monthlyReturnService.getMonthlyReturnForEdit(any())(any())
+        ).thenReturn(
+          Future.successful(
+            makeDetails().copy(
+              submission = Seq.empty
+            )
           )
         )
-      )
-      when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
-        .thenReturn(Future.successful(response))
-      when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
-        .thenReturn(Future.successful(gatewayUrl))
-      when(submissionService.pollSubmissionAndUpdateGovTalkStatus(any(), any(), any())(any()))
-        .thenReturn(Future.successful(makePollResponse(ACCEPTED)))
-      when(submissionService.updateSubmission(any())(any()))
-        .thenReturn(Future.unit)
-      service.process(Seq(submission), System.currentTimeMillis()).futureValue mustBe ()
-      verify(submissionService).processMonthlyReturnGovTalkStatusCheck(
-        any(),
-        any(),
-        any()
-      )(any[HeaderCarrier])
+
+        val result =
+          service
+            .process(
+              Seq(makeSubmission()),
+              startTime
+            )
+            .futureValue
+
+        result must have size 1
+        result.head.currentReturnStatus mustBe "-"
+
+        verify(submissionService, never())
+          .updateSubmission(any())(any())
+      }
+
+      "must not poll ChRIS when monthly return status does not match submission status" in {
+        val submission =
+          makeSubmission()
+
+        val details =
+          makeDetails(
+            monthlyReturn = makeMonthlyReturn(
+              status = Some("STARTED")
+            ),
+            dbSubmission = makeDbSubmission(
+              status = Some("ACCEPTED")
+            )
+          )
+
+        when(
+          monthlyReturnService.getMonthlyReturnForEdit(any())(any())
+        ).thenReturn(
+          Future.successful(details)
+        )
+
+        val result =
+          service
+            .process(
+              Seq(submission),
+              startTime
+            )
+            .futureValue
+
+        result mustBe Seq(
+          PollReportContent(
+            user = submission.instanceId,
+            submissionType = submission.submissionType,
+            submissionId = submission.submissionId.toString,
+            govTalkRequestStatus = submission.status,
+            currentReturnStatus = "-",
+            employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
+            correlationId = "(not polled)",
+            agentId = "-"
+          )
+        )
+
+        verify(submissionService, never())
+          .processMonthlyReturnGovTalkStatusCheck(
+            any(),
+            any(),
+            any()
+          )(any())
+
+        verify(submissionService, never())
+          .pollSubmissionAndUpdateGovTalkStatusForBatch(
+            any(),
+            any(),
+            any()
+          )(any())
+
+        verify(submissionService, never())
+          .updateSubmission(any())(any())
+
+        verify(submissionService, never())
+          .sendSuccessfulEmail(any(), any())(any())
+      }
+
+      "must return report content and skip submission update/email when post-poll processing fails" in {
+        val submission =
+          makeSubmission()
+
+        val pollResponse =
+          makePollResponse(
+            ACCEPTED,
+            irMarkReceived = Some("irmark-recv"),
+            acceptedTime = Some("2026-06-29T12:00:00Z")
+          )
+
+        when(
+          monthlyReturnService.getMonthlyReturnForEdit(any())(any())
+        ).thenReturn(
+          Future.successful(makeDetails())
+        )
+
+        when(
+          submissionService.processMonthlyReturnGovTalkStatusCheck(
+            any(),
+            any(),
+            any()
+          )(any())
+        ).thenReturn(
+          Future.successful(gatewayUrl)
+        )
+
+        when(
+          submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
+            any(),
+            any(),
+            any()
+          )(any())
+        ).thenReturn(
+          Future.successful(
+            BatchChRISPollResult.PostProcessingFailed(
+              response = pollResponse,
+              exception = new RuntimeException("post-poll failed")
+            )
+          )
+        )
+
+        val result =
+          service
+            .process(
+              Seq(submission),
+              startTime
+            )
+            .futureValue
+
+        result mustBe Seq(
+          PollReportContent(
+            user = submission.instanceId,
+            submissionType = submission.submissionType,
+            submissionId = submission.submissionId.toString,
+            govTalkRequestStatus = submission.status,
+            currentReturnStatus = "ACCEPTED",
+            employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
+            correlationId = "corr-123",
+            agentId = "-"
+          )
+        )
+
+        verify(submissionService, never())
+          .updateSubmission(any())(any())
+
+        verify(submissionService, never())
+          .sendSuccessfulEmail(any(), any())(any())
+      }
+
+      "must log warning when submission has been polling for more than 24 hours" in {
+        val submission =
+          makeSubmission()
+
+        val oldSubmissionRequestDate =
+          LocalDateTime
+            .now(ZoneId.of("Europe/London"))
+            .minusHours(25)
+
+        val dbSubmission =
+          makeDbSubmission(
+            status = Some("STARTED"),
+            submissionRequestDate = Some(oldSubmissionRequestDate)
+          )
+
+        setupHappyPath(
+          details = makeDetails(
+            monthlyReturn = makeMonthlyReturn(
+              status = Some("STARTED")
+            ),
+            dbSubmission = dbSubmission
+          )
+        )
+
+        service
+          .process(
+            Seq(submission),
+            System.currentTimeMillis()
+          )
+          .futureValue must have size 1
+
+        verify(submissionService)
+          .processMonthlyReturnGovTalkStatusCheck(
+            any(),
+            any(),
+            any()
+          )(any[HeaderCarrier])
+      }
     }
 
     "email behaviour" - {
 
       "must send email when status is SUBMITTED and emailRecipient is present (AC5)" in {
-        val dbSub = makeDbSubmission(emailRecipient = Some("user@example.com"))
-        val mr    = makeMonthlyReturn(taxYear = 2026, taxMonth = 4)
-        setupHappyPath(makeDetails(mr, dbSub), makePollResponse(SUBMITTED))
+        val dbSub =
+          makeDbSubmission(
+            emailRecipient = Some("user@example.com")
+          )
 
-        service.process(Seq(makeSubmission()), startTime).futureValue
+        val mr =
+          makeMonthlyReturn(
+            taxYear = 2026,
+            taxMonth = 4
+          )
 
-        verify(submissionService).sendSuccessfulEmail(
-          eqTo(testSubmissionId.toString),
-          eqTo(SendSuccessEmailRequest("user@example.com", "4", "2026"))
-        )(any())
+        setupHappyPath(
+          makeDetails(mr, dbSub),
+          makePollResponse(SUBMITTED)
+        )
+
+        service
+          .process(
+            Seq(makeSubmission()),
+            startTime
+          )
+          .futureValue must have size 1
+
+        verify(submissionService)
+          .sendSuccessfulEmail(
+            eqTo(testSubmissionId.toString),
+            eqTo(
+              SendSuccessEmailRequest(
+                "user@example.com",
+                "4",
+                "2026"
+              )
+            )
+          )(any())
       }
 
       "must send email when status is SUBMITTED_NO_RECEIPT and emailRecipient is present (AC6)" in {
-        val dbSub = makeDbSubmission(emailRecipient = Some("user@example.com"))
-        val mr    = makeMonthlyReturn(taxYear = 2026, taxMonth = 7)
-        setupHappyPath(makeDetails(mr, dbSub), makePollResponse(SUBMITTED_NO_RECEIPT))
+        val dbSub =
+          makeDbSubmission(
+            emailRecipient = Some("user@example.com")
+          )
 
-        service.process(Seq(makeSubmission(taxMonth = 7)), startTime).futureValue
+        val mr =
+          makeMonthlyReturn(
+            taxYear = 2026,
+            taxMonth = 7
+          )
 
-        verify(submissionService).sendSuccessfulEmail(
-          eqTo(testSubmissionId.toString),
-          eqTo(SendSuccessEmailRequest("user@example.com", "7", "2026"))
-        )(any())
+        setupHappyPath(
+          makeDetails(mr, dbSub),
+          makePollResponse(SUBMITTED_NO_RECEIPT)
+        )
+
+        service
+          .process(
+            Seq(
+              makeSubmission(
+                taxMonth = 7
+              )
+            ),
+            startTime
+          )
+          .futureValue must have size 1
+
+        verify(submissionService)
+          .sendSuccessfulEmail(
+            eqTo(testSubmissionId.toString),
+            eqTo(
+              SendSuccessEmailRequest(
+                "user@example.com",
+                "7",
+                "2026"
+              )
+            )
+          )(any())
       }
 
       "must send email when status is DEPARTMENTAL_ERROR and emailRecipient is present (AC7)" in {
-        val dbSub = makeDbSubmission(emailRecipient = Some("user@example.com"))
-        val mr    = makeMonthlyReturn(taxYear = 2026, taxMonth = 10)
-        setupHappyPath(makeDetails(mr, dbSub), makePollResponse(DEPARTMENTAL_ERROR))
+        val dbSub =
+          makeDbSubmission(
+            emailRecipient = Some("user@example.com")
+          )
 
-        service.process(Seq(makeSubmission(taxMonth = 10)), startTime).futureValue
+        val mr =
+          makeMonthlyReturn(
+            taxYear = 2026,
+            taxMonth = 10
+          )
 
-        verify(submissionService).sendSuccessfulEmail(
-          eqTo(testSubmissionId.toString),
-          eqTo(SendSuccessEmailRequest("user@example.com", "10", "2026"))
-        )(any())
+        setupHappyPath(
+          makeDetails(mr, dbSub),
+          makePollResponse(DEPARTMENTAL_ERROR)
+        )
+
+        service
+          .process(
+            Seq(
+              makeSubmission(
+                taxMonth = 10
+              )
+            ),
+            startTime
+          )
+          .futureValue must have size 1
+
+        verify(submissionService)
+          .sendSuccessfulEmail(
+            eqTo(testSubmissionId.toString),
+            eqTo(
+              SendSuccessEmailRequest(
+                "user@example.com",
+                "10",
+                "2026"
+              )
+            )
+          )(any())
       }
 
       "must not send email when status is ACCEPTED (AC2)" in {
-        setupHappyPath(pollResponse = makePollResponse(ACCEPTED))
+        setupHappyPath(
+          pollResponse = makePollResponse(ACCEPTED)
+        )
 
-        service.process(Seq(makeSubmission()), startTime).futureValue
+        service
+          .process(
+            Seq(makeSubmission()),
+            startTime
+          )
+          .futureValue must have size 1
 
-        verify(submissionService, never).sendSuccessfulEmail(any(), any())(any())
+        verify(submissionService, never())
+          .sendSuccessfulEmail(any(), any())(any())
       }
 
       "must not send email when status is STARTED (AC8)" in {
-        setupHappyPath(pollResponse = makePollResponse(STARTED))
+        setupHappyPath(
+          pollResponse = makePollResponse(STARTED)
+        )
 
-        service.process(Seq(makeSubmission()), startTime).futureValue
+        service
+          .process(
+            Seq(makeSubmission()),
+            startTime
+          )
+          .futureValue must have size 1
 
-        verify(submissionService, never).sendSuccessfulEmail(any(), any())(any())
+        verify(submissionService, never())
+          .sendSuccessfulEmail(any(), any())(any())
       }
 
       "must not send email when status is FATAL_ERROR (AC9)" in {
-        setupHappyPath(pollResponse = makePollResponse(FATAL_ERROR))
+        setupHappyPath(
+          pollResponse = makePollResponse(FATAL_ERROR)
+        )
 
-        service.process(Seq(makeSubmission()), startTime).futureValue
+        service
+          .process(
+            Seq(makeSubmission()),
+            startTime
+          )
+          .futureValue must have size 1
 
-        verify(submissionService, never).sendSuccessfulEmail(any(), any())(any())
+        verify(submissionService, never())
+          .sendSuccessfulEmail(any(), any())(any())
+      }
+
+      "must preserve poll report content when sending email fails" in {
+        val submission =
+          makeSubmission()
+
+        val dbSubmission =
+          makeDbSubmission(
+            emailRecipient = Some("user@example.com")
+          )
+
+        val monthlyReturn =
+          makeMonthlyReturn(
+            taxYear = testTaxYear,
+            taxMonth = testTaxMonth
+          )
+
+        val pollResponse =
+          makePollResponse(SUBMITTED)
+
+        when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
+          .thenReturn(
+            Future.successful(
+              makeDetails(
+                monthlyReturn = monthlyReturn,
+                dbSubmission = dbSubmission
+              )
+            )
+          )
+
+        when(
+          submissionService.processMonthlyReturnGovTalkStatusCheck(
+            any(),
+            any(),
+            any()
+          )(any())
+        ).thenReturn(Future.successful(gatewayUrl))
+
+        when(
+          submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
+            any(),
+            any(),
+            any()
+          )(any())
+        ).thenReturn(
+          Future.successful(
+            BatchChRISPollResult.Completed(pollResponse)
+          )
+        )
+
+        when(submissionService.updateSubmission(any())(any()))
+          .thenReturn(Future.unit)
+
+        when(submissionService.sendSuccessfulEmail(any(), any())(any()))
+          .thenReturn(
+            Future.failed(
+              new RuntimeException("send email failed")
+            )
+          )
+
+        val result =
+          service
+            .process(
+              Seq(submission),
+              startTime
+            )
+            .futureValue
+
+        result mustBe Seq(
+          PollReportContent(
+            user = submission.instanceId,
+            submissionType = submission.submissionType,
+            submissionId = submission.submissionId.toString,
+            govTalkRequestStatus = submission.status,
+            currentReturnStatus = "SUBMITTED",
+            employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
+            correlationId = "corr-123",
+            agentId = "-"
+          )
+        )
+
+        verify(submissionService)
+          .updateSubmission(any())(any())
+
+        verify(submissionService)
+          .sendSuccessfulEmail(
+            eqTo(testSubmissionId.toString),
+            eqTo(
+              SendSuccessEmailRequest(
+                "user@example.com",
+                testTaxMonth.toString,
+                testTaxYear.toString
+              )
+            )
+          )(any())
       }
 
       "must not send email when emailRecipient is None even for SUBMITTED status" in {
-        val dbSub = makeDbSubmission(emailRecipient = None)
-        setupHappyPath(makeDetails(dbSubmission = dbSub), makePollResponse(SUBMITTED))
+        val dbSub =
+          makeDbSubmission(
+            emailRecipient = None
+          )
 
-        service.process(Seq(makeSubmission()), startTime).futureValue
+        setupHappyPath(
+          makeDetails(
+            dbSubmission = dbSub
+          ),
+          makePollResponse(SUBMITTED)
+        )
 
-        verify(submissionService, never).sendSuccessfulEmail(any(), any())(any())
+        service
+          .process(
+            Seq(makeSubmission()),
+            startTime
+          )
+          .futureValue must have size 1
+
+        verify(submissionService, never())
+          .sendSuccessfulEmail(any(), any())(any())
       }
     }
 
@@ -440,23 +958,31 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         FATAL_ERROR          -> "FATAL_ERROR"
       ).foreach { case (status, expectedStatusString) =>
         s"must set submittableStatus to '$expectedStatusString' in UpdateSubmissionRequest" in {
-          setupHappyPath(pollResponse = makePollResponse(status))
+          setupHappyPath(
+            pollResponse = makePollResponse(status)
+          )
 
-          service.process(Seq(makeSubmission()), startTime).futureValue
-
-          verify(submissionService).updateSubmission(
-            eqTo(
-              UpdateSubmissionRequest(
-                instanceId = testInstanceId,
-                taxYear = testTaxYear,
-                taxMonth = testTaxMonth,
-                hmrcMarkGenerated = Some("irmark-gen"),
-                submittableStatus = expectedStatusString,
-                amendment = "N",
-                emailRecipient = Some("user@example.com")
-              )
+          service
+            .process(
+              Seq(makeSubmission()),
+              startTime
             )
-          )(any())
+            .futureValue must have size 1
+
+          verify(submissionService)
+            .updateSubmission(
+              eqTo(
+                UpdateSubmissionRequest(
+                  instanceId = testInstanceId,
+                  taxYear = testTaxYear,
+                  taxMonth = testTaxMonth,
+                  hmrcMarkGenerated = Some("irmark-gen"),
+                  submittableStatus = expectedStatusString,
+                  amendment = "N",
+                  emailRecipient = Some("user@example.com")
+                )
+              )
+            )(any())
         }
       }
     }
