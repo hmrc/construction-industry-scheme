@@ -47,9 +47,6 @@ class MonthlyReturnPollingProcessService @Inject() (
   private val notPolledCorrelationId =
     "(not polled)"
 
-  private val recoverableErrorCodes =
-    Set("3000", "2005", "1000")
-
   def process(
     monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll],
     startTime: Long
@@ -243,7 +240,7 @@ class MonthlyReturnPollingProcessService @Inject() (
         taxYear = monthlyReturn.taxYear,
         taxMonth = monthlyReturn.taxMonth,
         hmrcMarkGenerated = submissionDetails.hmrcMarkGenerated,
-        submittableStatus = currentReturnStatus(pollResponse),
+        submittableStatus = submissionTableStatus(pollResponse),
         amendment = monthlyReturn.amendment.getOrElse("N"),
         hmrcMarkGgis = pollResponse.irMarkReceived,
         submissionRequestDate = submissionDetails.submissionRequestDate,
@@ -300,7 +297,7 @@ class MonthlyReturnPollingProcessService @Inject() (
       submissionType = submission.submissionType,
       submissionId = submission.submissionId.toString,
       govTalkRequestStatus = reportValue(submission.status),
-      currentReturnStatus = currentReturnStatus(pollResponse),
+      currentReturnStatus = reportCurrentReturnStatus(pollResponse),
       employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
       correlationId = reportValue(pollResponse.correlationId),
       agentId = dbSubmission.agentId
@@ -339,27 +336,23 @@ class MonthlyReturnPollingProcessService @Inject() (
       agentId = submission.agentId.getOrElse(unavailableReportValue)
     )
 
-  private def currentReturnStatus(
+  private def reportCurrentReturnStatus(
     pollResponse: ChrisPollResponse
   ): String =
-    if (isRecoverableError(pollResponse)) {
-      FATAL_ERROR.toString
-    } else {
-      Option(pollResponse.status)
-        .map(_.toString)
-        .getOrElse(unavailableReportValue)
-    }
-
-  private def isRecoverableError(
-    pollResponse: ChrisPollResponse
-  ): Boolean =
-    pollResponse.govTalkErrorStatus.exists {
-      case GovTalkErrorStatus.RecoverableError(errorCode, _) =>
-        recoverableErrorCodes.contains(errorCode)
+    pollResponse.govTalkErrorStatus match {
+      case Some(_: GovTalkErrorStatus.RecoverableError) =>
+        FATAL_ERROR.toString
 
       case _ =>
-        false
+        submissionTableStatus(pollResponse)
     }
+
+  private def submissionTableStatus(
+    pollResponse: ChrisPollResponse
+  ): String =
+    Option(pollResponse.status)
+      .map(_.toString)
+      .getOrElse(unavailableReportValue)
 
   private def reportValue(
     value: String

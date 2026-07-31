@@ -947,7 +947,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           .sendSuccessfulEmail(any(), any())(any())
       }
 
-      "must return FATAL_ERROR current status when ChRIS poll response is a recoverable error" in {
+      "must return FATAL_ERROR current status in report and STARTED status in submission table when ChRIS poll response is a recoverable error" in {
         val submission =
           makeSubmission()
 
@@ -996,7 +996,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 taxYear = testTaxYear,
                 taxMonth = testTaxMonth,
                 hmrcMarkGenerated = Some("irmark-gen"),
-                submittableStatus = "FATAL_ERROR",
+                submittableStatus = "STARTED",
                 amendment = "N",
                 hmrcMarkGgis = None,
                 submissionRequestDate = None,
