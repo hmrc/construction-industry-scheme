@@ -47,6 +47,9 @@ class MonthlyReturnPollingProcessService @Inject() (
   private val notPolledCorrelationId =
     "(not polled)"
 
+  private val recoverableErrorCodes =
+    Set("3000", "2005", "1000")
+
   def process(
     monthlyReturnSubmissions: Seq[MonthlyReturnSubmissionToPoll],
     startTime: Long
@@ -339,9 +342,24 @@ class MonthlyReturnPollingProcessService @Inject() (
   private def currentReturnStatus(
     pollResponse: ChrisPollResponse
   ): String =
-    Option(pollResponse.status)
-      .map(_.toString)
-      .getOrElse(unavailableReportValue)
+    if (isRecoverableError(pollResponse)) {
+      FATAL_ERROR.toString
+    } else {
+      Option(pollResponse.status)
+        .map(_.toString)
+        .getOrElse(unavailableReportValue)
+    }
+
+  private def isRecoverableError(
+    pollResponse: ChrisPollResponse
+  ): Boolean =
+    pollResponse.govTalkErrorStatus.exists {
+      case GovTalkErrorStatus.RecoverableError(errorCode, _) =>
+        recoverableErrorCodes.contains(errorCode)
+
+      case _ =>
+        false
+    }
 
   private def reportValue(
     value: String

@@ -133,7 +133,8 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
   private def makePollResponse(
     status: SubmissionStatus,
     irMarkReceived: Option[String] = None,
-    acceptedTime: Option[String] = None
+    acceptedTime: Option[String] = None,
+    govTalkErrorStatus: Option[GovTalkErrorStatus] = None
   ): ChrisPollResponse =
     ChrisPollResponse(
       status = status,
@@ -144,7 +145,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       irMarkReceived = irMarkReceived,
       lastMessageDate = None,
       acceptedTime = acceptedTime,
-      govTalkErrorStatus = None
+      govTalkErrorStatus = govTalkErrorStatus
     )
 
   private def setupHappyPath(
@@ -941,6 +942,71 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
             startTime
           )
           .futureValue must have size 1
+
+        verify(submissionService, never())
+          .sendSuccessfulEmail(any(), any())(any())
+      }
+
+      "must return FATAL_ERROR current status when ChRIS poll response is a recoverable error" in {
+        val submission =
+          makeSubmission()
+
+        val recoverableError =
+          GovTalkErrorStatus.RecoverableError(
+            errorCode = "3000",
+            errorText = "Recoverable ChRIS error"
+          )
+
+        val pollResponse =
+          makePollResponse(
+            status = STARTED,
+            govTalkErrorStatus = Some(recoverableError)
+          )
+
+        setupHappyPath(
+          pollResponse = pollResponse
+        )
+
+        val result =
+          service
+            .process(
+              Seq(submission),
+              startTime
+            )
+            .futureValue
+
+        result mustBe Seq(
+          PollReportContent(
+            user = submission.instanceId,
+            submissionType = submission.submissionType,
+            submissionId = submission.submissionId.toString,
+            govTalkRequestStatus = submission.status,
+            currentReturnStatus = "FATAL_ERROR",
+            employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
+            correlationId = "corr-123",
+            agentId = "-"
+          )
+        )
+
+        verify(submissionService)
+          .updateSubmission(
+            eqTo(
+              UpdateSubmissionRequest(
+                instanceId = testInstanceId,
+                taxYear = testTaxYear,
+                taxMonth = testTaxMonth,
+                hmrcMarkGenerated = Some("irmark-gen"),
+                submittableStatus = "FATAL_ERROR",
+                amendment = "N",
+                hmrcMarkGgis = None,
+                submissionRequestDate = None,
+                acceptedTime = None,
+                emailRecipient = Some("user@example.com"),
+                agentId = None,
+                govTalkResponse = Some(recoverableError)
+              )
+            )
+          )(any())
 
         verify(submissionService, never())
           .sendSuccessfulEmail(any(), any())(any())
