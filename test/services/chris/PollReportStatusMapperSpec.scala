@@ -25,9 +25,9 @@ import uk.gov.hmrc.constructionindustryscheme.services.chris.PollReportStatusMap
 final class PollReportStatusMapperSpec extends AnyFreeSpec with Matchers {
 
   private def pollResponse(
-                            status: SubmissionStatus,
-                            govTalkErrorStatus: Option[GovTalkErrorStatus] = None
-                          ): ChrisPollResponse =
+    status: SubmissionStatus,
+    govTalkErrorStatus: Option[GovTalkErrorStatus] = None
+  ): ChrisPollResponse =
     ChrisPollResponse(
       status = status,
       correlationId = "corr-123",
