@@ -948,8 +948,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           submissionService.pollSubmissionAndUpdateGovTalkStatus(
             any[String],
             any[String],
-            any[ChrisPollJourney],
-            any[FormpProxyAuthMode]
+            any[ChrisPollJourney]
           )(any[HeaderCarrier])
         ).thenReturn(
           Future.successful(
@@ -990,8 +989,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           .pollSubmissionAndUpdateGovTalkStatus(
             any[String],
             any[String],
-            any[ChrisPollJourney],
-            any[FormpProxyAuthMode]
+            any[ChrisPollJourney]
           )(any[HeaderCarrier])
       }
     }
@@ -1016,8 +1014,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         submissionService.pollSubmissionAndUpdateGovTalkStatus(
           any[String],
           any[String],
-          any[ChrisPollJourney],
-          any[FormpProxyAuthMode]
+          any[ChrisPollJourney]
         )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
@@ -1707,8 +1704,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         submissionService.pollSubmissionAndUpdateGovTalkStatus(
           any[String],
           any[String],
-          any[ChrisPollJourney],
-          any[FormpProxyAuthMode]
+          any[ChrisPollJourney]
         )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
@@ -1750,8 +1746,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .pollSubmissionAndUpdateGovTalkStatus(
           any[String],
           any[String],
-          any[ChrisPollJourney],
-          any[FormpProxyAuthMode]
+          any[ChrisPollJourney]
         )(any[HeaderCarrier])
     }
 
@@ -1775,8 +1770,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         submissionService.pollSubmissionAndUpdateGovTalkStatus(
           any[String],
           any[String],
-          any[ChrisPollJourney],
-          any[FormpProxyAuthMode]
+          any[ChrisPollJourney]
         )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(

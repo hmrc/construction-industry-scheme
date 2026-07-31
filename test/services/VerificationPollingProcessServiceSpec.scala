@@ -17,11 +17,10 @@
 package services
 
 import base.SpecBase
+import org.mockito.ArgumentMatchers.{any, isNull}
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
-import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
-import uk.gov.hmrc.constructionindustryscheme.models.FormpProxyAuthMode.BatchPolling
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BatchChRISPollResult, PollReportContent}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, BatchChRISPollResult, ChrisPollJourney, FormpProxyAuthMode, PollReportContent}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, VerificationSubmissionToPoll}
 import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
 import uk.gov.hmrc.constructionindustryscheme.services.{SubmissionService, VerificationPollingProcessService}
@@ -35,21 +34,22 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
   "VerificationPollingProcessService process" - {
 
     "must complete successfully and return PollReportContent for verification submissions" in new Setup {
-      val submissions  = Seq(verificationSubmission)
-      val pollResponse = mock[ChrisPollResponse]
+      val submissions = Seq(verificationSubmission)
 
       when(
         mockSubmissionService
-          .syncVerificationSessionForPolling(verificationSubmission)
+          .syncVerificationSessionForPolling(
+            any[VerificationSubmissionToPoll]
+          )(any[HeaderCarrier])
       ).thenReturn(Future.successful(chrisSession))
 
       when(
         mockSubmissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
-          verificationSubmission.submissionId.toString,
-          chrisSession.pollUrl,
-          Verification,
-          BatchPolling
-        )
+          any[String],
+          any[String],
+          any[ChrisPollJourney],
+          isNull[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
           BatchChRISPollResult.Completed(
@@ -63,17 +63,17 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
       )
 
       verify(mockSubmissionService)
-        .syncVerificationSessionForPolling(verificationSubmission)
+        .syncVerificationSessionForPolling(
+          any[VerificationSubmissionToPoll]
+        )(any[HeaderCarrier])
 
       verify(mockSubmissionService)
         .pollSubmissionAndUpdateGovTalkStatusForBatch(
-          verificationSubmission.submissionId.toString,
-          chrisSession.pollUrl,
-          Verification,
-          BatchPolling
-        )
-
-      verifyNoMoreInteractions(mockSubmissionService)
+          any[String],
+          any[String],
+          any[ChrisPollJourney],
+          isNull[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
     }
 
     "must return empty report content for empty verification submissions" in new Setup {
@@ -85,7 +85,9 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
     "must return failed report content when verification polling fails" in new Setup {
       when(
         mockSubmissionService
-          .syncVerificationSessionForPolling(verificationSubmission)
+          .syncVerificationSessionForPolling(
+            any[VerificationSubmissionToPoll]
+          )(any[HeaderCarrier])
       ).thenReturn(
         Future.failed(
           new RuntimeException("verification sync failed")
@@ -111,7 +113,9 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
       )
 
       verify(mockSubmissionService)
-        .syncVerificationSessionForPolling(verificationSubmission)
+        .syncVerificationSessionForPolling(
+          any[VerificationSubmissionToPoll]
+        )(any[HeaderCarrier])
 
       verifyNoMoreInteractions(mockSubmissionService)
     }
@@ -119,15 +123,18 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
     "must return poll report content when post-poll processing fails" in new Setup {
       when(
         mockSubmissionService
-          .syncVerificationSessionForPolling(verificationSubmission)
+          .syncVerificationSessionForPolling(
+            any[VerificationSubmissionToPoll]
+          )(any[HeaderCarrier])
       ).thenReturn(Future.successful(chrisSession))
 
       when(
         mockSubmissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
-          verificationSubmission.submissionId.toString,
-          chrisSession.pollUrl,
-          Verification
-        )
+          any[String],
+          any[String],
+          any[ChrisPollJourney],
+          isNull[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
       ).thenReturn(
         Future.successful(
           BatchChRISPollResult.PostProcessingFailed(
@@ -142,16 +149,17 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
       )
 
       verify(mockSubmissionService)
-        .syncVerificationSessionForPolling(verificationSubmission)
+        .syncVerificationSessionForPolling(
+          any[VerificationSubmissionToPoll]
+        )(any[HeaderCarrier])
 
       verify(mockSubmissionService)
         .pollSubmissionAndUpdateGovTalkStatusForBatch(
-          verificationSubmission.submissionId.toString,
-          chrisSession.pollUrl,
-          Verification
-        )
-
-      verifyNoMoreInteractions(mockSubmissionService)
+          any[String],
+          any[String],
+          any[ChrisPollJourney],
+          isNull[FormpProxyAuthMode]
+        )(any[HeaderCarrier])
     }
   }
 

@@ -17,7 +17,7 @@
 package services
 
 import base.SpecBase
-import org.mockito.ArgumentMatchers.{any, eq as eqTo}
+import org.mockito.ArgumentMatchers.{any, eq as eqTo, isNull}
 import org.mockito.Mockito.{never, times, verify, verifyNoInteractions, when}
 import org.scalatest.BeforeAndAfterEach
 import uk.gov.hmrc.constructionindustryscheme.models.*
@@ -152,15 +152,48 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     details: GetMonthlyReturnForEditResponse = makeDetails(),
     pollResponse: ChrisPollResponse = makePollResponse(ACCEPTED)
   ): Unit = {
-    when(monthlyReturnService.getMonthlyReturnForEdit(any())(any())).thenReturn(Future.successful(details))
-    when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
-      .thenReturn(Future.successful(gatewayUrl))
-    when(submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(any(), any(), any())(any()))
-      .thenReturn(Future.successful(BatchChRISPollResult.Completed(pollResponse)))
-    when(submissionService.updateSubmission(any())(any()))
-      .thenReturn(Future.unit)
-    when(submissionService.sendSuccessfulEmail(any(), any())(any()))
-      .thenReturn(Future.unit)
+    when(
+      monthlyReturnService.getMonthlyReturnForEdit(
+        any[GetMonthlyReturnForEditRequest],
+        eqTo(BatchPolling)
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.successful(details))
+
+    when(
+      submissionService.processMonthlyReturnGovTalkStatusCheck(
+        any[String],
+        any[String],
+        isNull[Instant],
+        isNull[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.successful(gatewayUrl))
+
+    when(
+      submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
+        any[String],
+        any[String],
+        any[ChrisPollJourney],
+        isNull[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
+    ).thenReturn(
+      Future.successful(
+        BatchChRISPollResult.Completed(pollResponse)
+      )
+    )
+
+    when(
+      submissionService.updateSubmission(
+        any[UpdateSubmissionRequest],
+        isNull[FormpProxyAuthMode]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.unit)
+
+    when(
+      submissionService.sendSuccessfulEmail(
+        any[String],
+        any[SendSuccessEmailRequest]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.unit)
   }
 
   "MonthlyReturnPollingProcessService" - {
@@ -178,22 +211,52 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         val sub1 = makeSubmission(instanceId = "inst-1", taxMonth = 1)
         val sub2 = makeSubmission(instanceId = "inst-2", taxMonth = 2)
 
-        when(monthlyReturnService.getMonthlyReturnForEdit(any(), eqTo(BatchPolling))(any()))
-          .thenReturn(
-            Future.failed(new RuntimeException("getMonthlyReturnForEdit failed")),
-            Future.successful(makeDetails())
-          )
-        when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
-          .thenReturn(Future.successful(gatewayUrl))
-        when(submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(any(), any(), any())(any()))
-          .thenReturn(Future.successful(BatchChRISPollResult.Completed(makePollResponse(ACCEPTED))))
+        when(
+          monthlyReturnService.getMonthlyReturnForEdit(
+            any[GetMonthlyReturnForEditRequest],
+            eqTo(BatchPolling)
+          )(any[HeaderCarrier])
+        ).thenReturn(
+          Future.failed(new RuntimeException("getMonthlyReturnForEdit failed")),
+          Future.successful(makeDetails())
+        )
 
         when(
-          submissionService.updateSubmission(any())(any())
+          submissionService.processMonthlyReturnGovTalkStatusCheck(
+            any[String],
+            any[String],
+            isNull[Instant],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
+        ).thenReturn(Future.successful(gatewayUrl))
+
+        when(
+          submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
+            any[String],
+            any[String],
+            any[ChrisPollJourney],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
+        ).thenReturn(
+          Future.successful(
+            BatchChRISPollResult.Completed(
+              makePollResponse(ACCEPTED)
+            )
+          )
+        )
+
+        when(
+          submissionService.updateSubmission(
+            any[UpdateSubmissionRequest],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
         ).thenReturn(Future.unit)
 
         when(
-          submissionService.sendSuccessfulEmail(any(), any())(any())
+          submissionService.sendSuccessfulEmail(
+            any[String],
+            any[SendSuccessEmailRequest]
+          )(any[HeaderCarrier])
         ).thenReturn(Future.unit)
 
         val result =
@@ -213,31 +276,38 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         result.head.submissionId mustBe sub1.submissionId.toString
         result.head.currentReturnStatus mustBe "-"
         result.head.correlationId mustBe "(not polled)"
-//        result.head.agentId mustBe "-"
 
         result(1).user mustBe sub2.instanceId
         result(1).submissionId mustBe sub2.submissionId.toString
         result(1).currentReturnStatus mustBe "ACCEPTED"
 
         verify(monthlyReturnService, times(2))
-          .getMonthlyReturnForEdit(any())(any())
+          .getMonthlyReturnForEdit(
+            any[GetMonthlyReturnForEditRequest],
+            eqTo(BatchPolling)
+          )(any[HeaderCarrier])
 
         verify(submissionService, times(1))
           .processMonthlyReturnGovTalkStatusCheck(
             eqTo("inst-2"),
-            any(),
-            any()
-          )(any())
+            any[String],
+            isNull[Instant],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
 
         verify(submissionService, times(1))
           .pollSubmissionAndUpdateGovTalkStatusForBatch(
-            any(),
-            any(),
-            any()
-          )(any())
+            any[String],
+            any[String],
+            any[ChrisPollJourney],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
 
         verify(submissionService, times(1))
-          .updateSubmission(any())(any())
+          .updateSubmission(
+            any[UpdateSubmissionRequest],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
       }
 
       "must return PollReportContent after successfully polling and updating monthly return" in {
@@ -303,8 +373,9 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 taxMonth = 6,
                 isAmendment = Some(false)
               )
-            )
-          )(any())
+            ),
+            eqTo(BatchPolling)
+          )(any[HeaderCarrier])
       }
 
       "must call processMonthlyReturnGovTalkStatusCheck with instanceId and submissionId" in {
@@ -321,8 +392,9 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           .processMonthlyReturnGovTalkStatusCheck(
             eqTo(testInstanceId),
             eqTo(testSubmissionId.toString),
-            any()
-          )(any())
+            isNull[Instant],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
       }
 
       "must call pollSubmissionAndUpdateGovTalkStatusForBatch with gatewayUrl and MonthlyReturn journey" in {
@@ -339,9 +411,9 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           .pollSubmissionAndUpdateGovTalkStatusForBatch(
             eqTo(testSubmissionId.toString),
             eqTo(gatewayUrl),
-          eqTo(ChrisPollJourney.MonthlyReturn),
-          eqTo(BatchPolling)
-          )(any())
+            eqTo(ChrisPollJourney.MonthlyReturn),
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
       }
 
       "must call updateSubmission with correctly mapped fields from F3 details and poll response" in {
@@ -399,9 +471,9 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 agentId = Some("agent-1"),
                 govTalkResponse = None
               )
-          ),
-          eqTo(BatchPolling)
-          )(any())
+            ),
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
       }
 
       "must default amendment to 'N' when it is None in monthly return" in {
@@ -433,14 +505,17 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 amendment = "N",
                 emailRecipient = Some("user@example.com")
               )
-          ),
-          eqTo(BatchPolling)
-          )(any())
+            ),
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
       }
 
       "must fail and skip remaining steps when details contain no monthly return" in {
         when(
-          monthlyReturnService.getMonthlyReturnForEdit(any())(any())
+          monthlyReturnService.getMonthlyReturnForEdit(
+            any[GetMonthlyReturnForEditRequest],
+            eqTo(BatchPolling)
+          )(any[HeaderCarrier])
         ).thenReturn(
           Future.successful(
             makeDetails().copy(
@@ -461,12 +536,18 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         result.head.currentReturnStatus mustBe "-"
 
         verify(submissionService, never())
-          .updateSubmission(any())(any())
+          .updateSubmission(
+            any[UpdateSubmissionRequest],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
       }
 
       "must fail and skip remaining steps when details contain no submission" in {
         when(
-          monthlyReturnService.getMonthlyReturnForEdit(any())(any())
+          monthlyReturnService.getMonthlyReturnForEdit(
+            any[GetMonthlyReturnForEditRequest],
+            eqTo(BatchPolling)
+          )(any[HeaderCarrier])
         ).thenReturn(
           Future.successful(
             makeDetails().copy(
@@ -487,7 +568,10 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         result.head.currentReturnStatus mustBe "-"
 
         verify(submissionService, never())
-          .updateSubmission(any())(any())
+          .updateSubmission(
+            any[UpdateSubmissionRequest],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
       }
 
       "must not poll ChRIS when monthly return status does not match submission status" in {
@@ -505,7 +589,10 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           )
 
         when(
-          monthlyReturnService.getMonthlyReturnForEdit(any())(any())
+          monthlyReturnService.getMonthlyReturnForEdit(
+            any[GetMonthlyReturnForEditRequest],
+            eqTo(BatchPolling)
+          )(any[HeaderCarrier])
         ).thenReturn(
           Future.successful(details)
         )
@@ -533,23 +620,31 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
         verify(submissionService, never())
           .processMonthlyReturnGovTalkStatusCheck(
-            any(),
-            any(),
-            any()
-          )(any())
+            any[String],
+            any[String],
+            isNull[Instant],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
 
         verify(submissionService, never())
           .pollSubmissionAndUpdateGovTalkStatusForBatch(
-            any(),
-            any(),
-            any()
-          )(any())
+            any[String],
+            any[String],
+            any[ChrisPollJourney],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
 
         verify(submissionService, never())
-          .updateSubmission(any())(any())
+          .updateSubmission(
+            any[UpdateSubmissionRequest],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
 
         verify(submissionService, never())
-          .sendSuccessfulEmail(any(), any())(any())
+          .sendSuccessfulEmail(
+            any[String],
+            any[SendSuccessEmailRequest]
+          )(any[HeaderCarrier])
       }
 
       "must return report content and skip submission update/email when post-poll processing fails" in {
@@ -564,27 +659,32 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           )
 
         when(
-          monthlyReturnService.getMonthlyReturnForEdit(any())(any())
+          monthlyReturnService.getMonthlyReturnForEdit(
+            any[GetMonthlyReturnForEditRequest],
+            eqTo(BatchPolling)
+          )(any[HeaderCarrier])
         ).thenReturn(
           Future.successful(makeDetails())
         )
 
         when(
           submissionService.processMonthlyReturnGovTalkStatusCheck(
-            any(),
-            any(),
-            any()
-          )(any())
+            any[String],
+            any[String],
+            isNull[Instant],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
         ).thenReturn(
           Future.successful(gatewayUrl)
         )
 
         when(
           submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
-            any(),
-            any(),
-            any()
-          )(any())
+            any[String],
+            any[String],
+            any[ChrisPollJourney],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
         ).thenReturn(
           Future.successful(
             BatchChRISPollResult.PostProcessingFailed(
@@ -616,10 +716,16 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         )
 
         verify(submissionService, never())
-          .updateSubmission(any())(any())
+          .updateSubmission(
+            any[UpdateSubmissionRequest],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
 
         verify(submissionService, never())
-          .sendSuccessfulEmail(any(), any())(any())
+          .sendSuccessfulEmail(
+            any[String],
+            any[SendSuccessEmailRequest]
+          )(any[HeaderCarrier])
       }
 
       "must log warning when submission has been polling for more than 24 hours" in {
@@ -655,9 +761,10 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
         verify(submissionService)
           .processMonthlyReturnGovTalkStatusCheck(
-            any(),
-            any(),
-            any()
+            any[String],
+            any[String],
+            isNull[Instant],
+            isNull[FormpProxyAuthMode]
           )(any[HeaderCarrier])
       }
     }
@@ -698,7 +805,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 "2026"
               )
             )
-          )(any())
+          )(any[HeaderCarrier])
       }
 
       "must send email when status is SUBMITTED_NO_RECEIPT and emailRecipient is present (AC6)" in {
@@ -739,7 +846,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 "2026"
               )
             )
-          )(any())
+          )(any[HeaderCarrier])
       }
 
       "must send email when status is DEPARTMENTAL_ERROR and emailRecipient is present (AC7)" in {
@@ -780,7 +887,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 "2026"
               )
             )
-          )(any())
+          )(any[HeaderCarrier])
       }
 
       "must not send email when status is ACCEPTED (AC2)" in {
@@ -796,7 +903,10 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           .futureValue must have size 1
 
         verify(submissionService, never())
-          .sendSuccessfulEmail(any(), any())(any())
+          .sendSuccessfulEmail(
+            any[String],
+            any[SendSuccessEmailRequest]
+          )(any[HeaderCarrier])
       }
 
       "must not send email when status is STARTED (AC8)" in {
@@ -812,7 +922,10 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           .futureValue must have size 1
 
         verify(submissionService, never())
-          .sendSuccessfulEmail(any(), any())(any())
+          .sendSuccessfulEmail(
+            any[String],
+            any[SendSuccessEmailRequest]
+          )(any[HeaderCarrier])
       }
 
       "must not send email when status is FATAL_ERROR (AC9)" in {
@@ -828,7 +941,10 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           .futureValue must have size 1
 
         verify(submissionService, never())
-          .sendSuccessfulEmail(any(), any())(any())
+          .sendSuccessfulEmail(
+            any[String],
+            any[SendSuccessEmailRequest]
+          )(any[HeaderCarrier])
       }
 
       "must preserve poll report content when sending email fails" in {
@@ -849,45 +965,59 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         val pollResponse =
           makePollResponse(SUBMITTED)
 
-        when(monthlyReturnService.getMonthlyReturnForEdit(any())(any()))
-          .thenReturn(
-            Future.successful(
-              makeDetails(
-                monthlyReturn = monthlyReturn,
-                dbSubmission = dbSubmission
-              )
+        when(
+          monthlyReturnService.getMonthlyReturnForEdit(
+            any[GetMonthlyReturnForEditRequest],
+            eqTo(BatchPolling)
+          )(any[HeaderCarrier])
+        ).thenReturn(
+          Future.successful(
+            makeDetails(
+              monthlyReturn = monthlyReturn,
+              dbSubmission = dbSubmission
             )
           )
+        )
 
         when(
           submissionService.processMonthlyReturnGovTalkStatusCheck(
-            any(),
-            any(),
-            any()
-          )(any())
+            any[String],
+            any[String],
+            isNull[Instant],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
         ).thenReturn(Future.successful(gatewayUrl))
 
         when(
           submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
-            any(),
-            any(),
-            any()
-          )(any())
+            any[String],
+            any[String],
+            any[ChrisPollJourney],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
         ).thenReturn(
           Future.successful(
             BatchChRISPollResult.Completed(pollResponse)
           )
         )
 
-        when(submissionService.updateSubmission(any())(any()))
-          .thenReturn(Future.unit)
+        when(
+          submissionService.updateSubmission(
+            any[UpdateSubmissionRequest],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
+        ).thenReturn(Future.unit)
 
-        when(submissionService.sendSuccessfulEmail(any(), any())(any()))
-          .thenReturn(
-            Future.failed(
-              new RuntimeException("send email failed")
-            )
+        when(
+          submissionService.sendSuccessfulEmail(
+            any[String],
+            any[SendSuccessEmailRequest]
+          )(any[HeaderCarrier])
+        ).thenReturn(
+          Future.failed(
+            new RuntimeException("send email failed")
           )
+        )
 
         val result =
           service
@@ -911,7 +1041,10 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         )
 
         verify(submissionService)
-          .updateSubmission(any())(any())
+          .updateSubmission(
+            any[UpdateSubmissionRequest],
+            isNull[FormpProxyAuthMode]
+          )(any[HeaderCarrier])
 
         verify(submissionService)
           .sendSuccessfulEmail(
@@ -923,7 +1056,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 testTaxYear.toString
               )
             )
-          )(any())
+          )(any[HeaderCarrier])
       }
 
       "must not send email when emailRecipient is None even for SUBMITTED status" in {
@@ -947,7 +1080,10 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           .futureValue must have size 1
 
         verify(submissionService, never())
-          .sendSuccessfulEmail(any(), any())(any())
+          .sendSuccessfulEmail(
+            any[String],
+            any[SendSuccessEmailRequest]
+          )(any[HeaderCarrier])
       }
     }
 
@@ -985,9 +1121,9 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                   amendment = "N",
                   emailRecipient = Some("user@example.com")
                 )
-            ),
-            eqTo(BatchPolling)
-            )(any())
+              ),
+              isNull[FormpProxyAuthMode]
+            )(any[HeaderCarrier])
         }
       }
     }

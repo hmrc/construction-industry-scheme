@@ -270,8 +270,7 @@ class SubmissionService @Inject() (
   def pollSubmissionAndUpdateGovTalkStatus(
     submissionId: String,
     pollUrl: String,
-    journey: ChrisPollJourney,
-    authMode: FormpProxyAuthMode = UserJourney
+    journey: ChrisPollJourney
   )(implicit hc: HeaderCarrier): Future[ChrisPollResponse] =
     for {
       pollResult <- pollAndValidate(
@@ -291,18 +290,21 @@ class SubmissionService @Inject() (
   def pollSubmissionAndUpdateGovTalkStatusForBatch(
     submissionId: String,
     pollUrl: String,
-    journey: ChrisPollJourney
+    journey: ChrisPollJourney,
+    authMode: FormpProxyAuthMode = BatchPolling
   )(implicit hc: HeaderCarrier): Future[BatchChRISPollResult] =
     pollAndValidate(
       submissionId,
       pollUrl,
-      journey
+      journey,
+      authMode
     ).flatMap { pollResult =>
       runPostPollSteps(
         submissionId = submissionId,
         pollUrl = pollUrl,
         journey = journey,
-        pollResult = pollResult
+        pollResult = pollResult,
+        authMode = authMode
       ).map { _ =>
         BatchChRISPollResult.Completed(
           pollResult.response
@@ -324,14 +326,16 @@ class SubmissionService @Inject() (
   private def pollAndValidate(
     submissionId: String,
     pollUrl: String,
-    journey: ChrisPollJourney
+    journey: ChrisPollJourney,
+    authMode: FormpProxyAuthMode = UserJourney
   )(implicit hc: HeaderCarrier): Future[PollAndValidateResult] =
     for {
       session <- getChrisSubmissionSession(submissionId)
 
       _ <- fetchAndStoreGovTalkStatus(
              session.instanceId,
-             submissionId
+             submissionId,
+             authMode
            )
 
       result <- chrisConnector.pollSubmission(
@@ -359,7 +363,8 @@ class SubmissionService @Inject() (
     submissionId: String,
     pollUrl: String,
     journey: ChrisPollJourney,
-    pollResult: PollAndValidateResult
+    pollResult: PollAndValidateResult,
+    authMode: FormpProxyAuthMode = UserJourney
   )(implicit hc: HeaderCarrier): Future[Unit] = {
     val session =
       pollResult.session
@@ -383,7 +388,8 @@ class SubmissionService @Inject() (
              .processorFor(journey)
              .handlePollResponse(
                session,
-               result
+               result,
+               authMode
              )
 
       deleteOutcome <- deleteChrisResourcesIfNeeded(
@@ -429,13 +435,14 @@ class SubmissionService @Inject() (
   def processMonthlyReturnGovTalkStatusCheck(
     instanceId: String,
     submissionId: String,
-    lastMessageDate: Instant = Instant.now
+    lastMessageDate: Instant = Instant.now,
+    authMode: FormpProxyAuthMode = BatchPolling
   )(implicit hc: HeaderCarrier): Future[String] = {
     logger.info(
       s"[SubmissionService][processMonthlyReturnGovTalkStatusCheck] checking status for instanceId=$instanceId, submissionId=$submissionId"
     )
     for {
-      statusResponseOpt <- getPollingGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId), BatchPolling)
+      statusResponseOpt <- getPollingGovTalkStatus(GetGovTalkStatusRequest(instanceId, submissionId), authMode)
       statusResponse    <- Future.fromTry(
                              statusResponseOpt
                                .toRight(new RuntimeException("GovTalk status not found"))
@@ -448,14 +455,14 @@ class SubmissionService @Inject() (
                            )
       _                 <- chrisSubmissionSessionRepository.upsert(
                              ChrisSubmissionSessionData(
-                               submissionId,
-                               instanceId,
-                               statusRecord.correlationID,
-                               lastMessageDate,
-                               statusRecord.numPolls,
-                               statusRecord.pollInterval,
-                               statusRecord.gatewayURL,
-                               None
+                               submissionId = submissionId,
+                               instanceId = instanceId,
+                               correlationId = statusRecord.correlationID,
+                               lastMessageDate = lastMessageDate,
+                               numPolls = statusRecord.numPolls,
+                               pollInterval = statusRecord.pollInterval,
+                               pollUrl = statusRecord.gatewayURL,
+                               govTalkStatus = None
                              )
                            )
       _                 <- runGovTalkStatusUpdateSteps(
@@ -466,7 +473,7 @@ class SubmissionService @Inject() (
                              numPolls = statusRecord.numPolls,
                              pollInterval = statusRecord.pollInterval,
                              gatewayURL = statusRecord.gatewayURL,
-                             authMode = BatchPolling
+                             authMode = authMode
                            )
     } yield statusRecord.gatewayURL
   }
