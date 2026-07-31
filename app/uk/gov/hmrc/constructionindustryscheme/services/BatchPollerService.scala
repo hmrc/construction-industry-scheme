@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
+import uk.gov.hmrc.constructionindustryscheme.models.PollReportContent
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.{Inject, Singleton}
@@ -26,14 +27,15 @@ import scala.util.control.NonFatal
 @Singleton
 class BatchPollerService @Inject() (
   submissionService: SubmissionService,
-  verificationPollingProcessService: VerificationPollingProcessService,
+  generatePollReportService: GeneratePollReportService,
   monthlyReturnPollingProcessService: MonthlyReturnPollingProcessService,
-  generatePollReportService: GeneratePollReportService
+  verificationPollingProcessService: VerificationPollingProcessService
 )(implicit ec: ExecutionContext)
     extends Logging {
 
   def run(startTime: Long)(implicit hc: HeaderCarrier): Future[Unit] = {
     logger.info("[BatchPollerService][run] Calling F1 - Get Submissions To Poll")
+
     submissionService
       .getSubmissionsToPoll()
       .flatMap { submissions =>
@@ -46,23 +48,50 @@ class BatchPollerService @Inject() (
             s"monthlyReturnSubmissions=${monthlyReturnSubmissions.size}"
         )
 
-        if (verificationSubmissions.isEmpty && monthlyReturnSubmissions.isEmpty) {
-          generatePollReportService.generatePollReport()
+        if (
+          verificationSubmissions.isEmpty &&
+          monthlyReturnSubmissions.isEmpty
+        ) {
+          generatePollReportService.generatePollReport(
+            Seq.empty[PollReportContent]
+          )
         } else {
-          val processes: Seq[Future[Unit]] = Seq(
-            Option.when(verificationSubmissions.nonEmpty) {
-              runPollingProcess("Verification Polling Process") {
-                verificationPollingProcessService.process(verificationSubmissions)
+          val verificationPollingProcess =
+            Option
+              .when(verificationSubmissions.nonEmpty) {
+                runPollingProcess(
+                  "Verification Polling Process",
+                  Seq.empty[PollReportContent]
+                ) {
+                  verificationPollingProcessService.process(
+                    verificationSubmissions
+                  )
+                }
               }
-            },
-            Option.when(monthlyReturnSubmissions.nonEmpty) {
-              runPollingProcess("Monthly Return Polling Process") {
-                monthlyReturnPollingProcessService.process(monthlyReturnSubmissions, startTime)
-              }
-            }
-          ).flatten
+              .getOrElse(Future.successful(Seq.empty[PollReportContent]))
 
-          Future.sequence(processes).map(_ => ())
+          val monthlyReturnPollingProcess =
+            Option
+              .when(monthlyReturnSubmissions.nonEmpty) {
+                runPollingProcess(
+                  "Monthly Return Polling Process",
+                  Seq.empty[PollReportContent]
+                ) {
+                  monthlyReturnPollingProcessService.process(
+                    monthlyReturnSubmissions,
+                    startTime
+                  )
+                }
+              }
+              .getOrElse(Future.successful(Seq.empty[PollReportContent]))
+
+          for {
+            verificationReportContent  <- verificationPollingProcess
+            monthlyReturnReportContent <- monthlyReturnPollingProcess
+            _                          <- generatePollReportService.generatePollReport(
+                                            verificationReportContent ++ monthlyReturnReportContent
+                                          )
+          } yield ()
         }
       }
       .recover { case NonFatal(exception) =>
@@ -73,8 +102,18 @@ class BatchPollerService @Inject() (
       }
   }
 
-  private def runPollingProcess(processName: String)(process: Future[Unit]): Future[Unit] =
+  private def runPollingProcess[A](
+    processName: String,
+    fallback: => A
+  )(
+    process: => Future[A]
+  ): Future[A] =
     process.recover { case NonFatal(exception) =>
-      logger.error(s"[BatchPollerService][run] $processName failed", exception)
+      logger.error(
+        s"[BatchPollerService][run] $processName failed",
+        exception
+      )
+
+      fallback
     }
 }
