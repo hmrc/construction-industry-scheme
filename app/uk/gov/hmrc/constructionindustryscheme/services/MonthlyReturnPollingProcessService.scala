@@ -20,6 +20,7 @@ import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, MonthlyReturnSubmissionToPoll}
+import uk.gov.hmrc.constructionindustryscheme.services.chris.PollReportStatusMapper
 import uk.gov.hmrc.http.HeaderCarrier
 
 import java.time.{LocalDateTime, ZoneId}
@@ -42,7 +43,7 @@ class MonthlyReturnPollingProcessService @Inject() (
     24.hours.toMillis
 
   private val unavailableReportValue =
-    "-"
+    PollReportStatusMapper.unavailable
 
   private val notPolledCorrelationId =
     "(not polled)"
@@ -240,7 +241,7 @@ class MonthlyReturnPollingProcessService @Inject() (
         taxYear = monthlyReturn.taxYear,
         taxMonth = monthlyReturn.taxMonth,
         hmrcMarkGenerated = submissionDetails.hmrcMarkGenerated,
-        submittableStatus = submissionTableStatus(pollResponse),
+        submittableStatus = PollReportStatusMapper.submissionTableStatus(pollResponse),
         amendment = monthlyReturn.amendment.getOrElse("N"),
         hmrcMarkGgis = pollResponse.irMarkReceived,
         submissionRequestDate = submissionDetails.submissionRequestDate,
@@ -297,7 +298,7 @@ class MonthlyReturnPollingProcessService @Inject() (
       submissionType = submission.submissionType,
       submissionId = submission.submissionId.toString,
       govTalkRequestStatus = reportValue(submission.status),
-      currentReturnStatus = reportCurrentReturnStatus(pollResponse),
+      currentReturnStatus = PollReportStatusMapper.reportStatus(pollResponse),
       employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
       correlationId = reportValue(pollResponse.correlationId),
       agentId = dbSubmission.agentId
@@ -335,24 +336,6 @@ class MonthlyReturnPollingProcessService @Inject() (
       correlationId = notPolledCorrelationId,
       agentId = submission.agentId.getOrElse(unavailableReportValue)
     )
-
-  private def reportCurrentReturnStatus(
-    pollResponse: ChrisPollResponse
-  ): String =
-    pollResponse.govTalkErrorStatus match {
-      case Some(_: GovTalkErrorStatus.RecoverableError) =>
-        FATAL_ERROR.toString
-
-      case _ =>
-        submissionTableStatus(pollResponse)
-    }
-
-  private def submissionTableStatus(
-    pollResponse: ChrisPollResponse
-  ): String =
-    Option(pollResponse.status)
-      .map(_.toString)
-      .getOrElse(unavailableReportValue)
 
   private def reportValue(
     value: String
