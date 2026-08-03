@@ -213,7 +213,6 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         result.head.submissionId mustBe sub1.submissionId.toString
         result.head.currentReturnStatus mustBe "-"
         result.head.correlationId mustBe "(not polled)"
-//        result.head.agentId mustBe "-"
 
         result(1).user mustBe sub2.instanceId
         result(1).submissionId mustBe sub2.submissionId.toString
@@ -273,6 +272,78 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           )
         )
       }
+    }
+
+    "must populate agentId in PollReportContent from dbSubmission when present" in {
+      val submission =
+        makeSubmission()
+
+      val dbSub =
+        makeDbSubmission(
+          agentId = Some("A999999")
+        )
+
+      setupHappyPath(
+        details = makeDetails(dbSubmission = dbSub),
+        pollResponse = makePollResponse(ACCEPTED)
+      )
+
+      val result =
+        service
+          .process(
+            Seq(submission),
+            startTime
+          )
+          .futureValue
+
+      result mustBe Seq(
+        PollReportContent(
+          user = submission.instanceId,
+          submissionType = submission.submissionType,
+          submissionId = submission.submissionId.toString,
+          govTalkRequestStatus = submission.status,
+          currentReturnStatus = "ACCEPTED",
+          employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
+          correlationId = "corr-123",
+          agentId = "A999999"
+        )
+      )
+    }
+
+    "must populate agentId in PollReportContent from submission when dbSubmission agentId is absent" in {
+      val submission =
+        makeSubmission().copy(agentId = Some("B111111"))
+
+      val dbSub =
+        makeDbSubmission(
+          agentId = None
+        )
+
+      setupHappyPath(
+        details = makeDetails(dbSubmission = dbSub),
+        pollResponse = makePollResponse(ACCEPTED)
+      )
+
+      val result =
+        service
+          .process(
+            Seq(submission),
+            startTime
+          )
+          .futureValue
+
+      result mustBe Seq(
+        PollReportContent(
+          user = submission.instanceId,
+          submissionType = submission.submissionType,
+          submissionId = submission.submissionId.toString,
+          govTalkRequestStatus = submission.status,
+          currentReturnStatus = "ACCEPTED",
+          employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
+          correlationId = "corr-123",
+          agentId = "B111111"
+        )
+      )
     }
 
     "processSubmission" - {
