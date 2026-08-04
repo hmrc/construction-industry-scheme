@@ -213,6 +213,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         result.head.submissionId mustBe sub1.submissionId.toString
         result.head.currentReturnStatus mustBe "-"
         result.head.correlationId mustBe "(not polled)"
+        result.head.agentId mustBe "-"
 
         result(1).user mustBe sub2.instanceId
         result(1).submissionId mustBe sub2.submissionId.toString
