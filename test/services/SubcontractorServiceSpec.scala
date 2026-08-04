@@ -22,6 +22,8 @@ import org.mockito.Mockito.{verify, when}
 import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
 import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, Subcontractor}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorForEditRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorForDeleteResponse, GetSubcontractorListResponse, GetSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorForDeleteResponse, GetSubcontractorListResponse, GetSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
@@ -428,6 +430,73 @@ final class SubcontractorServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.deleteSubcontractor(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "updateSubcontractorForEdit" - {
+
+    val updateRequest = UpdateSubcontractorForEditRequest(
+      cisId = cisId,
+      subbieResourceRef = 7,
+      utr = Some("1111111111"),
+      pageVisited = Some(0),
+      partnerUtr = None,
+      crn = None,
+      firstName = Some("A"),
+      nino = Some("PX123456A"),
+      secondName = None,
+      surname = Some("Alice"),
+      partnershipTradingName = None,
+      tradingName = None,
+      addressLine1 = Some("1 Test Street"),
+      addressLine2 = Some("Test Area"),
+      addressLine3 = Some("Newcastle"),
+      addressLine4 = Some("Tyne and Wear"),
+      country = Some("GB"),
+      postcode = Some("NE1 1AA"),
+      emailAddress = Some("alice@example.com"),
+      phoneNumber = Some("01911234567"),
+      mobilePhoneNumber = Some("07123456789"),
+      worksReferenceNumber = Some("WORKS123"),
+      matched = Some("Y"),
+      autoVerified = Some("Y"),
+      version = Some(2)
+    )
+
+    "delegates to FormpProxyConnector and returns Unit" in {
+      val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service = new SubcontractorService(formpProxyConnector)
+
+      when(
+        formpProxyConnector.updateSubcontractorForEdit(eqTo(updateRequest))(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
+
+      service.updateSubcontractorForEdit(updateRequest).futureValue mustBe ((): Unit)
+
+      verify(formpProxyConnector)
+        .updateSubcontractorForEdit(eqTo(updateRequest))(any[HeaderCarrier])
+    }
+
+    "propagate failures from FormpProxyConnector" in {
+      val formpProxyConnector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service = new SubcontractorService(formpProxyConnector)
+
+      val exception = new RuntimeException("formp-proxy failure")
+
+      when(
+        formpProxyConnector.updateSubcontractorForEdit(eqTo(updateRequest))(any[HeaderCarrier])
+      ).thenReturn(Future.failed(exception))
+
+      val thrown =
+        service
+          .updateSubcontractorForEdit(updateRequest)
+          .failed
+          .futureValue
+
+      thrown mustBe exception
+
+      verify(formpProxyConnector)
+        .updateSubcontractorForEdit(eqTo(updateRequest))(any[HeaderCarrier])
     }
   }
 
