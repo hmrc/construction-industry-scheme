@@ -85,15 +85,16 @@ class SubmissionService @Inject() (
   private def deleteChrisResourcesIfNeeded(
     status: SubmissionStatus,
     correlationId: String,
-    pollUrl: String
+    pollUrl: String,
+    journey: ChrisPollJourney
   )(implicit hc: HeaderCarrier): Future[ChrisDeletionOutcome] =
     status match {
       case SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR =>
         chrisConnector
-          .deleteSubmission(correlationId, pollUrl)
+          .deleteSubmission(correlationId, pollUrl, journey)
           .map { _ =>
             logger.info(
-              s"[SubmissionService] Successfully deleted Chris resources for corrId=$correlationId url=$pollUrl"
+              s"[SubmissionService] Successfully deleted Chris resources for corrId=$correlationId url=$pollUrl journey=$journey"
             )
             ChrisDeletionOutcome.Deleted
           }
@@ -379,7 +380,8 @@ class SubmissionService @Inject() (
       deleteOutcome <- deleteChrisResourcesIfNeeded(
                          result.status,
                          session.correlationId,
-                         pollUrl
+                         pollUrl,
+                         journey
                        )
 
       govTalkStatusUpdate =

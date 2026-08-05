@@ -16,26 +16,42 @@
 
 package models
 
-import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.must.Matchers
-import uk.gov.hmrc.constructionindustryscheme.models.ChrisDeleteRequest
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeConstants
+import org.scalatest.wordspec.AnyWordSpec
+import uk.gov.hmrc.constructionindustryscheme.models.{ChrisDeleteRequest, ChrisPollJourney}
 
 class ChrisDeleteRequestSpec extends AnyWordSpec with Matchers {
 
   "ChrisDeleteRequest.payload" should {
 
-    "build GovTalk delete payload with correlationId" in {
+    "build GovTalk delete payload for MonthlyReturn" in {
       val correlationId = "ABC123"
-      val request       = ChrisDeleteRequest(correlationId)
 
-      val xml = request.payload
+      val xml = ChrisDeleteRequest(
+        correlationId,
+        ChrisPollJourney.MonthlyReturn
+      ).payload
 
       xml.label mustBe "GovTalkMessage"
       (xml \\ "CorrelationID").text mustBe correlationId
-      (xml \\ "Function").text mustBe ChrisEnvelopeConstants.DeleteFunction
+      (xml \\ "Function").text mustBe "delete"
+      (xml \\ "Class").text mustBe "IR-CIS-CIS300MR"
       (xml \\ "EnvelopeVersion").text mustBe "2.0"
     }
 
+    "build GovTalk delete payload for Verification" in {
+      val correlationId = "ABC123"
+
+      val xml = ChrisDeleteRequest(
+        correlationId,
+        ChrisPollJourney.Verification
+      ).payload
+
+      xml.label mustBe "GovTalkMessage"
+      (xml \\ "CorrelationID").text mustBe correlationId
+      (xml \\ "Function").text mustBe "delete"
+      (xml \\ "Class").text mustBe "IR-CIS-VERIFY"
+      (xml \\ "EnvelopeVersion").text mustBe "2.0"
+    }
   }
 }
