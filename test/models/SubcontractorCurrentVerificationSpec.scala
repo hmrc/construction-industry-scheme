@@ -135,7 +135,7 @@ class SubcontractorCurrentVerificationSpec extends SpecBase {
           |  "version": 1,
           |  "updatedTaxTreatment": "1",
           |  "lastMonthlyReturnDate": "2026-06-30T00:00:00",
-          |  "pendingVerifications": 2,
+          |  "pendingVerifications": 2
           |}
           |""".stripMargin
       )
