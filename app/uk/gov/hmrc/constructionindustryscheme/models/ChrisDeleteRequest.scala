@@ -16,21 +16,23 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
-import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisEnvelopeConstants
-
 import scala.xml.Elem
 
-case class ChrisDeleteRequest(correlationId: String) {
+case class ChrisDeleteRequest(
+  correlationId: String,
+  journey: ChrisPollJourney
+) {
+
   def payload: Elem =
     <GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
       <EnvelopeVersion>2.0</EnvelopeVersion>
       <Header>
         <MessageDetails>
-          <Class>{ChrisEnvelopeConstants.MessageDetailsClass}</Class>
-          <Qualifier>{ChrisEnvelopeConstants.Qualifier}</Qualifier>
-          <Function>{ChrisEnvelopeConstants.DeleteFunction}</Function>
+          <Class>{journey.govTalkClass}</Class>
+          <Qualifier>request</Qualifier>
+          <Function>delete</Function>
           <CorrelationID>{correlationId}</CorrelationID>
-          <Transformation>{ChrisEnvelopeConstants.Transformation}</Transformation>
+          <Transformation>XML</Transformation>
         </MessageDetails>
         <SenderDetails/>
       </Header>

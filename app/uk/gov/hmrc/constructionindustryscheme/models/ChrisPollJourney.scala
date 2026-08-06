@@ -16,19 +16,30 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
+import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
+
 sealed trait ChrisPollJourney {
   def logName: String
   def govTalkClass: String
+
+  def gatewayUrl(appConfig: AppConfig): String
 }
 
 object ChrisPollJourney {
+
   case object MonthlyReturn extends ChrisPollJourney {
-    override val logName: String      = "monthlyReturn"
-    override val govTalkClass: String = "IR-CIS-CIS300MR"
+    override val logName      = "monthlyReturn"
+    override val govTalkClass = "IR-CIS-CIS300MR"
+
+    override def gatewayUrl(appConfig: AppConfig): String =
+      appConfig.chrisGatewayUrl
   }
 
   case object Verification extends ChrisPollJourney {
-    override val logName: String      = "verification"
-    override val govTalkClass: String = "IR-CIS-VERIFY"
+    override val logName      = "verification"
+    override val govTalkClass = "IR-CIS-VERIFY"
+
+    override def gatewayUrl(appConfig: AppConfig): String =
+      appConfig.chrisVerificationGatewayUrl
   }
 }
