@@ -21,7 +21,8 @@ import play.api.libs.json.{Json, OFormat}
 final case class VerificationBatch(
   verificationBatchId: Long,
   status: Option[String],
-  verificationNumber: Option[String]
+  verificationNumber: Option[String],
+  verifBatchResourceRef: Option[Long]
 )
 
 object VerificationBatch {

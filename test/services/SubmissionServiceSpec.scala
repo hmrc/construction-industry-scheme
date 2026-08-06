@@ -1278,6 +1278,7 @@ final class SubmissionServiceSpec extends SpecBase {
             taxTreatment = None,
             verificationBatchId = Some(100L),
             subcontractorId = Some(10L),
+            verificationResourceRef = Some(10L),
             actionIndicator = Some("verify"),
             proceed = Some("Y")
           )
@@ -1442,7 +1443,7 @@ final class SubmissionServiceSpec extends SpecBase {
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(snapshotResponse))
 
-      val result =
+      val result: Throwable =
         service
           .syncVerificationSessionForPolling(submissionToPoll)
           .failed
@@ -1485,7 +1486,7 @@ final class SubmissionServiceSpec extends SpecBase {
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(snapshotResponse))
 
-      val result =
+      val result: Throwable =
         service
           .syncVerificationSessionForPolling(submissionToPoll)
           .failed
@@ -1525,7 +1526,7 @@ final class SubmissionServiceSpec extends SpecBase {
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(snapshotResponse))
 
-      val result =
+      val result: Throwable =
         service
           .syncVerificationSessionForPolling(submissionToPoll)
           .failed

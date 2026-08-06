@@ -56,7 +56,8 @@ final class VerificationSpec extends AnyWordSpec with Matchers {
         verificationNumber = Some("V0000000001"),
         taxTreatment = None,
         verificationBatchId = Some(99L),
-        subcontractorId = Some(1L)
+        subcontractorId = Some(1L),
+        verificationResourceRef = Some(10L)
       )
 
       val json = Json.toJson(model)
@@ -67,6 +68,7 @@ final class VerificationSpec extends AnyWordSpec with Matchers {
       (json \ "taxTreatment").toOption mustBe None
       (json \ "verificationBatchId").as[Long] mustBe 99L
       (json \ "subcontractorId").as[Long] mustBe 1L
+      (json \ "verificationResourceRef").as[Long] mustBe 10L
     }
 
     "round-trip (model -> json -> model) without losing data" in {
@@ -76,7 +78,8 @@ final class VerificationSpec extends AnyWordSpec with Matchers {
         verificationNumber = None,
         taxTreatment = Some("1"),
         verificationBatchId = None,
-        subcontractorId = None
+        subcontractorId = None,
+        verificationResourceRef = Some(10L)
       )
 
       val json = Json.toJson(model)
