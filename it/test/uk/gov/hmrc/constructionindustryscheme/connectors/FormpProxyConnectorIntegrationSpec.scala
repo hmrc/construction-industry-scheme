@@ -1937,6 +1937,50 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector proceedInsufficientVerification" should {
+
+    "POST /formp-proxy/cis/verification/proceed-with-insufficient-data and return payload (204)" in {
+      val req = ProceedInsufficientVerificationRequest(
+        instanceId = "1",
+        verificationBatchResourceRef = 10L,
+        verificationResourceRef = 9L,
+        proceed = "Y"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/proceed-with-insufficient-data"))
+          .withHeader("Content-Type", containing("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(OK))
+      )
+
+      connector.proceedInsufficientVerification(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail the future when upstream returns a non-2xx (e.g. 500)" in {
+      val req = ProceedInsufficientVerificationRequest(
+        instanceId = "1",
+        verificationBatchResourceRef = 10L,
+        verificationResourceRef = 9L,
+        proceed = "Y"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/proceed-with-insufficient-data"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("""{"message":"boom"}""")
+          )
+      )
+
+      val ex = connector.proceedInsufficientVerification(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
   "FormpProxyConnector updateVerificationSubmission" should {
 
     "POST request to /formp-proxy/cis/verification/submission/update and return Unit when upstream returns 204" in {
