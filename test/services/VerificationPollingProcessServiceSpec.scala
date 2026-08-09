@@ -21,7 +21,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
-import uk.gov.hmrc.constructionindustryscheme.models.{SUBMITTED, BatchChRISPollResult, PollReportContent, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{BatchChRISPollResult, PollReportContent, SUBMITTED, SubmissionStatus}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.SubcontractorVerificationEmailRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, VerificationSubmissionToPoll}
 import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
