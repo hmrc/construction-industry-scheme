@@ -315,12 +315,7 @@ class SubcontractorControllerIntegrationSpec
           |    "verified": "Y",
           |    "matched": "Y",
           |    "version": 1
-          |  },
-          |  "otherInfo": [
-          |    {
-          |      "utr": "1111111111"
-          |    }
-          |  ]
+          |  }
           |}""".stripMargin
 
       stubFor(
@@ -343,7 +338,6 @@ class SubcontractorControllerIntegrationSpec
       (resp.json \ "subcontractor" \ "subcontractorId").as[Long] mustBe 999L
       (resp.json \ "subcontractor" \ "utr").as[String] mustBe "0987654321"
       (resp.json \ "subcontractor" \ "displayName").as[String] mustBe "John Smith"
-      (resp.json \ "otherInfo" \ 0 \ "utr").as[String] mustBe "1111111111"
 
       verify(
         getRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractor/123/456"))

@@ -14,17 +14,22 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.response
+package uk.gov.hmrc.constructionindustryscheme.models
 
-import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, Subcontractor}
+import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 
-final case class GetSubcontractorResponse(
-  scheme: Option[ContractorScheme],
-  subcontractor: Option[Subcontractor]
-)
+sealed trait BatchChRISPollResult {
+  def response: ChrisPollResponse
+}
 
-object GetSubcontractorResponse {
-  given format: OFormat[GetSubcontractorResponse] =
-    Json.format[GetSubcontractorResponse]
+object BatchChRISPollResult {
+
+  case class Completed(
+    response: ChrisPollResponse
+  ) extends BatchChRISPollResult
+
+  case class PostProcessingFailed(
+    response: ChrisPollResponse,
+    exception: Throwable
+  ) extends BatchChRISPollResult
 }

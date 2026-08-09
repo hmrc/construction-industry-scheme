@@ -16,28 +16,13 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models
 
-import scala.xml.Elem
-
-case class ChrisDeleteRequest(
+case class PollReportContent(
+  user: String,
+  submissionType: String,
+  submissionId: String,
+  govTalkRequestStatus: String,
+  currentReturnStatus: String,
+  employerReference: String,
   correlationId: String,
-  journey: ChrisPollJourney
-) {
-
-  def payload: Elem =
-    <GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
-      <EnvelopeVersion>2.0</EnvelopeVersion>
-      <Header>
-        <MessageDetails>
-          <Class>{journey.govTalkClass}</Class>
-          <Qualifier>request</Qualifier>
-          <Function>delete</Function>
-          <CorrelationID>{correlationId}</CorrelationID>
-          <Transformation>XML</Transformation>
-        </MessageDetails>
-        <SenderDetails/>
-      </Header>
-      <GovTalkDetails>
-        <Keys/>
-      </GovTalkDetails>
-    </GovTalkMessage>
-}
+  agentId: String
+)

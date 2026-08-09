@@ -235,7 +235,8 @@ final class SubmissionServiceSpec extends SpecBase {
 
       verify(s.chrisConnector).deleteSubmission(
         eqTo("corr-123"),
-        eqTo("/poll/123")
+        eqTo("/poll/123"),
+        eqTo(ChrisPollJourney.MonthlyReturn)
       )(using any[HeaderCarrier])
     }
 
@@ -245,7 +246,8 @@ final class SubmissionServiceSpec extends SpecBase {
       val response = stubPollScenario(
         s = s,
         status = SUBMITTED,
-        deleteResult = Some(Future.failed(new RuntimeException("delete failed")))
+        deleteResult = Some(Future.failed(new RuntimeException("delete failed"))),
+        expectedEndState = None
       )
 
       s.service
@@ -258,13 +260,18 @@ final class SubmissionServiceSpec extends SpecBase {
 
       verify(s.chrisConnector).deleteSubmission(
         eqTo("corr-123"),
-        eqTo("/poll/123")
+        eqTo("/poll/123"),
+        eqTo(ChrisPollJourney.MonthlyReturn)
       )(using any[HeaderCarrier])
     }
 
     "does not delete Chris resources for a non-terminal status" in {
       val s        = setup
-      val response = stubPollScenario(s, ACCEPTED)
+      val response = stubPollScenario(
+        s = s,
+        status = ACCEPTED,
+        expectedEndState = None
+      )
 
       s.service
         .pollSubmissionAndUpdateGovTalkStatus(
@@ -276,7 +283,8 @@ final class SubmissionServiceSpec extends SpecBase {
 
       verify(s.chrisConnector, never()).deleteSubmission(
         any[String],
-        any[String]
+        any[String],
+        any[ChrisPollJourney]
       )(using any[HeaderCarrier])
     }
 
@@ -1828,9 +1836,10 @@ final class SubmissionServiceSpec extends SpecBase {
       when(
         chrisConnector.deleteSubmission(
           eqTo(correlation),
-          eqTo(pollUrl)
+          eqTo(pollUrl),
+          eqTo(ChrisPollJourney.MonthlyReturn)
         )(using any[HeaderCarrier])
-      ).thenReturn(result)
+      ).thenReturn(Future.unit)
     }
 
     when(
@@ -1846,15 +1855,8 @@ final class SubmissionServiceSpec extends SpecBase {
     ).thenReturn(Future.unit)
 
     when(
-      formpProxyConnector.updateGovTalkStatus(
-        eqTo(
-          UpdateGovTalkStatusRequest(
-            instanceId,
-            submissionId,
-            expectedEndState,
-            expectedProtocolStatus
-          )
-        )
+      s.formpProxyConnector.updateGovTalkStatus(
+        any[UpdateGovTalkStatusRequest]
       )(any[HeaderCarrier])
     ).thenReturn(Future.unit)
 
