@@ -1349,7 +1349,8 @@ class FormpProxyConnectorIntegrationSpec
            |{
            |  "subcontractors": [
            |    {
-           |      "subcontractorId": 1
+           |      "subcontractorId": 1,
+           |      "subbieResourceRef": 10
            |    }
            |  ],
            |  "scheme": {
@@ -1360,7 +1361,9 @@ class FormpProxyConnectorIntegrationSpec
            |    },
            |  "verifications": [
            |    {
-           |      "verificationId": 1001
+           |      "verificationId": 1001,
+           |      "matched": "N",
+           |      "verificationResourceRef": 10
            |    }
            |  ],
            |  "submission": {
@@ -1385,10 +1388,13 @@ class FormpProxyConnectorIntegrationSpec
       val outJson = Json.toJson(connector.getNewestVerificationBatch(instanceId).futureValue)
 
       (outJson \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
+      (outJson \ "subcontractors")(0).\("subbieResourceRef").as[Long] mustBe 10L
       (outJson \ "scheme").\("name").as[String] mustBe "david"
 
       (outJson \ "verificationBatch").\("verificationBatchId").as[Long] mustBe 99L
       (outJson \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L
+      (outJson \ "verifications")(0).\("matched").as[String] mustBe "N"
+      (outJson \ "verifications")(0).\("verificationResourceRef").as[Long] mustBe 10L
 
       (outJson \ "submission").\("submissionId").as[Long] mustBe 555L
       (outJson \ "monthlyReturn").\("monthlyReturnId").as[Long] mustBe 777L
