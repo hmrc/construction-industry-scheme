@@ -759,7 +759,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
     )
 
     "returns 204 when service succeeds" in {
-      val service = mock[SubcontractorService]
+      val service    = mock[SubcontractorService]
       val controller = mockController(service)
 
       when(
@@ -779,7 +779,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 400 when JSON is invalid" in {
-      val service = mock[SubcontractorService]
+      val service    = mock[SubcontractorService]
       val controller = mockController(service)
 
       val badJson = Json.obj(
@@ -798,7 +798,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
     }
 
     "returns 502 when service fails" in {
-      val service = mock[SubcontractorService]
+      val service    = mock[SubcontractorService]
       val controller = mockController(service)
 
       when(

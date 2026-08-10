@@ -3293,7 +3293,7 @@ class FormpProxyConnectorIntegrationSpec
 
       connector
         .updateSubcontractorForEdit(request)
-        .futureValue mustBe (())
+        .futureValue mustBe ()
     }
 
     "fail when upstream returns non-204 response" in {
@@ -3343,6 +3343,139 @@ class FormpProxyConnectorIntegrationSpec
 
       exception mustBe a[UpstreamErrorResponse]
       exception.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_GATEWAY
+    }
+  }
+
+  "FormpProxyConnector updateSubcontractorForEdit" should {
+
+    "POST request to /formp-proxy/cis/subcontractor/edit and return Unit when upstream returns 204" in {
+
+      val request = UpdateSubcontractorForEditRequest(
+        cisId = instanceId,
+        subbieResourceRef = subbieResourceRef,
+        utr = Some("1111111111"),
+        pageVisited = Some(0),
+        partnerUtr = None,
+        crn = None,
+        firstName = Some("A"),
+        nino = Some("PX123456A"),
+        secondName = None,
+        surname = Some("Alice"),
+        partnershipTradingName = None,
+        tradingName = None,
+        addressLine1 = Some("1 Test Street"),
+        addressLine2 = Some("Test Area"),
+        addressLine3 = Some("Newcastle"),
+        addressLine4 = Some("Tyne and Wear"),
+        country = Some("GB"),
+        postcode = Some("NE1 1AA"),
+        emailAddress = Some("alice@example.com"),
+        phoneNumber = Some("01911234567"),
+        mobilePhoneNumber = Some("07123456789"),
+        worksReferenceNumber = Some("WORKS123"),
+        matched = Some("Y"),
+        autoVerified = Some("Y"),
+        version = Some(2)
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/edit"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
+          )
+          .willReturn(
+            aResponse()
+              .withStatus(NO_CONTENT)
+          )
+      )
+
+      connector
+        .updateSubcontractorForEdit(request)
+        .futureValue mustBe ((): Unit)
+
+      verify(
+        postRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractor/edit"))
+          .withRequestBody(
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
+          )
+      )
+    }
+
+    "fail with UpstreamErrorResponse when upstream returns non-2xx" in {
+
+      val request = UpdateSubcontractorForEditRequest(
+        cisId = instanceId,
+        subbieResourceRef = subbieResourceRef,
+        utr = Some("1111111111"),
+        pageVisited = Some(0),
+        partnerUtr = None,
+        crn = None,
+        firstName = Some("A"),
+        nino = Some("PX123456A"),
+        secondName = None,
+        surname = Some("Alice"),
+        partnershipTradingName = None,
+        tradingName = None,
+        addressLine1 = None,
+        addressLine2 = None,
+        addressLine3 = None,
+        addressLine4 = None,
+        country = None,
+        postcode = None,
+        emailAddress = None,
+        phoneNumber = None,
+        mobilePhoneNumber = None,
+        worksReferenceNumber = None,
+        matched = Some("Y"),
+        autoVerified = Some("Y"),
+        version = Some(2)
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/edit"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
+          )
+          .willReturn(
+            aResponse()
+              .withStatus(BAD_GATEWAY)
+              .withBody("""{"message":"update-subcontractor-for-edit-failed"}""")
+          )
+      )
+
+      val ex =
+        connector
+          .updateSubcontractorForEdit(request)
+          .failed
+          .futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_GATEWAY
+
+      verify(
+        postRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractor/edit"))
+          .withRequestBody(
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
+          )
+      )
     }
   }
 }

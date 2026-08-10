@@ -36,8 +36,8 @@ class SubcontractorService @Inject() (formpProxyConnector: FormpProxyConnector) 
     formpProxyConnector.createAndUpdateSubcontractor(request)
 
   def updateSubcontractorForEdit(
-                                  request: UpdateSubcontractorForEditRequest
-                                )(implicit hc: HeaderCarrier): Future[Unit] =
+    request: UpdateSubcontractorForEditRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.updateSubcontractorForEdit(request)
 
   def getSubcontractorUTRs(cisId: String)(implicit hc: HeaderCarrier): Future[Seq[String]] =
