@@ -62,8 +62,7 @@ class SubcontractorController @Inject() (
       request.body
         .validate[UpdateSubcontractorForEditRequest]
         .fold(
-          errs =>
-            Future.successful(BadRequest(JsError.toJson(errs))),
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
           updateRequest =>
             subcontractorService
               .updateSubcontractorForEdit(updateRequest)
