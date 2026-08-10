@@ -54,11 +54,12 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     )
   }
 
-  private val gatewayUrl       = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
-  private val testSubmissionId = 100L
-  private val testInstanceId   = "inst-1"
-  private val testTaxYear      = 2026
-  private val testTaxMonth     = 4
+  private val gatewayUrl                = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+  private val testSubmissionId          = 100L
+  private val testInstanceId            = "inst-1"
+  private val testTaxYear               = 2026
+  private val testTaxMonth              = 4
+  private val testSubmissionRequestDate = LocalDateTime.of(2026, 1, 1, 12, 0)
 
   private def makeSubmission(
     instanceId: String = testInstanceId,
@@ -96,7 +97,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     emailRecipient: Option[String] = Some("user@example.com"),
     agentId: Option[String] = None,
     status: Option[String] = Some("STARTED"),
-    submissionRequestDate: Option[LocalDateTime] = None
+    submissionRequestDate: Option[LocalDateTime] = Some(testSubmissionRequestDate)
   ): Submission =
     Submission(
       submissionId = testSubmissionId,
@@ -153,7 +154,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     pollResponse: ChrisPollResponse = makePollResponse(ACCEPTED)
   ): Unit = {
     when(monthlyReturnService.getMonthlyReturnForEdit(any())(any())).thenReturn(Future.successful(details))
-    when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
+    when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any(), any())(any()))
       .thenReturn(Future.successful(gatewayUrl))
     when(submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(any(), any(), any())(any()))
       .thenReturn(Future.successful(BatchChRISPollResult.Completed(pollResponse)))
@@ -183,7 +184,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
             Future.failed(new RuntimeException("getMonthlyReturnForEdit failed")),
             Future.successful(makeDetails())
           )
-        when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
+        when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any(), any())(any()))
           .thenReturn(Future.successful(gatewayUrl))
         when(submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(any(), any(), any())(any()))
           .thenReturn(Future.successful(BatchChRISPollResult.Completed(makePollResponse(ACCEPTED))))
@@ -225,6 +226,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         verify(submissionService, times(1))
           .processMonthlyReturnGovTalkStatusCheck(
             eqTo("inst-2"),
+            any(),
             any(),
             any()
           )(any())
@@ -393,6 +395,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           .processMonthlyReturnGovTalkStatusCheck(
             eqTo(testInstanceId),
             eqTo(testSubmissionId.toString),
+            any(),
             any()
           )(any())
       }
@@ -464,7 +467,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 submittableStatus = "SUBMITTED",
                 amendment = "Y",
                 hmrcMarkGgis = Some("irmark-recv"),
-                submissionRequestDate = None,
+                submissionRequestDate = Some(testSubmissionRequestDate),
                 acceptedTime = None,
                 emailRecipient = Some("user@example.com"),
                 agentId = Some("agent-1"),
@@ -501,6 +504,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 hmrcMarkGenerated = Some("irmark-gen"),
                 submittableStatus = "ACCEPTED",
                 amendment = "N",
+                submissionRequestDate = Some(testSubmissionRequestDate),
                 emailRecipient = Some("user@example.com")
               )
             )
@@ -604,6 +608,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           .processMonthlyReturnGovTalkStatusCheck(
             any(),
             any(),
+            any(),
             any()
           )(any())
 
@@ -640,6 +645,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
         when(
           submissionService.processMonthlyReturnGovTalkStatusCheck(
+            any(),
             any(),
             any(),
             any()
@@ -724,6 +730,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
         verify(submissionService)
           .processMonthlyReturnGovTalkStatusCheck(
+            any(),
             any(),
             any(),
             any()
@@ -932,6 +939,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           submissionService.processMonthlyReturnGovTalkStatusCheck(
             any(),
             any(),
+            any(),
             any()
           )(any())
         ).thenReturn(Future.successful(gatewayUrl))
@@ -1071,7 +1079,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 submittableStatus = "STARTED",
                 amendment = "N",
                 hmrcMarkGgis = None,
-                submissionRequestDate = None,
+                submissionRequestDate = Some(testSubmissionRequestDate),
                 acceptedTime = None,
                 emailRecipient = Some("user@example.com"),
                 agentId = None,
@@ -1117,6 +1125,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                   hmrcMarkGenerated = Some("irmark-gen"),
                   submittableStatus = expectedStatusString,
                   amendment = "N",
+                  submissionRequestDate = Some(testSubmissionRequestDate),
                   emailRecipient = Some("user@example.com")
                 )
               )

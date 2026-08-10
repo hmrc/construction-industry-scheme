@@ -23,7 +23,8 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository}
+import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository, StoredMonthlyReturnContext}
+import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService.SyncedVerificationSession
 import uk.gov.hmrc.http.HeaderCarrier
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
@@ -325,10 +326,19 @@ class SubmissionService @Inject() (
              submissionId
            )
 
+      hmrcMarkGenerated =
+        (journey match {
+          case ChrisPollJourney.MonthlyReturn => session.monthlyReturnContext.map(_.hmrcMarkGenerated)
+          case ChrisPollJourney.Verification  => session.verificationContext.map(_.hmrcMarkGenerated)
+        }).getOrElse {
+          throw new IllegalStateException("hmrcMarkGenerated not found in session")
+        }
+
       result <- chrisConnector.pollSubmission(
                   session.correlationId,
                   pollUrl,
-                  journey
+                  journey,
+                  hmrcMarkGenerated
                 )
 
       _ <- validateCorrelationId(
@@ -419,6 +429,7 @@ class SubmissionService @Inject() (
   def processMonthlyReturnGovTalkStatusCheck(
     instanceId: String,
     submissionId: String,
+    monthlyReturnContext: StoredMonthlyReturnContext,
     lastMessageDate: Instant = Instant.now
   )(implicit hc: HeaderCarrier): Future[String] = {
     logger.info(
@@ -438,14 +449,15 @@ class SubmissionService @Inject() (
                            )
       _                 <- chrisSubmissionSessionRepository.upsert(
                              ChrisSubmissionSessionData(
-                               submissionId,
-                               instanceId,
-                               statusRecord.correlationID,
-                               lastMessageDate,
-                               statusRecord.numPolls,
-                               statusRecord.pollInterval,
-                               statusRecord.gatewayURL,
-                               None
+                               submissionId = submissionId,
+                               instanceId = instanceId,
+                               correlationId = statusRecord.correlationID,
+                               lastMessageDate = lastMessageDate,
+                               numPolls = statusRecord.numPolls,
+                               pollInterval = statusRecord.pollInterval,
+                               pollUrl = statusRecord.gatewayURL,
+                               govTalkStatus = None,
+                               monthlyReturnContext = Some(monthlyReturnContext)
                              )
                            )
       _                 <- runGovTalkStatusUpdateSteps(
@@ -462,7 +474,7 @@ class SubmissionService @Inject() (
 
   def syncVerificationSessionForPolling(
     submission: VerificationSubmissionToPoll
-  )(implicit hc: HeaderCarrier): Future[ChrisSubmissionSessionData] = {
+  )(implicit hc: HeaderCarrier): Future[SyncedVerificationSession] = {
 
     val submissionId = submission.submissionId.toString
 
@@ -503,13 +515,16 @@ class SubmissionService @Inject() (
             )
             .fold(
               error => Future.failed(new RuntimeException(s"Failed to build verification context: $error")),
-              Future.successful
+              verificationContext =>
+                Future.successful(
+                  verificationContext -> response.submission.flatMap(_.emailRecipient)
+                )
             )
         }
 
     govTalkStatusFuture
       .zip(verificationContextFuture)
-      .flatMap { case (statusResponse, verificationContext) =>
+      .flatMap { case (statusResponse, (verificationContext, emailRecipient)) =>
         val statusRecord = statusResponse.govtalk_status.head
 
         val sessionData = ChrisSubmissionSessionData(
@@ -527,7 +542,12 @@ class SubmissionService @Inject() (
 
         chrisSubmissionSessionRepository
           .upsert(sessionData)
-          .map(_ => sessionData)
+          .map(_ =>
+            SyncedVerificationSession(
+              sessionData = sessionData,
+              emailRecipient = emailRecipient
+            )
+          )
       }
   }
 
@@ -659,6 +679,10 @@ class SubmissionService @Inject() (
 }
 
 object SubmissionService {
+  final case class SyncedVerificationSession(
+    sessionData: ChrisSubmissionSessionData,
+    emailRecipient: Option[String]
+  )
 
   private[services] enum ChrisDeletionOutcome {
     case Deleted
