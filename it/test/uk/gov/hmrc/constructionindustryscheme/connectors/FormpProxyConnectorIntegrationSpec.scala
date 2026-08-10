@@ -2810,12 +2810,7 @@ class FormpProxyConnectorIntegrationSpec
           |    "taxTreatment": "NET",
           |    "verified": "Y",
           |    "version": 1
-          |  },
-          |  "otherInfo": [
-          |    {
-          |      "utr": "1111111111"
-          |    }
-          |  ]
+          |  }
           |}
           |""".stripMargin
       )
@@ -2839,11 +2834,6 @@ class FormpProxyConnectorIntegrationSpec
       response.subcontractor.value.subbieResourceRef mustBe Some(456L)
       response.subcontractor.value.utr mustBe Some("0987654321")
       response.subcontractor.value.displayName mustBe "John Smith"
-
-      response.otherInfo mustBe Seq(
-        GetSubcontractorOtherInfo("1111111111")
-      )
-
       verify(
         getRequestedFor(urlPathEqualTo(s"/formp-proxy/cis/subcontractor/$cisId/$subbieResourceRef"))
       )

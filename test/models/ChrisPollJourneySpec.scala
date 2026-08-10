@@ -17,10 +17,14 @@
 package models
 
 import base.SpecBase
+import org.mockito.Mockito.when
+import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.*
 
 class ChrisPollJourneySpec extends SpecBase {
+
+  private val mockAppConfig = mock[AppConfig]
 
   "ChrisPollJourney" - {
 
@@ -32,6 +36,20 @@ class ChrisPollJourneySpec extends SpecBase {
     "must define verification values" in {
       Verification.logName mustBe "verification"
       Verification.govTalkClass mustBe "IR-CIS-VERIFY"
+    }
+
+    "must return monthly return gateway URL" in {
+      when(mockAppConfig.chrisGatewayUrl)
+        .thenReturn("monthly-url")
+
+      MonthlyReturn.gatewayUrl(mockAppConfig) mustBe "monthly-url"
+    }
+
+    "must return verification gateway URL" in {
+      when(mockAppConfig.chrisVerificationGatewayUrl)
+        .thenReturn("verification-url")
+
+      Verification.gatewayUrl(mockAppConfig) mustBe "verification-url"
     }
 
   }

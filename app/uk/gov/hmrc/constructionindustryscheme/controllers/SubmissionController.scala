@@ -308,7 +308,8 @@ class SubmissionController @Inject() (
           payload.correlationId,
           ex,
           errorLabel = "",
-          startedErrorText = "Chris failure"
+          startedErrorText = "Chris failure",
+          journey = MonthlyReturn
         )
       }
   }
@@ -333,7 +334,7 @@ class SubmissionController @Inject() (
         actualCorrelationId = res.meta.correlationId,
         pollInterval = res.meta.responseEndPoint.pollIntervalSeconds,
         pollUrl = res.meta.responseEndPoint.url,
-        gatewayURL = appConfig.chrisGatewayUrl,
+        gatewayURL = journey.gatewayUrl(appConfig),
         lastMessageDate = chrisResponseTimestamp(res),
         journey = journey,
         context = context,
@@ -358,7 +359,8 @@ class SubmissionController @Inject() (
     correlationId: String,
     ex: Throwable,
     errorLabel: String,
-    startedErrorText: String
+    startedErrorText: String,
+    journey: ChrisPollJourney
   )(implicit hc: HeaderCarrier): Future[Result] = {
     logger.error(
       s"Received 5xx/Exception from ChRIS$errorLabel, treating as RESUBMIT for submissionId=$submissionId",
@@ -372,7 +374,7 @@ class SubmissionController @Inject() (
         employerRef,
         submissionId,
         correlationId,
-        appConfig.chrisGatewayUrl
+        journey.gatewayUrl(appConfig)
       )
       .map { _ =>
         Ok(
@@ -491,7 +493,8 @@ class SubmissionController @Inject() (
               payload.correlationId,
               ex,
               errorLabel = " verification",
-              startedErrorText = "Chris verification failure"
+              startedErrorText = "Chris verification failure",
+              journey = Verification
             )
           }
     }

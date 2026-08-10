@@ -136,7 +136,9 @@ class ChrisConnector @Inject() (
         )
       }
 
-  def deleteSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[Unit] =
+  def deleteSubmission(correlationId: String, pollUrl: String, journey: ChrisPollJourney)(using
+    HeaderCarrier
+  ): Future[Unit] =
     httpClient
       .post(url"$pollUrl")
       .setHeader(
@@ -144,7 +146,7 @@ class ChrisConnector @Inject() (
         "Accept"        -> "application/xml",
         "CorrelationId" -> correlationId
       )
-      .withBody(ChrisDeleteRequest(correlationId).payload.toString)
+      .withBody(ChrisDeleteRequest(correlationId, journey).payload.toString)
       .execute[HttpResponse]
       .map { resp =>
         logger.info(s"[ChrisConnector] delete request sent url=$pollUrl corrId=$correlationId status=${resp.status}")

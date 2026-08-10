@@ -21,18 +21,10 @@ import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, Subcontr
 
 final case class GetSubcontractorResponse(
   scheme: Option[ContractorScheme],
-  subcontractor: Option[Subcontractor],
-  otherInfo: Seq[GetSubcontractorOtherInfo]
+  subcontractor: Option[Subcontractor]
 )
 
 object GetSubcontractorResponse {
   given format: OFormat[GetSubcontractorResponse] =
     Json.format[GetSubcontractorResponse]
-}
-
-final case class GetSubcontractorOtherInfo(utr: String)
-
-object GetSubcontractorOtherInfo {
-  given format: OFormat[GetSubcontractorOtherInfo] =
-    Json.format[GetSubcontractorOtherInfo]
 }
