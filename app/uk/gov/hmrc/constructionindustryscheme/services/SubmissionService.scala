@@ -502,10 +502,8 @@ class SubmissionService @Inject() (
     val verificationContextFuture =
       formpProxyConnector
         .getSubmissionWithVerificationBatch(
-          GetSubmissionWithVerificationBatchRequest(
-            instanceId = submission.instanceId,
-            verificationBatchResourceRef = submission.verificationBatchResourceRef
-          )
+          submission.instanceId,
+          submission.verificationBatchResourceRef
         )
         .flatMap { response =>
           VerificationSubmissionContextBuilder
