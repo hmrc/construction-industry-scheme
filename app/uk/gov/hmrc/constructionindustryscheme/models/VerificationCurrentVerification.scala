@@ -22,7 +22,13 @@ case class VerificationCurrentVerification(
   verificationId: Long,
   verificationBatchId: Option[Long],
   subcontractorId: Option[Long],
-  verificationResourceRef: Option[Long]
+  verificationResourceRef: Option[Long],
+  subcontractorName: Option[String],
+  verificationNumber: Option[String],
+  taxTreatment: Option[String],
+  actionIndicator: Option[String],
+  proceed: Option[String],
+  matched: Option[String]
 )
 
 object VerificationCurrentVerification {

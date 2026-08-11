@@ -43,7 +43,20 @@ class ChrisVerificationRequestSpec extends SpecBase {
       addressLine4 = None,
       country = Some("GB"),
       postcode = Some("AA1 1AA"),
-      worksReferenceNumber = Some("WRN123")
+      emailAddress = None,
+      phoneNumber = None,
+      mobilePhoneNumber = None,
+      worksReferenceNumber = Some("WRN123"),
+      matched = None,
+      autoVerified = None,
+      verified = None,
+      verificationNumber = None,
+      taxTreatment = None,
+      verificationDate = None,
+      version = None,
+      updatedTaxTreatment = None,
+      lastMonthlyReturnDate = None,
+      pendingVerifications = None
     )
 
   "ChrisVerificationRequest" - {

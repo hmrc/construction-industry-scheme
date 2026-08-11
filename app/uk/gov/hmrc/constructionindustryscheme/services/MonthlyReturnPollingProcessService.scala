@@ -18,8 +18,10 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, MonthlyReturnSubmissionToPoll}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
+import uk.gov.hmrc.constructionindustryscheme.repositories.StoredMonthlyReturnContext
+import uk.gov.hmrc.constructionindustryscheme.services.chris.PollReportStatusMapper
 import uk.gov.hmrc.http.HeaderCarrier
 
 import java.time.{LocalDateTime, ZoneId}
@@ -42,7 +44,7 @@ class MonthlyReturnPollingProcessService @Inject() (
     24.hours.toMillis
 
   private val unavailableReportValue =
-    "-"
+    PollReportStatusMapper.unavailable
 
   private val notPolledCorrelationId =
     "(not polled)"
@@ -136,11 +138,20 @@ class MonthlyReturnPollingProcessService @Inject() (
     monthlyReturn: MonthlyReturn,
     submissionDetails: Submission,
     startTime: Long
-  )(implicit hc: HeaderCarrier): Future[PollReportContent] =
+  )(implicit hc: HeaderCarrier): Future[PollReportContent] = {
+    val context = StoredMonthlyReturnContext(
+      submissionDetails.hmrcMarkGenerated.getOrElse(
+        throw new RuntimeException(s"No hmrcMarkGenerated found in DB for instanceId=${submission.instanceId}")
+      ),
+      submissionDetails.submissionRequestDate.getOrElse(
+        throw new RuntimeException(s"No submissionRequestDate found in DB for instanceId=${submission.instanceId}")
+      )
+    )
     submissionService
       .processMonthlyReturnGovTalkStatusCheck(
         submission.instanceId,
-        submission.submissionId.toString
+        submission.submissionId.toString,
+        context
       )
       .flatMap { gatewayUrl =>
         pollSubmissionAndBuildReportContent(
@@ -165,6 +176,7 @@ class MonthlyReturnPollingProcessService @Inject() (
           dbSubmission = submissionDetails
         )
       }
+  }
 
   private def pollSubmissionAndBuildReportContent(
     submission: MonthlyReturnSubmissionToPoll,
@@ -240,7 +252,7 @@ class MonthlyReturnPollingProcessService @Inject() (
         taxYear = monthlyReturn.taxYear,
         taxMonth = monthlyReturn.taxMonth,
         hmrcMarkGenerated = submissionDetails.hmrcMarkGenerated,
-        submittableStatus = currentReturnStatus(pollResponse),
+        submittableStatus = PollReportStatusMapper.submissionTableStatus(pollResponse),
         amendment = monthlyReturn.amendment.getOrElse("N"),
         hmrcMarkGgis = pollResponse.irMarkReceived,
         submissionRequestDate = submissionDetails.submissionRequestDate,
@@ -297,7 +309,7 @@ class MonthlyReturnPollingProcessService @Inject() (
       submissionType = submission.submissionType,
       submissionId = submission.submissionId.toString,
       govTalkRequestStatus = reportValue(submission.status),
-      currentReturnStatus = currentReturnStatus(pollResponse),
+      currentReturnStatus = PollReportStatusMapper.reportStatus(pollResponse),
       employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
       correlationId = reportValue(pollResponse.correlationId),
       agentId = dbSubmission.agentId
@@ -335,13 +347,6 @@ class MonthlyReturnPollingProcessService @Inject() (
       correlationId = notPolledCorrelationId,
       agentId = submission.agentId.getOrElse(unavailableReportValue)
     )
-
-  private def currentReturnStatus(
-    pollResponse: ChrisPollResponse
-  ): String =
-    Option(pollResponse.status)
-      .map(_.toString)
-      .getOrElse(unavailableReportValue)
 
   private def reportValue(
     value: String

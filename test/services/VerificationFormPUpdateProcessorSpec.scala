@@ -212,12 +212,33 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
     "process verification response from ChRIS when submitted with no receipt" in {
       val formpProxyConnector      = mock[FormpProxyConnector]
       val verificationResultMapper = mock[VerificationResultMapper]
-      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
+      val processor                = new VerificationFormPUpdateProcessor(
+        formpProxyConnector,
+        verificationResultMapper
+      )
+
+      val mappedResult =
+        VerificationResult(
+          resourceRef = 13L,
+          matched = Some("Y"),
+          verified = Some("N"),
+          verificationNumber = Some("V1000000007"),
+          taxTreatment = "net",
+          verifiedDate = Some(LocalDateTime.parse("2026-06-19T10:02:00"))
+        )
 
       when(
-        formpProxyConnector.updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(
-          any[HeaderCarrier]
+        verificationResultMapper.mapAll(
+          any[Seq[CisResponseSubcontractor]],
+          any[StoredVerificationContext],
+          any[LocalDateTime]
         )
+      ).thenReturn(Future.successful(Seq(mappedResult)))
+
+      when(
+        formpProxyConnector.processVerificationResponseFromChris(
+          any[ProcessVerificationResponseFromChrisRequest]
+        )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
       processor
@@ -250,18 +271,18 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
         )
         .futureValue mustBe ()
 
-      val requestCaptor =
-        org.mockito.ArgumentCaptor.forClass(classOf[UpdateVerificationSubmissionRequest])
-
-      verify(formpProxyConnector).updateVerificationSubmission(requestCaptor.capture())(
-        any[HeaderCarrier]
+      verify(verificationResultMapper).mapAll(
+        any[Seq[CisResponseSubcontractor]],
+        any[StoredVerificationContext],
+        any[LocalDateTime]
       )
 
-      requestCaptor.getValue.submittableStatus mustBe SUBMITTED_NO_RECEIPT.toString
-      requestCaptor.getValue.hmrcMarkGenerated mustBe Some("hmrc-mark")
-
-      verify(formpProxyConnector, never()).processVerificationResponseFromChris(
+      verify(formpProxyConnector).processVerificationResponseFromChris(
         any[ProcessVerificationResponseFromChrisRequest]
+      )(any[HeaderCarrier])
+
+      verify(formpProxyConnector, never()).updateVerificationSubmission(
+        any[UpdateVerificationSubmissionRequest]
       )(any[HeaderCarrier])
     }
 

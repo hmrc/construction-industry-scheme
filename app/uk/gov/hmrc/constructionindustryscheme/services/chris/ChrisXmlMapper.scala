@@ -98,8 +98,8 @@ trait ChrisXmlMapper {
 
   /** Shared parsing for stage-2 (poll) GovTalk responses. Callers supply the status mapping appropriate to their flow.
     */
-  protected def parsePoll(xml: String, now: Instant)(
-    deriveStatus: (String, Option[GovTalkError], Elem) => SubmissionStatus
+  protected def parsePoll(xml: String, hmrcMarkGenerated: String, now: Instant)(
+    deriveStatus: (String, Option[GovTalkError], Boolean) => SubmissionStatus
   ): Either[String, ChrisPollResponse] = {
     val doc            = XML.loadString(xml)
     val messageDetails = doc \\ "Header" \\ "MessageDetails"
@@ -116,8 +116,11 @@ trait ChrisXmlMapper {
                                          doc \\ "Body" \ "SuccessResponse" \ "IRmarkReceipt" \ "Signature" \ "SignedInfo" \ "Reference",
                                          "DigestValue"
                                        )
+      irMarkMatch                    = irMark.exists { value =>
+                                         value.trim.nonEmpty && value.trim == hmrcMarkGenerated.trim
+                                       }
     } yield {
-      val status                    = deriveStatus(qualifier, errOpt, doc)
+      val status                    = deriveStatus(qualifier, errOpt, irMarkMatch)
       val mappedErrOpt              = errOpt.map(GovTalkErrorMapper.map)
       val cisResponseSubcontractors = parseCisVerificationResults(doc)
 

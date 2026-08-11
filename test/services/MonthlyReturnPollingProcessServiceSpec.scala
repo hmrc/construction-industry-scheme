@@ -54,11 +54,12 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     )
   }
 
-  private val gatewayUrl       = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
-  private val testSubmissionId = 100L
-  private val testInstanceId   = "inst-1"
-  private val testTaxYear      = 2026
-  private val testTaxMonth     = 4
+  private val gatewayUrl                = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+  private val testSubmissionId          = 100L
+  private val testInstanceId            = "inst-1"
+  private val testTaxYear               = 2026
+  private val testTaxMonth              = 4
+  private val testSubmissionRequestDate = LocalDateTime.of(2026, 1, 1, 12, 0)
 
   private def makeSubmission(
     instanceId: String = testInstanceId,
@@ -96,7 +97,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     emailRecipient: Option[String] = Some("user@example.com"),
     agentId: Option[String] = None,
     status: Option[String] = Some("STARTED"),
-    submissionRequestDate: Option[LocalDateTime] = None
+    submissionRequestDate: Option[LocalDateTime] = Some(testSubmissionRequestDate)
   ): Submission =
     Submission(
       submissionId = testSubmissionId,
@@ -133,7 +134,8 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
   private def makePollResponse(
     status: SubmissionStatus,
     irMarkReceived: Option[String] = None,
-    acceptedTime: Option[String] = None
+    acceptedTime: Option[String] = None,
+    govTalkErrorStatus: Option[GovTalkErrorStatus] = None
   ): ChrisPollResponse =
     ChrisPollResponse(
       status = status,
@@ -144,7 +146,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       irMarkReceived = irMarkReceived,
       lastMessageDate = None,
       acceptedTime = acceptedTime,
-      govTalkErrorStatus = None
+      govTalkErrorStatus = govTalkErrorStatus
     )
 
   private def setupHappyPath(
@@ -152,7 +154,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
     pollResponse: ChrisPollResponse = makePollResponse(ACCEPTED)
   ): Unit = {
     when(monthlyReturnService.getMonthlyReturnForEdit(any())(any())).thenReturn(Future.successful(details))
-    when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
+    when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any(), any())(any()))
       .thenReturn(Future.successful(gatewayUrl))
     when(submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(any(), any(), any())(any()))
       .thenReturn(Future.successful(BatchChRISPollResult.Completed(pollResponse)))
@@ -182,7 +184,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
             Future.failed(new RuntimeException("getMonthlyReturnForEdit failed")),
             Future.successful(makeDetails())
           )
-        when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any())(any()))
+        when(submissionService.processMonthlyReturnGovTalkStatusCheck(any(), any(), any(), any())(any()))
           .thenReturn(Future.successful(gatewayUrl))
         when(submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(any(), any(), any())(any()))
           .thenReturn(Future.successful(BatchChRISPollResult.Completed(makePollResponse(ACCEPTED))))
@@ -212,7 +214,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         result.head.submissionId mustBe sub1.submissionId.toString
         result.head.currentReturnStatus mustBe "-"
         result.head.correlationId mustBe "(not polled)"
-//        result.head.agentId mustBe "-"
+        result.head.agentId mustBe "-"
 
         result(1).user mustBe sub2.instanceId
         result(1).submissionId mustBe sub2.submissionId.toString
@@ -224,6 +226,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         verify(submissionService, times(1))
           .processMonthlyReturnGovTalkStatusCheck(
             eqTo("inst-2"),
+            any(),
             any(),
             any()
           )(any())
@@ -274,6 +277,78 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
       }
     }
 
+    "must populate agentId in PollReportContent from dbSubmission when present" in {
+      val submission =
+        makeSubmission()
+
+      val dbSub =
+        makeDbSubmission(
+          agentId = Some("A999999")
+        )
+
+      setupHappyPath(
+        details = makeDetails(dbSubmission = dbSub),
+        pollResponse = makePollResponse(ACCEPTED)
+      )
+
+      val result =
+        service
+          .process(
+            Seq(submission),
+            startTime
+          )
+          .futureValue
+
+      result mustBe Seq(
+        PollReportContent(
+          user = submission.instanceId,
+          submissionType = submission.submissionType,
+          submissionId = submission.submissionId.toString,
+          govTalkRequestStatus = submission.status,
+          currentReturnStatus = "ACCEPTED",
+          employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
+          correlationId = "corr-123",
+          agentId = "A999999"
+        )
+      )
+    }
+
+    "must populate agentId in PollReportContent from submission when dbSubmission agentId is absent" in {
+      val submission =
+        makeSubmission().copy(agentId = Some("B111111"))
+
+      val dbSub =
+        makeDbSubmission(
+          agentId = None
+        )
+
+      setupHappyPath(
+        details = makeDetails(dbSubmission = dbSub),
+        pollResponse = makePollResponse(ACCEPTED)
+      )
+
+      val result =
+        service
+          .process(
+            Seq(submission),
+            startTime
+          )
+          .futureValue
+
+      result mustBe Seq(
+        PollReportContent(
+          user = submission.instanceId,
+          submissionType = submission.submissionType,
+          submissionId = submission.submissionId.toString,
+          govTalkRequestStatus = submission.status,
+          currentReturnStatus = "ACCEPTED",
+          employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
+          correlationId = "corr-123",
+          agentId = "B111111"
+        )
+      )
+    }
+
     "processSubmission" - {
 
       "must call getMonthlyReturnForEdit with isAmendment = false" in {
@@ -320,6 +395,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           .processMonthlyReturnGovTalkStatusCheck(
             eqTo(testInstanceId),
             eqTo(testSubmissionId.toString),
+            any(),
             any()
           )(any())
       }
@@ -391,7 +467,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 submittableStatus = "SUBMITTED",
                 amendment = "Y",
                 hmrcMarkGgis = Some("irmark-recv"),
-                submissionRequestDate = None,
+                submissionRequestDate = Some(testSubmissionRequestDate),
                 acceptedTime = None,
                 emailRecipient = Some("user@example.com"),
                 agentId = Some("agent-1"),
@@ -428,6 +504,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                 hmrcMarkGenerated = Some("irmark-gen"),
                 submittableStatus = "ACCEPTED",
                 amendment = "N",
+                submissionRequestDate = Some(testSubmissionRequestDate),
                 emailRecipient = Some("user@example.com")
               )
             )
@@ -531,6 +608,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           .processMonthlyReturnGovTalkStatusCheck(
             any(),
             any(),
+            any(),
             any()
           )(any())
 
@@ -567,6 +645,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
         when(
           submissionService.processMonthlyReturnGovTalkStatusCheck(
+            any(),
             any(),
             any(),
             any()
@@ -651,6 +730,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
 
         verify(submissionService)
           .processMonthlyReturnGovTalkStatusCheck(
+            any(),
             any(),
             any(),
             any()
@@ -859,6 +939,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
           submissionService.processMonthlyReturnGovTalkStatusCheck(
             any(),
             any(),
+            any(),
             any()
           )(any())
         ).thenReturn(Future.successful(gatewayUrl))
@@ -945,6 +1026,71 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
         verify(submissionService, never())
           .sendSuccessfulEmail(any(), any())(any())
       }
+
+      "must return FATAL_ERROR current status in report and STARTED status in submission table when ChRIS poll response is a recoverable error" in {
+        val submission =
+          makeSubmission()
+
+        val recoverableError =
+          GovTalkErrorStatus.RecoverableError(
+            errorCode = "3000",
+            errorText = "Recoverable ChRIS error"
+          )
+
+        val pollResponse =
+          makePollResponse(
+            status = STARTED,
+            govTalkErrorStatus = Some(recoverableError)
+          )
+
+        setupHappyPath(
+          pollResponse = pollResponse
+        )
+
+        val result =
+          service
+            .process(
+              Seq(submission),
+              startTime
+            )
+            .futureValue
+
+        result mustBe Seq(
+          PollReportContent(
+            user = submission.instanceId,
+            submissionType = submission.submissionType,
+            submissionId = submission.submissionId.toString,
+            govTalkRequestStatus = submission.status,
+            currentReturnStatus = "FATAL_ERROR",
+            employerReference = s"${submission.taxOfficeNumber}/${submission.taxOfficeReference}",
+            correlationId = "corr-123",
+            agentId = "-"
+          )
+        )
+
+        verify(submissionService)
+          .updateSubmission(
+            eqTo(
+              UpdateSubmissionRequest(
+                instanceId = testInstanceId,
+                taxYear = testTaxYear,
+                taxMonth = testTaxMonth,
+                hmrcMarkGenerated = Some("irmark-gen"),
+                submittableStatus = "STARTED",
+                amendment = "N",
+                hmrcMarkGgis = None,
+                submissionRequestDate = Some(testSubmissionRequestDate),
+                acceptedTime = None,
+                emailRecipient = Some("user@example.com"),
+                agentId = None,
+                govTalkResponse = Some(recoverableError)
+              )
+            )
+          )(any())
+
+        verify(submissionService, never())
+          .sendSuccessfulEmail(any(), any())(any())
+      }
     }
 
     "status mapping (AC1)" - {
@@ -979,6 +1125,7 @@ class MonthlyReturnPollingProcessServiceSpec extends SpecBase with BeforeAndAfte
                   hmrcMarkGenerated = Some("irmark-gen"),
                   submittableStatus = expectedStatusString,
                   amendment = "N",
+                  submissionRequestDate = Some(testSubmissionRequestDate),
                   emailRecipient = Some("user@example.com")
                 )
               )

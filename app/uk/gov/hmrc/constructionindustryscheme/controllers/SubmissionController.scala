@@ -336,7 +336,7 @@ class SubmissionController @Inject() (
         actualCorrelationId = res.meta.correlationId,
         pollInterval = res.meta.responseEndPoint.pollIntervalSeconds,
         pollUrl = res.meta.responseEndPoint.url,
-        gatewayURL = appConfig.chrisGatewayUrl,
+        gatewayURL = journey.gatewayUrl(appConfig),
         lastMessageDate = chrisResponseTimestamp(res),
         journey = journey,
         context = context,
@@ -378,7 +378,7 @@ class SubmissionController @Inject() (
         employerRef,
         submissionId,
         correlationId,
-        appConfig.chrisGatewayUrl,
+        journey.gatewayUrl(appConfig),
         journey,
         context,
         govTalkError

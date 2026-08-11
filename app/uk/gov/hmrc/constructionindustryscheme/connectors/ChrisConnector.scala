@@ -46,7 +46,7 @@ class ChrisConnector @Inject() (
   private val chrisCisVerifyUrl: String =
     servicesConfig.baseUrl("chris") + servicesConfig.getString("microservice.services.chris.verify-submit-url")
 
-  def pollSubmission(correlationId: String, pollUrl: String, journey: ChrisPollJourney)(using
+  def pollSubmission(correlationId: String, pollUrl: String, journey: ChrisPollJourney, hmrcMarkGenerated: String)(using
     HeaderCarrier
   ): Future[ChrisPollResponse] =
     httpClient
@@ -58,31 +58,28 @@ class ChrisConnector @Inject() (
       )
       .withBody(ChrisPollRequest(correlationId, journey).payload.toString)
       .execute[HttpResponse]
-      .flatMap { resp =>
+      .map { resp =>
         logger.info("[ChrisConnector] poll Journey:" + journey)
         logger.info("[ChrisConnector] pollSubmission request:\n" + ChrisPollRequest(correlationId, journey).payload)
         logger.info("[ChrisConnector] pollSubmission response:\n" + resp.body)
         if (is2xx(resp.status)) {
-          parsePollResponse(journey, resp.body) match {
+          parsePollResponse(journey, resp.body, hmrcMarkGenerated) match {
             case Left(err)     =>
               logger.error(
                 s"[ChrisConnector] Failed to parse 2xx polling response corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
               )
-              Future.successful(
-                ChrisPollResponse(
-                  FATAL_ERROR,
-                  correlationId,
-                  None,
-                  None,
-                  None,
-                  None,
-                  None,
-                  None,
-                  Some(GovTalkErrorStatus.OtherStatus)
-                )
+              ChrisPollResponse(
+                FATAL_ERROR,
+                correlationId,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(GovTalkErrorStatus.OtherStatus)
               )
-            case Right(parsed) =>
-              Future.successful(parsed)
+            case Right(parsed) => parsed
           }
         } else if (resp.status >= 500) {
           logger.error(
@@ -92,35 +89,31 @@ class ChrisConnector @Inject() (
             case ChrisPollJourney.Verification => Some(Json.toJson(GovTalkErrorMapper.fromHttpTimeout()))
             case _                             => None
           }
-          Future.successful(
-            ChrisPollResponse(
-              ACCEPTED,
-              correlationId,
-              None,
-              None,
-              errorOpt,
-              None,
-              None,
-              None,
-              Some(GovTalkErrorStatusClassifier.fromHttpStatus(resp.status))
-            )
+          ChrisPollResponse(
+            ACCEPTED,
+            correlationId,
+            None,
+            None,
+            errorOpt,
+            None,
+            None,
+            None,
+            Some(GovTalkErrorStatusClassifier.fromHttpStatus(resp.status))
           )
         } else {
           logger.error(
             s"[ChrisConnector] Non-2xx/Non-5xx polling corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
           )
-          Future.successful(
-            ChrisPollResponse(
-              FATAL_ERROR,
-              correlationId,
-              None,
-              None,
-              None,
-              None,
-              None,
-              None,
-              Some(GovTalkErrorStatus.OtherStatus)
-            )
+          ChrisPollResponse(
+            FATAL_ERROR,
+            correlationId,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(GovTalkErrorStatus.OtherStatus)
           )
         }
       }
@@ -145,7 +138,9 @@ class ChrisConnector @Inject() (
         )
       }
 
-  def deleteSubmission(correlationId: String, pollUrl: String)(using HeaderCarrier): Future[Unit] =
+  def deleteSubmission(correlationId: String, pollUrl: String, journey: ChrisPollJourney)(using
+    HeaderCarrier
+  ): Future[Unit] =
     httpClient
       .post(url"$pollUrl")
       .setHeader(
@@ -153,7 +148,7 @@ class ChrisConnector @Inject() (
         "Accept"        -> "application/xml",
         "CorrelationId" -> correlationId
       )
-      .withBody(ChrisDeleteRequest(correlationId).payload.toString)
+      .withBody(ChrisDeleteRequest(correlationId, journey).payload.toString)
       .execute[HttpResponse]
       .map { resp =>
         logger.info(s"[ChrisConnector] delete request sent url=$pollUrl corrId=$correlationId status=${resp.status}")
@@ -197,11 +192,12 @@ class ChrisConnector @Inject() (
 
   private def parsePollResponse(
     journey: ChrisPollJourney,
-    body: String
+    body: String,
+    hmrcMarkGenerated: String
   ): Either[String, ChrisPollResponse] =
     journey match {
-      case ChrisPollJourney.MonthlyReturn => ChrisPollXmlMapper.parse(body)
-      case ChrisPollJourney.Verification  => ChrisVerificationPollXmlMapper.parse(body)
+      case ChrisPollJourney.MonthlyReturn => ChrisPollXmlMapper.parse(body, hmrcMarkGenerated)
+      case ChrisPollJourney.Verification  => ChrisVerificationPollXmlMapper.parse(body, hmrcMarkGenerated)
     }
 
   private def handle2xxResponse(

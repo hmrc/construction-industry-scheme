@@ -405,6 +405,14 @@ class FormpProxyConnector @Inject() (
       .withBody(Json.toJson(request))
       .execute[GetSubmissionWithVerificationBatchResponse]
 
+  def getSubmissionWithVerificationBatch(
+    instanceId: String,
+    verificationBatchResourceRef: Long
+  )(implicit hc: HeaderCarrier): Future[GetSubmissionWithVerificationBatchResponse] =
+    http
+      .get(url"$base/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef")
+      .execute[GetSubmissionWithVerificationBatchResponse]
+
   def getSubcontractor(
     cisId: String,
     subbieResourceRef: Long

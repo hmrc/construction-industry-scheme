@@ -201,7 +201,7 @@ class VerificationFormPUpdateProcessor @Inject() (
   }
 
   private def isVerificationSuccess(response: ChrisPollResponse): Boolean =
-    response.status == SUBMITTED
+    response.status == SUBMITTED || response.status == SUBMITTED_NO_RECEIPT
 
   private def requiredField(
     value: Option[String],

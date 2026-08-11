@@ -46,8 +46,8 @@ import scala.xml.NodeSeq
 
 final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
-  private val submissionId       = "sub-123"
-  private val validJson: JsValue = Json.obj(
+  private val submissionId            = "sub-123"
+  private val validJson: JsValue      = Json.obj(
     "utr"                   -> "1234567890",
     "aoReference"           -> "123/AB456",
     "monthYear"             -> "2025-05",
@@ -60,6 +60,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     "informationCorrect"    -> "yes",
     "inactivity"            -> "no"
   )
+  private val monthlyReturnGatewayUrl = "http://chris.example/monthly-return-gateway"
+  private val verificationGatewayUrl  = "http://chris.example/verification-gateway"
 
   val mockAuditService: AuditService = mock[AuditService]
 
@@ -653,6 +655,79 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "error" \ "text").as[String] must include("ack persistence failed")
 
       verify(submissionService).submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
+    }
+
+    "uses monthly return ChRIS gateway URL when processing initial ack" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+
+      when(appConfig.chrisGatewayUrl).thenReturn(monthlyReturnGatewayUrl)
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+
+      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+
+      when(xmlValidator.validate(any[NodeSeq], any[Schema]))
+        .thenReturn(Success(()))
+
+      when(
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant],
+          any[ChrisPollJourney],
+          any[ChrisSubmissionContext],
+          any[SubmissionResult],
+          any[Boolean]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
+
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[ChRISSubmission])
+          val result  = mkSubmissionResult(SUBMITTED)
+
+          Future.successful(
+            result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
+          )
+        }
+
+      val request =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(request)
+
+      status(result) mustBe OK
+
+      verify(submissionService, times(1))
+        .processInitialChrisAck(
+          eqTo(EmployerReference("123", "ABC456")),
+          eqTo(submissionId),
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          eqTo(monthlyReturnGatewayUrl),
+          any[Instant],
+          eqTo(ChrisPollJourney.MonthlyReturn),
+          any[MonthlyReturnSubmissionContext],
+          any[SubmissionResult],
+          eqTo(false)
+        )(any[HeaderCarrier])
     }
   }
 
@@ -1311,13 +1386,14 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       )
     )
 
+    when(appConfig.chrisVerificationGatewayUrl).thenReturn(verificationGatewayUrl)
+
     "returns 200 with SUBMITTED when service returns SubmittedStatus" in {
       val submissionService  = mock[SubmissionService]
       val xmlValidator       = mock[XmlValidator]
       val verificationSchema = mock[Schema]
 
       when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
-      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
 
       val controller = mkController(
         submissionService = submissionService,
@@ -1366,7 +1442,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[String],
           any[Int],
           any[String],
-          eqTo("http://chris.example/gateway"),
+          eqTo("http://chris.example/verification-gateway"),
           any[Instant],
           eqTo(ChrisPollJourney.Verification),
           any[VerificationSubmissionContext],
@@ -1381,7 +1457,6 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val verificationSchema = mock[Schema]
 
       when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
-      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
 
       val controller = mkController(
         submissionService = submissionService,
@@ -1455,7 +1530,6 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val verificationSchema = mock[Schema]
 
       when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
-      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
 
       val controller = mkController(
         submissionService = submissionService,
@@ -1504,7 +1578,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[String],
           any[Int],
           any[String],
-          eqTo("http://chris.example/gateway"),
+          eqTo("http://chris.example/verification-gateway"),
           any[Instant],
           eqTo(ChrisPollJourney.Verification),
           any[VerificationSubmissionContext],
@@ -1519,7 +1593,6 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val verificationSchema = mock[Schema]
 
       when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
-      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
 
       val controller = mkController(
         submissionService = submissionService,
@@ -1568,7 +1641,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           eqTo(EmployerReference("999", "XYZ123")),
           eqTo(submissionId),
           any[String],
-          eqTo("http://chris.example/gateway"),
+          eqTo("http://chris.example/verification-gateway"),
           eqTo(ChrisPollJourney.Verification),
           any[ChrisSubmissionContext],
           any[GovTalkError]
@@ -1581,7 +1654,6 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val verificationSchema = mock[Schema]
 
       when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
-      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
 
       val controller = mkController(
         submissionService = submissionService,
@@ -1650,6 +1722,74 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       verifyNoInteractions(submissionService)
       verifyNoInteractions(xmlValidator)
+    }
+
+    "uses verification ChRIS gateway URL when processing initial ack" in {
+      val submissionService  = mock[SubmissionService]
+      val xmlValidator       = mock[XmlValidator]
+      val verificationSchema = mock[Schema]
+
+      when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(xmlValidator.validate(any[NodeSeq], eqTo(verificationSchema)))
+        .thenReturn(Success(()))
+
+      when(
+        submissionService.processInitialChrisAck(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          any[String],
+          any[Instant],
+          any[ChrisPollJourney],
+          any[ChrisSubmissionContext],
+          any[SubmissionResult],
+          any[Boolean]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
+
+      when(submissionService.submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[CisVerificationSubmission])
+          val result  = mkSubmissionResult(SUBMITTED)
+
+          Future.successful(
+            result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
+          )
+        }
+
+      val request =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-verification-to-chris")
+          .withBody(validVerificationJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitVerificationToChris(submissionId)(request)
+
+      status(result) mustBe OK
+
+      verify(submissionService, times(1))
+        .processInitialChrisAck(
+          eqTo(EmployerReference("999", "XYZ123")),
+          eqTo(submissionId),
+          any[String],
+          any[String],
+          any[Int],
+          any[String],
+          eqTo(verificationGatewayUrl),
+          any[Instant],
+          eqTo(ChrisPollJourney.Verification),
+          any[VerificationSubmissionContext],
+          any[SubmissionResult],
+          eqTo(false)
+        )(any[HeaderCarrier])
     }
   }
 

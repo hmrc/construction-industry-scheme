@@ -241,6 +241,8 @@ final class ChrisConnectorIntegrationSpec
 
   "ChrisConnector.pollSubmission" should {
 
+    val hmrcMarkGenerated = "hmrc-mark-generated"
+
     "send IR-CIS-VERIFY class in request body when journey is Verification" in {
       val correlationId = "poll-cid-verification"
       val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/verification"
@@ -273,7 +275,10 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl, Verification).futureValue
+      val result =
+        connector
+          .pollSubmission(correlationId, pollUrl, Verification, hmrcMarkGenerated)
+          .futureValue
 
       result.status mustBe ACCEPTED
       result.correlationId mustBe correlationId
@@ -323,7 +328,10 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl, journey).futureValue
+      val result =
+        connector
+          .pollSubmission(correlationId, pollUrl, journey, hmrcMarkGenerated)
+          .futureValue
 
       result.status mustBe ACCEPTED
       result.correlationId mustBe correlationId
@@ -353,6 +361,19 @@ final class ChrisConnectorIntegrationSpec
            |      <ResponseEndPoint>/final/response</ResponseEndPoint>
            |    </MessageDetails>
            |  </Header>
+           |  <Body>
+           |    <SuccessResponse>
+           |      <IRmarkReceipt>
+           |        <Signature>
+           |          <SignedInfo>
+           |            <Reference>
+           |              <DigestValue>$hmrcMarkGenerated</DigestValue>
+           |            </Reference>
+           |          </SignedInfo>
+           |        </Signature>
+           |      </IRmarkReceipt>
+           |    </SuccessResponse>
+           |  </Body>
            |</GovTalkMessage>""".stripMargin
 
       stubFor(
@@ -366,7 +387,10 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl, journey).futureValue
+      val result =
+        connector
+          .pollSubmission(correlationId, pollUrl, journey, hmrcMarkGenerated)
+          .futureValue
 
       result.status mustBe SUBMITTED
       result.correlationId mustBe correlationId
@@ -411,7 +435,10 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl, journey).futureValue
+      val result =
+        connector
+          .pollSubmission(correlationId, pollUrl, journey, hmrcMarkGenerated)
+          .futureValue
 
       result.status mustBe FATAL_ERROR
       result.correlationId mustBe correlationId
@@ -456,7 +483,10 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl, journey).futureValue
+      val result =
+        connector
+          .pollSubmission(correlationId, pollUrl, journey, hmrcMarkGenerated)
+          .futureValue
 
       result.status mustBe DEPARTMENTAL_ERROR
       result.correlationId mustBe correlationId
@@ -481,7 +511,10 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl, journey).futureValue
+      val result =
+        connector
+          .pollSubmission(correlationId, pollUrl, journey, hmrcMarkGenerated)
+          .futureValue
 
       result.status mustBe FATAL_ERROR
       result.correlationId mustBe correlationId
@@ -505,7 +538,10 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl, journey).futureValue
+      val result =
+        connector
+          .pollSubmission(correlationId, pollUrl, journey, hmrcMarkGenerated)
+          .futureValue
 
       result.status mustBe ACCEPTED
       result.correlationId mustBe correlationId
@@ -529,7 +565,10 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl, journey).futureValue
+      val result =
+        connector
+          .pollSubmission(correlationId, pollUrl, journey, hmrcMarkGenerated)
+          .futureValue
 
       result.status mustBe FATAL_ERROR
       result.correlationId mustBe correlationId
@@ -549,7 +588,10 @@ final class ChrisConnectorIntegrationSpec
           .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER))
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl, journey).futureValue
+      val result =
+        connector
+          .pollSubmission(correlationId, pollUrl, journey, hmrcMarkGenerated)
+          .futureValue
 
       result.status mustBe ACCEPTED
       result.correlationId mustBe correlationId
@@ -572,6 +614,19 @@ final class ChrisConnectorIntegrationSpec
            |      <ResponseEndPoint></ResponseEndPoint>
            |    </MessageDetails>
            |  </Header>
+           |  <Body>
+           |    <SuccessResponse>
+           |      <IRmarkReceipt>
+           |        <Signature>
+           |          <SignedInfo>
+           |            <Reference>
+           |              <DigestValue>$hmrcMarkGenerated</DigestValue>
+           |            </Reference>
+           |          </SignedInfo>
+           |        </Signature>
+           |      </IRmarkReceipt>
+           |    </SuccessResponse>
+           |  </Body>
            |</GovTalkMessage>""".stripMargin
 
       stubFor(
@@ -585,13 +640,15 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      val result = connector.pollSubmission(correlationId, pollUrl, journey).futureValue
+      val result =
+        connector
+          .pollSubmission(correlationId, pollUrl, journey, hmrcMarkGenerated)
+          .futureValue
 
       result.status mustBe SUBMITTED
       result.correlationId mustBe correlationId
       result.pollUrl mustBe None
       result.pollInterval mustBe None
-      result.lastMessageDate mustBe Some("2025-01-05T00:00:00Z")
       result.lastMessageDate mustBe Some("2025-01-05T00:00:00Z")
     }
 
@@ -625,7 +682,15 @@ final class ChrisConnectorIntegrationSpec
             )
         )
 
-        val result = connector.pollSubmission(correlationId, pollUrl, ChrisPollJourney.MonthlyReturn).futureValue
+        val result =
+          connector
+            .pollSubmission(
+              correlationId,
+              pollUrl,
+              ChrisPollJourney.MonthlyReturn,
+              hmrcMarkGenerated
+            )
+            .futureValue
 
         result.status mustBe ACCEPTED
         result.correlationId mustBe correlationId
@@ -670,7 +735,15 @@ final class ChrisConnectorIntegrationSpec
             )
         )
 
-        val result = connector.pollSubmission(correlationId, pollUrl, ChrisPollJourney.MonthlyReturn).futureValue
+        val result =
+          connector
+            .pollSubmission(
+              correlationId,
+              pollUrl,
+              ChrisPollJourney.MonthlyReturn,
+              hmrcMarkGenerated
+            )
+            .futureValue
 
         result.status mustBe STARTED
         result.correlationId mustBe correlationId
@@ -713,7 +786,15 @@ final class ChrisConnectorIntegrationSpec
             )
         )
 
-        val result = connector.pollSubmission(correlationId, pollUrl, ChrisPollJourney.MonthlyReturn).futureValue
+        val result =
+          connector
+            .pollSubmission(
+              correlationId,
+              pollUrl,
+              ChrisPollJourney.MonthlyReturn,
+              hmrcMarkGenerated
+            )
+            .futureValue
 
         result.status mustBe STARTED
         result.correlationId mustBe correlationId
@@ -725,10 +806,15 @@ final class ChrisConnectorIntegrationSpec
 
     "send delete request to the same polling url and return Unit on 200" in {
       val correlationId = "delete-cid-123"
-      val pollPath      = "/submission/ChRIS/poll/IR-CIS-CIS300MR/2"
-      val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}$pollPath?final=SUBMITTED"
+      val pollPath = "/submission/ChRIS/poll/IR-CIS-CIS300MR/2"
+      val pollUrl =
+        s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}$pollPath?final=SUBMITTED"
 
-      val expectedRequestXml = ChrisDeleteRequest(correlationId).payload.toString
+      val expectedRequestXml =
+        ChrisDeleteRequest(
+          correlationId,
+          ChrisPollJourney.MonthlyReturn
+        ).payload.toString
 
       stubFor(
         post(urlPathEqualTo(pollPath))
@@ -745,7 +831,13 @@ final class ChrisConnectorIntegrationSpec
           )
       )
 
-      connector.deleteSubmission(correlationId, pollUrl).futureValue mustBe ((): Unit)
+      connector
+        .deleteSubmission(
+          correlationId,
+          pollUrl,
+          ChrisPollJourney.MonthlyReturn
+        )
+        .futureValue mustBe ((): Unit)
 
       verify(
         postRequestedFor(urlPathEqualTo(pollPath))
@@ -753,6 +845,43 @@ final class ChrisConnectorIntegrationSpec
           .withHeader("CorrelationId", equalTo(correlationId))
           .withHeader("Content-Type", equalTo("application/xml"))
           .withHeader("Accept", equalTo("application/xml"))
+          .withRequestBody(equalToXml(expectedRequestXml))
+      )
+    }
+
+    "send verification delete request with verification GovTalk class" in {
+      val correlationId = "delete-cid-123"
+      val pollPath = "/submission/ChRIS/poll/IR-CIS-VERIFY/2"
+      val pollUrl =
+        s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}$pollPath?final=SUBMITTED"
+
+      val expectedRequestXml =
+        ChrisDeleteRequest(
+          correlationId,
+          ChrisPollJourney.Verification
+        ).payload.toString
+
+      stubFor(
+        post(urlPathEqualTo(pollPath))
+          .withQueryParam("final", equalTo("SUBMITTED"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withHeader("Content-Type", "application/xml")
+              .withBody("<GovTalkMessage/>")
+          )
+      )
+
+      connector
+        .deleteSubmission(
+          correlationId,
+          pollUrl,
+          ChrisPollJourney.Verification
+        )
+        .futureValue
+
+      verify(
+        postRequestedFor(urlPathEqualTo(pollPath))
           .withRequestBody(equalToXml(expectedRequestXml))
       )
     }
