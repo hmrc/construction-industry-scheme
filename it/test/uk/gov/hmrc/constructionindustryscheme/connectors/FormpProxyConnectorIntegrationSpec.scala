@@ -1459,7 +1459,6 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
-//  TODO: DOES NOT PASS. Need any setup with formp-proxy?
   "FormpProxyConnector getLastSubmittedVerificationBatch" should {
 
     "GET /formp-proxy/cis/verification-batch/last/:instanceId and return payload (200)" in {
@@ -1484,7 +1483,9 @@ class FormpProxyConnectorIntegrationSpec
            |    }
            |  ],
            |  "submission": {
-           |      "submissionId": 555
+           |      "submissionId": 555,
+           |      "submissionType": "VERIFICATIONS",
+           |       "schemeId": 1
            |    }
            |}
            |""".stripMargin
@@ -2703,16 +2704,17 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/submission-batch"))
           .withRequestBody(
-          equalToJson(
-            Json.toJson(request).toString(),
-            true,
-            true
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
           )
-        ).willReturn(
-          aResponse()
-            .withStatus(200)
-            .withBody(responseJson.toString())
-        )
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
       )
 
       val out =
