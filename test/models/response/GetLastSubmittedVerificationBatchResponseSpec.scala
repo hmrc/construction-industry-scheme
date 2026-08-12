@@ -74,14 +74,15 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
         verificationBatch = Some(
           VerificationBatchLastVerification(
             verificationBatchId = Some(99L),
-            verifBatchResourceRef = Some(1234567L)
+            verifBatchResourceRef = Some(1234567L),
+            verificationBatchStatus = Some("ACCEPTED")
           )
         ),
         verifications = Seq(
           VerificationLastVerification(
             verificationId = 1001L,
             verificationBatchId = Some(99L),
-            verificationResourcesRef = Some(12345),
+            verificationResourceRef = Some(12345),
             matched = Some("Y"),
             verificationNumber = Some("V0000000001"),
             taxTreatment = Some("0"),
@@ -138,7 +139,7 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
 
       (v0 \ "verificationId").as[Long] mustBe 1001L
       (v0 \ "verificationBatchId").as[Long] mustBe 99L
-      (v0 \ "verificationResourcesRef").as[Long] mustBe 12345L
+      (v0 \ "verificationResourceRef").as[Long] mustBe 12345L
       (v0 \ "matched").as[String] mustBe "Y"
       (v0 \ "verificationNumber").as[String] mustBe "V0000000001"
       (v0 \ "taxTreatment").as[String] mustBe "0"
@@ -186,14 +187,15 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
         verificationBatch = Some(
           VerificationBatchLastVerification(
             verificationBatchId = Some(99L),
-            verifBatchResourceRef = Some(1234567L)
+            verifBatchResourceRef = Some(1234567L),
+            verificationBatchStatus = Some("ACCEPTED")
           )
         ),
         verifications = Seq(
           VerificationLastVerification(
             verificationId = 1001L,
             verificationBatchId = Some(99L),
-            verificationResourcesRef = Some(12345),
+            verificationResourceRef = Some(12345),
             matched = Some("Y"),
             verificationNumber = Some("V0000000001"),
             taxTreatment = Some("0"),

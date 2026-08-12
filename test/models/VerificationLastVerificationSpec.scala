@@ -26,7 +26,7 @@ class VerificationLastVerificationSpec extends SpecBase {
       val verification = VerificationLastVerification(
         verificationId = 1001L,
         verificationBatchId = Some(99L),
-        verificationResourcesRef = Some(12345L),
+        verificationResourceRef = Some(12345L),
         matched = Some("Y"),
         verificationNumber = Some("V0000000001"),
         taxTreatment = Some("0"),
@@ -35,7 +35,7 @@ class VerificationLastVerificationSpec extends SpecBase {
       val json         = Json.toJson(verification)
       (json \ "verificationId").as[Long] mustBe 1001L
       (json \ "verificationBatchId").as[Long] mustBe 99L
-      (json \ "verificationResourcesRef").as[Long] mustBe 12345L
+      (json \ "verificationResourceRef").as[Long] mustBe 12345L
       (json \ "matched").as[String] mustBe "Y"
       (json \ "verificationNumber").as[String] mustBe "V0000000001"
       (json \ "taxTreatment").as[String] mustBe "0"
@@ -46,7 +46,7 @@ class VerificationLastVerificationSpec extends SpecBase {
         """|{ 
             |"verificationId": 1001, 
             | "verificationBatchId": 99, 
-            | "verificationResourcesRef": 12345, 
+            | "verificationResourceRef": 12345, 
             | "matched": "Y", 
             | "verificationNumber": "V0000000001", 
             | "taxTreatment": "0", 
@@ -56,7 +56,7 @@ class VerificationLastVerificationSpec extends SpecBase {
       val result = json.as[VerificationLastVerification]
       result.verificationId mustBe 1001L
       result.verificationBatchId mustBe Some(99L)
-      result.verificationResourcesRef mustBe Some(12345L)
+      result.verificationResourceRef mustBe Some(12345L)
       result.matched mustBe Some("Y")
       result.verificationNumber mustBe Some("V0000000001")
       result.taxTreatment mustBe Some("0")
@@ -67,7 +67,7 @@ class VerificationLastVerificationSpec extends SpecBase {
       val verification = VerificationLastVerification(
         verificationId = 1001L,
         verificationBatchId = Some(99L),
-        verificationResourcesRef = Some(12345L),
+        verificationResourceRef = Some(12345L),
         matched = Some("Y"),
         verificationNumber = Some("V0000000001"),
         taxTreatment = Some("0"),

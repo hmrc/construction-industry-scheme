@@ -201,14 +201,15 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
         verificationBatch = Some(
           VerificationBatchLastVerification(
             verificationBatchId = Some(99L),
-            verifBatchResourceRef = Some(1234567L)
+            verifBatchResourceRef = Some(1234567L),
+            verificationBatchStatus = Some("ACCEPTED")
           )
         ),
         verifications = Seq(
           VerificationLastVerification(
             verificationId = 1001L,
             verificationBatchId = Some(99L),
-            verificationResourcesRef = Some(12345),
+            verificationResourceRef = Some(12345),
             matched = Some("Y"),
             verificationNumber = Some("V0000000001"),
             taxTreatment = Some("0"),
