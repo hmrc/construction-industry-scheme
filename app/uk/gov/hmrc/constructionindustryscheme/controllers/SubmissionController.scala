@@ -26,15 +26,14 @@ import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.*
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, ChrisPollJourney, ChrisSubmissionContext, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkError, GovTalkErrorStatus, MonthlyReturnSubmissionContext, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult, VerificationSubmissionContextBuilder}
-import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
-import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHelper
 import uk.gov.hmrc.constructionindustryscheme.services.chris.{GovTalkErrorMapper, GovTalkErrorStatusClassifier}
-import uk.gov.hmrc.http.UpstreamErrorResponse
-import uk.gov.hmrc.constructionindustryscheme.utils.{UriHelper, XmlToJsonConvertor, XmlValidator}
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
+import uk.gov.hmrc.constructionindustryscheme.utils.{CisEnrolmentHelper, UriHelper, XmlToJsonConvertor, XmlValidator}
+import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
 import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
+import uk.gov.hmrc.play.bootstrap.http.ErrorResponse
 
 import java.time.{Clock, Instant, LocalDateTime}
 import javax.inject.Inject
@@ -392,13 +391,9 @@ class SubmissionController @Inject() (
         )
       }
       .recover { case e =>
-        logger.error(s"Failed to initialise/update GovTalk status after ChRIS$errorLabel 5xx", e)
-        InternalServerError(
-          withGovTalkError(
-            baseSubmissionResponseJson(submissionId, irMark, correlationId, "FATAL_ERROR", Some(classified)),
-            govTalkError
-          )
-        )
+        val msg = s"Failed to initialise/update GovTalk status after ChRIS$errorLabel"
+        logger.error(msg, e)
+        InternalServerError(Json.toJson(ErrorResponse(statusCode = 500, message = s"$msg: ${e.getMessage}")))
       }
   }
 

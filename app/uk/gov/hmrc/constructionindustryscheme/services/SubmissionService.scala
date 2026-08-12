@@ -30,8 +30,8 @@ import uk.gov.hmrc.http.HeaderCarrier
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
 import scala.util.Try
+import scala.util.control.NonFatal
 
 @Singleton
 class SubmissionService @Inject() (
@@ -46,8 +46,7 @@ class SubmissionService @Inject() (
 )(implicit ec: ExecutionContext)
     extends Logging {
 
-  import SubmissionService.ChrisDeletionOutcome
-  import SubmissionService.GovTalkStatusUpdate
+  import SubmissionService.{ChrisDeletionOutcome, GovTalkStatusUpdate}
 
   def createSubmission(request: CreateSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
     formpProxyConnector.createSubmission(request)
@@ -260,7 +259,7 @@ class SubmissionService @Inject() (
                       submissionId = submissionId,
                       instanceId = instanceId,
                       correlationId = correlationId,
-                      lastMessageDate = Instant.now,
+                      lastMessageDate = Instant.now(clock),
                       numPolls = 0,
                       pollInterval = 0,
                       pollUrl = "",
@@ -271,6 +270,9 @@ class SubmissionService @Inject() (
       _          <- formPSubmissionUpdateProcessorRegistry
                       .processorFor(journey)
                       .handleInitialFailure(sessionData, govTalkError)
+      _          <- updateGovTalkStatus(
+                      UpdateGovTalkStatusRequest(instanceId, submissionId, Some(LocalDateTime.now(clock)), "endState")
+                    )
     } yield ()
 
   private case class PollAndValidateResult(

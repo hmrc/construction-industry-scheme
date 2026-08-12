@@ -600,11 +600,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       status(result) mustBe INTERNAL_SERVER_ERROR
       val js = contentAsJson(result)
-      (js \ "submissionId").as[String] mustBe submissionId
-      (js \ "status").as[String] mustBe "FATAL_ERROR"
-      (js \ "error" \ "number").as[String] mustBe "xxxx"
-      (js \ "error" \ "type").as[String] mustBe "timeOut"
-      (js \ "error" \ "text").as[String] mustBe "timed out"
+      (js \ "statusCode").as[Int] mustBe 500
+      (js \ "message").as[String] must endWith("govtalk failure")
     }
 
     "returns 502 BadGateway when handling initial ChRIS response fails" in {
