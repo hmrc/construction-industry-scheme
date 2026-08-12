@@ -313,7 +313,20 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             addressLine4 = Some("Line 4"),
             country = Some("UK"),
             postcode = Some("NE1 1AA"),
-            worksReferenceNumber = Some("WRN123")
+            emailAddress = Some("test@test.com"),
+            phoneNumber = Some("1234567891"),
+            mobilePhoneNumber = Some("4545457888"),
+            worksReferenceNumber = Some("WRN123"),
+            matched = Some("Y"),
+            autoVerified = Some("N"),
+            verified = Some("Y"),
+            verificationNumber = Some("V56432233"),
+            taxTreatment = Some("standardTax"),
+            verificationDate = Some(LocalDateTime.parse("2026-07-23T10:15:30")),
+            version = Some(1),
+            updatedTaxTreatment = Some("updatedTax"),
+            lastMonthlyReturnDate = Some(LocalDateTime.parse("2026-07-23T10:15:30")),
+            pendingVerifications = Some(1)
           )
         ),
         verificationBatch = Some(
@@ -327,7 +340,13 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             verificationId = 1001L,
             verificationBatchId = Some(99L),
             subcontractorId = Some(1L),
-            verificationResourceRef = Some(1L)
+            verificationResourceRef = Some(1L),
+            subcontractorName = Some("John Smith"),
+            verificationNumber = Some("V56432233"),
+            taxTreatment = Some("standardTax"),
+            actionIndicator = Some("N"),
+            proceed = Some("Y"),
+            matched = Some("Y")
           )
         )
       )

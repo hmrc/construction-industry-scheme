@@ -26,8 +26,15 @@ import java.time.Instant
 
 final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValues {
 
-  private val corrId    = "CORR-123"
-  private val gatewayTs = "2025-01-01T00:00:00"
+  private val corrId            = "CORR-123"
+  private val gatewayTs         = "2025-01-01T00:00:00"
+  private val hmrcMarkGenerated = "test-hmrc-mark"
+
+  private def parse(xml: String) =
+    ChrisVerificationPollXmlMapper.parse(xml, hmrcMarkGenerated)
+
+  private def parse(xml: String, now: Instant) =
+    ChrisVerificationPollXmlMapper.parse(xml, hmrcMarkGenerated, now)
 
   private def headerXml(
     qualifier: String,
@@ -52,12 +59,35 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
        |""".stripMargin
   }
 
-  private def envelope(bodyInsideGovTalkMessage: String): String =
+  private def envelope(
+    bodyInsideGovTalkMessage: String,
+    digestValue: Option[String] = Some(hmrcMarkGenerated)
+  ): String = {
+    val irMarkReceipt = digestValue
+      .map(value => s"""
+           |<Body>
+           |  <SuccessResponse>
+           |    <IRmarkReceipt>
+           |      <Signature>
+           |        <SignedInfo>
+           |          <Reference>
+           |            <DigestValue>$value</DigestValue>
+           |          </Reference>
+           |        </SignedInfo>
+           |      </Signature>
+           |    </IRmarkReceipt>
+           |  </SuccessResponse>
+           |</Body>
+           |""".stripMargin)
+      .getOrElse("")
+
     s"""
        |<GovTalkMessage>
        |  $bodyInsideGovTalkMessage
+       |  $irMarkReceipt
        |</GovTalkMessage>
        |""".stripMargin
+  }
 
   "ChrisVerificationPollXmlMapper parse" - {
 
@@ -71,7 +101,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
           )
         )
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml).value
+        val res = parse(xml).value
         res.status mustBe ACCEPTED
         res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/poll/next")
@@ -84,7 +114,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
           headerXml(qualifier = "acknowledgement")
         )
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml).value
+        val res = parse(xml).value
         res.status mustBe ACCEPTED
         res.correlationId mustBe corrId
         res.pollUrl mustBe None
@@ -98,7 +128,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
           )
         )
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml).value
+        val res = parse(xml).value
         res.status mustBe ACCEPTED
       }
     }
@@ -112,7 +142,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
           )
         )
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml).value
+        val res = parse(xml).value
         res.status mustBe SUBMITTED
         res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/response/endpoint")
@@ -123,7 +153,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
           headerXml(qualifier = "response")
         )
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml).value
+        val res = parse(xml).value
         res.status mustBe SUBMITTED
         res.correlationId mustBe corrId
         res.pollUrl mustBe None
@@ -134,8 +164,30 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
           headerXml(qualifier = "RESPONSE")
         )
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml).value
+        val res = parse(xml).value
         res.status mustBe SUBMITTED
+      }
+    }
+
+    "maps a response to SUBMITTED_NO_RECEIPT" - {
+      "when IRMark is missing" in {
+        val xml = envelope(
+          headerXml(qualifier = "response"),
+          digestValue = None
+        )
+
+        val res = parse(xml).value
+        res.status mustBe SUBMITTED_NO_RECEIPT
+      }
+
+      "when IRMark does not match" in {
+        val xml = envelope(
+          headerXml(qualifier = "response"),
+          digestValue = Some("different-hmrc-mark")
+        )
+
+        val res = parse(xml).value
+        res.status mustBe SUBMITTED_NO_RECEIPT
       }
     }
 
@@ -163,7 +215,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
              |</GovTalkMessage>
              |""".stripMargin
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml).value
+        val res = parse(xml).value
         res.status mustBe DEPARTMENTAL_ERROR
         res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/business/error")
@@ -191,7 +243,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
              |</GovTalkMessage>
              |""".stripMargin
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml).value
+        val res = parse(xml).value
         res.status mustBe DEPARTMENTAL_ERROR
       }
 
@@ -218,7 +270,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
              |</GovTalkMessage>
              |""".stripMargin
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml).value
+        val res = parse(xml).value
         res.status mustBe DEPARTMENTAL_ERROR
         res.pollUrl mustBe Some("/fatal/3000")
       }
@@ -243,7 +295,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
                |""".stripMargin
           )
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml).value
+        val res = parse(xml).value
         res.status mustBe FATAL_ERROR
       }
 
@@ -267,7 +319,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
                |""".stripMargin
           )
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml).value
+        val res = parse(xml).value
         res.status mustBe FATAL_ERROR
       }
 
@@ -294,13 +346,13 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
              |</GovTalkMessage>
              |""".stripMargin
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml).value
+        val res = parse(xml).value
         res.status mustBe FATAL_ERROR
         res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/error/endpoint")
       }
 
-      "IRMark mismatch (error 2021/business) maps to SUBMITTED_NO_RECEIPT" in {
+      "IRMark mismatch error 2021 maps to DEPARTMENTAL_ERROR" in {
         val xml =
           s"""<GovTalkMessage>
              |  <Header>
@@ -337,8 +389,8 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
              |</GovTalkMessage>
              |""".stripMargin
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml).value
-        res.status mustBe SUBMITTED_NO_RECEIPT
+        val res = parse(xml).value
+        res.status mustBe DEPARTMENTAL_ERROR
         res.correlationId mustBe corrId
       }
 
@@ -364,7 +416,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
              |</GovTalkMessage>
              |""".stripMargin
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml).value
+        val res = parse(xml).value
         res.status mustBe FATAL_ERROR
       }
     }
@@ -377,7 +429,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
         )
       )
 
-      val res = ChrisVerificationPollXmlMapper.parse(xml).value
+      val res = parse(xml).value
       res.status mustBe FATAL_ERROR
       res.correlationId mustBe corrId
       res.pollUrl mustBe Some("/unknown")
@@ -396,7 +448,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
              |</GovTalkMessage>
              |""".stripMargin
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml)
+        val res = parse(xml)
         res.isLeft mustBe true
         res.left.value must include("Missing mandatory field: Qualifier")
       }
@@ -413,7 +465,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
             |</GovTalkMessage>
             |""".stripMargin
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml)
+        val res = parse(xml)
         res.isLeft mustBe true
         res.left.value must include("Missing mandatory field: CorrelationID")
       }
@@ -438,7 +490,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
              |</GovTalkMessage>
              |""".stripMargin
 
-        val res = ChrisVerificationPollXmlMapper.parse(xml)
+        val res = parse(xml)
         res.isLeft mustBe true
         res.left.value must include("GovTalkErrors/Error/Number")
       }
@@ -455,7 +507,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
         )
       )
 
-      val res = ChrisVerificationPollXmlMapper.parse(xml, fixedNow).value
+      val res = parse(xml, fixedNow).value
       res.status mustBe SUBMITTED
       res.lastMessageDate mustBe Some("2026-03-23T12:00:00Z")
     }
@@ -469,7 +521,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
         )
       )
 
-      val res = ChrisVerificationPollXmlMapper.parse(xml).value
+      val res = parse(xml).value
       res.status mustBe SUBMITTED
       res.lastMessageDate mustBe Some("2025-01-01T00:00:00Z")
     }
@@ -483,7 +535,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
         )
       )
 
-      val res = ChrisVerificationPollXmlMapper.parse(xml)
+      val res = parse(xml)
       res.isLeft mustBe true
       res.left.value must include("Failed to parse GatewayTimestamp 'not-a-timestamp'")
     }
