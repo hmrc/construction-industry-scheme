@@ -1357,12 +1357,16 @@ class FormpProxyConnectorIntegrationSpec
            |      "name": "david"
            |    },
            |  "verificationBatch": {
-           |      "verificationBatchId": 99
+           |      "verificationBatchId": 99,
+           |      "status": "SUBMITTED"
            |    },
            |  "verifications": [
            |    {
            |      "verificationId": 1001,
            |      "matched": "N",
+           |      "verificationNumber": "V0000000001",
+           |      "actionIndicator": "VERIFY",
+           |      "proceed": "Y",
            |      "verificationResourceRef": 10
            |    }
            |  ],
@@ -1392,9 +1396,14 @@ class FormpProxyConnectorIntegrationSpec
       (outJson \ "scheme").\("name").as[String] mustBe "david"
 
       (outJson \ "verificationBatch").\("verificationBatchId").as[Long] mustBe 99L
+      (outJson \ "verificationBatch" \ "status").as[String] mustBe "SUBMITTED"
+
       (outJson \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L
       (outJson \ "verifications")(0).\("matched").as[String] mustBe "N"
       (outJson \ "verifications")(0).\("verificationResourceRef").as[Long] mustBe 10L
+      (outJson \ "verifications")(0).\("verificationNumber").as[String] mustBe "V0000000001"
+      (outJson \ "verifications")(0).\("actionIndicator").as[String] mustBe "VERIFY"
+      (outJson \ "verifications")(0).\("proceed").as[String] mustBe "Y"
 
       (outJson \ "submission").\("submissionId").as[Long] mustBe 555L
       (outJson \ "monthlyReturn").\("monthlyReturnId").as[Long] mustBe 777L
