@@ -171,6 +171,117 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
     }
   }
 
+  "getLastVerificationBatch" - {
+
+    val instanceId = "abc-123"
+    val url        = s"/cis/verification-batch/last/$instanceId"
+
+    "returns 200 OK with JSON body when service succeeds (full payload)" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      val response = GetLastSubmittedVerificationBatchResponse(
+        scheme = Some(
+          ContractorSchemeLastVerification(
+            accountsOfficeReference = Some("123PA00123456"),
+            utr = Some("1111111111"),
+            name = Some("ABC Construction Ltd"),
+            emailAddress = Some("ops@example.com")
+          )
+        ),
+        subcontractors = Seq(
+          SubcontractorLastVerification(
+            subcontractorId = 1L,
+            subcontractorType = Some("soletrader"),
+            subbieResourceRef = Some(10L),
+            utr = Some("1111111111")
+          )
+        ),
+        verificationBatch = Some(
+          VerificationBatchLastVerification(
+            verificationBatchId = Some(99L),
+            verifBatchResourceRef = Some(1234567L)
+          )
+        ),
+        verifications = Seq(
+          VerificationLastVerification(
+            verificationId = 1001L,
+            verificationBatchId = Some(99L),
+            verificationResourcesRef = Some(12345),
+            matched = Some("Y"),
+            verificationNumber = Some("V0000000001"),
+            taxTreatment = Some("0"),
+            subcontractorName = Some("James Star")
+          )
+        ),
+        submission = Some(
+          Submission(
+            submissionId = 1234L,
+            submissionType = "CT600",
+            activeObjectId = Some(98765L),
+            status = Some("ACCEPTED"),
+            hmrcMarkGenerated = Some("20260811115300"),
+            hmrcMarkGgis = Some("ABC123XYZ456"),
+            emailRecipient = Some("test@example.com"),
+            acceptedTime = Some("2026-08-11T11:53:00"),
+            createDate = Some(LocalDateTime.of(2026, 8, 11, 11, 45, 0)),
+            lastUpdate = Some(LocalDateTime.of(2026, 8, 11, 11, 53, 0)),
+            schemeId = 456789L,
+            agentId = Some("AGENT123"),
+            l_Migrated = Some(0L),
+            submissionRequestDate = Some(LocalDateTime.of(2026, 8, 11, 11, 50, 0)),
+            govTalkErrorCode = None,
+            govTalkErrorType = None,
+            govTalkErrorMessage = None
+          )
+        )
+      )
+
+      when(verificationService.getLastSubmittedVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, url)
+      val result                                   = controller.getLastSubmittedVerificationBatch(instanceId)(req)
+
+      status(result) mustBe OK
+      contentType(result) mustBe Some(JSON)
+
+      val json = contentAsJson(result)
+
+      (json \ "scheme").\("name").as[String] mustBe "ABC Construction Ltd"
+
+      (json \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
+
+      (json \ "verificationBatch").\("verificationBatchId").as[Long] mustBe 99L
+      (json \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L
+
+      (json \ "submission").\("submissionId").as[Long] mustBe 1234L
+
+      json mustBe Json.toJson(response)
+
+      verify(verificationService).getLastSubmittedVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+    }
+
+    "returns 502 BadGateway with error body when service fails" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      when(verificationService.getLastSubmittedVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, url)
+      val result                                   = controller.getLastSubmittedVerificationBatch(instanceId)(req)
+
+      status(result) mustBe BAD_GATEWAY
+      contentType(result) mustBe Some(JSON)
+      contentAsJson(result) mustBe Json.obj("message" -> "get-last-verification-batch-failed")
+
+      verify(verificationService).getLastSubmittedVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+    }
+  }
+
   "getCurrentVerificationBatch" - {
 
     val instanceId = "abc-123"

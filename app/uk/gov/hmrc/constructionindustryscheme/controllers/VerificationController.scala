@@ -47,6 +47,17 @@ class VerificationController @Inject() (
         }
     }
 
+  def getLastSubmittedVerificationBatch(instanceId: String): Action[AnyContent] =
+    authorise.async { implicit request =>
+      verificationService
+        .getLastSubmittedVerificationBatch(instanceId)
+        .map(res => Ok(Json.toJson(res)))
+        .recover { case ex =>
+          logger.error(s"[getLastVerificationBatch] formp-proxy get failed (instanceId=$instanceId)", ex)
+          BadGateway(Json.obj("message" -> "get-last-verification-batch-failed"))
+        }
+    }
+
   def getCurrentVerificationBatch(instanceId: String): Action[AnyContent] =
     authorise.async { implicit request =>
       verificationService
