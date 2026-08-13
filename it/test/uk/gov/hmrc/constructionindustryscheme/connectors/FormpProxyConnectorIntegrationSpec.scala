@@ -1987,18 +1987,19 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
-  "FormpProxyConnector proceedInsufficientVerification" should {
+  "FormpProxyConnector proceedVerification" should {
 
-    "POST /formp-proxy/cis/verification/proceed-with-insufficient-data and return payload (204)" in {
+    "POST /formp-proxy/cis/verification/proceed and return payload (204)" in {
       val req = ProceedVerificationProxyRequest(
         instanceId = "1",
         verificationBatchResourceRef = 10L,
         verificationResourceRef = 9L,
-        proceed = "Y"
+        proceed = "Y",
+        taxTreatment = Some("NotKnown")
       )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/verification/proceed-with-insufficient-data"))
+        post(urlPathEqualTo("/formp-proxy/cis/verification/proceed"))
           .withHeader("Content-Type", containing("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(OK))
@@ -2012,11 +2013,12 @@ class FormpProxyConnectorIntegrationSpec
         instanceId = "1",
         verificationBatchResourceRef = 10L,
         verificationResourceRef = 9L,
-        proceed = "Y"
+        proceed = "Y",
+        taxTreatment = Some("NotKnown")
       )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/verification/proceed-with-insufficient-data"))
+        post(urlPathEqualTo("/formp-proxy/cis/verification/proceed"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -2734,16 +2736,17 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/submission-batch"))
           .withRequestBody(
-          equalToJson(
-            Json.toJson(request).toString(),
-            true,
-            true
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
           )
-        ).willReturn(
-          aResponse()
-            .withStatus(200)
-            .withBody(responseJson.toString())
-        )
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
       )
 
       val out =
