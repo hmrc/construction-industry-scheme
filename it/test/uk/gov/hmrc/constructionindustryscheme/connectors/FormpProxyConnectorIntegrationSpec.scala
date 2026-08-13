@@ -1990,7 +1990,7 @@ class FormpProxyConnectorIntegrationSpec
   "FormpProxyConnector proceedInsufficientVerification" should {
 
     "POST /formp-proxy/cis/verification/proceed-with-insufficient-data and return payload (204)" in {
-      val req = ProceedInsufficientVerificationRequest(
+      val req = ProceedVerificationProxyRequest(
         instanceId = "1",
         verificationBatchResourceRef = 10L,
         verificationResourceRef = 9L,
@@ -2004,11 +2004,11 @@ class FormpProxyConnectorIntegrationSpec
           .willReturn(aResponse().withStatus(OK))
       )
 
-      connector.proceedInsufficientVerification(req).futureValue mustBe ((): Unit)
+      connector.proceedVerification(req).futureValue mustBe ((): Unit)
     }
 
     "fail the future when upstream returns a non-2xx (e.g. 500)" in {
-      val req = ProceedInsufficientVerificationRequest(
+      val req = ProceedVerificationProxyRequest(
         instanceId = "1",
         verificationBatchResourceRef = 10L,
         verificationResourceRef = 9L,
@@ -2025,7 +2025,7 @@ class FormpProxyConnectorIntegrationSpec
           )
       )
 
-      val ex = connector.proceedInsufficientVerification(req).failed.futureValue
+      val ex = connector.proceedVerification(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
