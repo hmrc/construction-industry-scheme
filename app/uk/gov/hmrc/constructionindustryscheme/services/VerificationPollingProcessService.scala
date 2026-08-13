@@ -18,7 +18,8 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
-import uk.gov.hmrc.constructionindustryscheme.models.{BatchChRISPollResult, PollReportContent}
+import uk.gov.hmrc.constructionindustryscheme.models.{BatchChRISPollResult, DEPARTMENTAL_ERROR, PollReportContent, SUBMITTED, SUBMITTED_NO_RECEIPT, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.SubcontractorVerificationEmailRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, VerificationSubmissionToPoll}
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -31,6 +32,13 @@ class VerificationPollingProcessService @Inject() (
   submissionService: SubmissionService
 )(implicit ec: ExecutionContext)
     extends Logging {
+
+  private val emailEligibleStatuses: Set[SubmissionStatus] =
+    Set(
+      SUBMITTED,
+      SUBMITTED_NO_RECEIPT,
+      DEPARTMENTAL_ERROR
+    )
 
   private val unavailableReportValue =
     "-"
@@ -55,9 +63,17 @@ class VerificationPollingProcessService @Inject() (
 
           batchPollResult <- submissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
                                submissionId = submissionId,
-                               pollUrl = session.pollUrl,
+                               pollUrl = session.sessionData.pollUrl,
                                journey = Verification
                              )
+
+          _ <- batchPollResult match {
+                 case BatchChRISPollResult.Completed(response) =>
+                   sendVerificationEmailIfRequired(response.status, session.emailRecipient)
+
+                 case BatchChRISPollResult.PostProcessingFailed(_, _) =>
+                   Future.unit
+               }
 
           reportContent =
             batchPollResult match {
@@ -83,6 +99,32 @@ class VerificationPollingProcessService @Inject() (
         }
       }
   }
+
+  private def sendVerificationEmailIfRequired(
+    status: SubmissionStatus,
+    emailRecipient: Option[String]
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    (emailEligibleStatuses.contains(status), emailRecipient) match {
+      case (false, _) =>
+        logger.info(
+          s"[VerificationPollingProcessService][sendVerificationEmailIfRequired] Not sending email as status $status is not eligible for email"
+        )
+        Future.unit
+
+      case (true, None) =>
+        logger.warn(
+          s"[VerificationPollingProcessService][sendVerificationEmailIfRequired] Not sending email as no email recipient is available"
+        )
+        Future.unit
+
+      case (true, Some(email)) =>
+        logger.info(
+          s"[VerificationPollingProcessService][sendVerificationEmailIfRequired] Sending verification email for status $status"
+        )
+        submissionService.sendEmailForVerification(
+          SubcontractorVerificationEmailRequest(email)
+        )
+    }
 
   private def toPollReportContent(
     submission: VerificationSubmissionToPoll,

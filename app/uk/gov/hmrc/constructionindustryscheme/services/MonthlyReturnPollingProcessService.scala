@@ -18,8 +18,9 @@ package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{GetMonthlyReturnForEditRequest, SendSuccessEmailRequest, UpdateSubmissionRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, MonthlyReturnSubmissionToPoll}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
+import uk.gov.hmrc.constructionindustryscheme.repositories.StoredMonthlyReturnContext
 import uk.gov.hmrc.constructionindustryscheme.services.chris.PollReportStatusMapper
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -137,11 +138,20 @@ class MonthlyReturnPollingProcessService @Inject() (
     monthlyReturn: MonthlyReturn,
     submissionDetails: Submission,
     startTime: Long
-  )(implicit hc: HeaderCarrier): Future[PollReportContent] =
+  )(implicit hc: HeaderCarrier): Future[PollReportContent] = {
+    val context = StoredMonthlyReturnContext(
+      submissionDetails.hmrcMarkGenerated.getOrElse(
+        throw new RuntimeException(s"No hmrcMarkGenerated found in DB for instanceId=${submission.instanceId}")
+      ),
+      submissionDetails.submissionRequestDate.getOrElse(
+        throw new RuntimeException(s"No submissionRequestDate found in DB for instanceId=${submission.instanceId}")
+      )
+    )
     submissionService
       .processMonthlyReturnGovTalkStatusCheck(
         submission.instanceId,
-        submission.submissionId.toString
+        submission.submissionId.toString,
+        context
       )
       .flatMap { gatewayUrl =>
         pollSubmissionAndBuildReportContent(
@@ -166,6 +176,7 @@ class MonthlyReturnPollingProcessService @Inject() (
           dbSubmission = submissionDetails
         )
       }
+  }
 
   private def pollSubmissionAndBuildReportContent(
     submission: MonthlyReturnSubmissionToPoll,
