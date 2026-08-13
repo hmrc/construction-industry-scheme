@@ -88,6 +88,7 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
             taxTreatment = Some("0"),
             subcontractorName = Some("James Star"),
             subcontractorId = Some(22L)
+            actionIndicator = Some("verify")
           )
         ),
         submission = Some(
@@ -176,6 +177,7 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
             taxTreatment = Some("0"),
             subcontractorName = Some("James Star"),
             subcontractorId = Some(22L)
+            actionIndicator = Some("verify")
           )
         ),
         submission = Some(

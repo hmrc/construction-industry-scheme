@@ -26,7 +26,8 @@ case class VerificationLastVerification(
   verificationNumber: Option[String],
   taxTreatment: Option[String],
   subcontractorName: Option[String],
-  subcontractorId: Option[Long]
+  subcontractorId: Option[Long],
+  actionIndicator: Option[String]
 )
 
 object VerificationLastVerification {

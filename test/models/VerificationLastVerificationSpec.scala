@@ -32,6 +32,7 @@ class VerificationLastVerificationSpec extends SpecBase {
         taxTreatment = Some("0"),
         subcontractorName = Some("James Star"),
         subcontractorId = Some(22L)
+        actionIndicator = Some("verify")
       )
       val json         = Json.toJson(verification)
       (json \ "verificationId").as[Long] mustBe 1001L
@@ -42,6 +43,7 @@ class VerificationLastVerificationSpec extends SpecBase {
       (json \ "taxTreatment").as[String] mustBe "0"
       (json \ "subcontractorName").as[String] mustBe "James Star"
       (json \ "subcontractorId").as[Long] mustBe 22L
+      (json \ "actionIndicator").as[String] mustBe "verify"
     }
     "deserialize from JSON correctly" in {
       val json   = Json.parse(
@@ -54,6 +56,7 @@ class VerificationLastVerificationSpec extends SpecBase {
             | "taxTreatment": "0", 
             | "subcontractorName": "James Star",
             | "subcontractorId": 22
+            | "actionIndicator": "verify"
           |}""".stripMargin
       )
       val result = json.as[VerificationLastVerification]
@@ -65,6 +68,7 @@ class VerificationLastVerificationSpec extends SpecBase {
       result.taxTreatment mustBe Some("0")
       result.subcontractorName mustBe Some("James Star")
       result.subcontractorId mustBe Some(22L)
+      result.actionIndicator mustBe Some("verify")
     }
 
     "round-trip serialize and deserialize correctly" in {
@@ -77,6 +81,7 @@ class VerificationLastVerificationSpec extends SpecBase {
         taxTreatment = Some("0"),
         subcontractorName = Some("James Star"),
         subcontractorId = Some(22L)
+        actionIndicator = Some("verify")
       )
       val json         = Json.toJson(verification)
       val result       = json.as[VerificationLastVerification]
