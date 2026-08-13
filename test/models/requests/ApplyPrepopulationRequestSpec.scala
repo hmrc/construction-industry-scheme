@@ -20,7 +20,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.must.Matchers
 import play.api.libs.json.*
 import uk.gov.hmrc.constructionindustryscheme.models.{Company, SoleTrader}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.ApplyPrepopulationRequest
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, PrepopulationSubcontractor}
 
 class ApplyPrepopulationRequestSpec extends AnyWordSpec with Matchers {
 
@@ -40,7 +40,32 @@ class ApplyPrepopulationRequestSpec extends AnyWordSpec with Matchers {
         prePopCount = 1,
         prePopSuccessful = "Y",
         version = 2,
-        subcontractorTypes = Seq(SoleTrader, Company)
+        subcontractors = Seq(
+          PrepopulationSubcontractor(
+            subcontractorType = SoleTrader,
+            utr = "1111111111",
+            verificationNumber = Some("V1"),
+            firstName = Some("A"),
+            secondName = Some("B"),
+            surname = Some("C"),
+            tradingName = None,
+            partnershipTradingName = None,
+            verified = Some("Y"),
+            autoVerified = Some("Y")
+          ),
+          PrepopulationSubcontractor(
+            subcontractorType = Company,
+            utr = "2222222222",
+            verificationNumber = Some("V2"),
+            firstName = None,
+            secondName = None,
+            surname = None,
+            tradingName = Some("Acme"),
+            partnershipTradingName = None,
+            verified = Some("Y"),
+            autoVerified = Some("Y")
+          )
+        )
       )
 
       Json.toJson(model).as[ApplyPrepopulationRequest] mustBe model
@@ -59,7 +84,7 @@ class ApplyPrepopulationRequestSpec extends AnyWordSpec with Matchers {
           |  "prePopCount": 1,
           |  "prePopSuccessful": "N",
           |  "version": 0,
-          |  "subcontractorTypes": []
+          |  "subcontractors": []
           |}
           |""".stripMargin
       )
@@ -69,6 +94,7 @@ class ApplyPrepopulationRequestSpec extends AnyWordSpec with Matchers {
       model.utr mustBe None
       model.emailAddress mustBe None
       model.displayWelcomePage mustBe None
+      model.subcontractors mustBe empty
     }
   }
 }
