@@ -17,11 +17,9 @@
 package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.Logging
-import uk.gov.hmrc.auth.core.Enrolments
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisSubmissionRequest
 import uk.gov.hmrc.constructionindustryscheme.services.chris.xml.CisReturnXmlBuilder
 import uk.gov.hmrc.constructionindustryscheme.services.chris.{EnvelopeProfile, GovTalkEnvelopeBuilder}
-import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHelper.*
 import uk.gov.hmrc.constructionindustryscheme.utils.IrMarkProcessor.UpdatedPayloadWithIrMark
 
 import java.time.format.DateTimeFormatter
@@ -42,25 +40,9 @@ object ChRISSubmission extends Logging {
   private val isoDateFmt                = DateTimeFormatter.ISO_LOCAL_DATE
   private val prettyPrinter             = new PrettyPrinter(120, 4)
 
-  private def buildChrisSubmission(
-    request: ChrisSubmissionRequest,
-    enrolments: Enrolments
-  ): ChRISSubmission = {
+  def buildPayload(request: ChrisSubmissionRequest): ChRISSubmission = {
     val correlationId    = UUID.randomUUID().toString.replace("-", "").toUpperCase
     val gatewayTimestamp = LocalDateTime.now(ZoneOffset.UTC).format(gatewayTimestampFormatter)
-
-    val (taxOfficeNumber, taxOfficeReference) =
-      if (!request.isAgent) {
-        extractTaxOfficeIdentifiers(enrolments)
-          .getOrElse(
-            throw new IllegalStateException(
-              "Missing CIS enrolment identifiers (TaxOfficeNumber/TaxOfficeReference) in HMRC-CIS-ORG"
-            )
-          )
-      } else {
-        // TODO this circumvents auth checks?
-        (request.clientTaxOfficeNumber, request.clientTaxOfficeRef)
-      }
 
     val periodEnd = parsePeriodEnd(request.monthYear)
     val sender    = if (request.isAgent) "Agent" else "Company"
@@ -70,8 +52,8 @@ object ChRISSubmission extends Logging {
     val envelopeXml: Elem =
       GovTalkEnvelopeBuilder.build(
         profile = EnvelopeProfile.Return,
-        taxOfficeNumber = taxOfficeNumber,
-        taxOfficeReference = taxOfficeReference,
+        taxOfficeNumber = request.clientTaxOfficeNumber,
+        taxOfficeReference = request.clientTaxOfficeRef,
         correlationId = correlationId,
         gatewayTimestamp = gatewayTimestamp,
         periodEnd = periodEnd,
@@ -105,10 +87,4 @@ object ChRISSubmission extends Logging {
     }
     ym.atDay(5).format(isoDateFmt)
   }
-
-  def buildPayload(
-    submission: ChrisSubmissionRequest,
-    request: AuthenticatedRequest[_]
-  ): ChRISSubmission =
-    buildChrisSubmission(submission, request.enrolments)
 }

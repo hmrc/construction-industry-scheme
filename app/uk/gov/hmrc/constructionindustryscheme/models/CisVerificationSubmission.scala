@@ -17,15 +17,13 @@
 package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.Logging
-import uk.gov.hmrc.auth.core.Enrolments
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisVerificationRequest
 import uk.gov.hmrc.constructionindustryscheme.services.chris.xml.CisVerificationRequestXmlBuilder
 import uk.gov.hmrc.constructionindustryscheme.services.chris.{EnvelopeProfile, GovTalkEnvelopeBuilder}
-import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHelper.extractTaxOfficeIdentifiers
 import uk.gov.hmrc.constructionindustryscheme.utils.IrMarkProcessor.UpdatedPayloadWithIrMark
 
+import java.time.*
 import java.time.format.DateTimeFormatter
-import java.time.{Clock, LocalDate, LocalDateTime, YearMonth, ZoneId}
 import java.util.UUID
 import scala.xml.{Elem, PrettyPrinter}
 
@@ -42,11 +40,7 @@ object CisVerificationSubmission extends Logging {
   private val isoDateFmt                = DateTimeFormatter.ISO_LOCAL_DATE
   private val prettyPrinter             = new PrettyPrinter(120, 4)
 
-  def buildPayload(
-    request: ChrisVerificationRequest,
-    enrolments: Enrolments,
-    clock: Clock = Clock.systemUTC()
-  ): CisVerificationSubmission = {
+  def buildPayload(request: ChrisVerificationRequest, clock: Clock = Clock.systemUTC()): CisVerificationSubmission = {
 
     val correlationId    = UUID.randomUUID().toString.replace("-", "").toUpperCase
     val gatewayTimestamp = LocalDateTime.now(ZoneId.of("Europe/London")).format(gatewayTimestampFormatter)
@@ -63,24 +57,11 @@ object CisVerificationSubmission extends Logging {
         subs = request.subcontractors
       )
 
-    val (taxOfficeNumber, taxOfficeReference) =
-      if (!request.isAgent) {
-        extractTaxOfficeIdentifiers(enrolments)
-          .getOrElse(
-            throw new IllegalStateException(
-              "Missing CIS enrolment identifiers (TaxOfficeNumber/TaxOfficeReference) in HMRC-CIS-ORG"
-            )
-          )
-      } else {
-        // TODO this circumvents auth checks?
-        (request.clientTaxOfficeNumber, request.clientTaxOfficeRef)
-      }
-
     val envelopeXml: Elem =
       GovTalkEnvelopeBuilder.build(
         profile = EnvelopeProfile.Verification,
-        taxOfficeNumber = taxOfficeNumber,
-        taxOfficeReference = taxOfficeReference,
+        taxOfficeNumber = request.clientTaxOfficeNumber,
+        taxOfficeReference = request.clientTaxOfficeRef,
         correlationId = correlationId,
         gatewayTimestamp = gatewayTimestamp,
         periodEnd = periodEnd,

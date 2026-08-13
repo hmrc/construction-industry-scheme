@@ -35,6 +35,5 @@ case class ChrisSubmissionRequest(
 )
 
 object ChrisSubmissionRequest {
-  implicit val returnTypeFormat: Format[MonthlyReturnType] = MonthlyReturnType.format
-  implicit val format: OFormat[ChrisSubmissionRequest]     = Json.format[ChrisSubmissionRequest]
+  given OFormat[ChrisSubmissionRequest] = Json.format
 }

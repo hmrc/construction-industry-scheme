@@ -219,9 +219,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val response = stubPollScenario(
         s = s,
         status = SUBMITTED,
-        deleteResult = Some(Future.unit),
-        expectedProtocolStatus = "endState",
-        expectedEndState = Some(s.expectedEndStateDate)
+        deleteResult = Some(Future.unit)
       )
 
       s.service
@@ -245,8 +243,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val response = stubPollScenario(
         s = s,
         status = SUBMITTED,
-        deleteResult = Some(Future.failed(new RuntimeException("delete failed"))),
-        expectedEndState = None
+        deleteResult = Some(Future.failed(new RuntimeException("delete failed")))
       )
 
       s.service
@@ -268,8 +265,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val s        = setup
       val response = stubPollScenario(
         s = s,
-        status = ACCEPTED,
-        expectedEndState = None
+        status = ACCEPTED
       )
 
       s.service
@@ -1794,9 +1790,7 @@ final class SubmissionServiceSpec extends SpecBase {
   private def stubPollScenario(
     s: Setup,
     status: SubmissionStatus,
-    deleteResult: Option[Future[Unit]] = None,
-    expectedProtocolStatus: String = "dataPoll",
-    expectedEndState: Option[LocalDateTime] = None
+    deleteResult: Option[Future[Unit]] = None
   ): ChrisPollResponse = {
     import s.*
 
