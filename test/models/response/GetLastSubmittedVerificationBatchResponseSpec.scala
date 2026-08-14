@@ -75,7 +75,7 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
           VerificationBatchLastVerification(
             verificationBatchId = Some(99L),
             verifBatchResourceRef = Some(1234567L),
-            verificationBatchStatus = Some("ACCEPTED")
+            status = Some("ACCEPTED")
           )
         ),
         verifications = Seq(
@@ -188,7 +188,7 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
           VerificationBatchLastVerification(
             verificationBatchId = Some(99L),
             verifBatchResourceRef = Some(1234567L),
-            verificationBatchStatus = Some("ACCEPTED")
+            status = Some("ACCEPTED")
           )
         ),
         verifications = Seq(

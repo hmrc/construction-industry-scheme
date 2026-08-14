@@ -26,12 +26,12 @@ class VerificationBatchLastVerificationSpec extends SpecBase {
       val verificationBatch = VerificationBatchLastVerification(
         verificationBatchId = Some(99L),
         verifBatchResourceRef = Some(1234567L),
-        verificationBatchStatus = Some("ACCEPTED")
+        status = Some("ACCEPTED")
       )
       val json              = Json.toJson(verificationBatch)
       (json \ "verificationBatchId").as[Long] mustBe 99L
       (json \ "verifBatchResourceRef").as[Long] mustBe 1234567L
-      (json \ "verificationBatchStatus").as[String] mustBe "ACCEPTED"
+      (json \ "status").as[String] mustBe "ACCEPTED"
     }
 
     "deserialize from JSON correctly" in {
@@ -50,7 +50,7 @@ class VerificationBatchLastVerificationSpec extends SpecBase {
       val verificationBatch = VerificationBatchLastVerification(
         verificationBatchId = Some(99L),
         verifBatchResourceRef = Some(1234567L),
-        verificationBatchStatus = Some("ACCEPTED")
+        status = Some("ACCEPTED")
       )
       val json              = Json.toJson(verificationBatch)
       val result            = json.as[VerificationBatchLastVerification]
