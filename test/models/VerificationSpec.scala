@@ -79,7 +79,7 @@ final class VerificationSpec extends AnyWordSpec with Matchers {
     "write model to JSON" in {
       val model = Verification(
         verificationId = 1001L,
-        matched = None,
+        matched = Some("N"),
         verificationNumber = Some("V0000000001"),
         taxTreatment = None,
         verificationBatchId = Some(99L),
@@ -92,12 +92,11 @@ final class VerificationSpec extends AnyWordSpec with Matchers {
       val json = Json.toJson(model)
 
       (json \ "verificationId").as[Long] mustBe 1001L
-      (json \ "matched").toOption mustBe None
+      (json \ "matched").as[String] mustBe "N"
       (json \ "verificationNumber").as[String] mustBe "V0000000001"
       (json \ "taxTreatment").toOption mustBe None
       (json \ "verificationBatchId").as[Long] mustBe 99L
       (json \ "subcontractorId").as[Long] mustBe 1L
-      (json \ "verificationResourceRef").as[Long] mustBe 10L
       (json \ "actionIndicator").as[String] mustBe "VERIFY"
       (json \ "proceed").as[String] mustBe "Y"
       (json \ "verificationResourceRef").as[Long] mustBe 10L

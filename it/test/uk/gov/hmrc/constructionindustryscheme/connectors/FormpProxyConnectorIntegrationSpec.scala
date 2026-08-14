@@ -1409,6 +1409,52 @@ class FormpProxyConnectorIntegrationSpec
       (outJson \ "monthlyReturn").\("monthlyReturnId").as[Long] mustBe 777L
     }
 
+    "return payload with an unmatched verification and no verificationResourceRef (200)" in {
+
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "subcontractors": [],
+           |  "scheme": {
+           |      "name": "david"
+           |    },
+           |  "verificationBatch": {
+           |      "verificationBatchId": 100,
+           |      "status": "PENDING"
+           |    },
+           |  "verifications": [
+           |    {
+           |      "verificationId": 1002,
+           |      "matched": "N",
+           |      "verificationNumber": "V0000000002",
+           |      "actionIndicator": "MATCH",
+           |      "proceed": "N"
+           |    }
+           |  ]
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/verification-batch/newest/$instanceId"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val outJson = Json.toJson(connector.getNewestVerificationBatch(instanceId).futureValue)
+
+      (outJson \ "verificationBatch" \ "status").as[String] mustBe "PENDING"
+
+      (outJson \ "verifications")(0).\("verificationId").as[Long] mustBe 1002L
+      (outJson \ "verifications")(0).\("matched").as[String] mustBe "N"
+      (outJson \ "verifications")(0).\("actionIndicator").as[String] mustBe "MATCH"
+      (outJson \ "verifications")(0).\("proceed").as[String] mustBe "N"
+      (outJson \ "verifications")(0).\("verificationResourceRef").toOption mustBe None
+    }
+
     "fail the future when upstream returns a non-2xx (e.g. 500)" in {
       stubFor(
         get(urlPathEqualTo(s"/formp-proxy/cis/verification-batch/newest/$instanceId"))
