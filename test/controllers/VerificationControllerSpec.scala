@@ -209,6 +209,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
           VerificationLastVerification(
             verificationId = 1001L,
             verificationBatchId = Some(99L),
+            subcontractorId = Some(1L),
             verificationResourceRef = Some(12345),
             matched = Some("Y"),
             verificationNumber = Some("V0000000001"),
