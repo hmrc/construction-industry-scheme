@@ -217,24 +217,11 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
           )
         ),
         submission = Some(
-          Submission(
+          SubmissionNewVerification(
             submissionId = 1234L,
-            submissionType = "CT600",
             activeObjectId = Some(98765L),
             status = Some("ACCEPTED"),
-            hmrcMarkGenerated = Some("20260811115300"),
-            hmrcMarkGgis = Some("ABC123XYZ456"),
-            emailRecipient = Some("test@example.com"),
-            acceptedTime = Some("2026-08-11T11:53:00"),
-            createDate = Some(LocalDateTime.of(2026, 8, 11, 11, 45, 0)),
-            lastUpdate = Some(LocalDateTime.of(2026, 8, 11, 11, 53, 0)),
-            schemeId = 456789L,
-            agentId = Some("AGENT123"),
-            l_Migrated = Some(0L),
-            submissionRequestDate = Some(LocalDateTime.of(2026, 8, 11, 11, 50, 0)),
-            govTalkErrorCode = None,
-            govTalkErrorType = None,
-            govTalkErrorMessage = None
+            submissionRequestDate = Some(LocalDateTime.of(2026, 8, 11, 11, 50, 0))
           )
         )
       )
@@ -277,7 +264,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       status(result) mustBe BAD_GATEWAY
       contentType(result) mustBe Some(JSON)
-      contentAsJson(result) mustBe Json.obj("message" -> "get-last-verification-batch-failed")
+      contentAsJson(result) mustBe Json.obj("message" -> "get-last-submitted-verification-batch-failed")
 
       verify(verificationService).getLastSubmittedVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
     }

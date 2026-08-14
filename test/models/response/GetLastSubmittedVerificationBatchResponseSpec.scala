@@ -90,26 +90,13 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
           )
         ),
         submission = Some(
-          Submission(
+          SubmissionNewVerification(
             submissionId = 1234L,
-            submissionType = "CT600",
             activeObjectId = Some(98765L),
             status = Some("ACCEPTED"),
-            hmrcMarkGenerated = Some("20260811115300"),
-            hmrcMarkGgis = Some("ABC123XYZ456"),
-            emailRecipient = Some("test@example.com"),
-            acceptedTime = Some("2026-08-11T11:53:00"),
-            createDate = Some(LocalDateTime.of(2026, 8, 11, 11, 45, 0)),
-            lastUpdate = Some(LocalDateTime.of(2026, 8, 11, 11, 53, 0)),
-            schemeId = 456789L,
-            agentId = Some("AGENT123"),
-            l_Migrated = Some(0L),
             submissionRequestDate = Some(
               LocalDateTime.of(2026, 8, 11, 11, 50, 0)
-            ),
-            govTalkErrorCode = None,
-            govTalkErrorType = None,
-            govTalkErrorMessage = None
+            )
           )
         )
       )
@@ -148,22 +135,9 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
       val subm0 = json \ "submission"
 
       (subm0 \ "submissionId").as[Long] mustBe 1234L
-      (subm0 \ "submissionType").as[String] mustBe "CT600"
       (subm0 \ "activeObjectId").as[Long] mustBe 98765L
       (subm0 \ "status").as[String] mustBe "ACCEPTED"
-      (subm0 \ "hmrcMarkGenerated").as[String] mustBe "20260811115300"
-      (subm0 \ "hmrcMarkGgis").as[String] mustBe "ABC123XYZ456"
-      (subm0 \ "emailRecipient").as[String] mustBe "test@example.com"
-      (subm0 \ "acceptedTime").as[String] mustBe "2026-08-11T11:53:00"
-      (subm0 \ "createDate").as[String] mustBe "2026-08-11T11:45:00"
-      (subm0 \ "lastUpdate").as[String] mustBe "2026-08-11T11:53:00"
-      (subm0 \ "schemeId").as[Long] mustBe 456789L
-      (subm0 \ "agentId").as[String] mustBe "AGENT123"
-      (subm0 \ "l_Migrated").as[Long] mustBe 0L
       (subm0 \ "submissionRequestDate").as[String] mustBe "2026-08-11T11:50:00"
-      (subm0 \ "govTalkErrorCode").toOption mustBe None
-      (subm0 \ "govTalkErrorType").toOption mustBe None
-      (subm0 \ "govTalkErrorMessage").toOption mustBe None
     }
 
     "round-trip (model -> json -> model) without losing data" in {
@@ -203,26 +177,13 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
           )
         ),
         submission = Some(
-          Submission(
+          SubmissionNewVerification(
             submissionId = 1234L,
-            submissionType = "CT600",
             activeObjectId = Some(98765L),
             status = Some("ACCEPTED"),
-            hmrcMarkGenerated = Some("20260811115300"),
-            hmrcMarkGgis = Some("ABC123XYZ456"),
-            emailRecipient = Some("test@example.com"),
-            acceptedTime = Some("2026-08-11T11:53:00"),
-            createDate = Some(LocalDateTime.of(2026, 8, 11, 11, 45, 0)),
-            lastUpdate = Some(LocalDateTime.of(2026, 8, 11, 11, 53, 0)),
-            schemeId = 456789L,
-            agentId = Some("AGENT123"),
-            l_Migrated = Some(0L),
             submissionRequestDate = Some(
               LocalDateTime.of(2026, 8, 11, 11, 50, 0)
-            ),
-            govTalkErrorCode = None,
-            govTalkErrorType = None,
-            govTalkErrorMessage = None
+            )
           )
         )
       )
