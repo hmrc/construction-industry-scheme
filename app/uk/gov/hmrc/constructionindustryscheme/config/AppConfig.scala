@@ -79,4 +79,6 @@ class AppConfig @Inject() (
   val batchPollerJobLockTtl: Duration = Duration(
     config.get[String]("schedules.batch-poller-job.lockTtl").replaceAll("_", " ")
   )
+
+  val internalAuthToken: String = config.get[String]("internal-auth.token")
 }

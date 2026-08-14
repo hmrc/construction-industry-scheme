@@ -39,6 +39,8 @@ trait ApplicationWithWiremock
 
   lazy val wireMock = new WireMock
 
+  val internalAuthToken: String = "test-internal-auth-token"
+
   val extraConfig: Map[String, Any] =
     Map[String, Any](
       "microservice.services.auth.host"                  -> WireMockConstants.stubHost,
@@ -52,11 +54,15 @@ trait ApplicationWithWiremock
       "microservice.services.rds-datacache-proxy.port"   -> WireMockConstants.stubPort,
       "microservice.services.formp-proxy.host"           -> WireMockConstants.stubHost,
       "microservice.services.formp-proxy.port"           -> WireMockConstants.stubPort,
+      "microservice.services.internal-auth.host"         -> WireMockConstants.stubHost,
+      "microservice.services.internal-auth.port"         -> WireMockConstants.stubPort,
       "microservice.services.email.host"                 -> WireMockConstants.stubHost,
       "microservice.services.email.port"                 -> WireMockConstants.stubPort,
       "microservice.services.client-exchange-proxy.host" -> WireMockConstants.stubHost,
       "microservice.services.client-exchange-proxy.port" -> WireMockConstants.stubPort,
-      "schedules.batch-poller-job.enabled"               -> false
+      "schedules.batch-poller-job.enabled"               -> false,
+      "internal-auth.token"                              -> internalAuthToken,
+      "internal-auth.initialise.enabled"                 -> false
     )
 
   override lazy val app: Application = new GuiceApplicationBuilder()
