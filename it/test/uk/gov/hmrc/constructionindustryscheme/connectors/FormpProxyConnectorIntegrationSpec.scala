@@ -2690,16 +2690,17 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/submission-batch"))
           .withRequestBody(
-          equalToJson(
-            Json.toJson(request).toString(),
-            true,
-            true
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
           )
-        ).willReturn(
-          aResponse()
-            .withStatus(200)
-            .withBody(responseJson.toString())
-        )
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
       )
 
       val out =
@@ -2904,6 +2905,46 @@ class FormpProxyConnectorIntegrationSpec
 
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_GATEWAY
+    }
+  }
+
+  "FormpProxyConnector deleteVerification" should {
+
+    "POST /formp-proxy/cis/verification/delete and return payload (204)" in {
+      val req = DeleteVerificationRequest(
+        instanceId = "1",
+        verificationResourceRef = 9L
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/delete"))
+          .withHeader("Content-Type", containing("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(OK))
+      )
+
+      connector.deleteVerification(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail the future when upstream returns a non-2xx (e.g. 500)" in {
+      val req = DeleteVerificationRequest(
+        instanceId = "1",
+        verificationResourceRef = 9L
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/delete"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("""{"message":"boom"}""")
+          )
+      )
+
+      val ex = connector.deleteVerification(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
 }
