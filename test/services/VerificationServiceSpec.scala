@@ -336,4 +336,34 @@ final class VerificationServiceSpec extends SpecBase {
       service.getSubmittedVerifications(request).failed.futureValue.getMessage must include("boom")
     }
   }
+
+  "VerificationService#deleteVerification" - {
+
+    val request = DeleteVerificationRequest(
+      instanceId = "1",
+      verificationResourceRef = 9L
+    )
+
+    "delegates to FormpProxyConnector and returns response" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.deleteVerification(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.deleteVerification(request).futureValue mustBe ()
+
+      verify(connector).deleteVerification(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.deleteVerification(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.deleteVerification(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
 }
