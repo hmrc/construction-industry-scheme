@@ -171,7 +171,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
     }
   }
 
-  "getLastVerificationBatch" - {
+  "getLastSubmittedVerificationBatch" - {
 
     val instanceId = "abc-123"
     val url        = s"/cis/verification-batch/last/$instanceId"

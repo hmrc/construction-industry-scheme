@@ -53,8 +53,8 @@ class VerificationController @Inject() (
         .getLastSubmittedVerificationBatch(instanceId)
         .map(res => Ok(Json.toJson(res)))
         .recover { case ex =>
-          logger.error(s"[getLastVerificationBatch] formp-proxy get failed (instanceId=$instanceId)", ex)
-          BadGateway(Json.obj("message" -> "get-last-verification-batch-failed"))
+          logger.error(s"[getLastSubmittedVerificationBatch] formp-proxy get failed (instanceId=$instanceId)", ex)
+          BadGateway(Json.obj("message" -> "get-last-submitted-verification-batch-failed"))
         }
     }
 
