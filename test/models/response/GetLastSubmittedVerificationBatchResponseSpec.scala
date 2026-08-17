@@ -82,13 +82,12 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
           VerificationLastVerification(
             verificationId = 1001L,
             verificationBatchId = Some(99L),
-            subcontractorId = Some(1L),
             verificationResourceRef = Some(12345),
             matched = Some("Y"),
             verificationNumber = Some("V0000000001"),
             taxTreatment = Some("0"),
             subcontractorName = Some("James Star"),
-            subcontractorId = Some(22L)
+            subcontractorId = Some(22L),
             actionIndicator = Some("verify")
           )
         ),
@@ -172,13 +171,12 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
           VerificationLastVerification(
             verificationId = 1001L,
             verificationBatchId = Some(99L),
-            subcontractorId = Some(1L),
             verificationResourceRef = Some(12345),
             matched = Some("Y"),
             verificationNumber = Some("V0000000001"),
             taxTreatment = Some("0"),
             subcontractorName = Some("James Star"),
-            subcontractorId = Some(22L)
+            subcontractorId = Some(22L),
             actionIndicator = Some("verify")
           )
         ),

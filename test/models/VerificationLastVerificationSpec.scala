@@ -26,19 +26,17 @@ class VerificationLastVerificationSpec extends SpecBase {
       val verification = VerificationLastVerification(
         verificationId = 1001L,
         verificationBatchId = Some(99L),
-        subcontractorId = Some(1L),
         verificationResourceRef = Some(12345L),
         matched = Some("Y"),
         verificationNumber = Some("V0000000001"),
         taxTreatment = Some("0"),
         subcontractorName = Some("James Star"),
-        subcontractorId = Some(22L)
+        subcontractorId = Some(22L),
         actionIndicator = Some("verify")
       )
       val json         = Json.toJson(verification)
       (json \ "verificationId").as[Long] mustBe 1001L
       (json \ "verificationBatchId").as[Long] mustBe 99L
-      (json \ "subcontractorId").as[Long] mustBe 1L
       (json \ "verificationResourceRef").as[Long] mustBe 12345L
       (json \ "matched").as[String] mustBe "Y"
       (json \ "verificationNumber").as[String] mustBe "V0000000001"
@@ -52,20 +50,18 @@ class VerificationLastVerificationSpec extends SpecBase {
         """|{ 
             |"verificationId": 1001, 
             | "verificationBatchId": 99,
-            | "subcontractorId": 1,
             | "verificationResourceRef": 12345, 
             | "matched": "Y", 
             | "verificationNumber": "V0000000001", 
             | "taxTreatment": "0", 
             | "subcontractorName": "James Star",
-            | "subcontractorId": 22
+            | "subcontractorId": 22,
             | "actionIndicator": "verify"
           |}""".stripMargin
       )
       val result = json.as[VerificationLastVerification]
       result.verificationId mustBe 1001L
       result.verificationBatchId mustBe Some(99L)
-      result.subcontractorId mustBe Some(1L)
       result.verificationResourceRef mustBe Some(12345L)
       result.matched mustBe Some("Y")
       result.verificationNumber mustBe Some("V0000000001")
@@ -79,13 +75,12 @@ class VerificationLastVerificationSpec extends SpecBase {
       val verification = VerificationLastVerification(
         verificationId = 1001L,
         verificationBatchId = Some(99L),
-        subcontractorId = Some(1L),
         verificationResourceRef = Some(12345L),
         matched = Some("Y"),
         verificationNumber = Some("V0000000001"),
         taxTreatment = Some("0"),
         subcontractorName = Some("James Star"),
-        subcontractorId = Some(22L)
+        subcontractorId = Some(22L),
         actionIndicator = Some("verify")
       )
       val json         = Json.toJson(verification)

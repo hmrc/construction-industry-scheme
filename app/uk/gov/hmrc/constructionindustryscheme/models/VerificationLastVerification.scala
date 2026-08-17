@@ -21,7 +21,6 @@ import play.api.libs.json.{Json, OFormat}
 case class VerificationLastVerification(
   verificationId: Long,
   verificationBatchId: Option[Long],
-  subcontractorId: Option[Long],
   verificationResourceRef: Option[Long],
   matched: Option[String],
   verificationNumber: Option[String],
