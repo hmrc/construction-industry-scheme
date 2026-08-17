@@ -73,7 +73,7 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
         ),
         verificationBatch = Some(
           VerificationBatchLastVerification(
-            verificationBatchId = Some(99L),
+            verificationBatchId = 99L,
             verifBatchResourceRef = Some(1234567L),
             status = Some("ACCEPTED")
           )
@@ -86,7 +86,8 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
             matched = Some("Y"),
             verificationNumber = Some("V0000000001"),
             taxTreatment = Some("0"),
-            subcontractorName = Some("James Star")
+            subcontractorName = Some("James Star"),
+            subcontractorId = Some(22L)
           )
         ),
         submission = Some(
@@ -160,7 +161,7 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
         ),
         verificationBatch = Some(
           VerificationBatchLastVerification(
-            verificationBatchId = Some(99L),
+            verificationBatchId = 99L,
             verifBatchResourceRef = Some(1234567L),
             status = Some("ACCEPTED")
           )
@@ -173,7 +174,8 @@ final class GetLastSubmittedVerificationBatchResponseSpec extends AnyWordSpec wi
             matched = Some("Y"),
             verificationNumber = Some("V0000000001"),
             taxTreatment = Some("0"),
-            subcontractorName = Some("James Star")
+            subcontractorName = Some("James Star"),
+            subcontractorId = Some(22L)
           )
         ),
         submission = Some(

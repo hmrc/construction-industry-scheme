@@ -200,7 +200,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
         ),
         verificationBatch = Some(
           VerificationBatchLastVerification(
-            verificationBatchId = Some(99L),
+            verificationBatchId = 99L,
             verifBatchResourceRef = Some(1234567L),
             status = Some("ACCEPTED")
           )
@@ -213,7 +213,8 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             matched = Some("Y"),
             verificationNumber = Some("V0000000001"),
             taxTreatment = Some("0"),
-            subcontractorName = Some("James Star")
+            subcontractorName = Some("James Star"),
+            subcontractorId = Some(22L)
           )
         ),
         submission = Some(

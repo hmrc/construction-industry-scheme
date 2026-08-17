@@ -25,7 +25,8 @@ case class VerificationLastVerification(
   matched: Option[String],
   verificationNumber: Option[String],
   taxTreatment: Option[String],
-  subcontractorName: Option[String]
+  subcontractorName: Option[String],
+  subcontractorId: Option[Long]
 )
 
 object VerificationLastVerification {

@@ -24,7 +24,7 @@ class VerificationBatchLastVerificationSpec extends SpecBase {
   "VerificationBatchLastVerification" - {
     "serialize to JSON correctly" in {
       val verificationBatch = VerificationBatchLastVerification(
-        verificationBatchId = Some(99L),
+        verificationBatchId = 99L,
         verifBatchResourceRef = Some(1234567L),
         status = Some("ACCEPTED")
       )
@@ -42,13 +42,13 @@ class VerificationBatchLastVerificationSpec extends SpecBase {
           |}""".stripMargin
       )
       val result = json.as[VerificationBatchLastVerification]
-      result.verificationBatchId mustBe Some(99L)
+      result.verificationBatchId mustBe 99L
       result.verifBatchResourceRef mustBe Some(1234567L)
     }
 
     "round-trip serialize and deserialize correctly" in {
       val verificationBatch = VerificationBatchLastVerification(
-        verificationBatchId = Some(99L),
+        verificationBatchId = 99L,
         verifBatchResourceRef = Some(1234567L),
         status = Some("ACCEPTED")
       )
