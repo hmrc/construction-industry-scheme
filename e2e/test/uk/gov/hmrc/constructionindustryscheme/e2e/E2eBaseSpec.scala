@@ -41,14 +41,12 @@ abstract class E2eBaseSpec extends AnyFunSuite with Matchers {
     val submissionId = s"e2e-${mode.label}-${s.ton}-${System.currentTimeMillis()}-${Random.nextInt(100000)}"
     val sessionId    = s"session-$submissionId"
 
-    val (tokenEnrolment, bodyTon, bodyTor, isAgent) = mode match {
-      case Mode.Enrolment   => (Some(s.ton -> s.tor), "123", "EZ00100", false)
-      case Mode.Agent       => (Some("123" -> "EZ00100"), s.ton, s.tor, true)
-      case Mode.NoEnrolment => (None, "123", "EZ00100", false)
-    }
+    val tokenEnrolment = mode match
+      case Mode.Enrolment => Some(s.ton -> s.tor)
+      case Mode.Agent     => Some("123" -> "EZ00100")
 
     val token  = AuthLoginApi.bearerToken(tokenEnrolment)
-    val submit = BackendClient.submitVerification(submissionId, isAgent, bodyTon, bodyTor, token, sessionId)
+    val submit = BackendClient.submitVerification(submissionId, mode == Mode.Agent, s.ton, s.tor, token, sessionId)
 
     withClue(s"submit response body: ${submit.body}\n") {
       submit.status shouldBe s.expectSubmitHttp

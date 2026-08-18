@@ -106,7 +106,8 @@ object Scenarios {
 
   val agent: Seq[Scenario] = Seq(
     Scenario("123", "EZ00100", "happy path (success on poll)", 202, Some("ACCEPTED"), Some("SUBMITTED")),
-    Scenario("500", "EZ00100", "F18 s1: ChRIS 500 + taxpayer 500 on failure leg", 500, Some("FATAL_ERROR"), None),
+    // TODO Re-enable this scenario as part of DTR-7959, with the FormP 500 Wire Mocked.
+    //Scenario("500", "EZ00100", "F18 s1: ChRIS 500 + FormP 500 on failure leg", 500, None, None),
     Scenario("502", "EZ00100", "F18 s1: ChRIS HTTP 502 on submit", 200, Some("FATAL_ERROR"), None),
     Scenario("503", "EZ00100", "F18 s1: ChRIS HTTP 503 on submit", 200, Some("FATAL_ERROR"), None),
     Scenario("779", "EZ00125", "F18 s2: immediate FATAL_ERROR from ChRIS", 200, Some("FATAL_ERROR"), None),
@@ -150,7 +151,4 @@ object Scenarios {
     Scenario("777", "EZ00100", "SUBMITTED_NO_RECEIPT on poll", 202, Some("ACCEPTED"), Some("SUBMITTED_NO_RECEIPT")),
     Scenario("778", "EZ00100", "forever-pending ack (poll succeeds)", 202, Some("ACCEPTED"), Some("SUBMITTED"))
   ) ++ connectionAbortRows
-
-  val noEnrolment: Scenario =
-    Scenario("123", "EZ00100", "isAgent=false without HMRC-CIS-ORG -> 500", 500, None, None)
 }

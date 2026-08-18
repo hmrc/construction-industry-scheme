@@ -16,9 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.e2e
 
-/** Enrolment mode (isAgent=false): the scenario TaxOfficeNumber travels in the HMRC-CIS-ORG enrolment of the bearer
-  * token and must be passed down by the backend into the ChRIS XML.
-  */
+/** Request body param isAgent=false */
 class EnrolmentModeE2eSpec extends E2eBaseSpec {
   Scenarios.enrolment.foreach { s =>
     test(s"[enrolment] TON=${s.ton} ${s.label}")(runScenario(Mode.Enrolment, s))

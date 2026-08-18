@@ -19,7 +19,6 @@ package uk.gov.hmrc.constructionindustryscheme.e2e
 enum Mode(val label: String) {
   case Enrolment extends Mode("enrolment")
   case Agent extends Mode("agent")
-  case NoEnrolment extends Mode("no-enrolment")
 }
 
 /** One row of the scenario matrix (a row of the bash ENROLMENT_SCENARIOS / AGENT_SCENARIOS tables).

@@ -16,8 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.e2e
 
-/** Agent mode (isAgent=true): the scenario TaxOfficeNumber travels in the request body (clientTaxOfficeNumber)
-  */
+/** Request body param isAgent=true */
 class AgentModeE2eSpec extends E2eBaseSpec {
   Scenarios.agent.foreach { s =>
     test(s"[agent] TON=${s.ton} ${s.label}")(runScenario(Mode.Agent, s))
