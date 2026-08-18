@@ -63,3 +63,5 @@ POST          /verification/submitted-verifications                      uk.gov.
 GET           /journey-handoffs/:journeyType/:id                         uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.get(journeyType: String, id: String)
 POST          /journey-handoffs/:journeyType                             uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.create(journeyType: String)
 DELETE        /journey-handoffs/:journeyType/:id                         uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.delete(journeyType: String, id: String)
+
+POST          /contractor-details/update                                 uk.gov.hmrc.constructionindustryscheme.controllers.ContractorDetailsController.updateContractorDetails()
