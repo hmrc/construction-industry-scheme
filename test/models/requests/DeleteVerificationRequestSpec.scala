@@ -27,8 +27,8 @@ class DeleteVerificationRequestSpec extends AnyFreeSpec with Matchers {
 
     "read from JSON correctly" in {
       val json = Json.obj(
-        "instanceId"               -> "abc-123",
-        "verificationResourceRef"  -> 98765L
+        "instanceId"              -> "abc-123",
+        "verificationResourceRef" -> 98765L
       )
 
       json.as[DeleteVerificationRequest] mustBe DeleteVerificationRequest(
@@ -44,8 +44,8 @@ class DeleteVerificationRequestSpec extends AnyFreeSpec with Matchers {
       )
 
       Json.toJson(model) mustBe Json.obj(
-        "instanceId"               -> "abc-123",
-        "verificationResourceRef"  -> 98765L
+        "instanceId"              -> "abc-123",
+        "verificationResourceRef" -> 98765L
       )
     }
   }
