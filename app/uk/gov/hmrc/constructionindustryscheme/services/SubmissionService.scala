@@ -462,7 +462,9 @@ class SubmissionService @Inject() (
       case (ChrisPollJourney.Verification, SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR) =>
         emailRecipient match {
           case Some(email) =>
-            logger.info(s"[SubmissionService][sendVerificationEmailIfRequired] Sending email because status is = $status")
+            logger.info(
+              s"[SubmissionService][sendVerificationEmailIfRequired] Sending email because status is = $status"
+            )
             sendEmailForVerification(SubcontractorVerificationEmailRequest(email))
           case None        =>
             logger.warn(
@@ -473,7 +475,9 @@ class SubmissionService @Inject() (
         }
 
       case _ =>
-        logger.warn( s"[SubmissionService][sendVerificationEmailIfRequired] Not sending email; status $status is ineligible for sending email")
+        logger.warn(
+          s"[SubmissionService][sendVerificationEmailIfRequired] Not sending email; status $status is ineligible for sending email"
+        )
         Future.unit
     }
 
