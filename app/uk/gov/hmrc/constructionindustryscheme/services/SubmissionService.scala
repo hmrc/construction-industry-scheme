@@ -469,7 +469,7 @@ class SubmissionService @Inject() (
           case None        =>
             logger.warn(
               s"[SubmissionService][sendVerificationEmailIfRequired] No emailRecipient for verification " +
-                s"submissionId=$submissionId, skipping email"
+                s"submissionId=$submissionId, skipping email; status $status"
             )
             Future.unit
         }
