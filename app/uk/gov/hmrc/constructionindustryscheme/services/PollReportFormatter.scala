@@ -29,25 +29,20 @@ object PollReportFormatter {
     value: PollReportContent => String
   )
 
-  private val Indent: String =
-    "    "
-
   private val ColumnSeparator: String =
-    " "
+    " | "
+
+  private val RowStart: String =
+    "| "
+
+  private val RowEnd: String =
+    " |"
 
   private val Ellipsis: String =
     "..."
 
-  private val SectionSeparator: String =
-    "=========================================================================================================================================================================="
-
-  private val Underline: String =
-    "    ----------------------------------------------------------------------------------------------------------------------------------------------------------------------"
-
-  private val DateTimeFormatter: DateTimeFormatter =
-    java.time.format.DateTimeFormatter.ofPattern(
-      "dd-MM-yy HH:mm:ss"
-    )
+  private val ReportDateTimeFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("dd-MM-yy HH:mm:ss")
 
   private val Columns: Seq[Column] =
     Seq(
@@ -94,28 +89,25 @@ object PollReportFormatter {
     )
 
   private val Header: String =
-    Indent +
-      Columns
-        .map { column =>
-          formatField(
-            column.heading,
-            column.width
-          )
-        }
-        .mkString(ColumnSeparator)
+    formatColumns(_.heading)
+
+  private val Underline: String =
+    "-" * Header.length
+
+  private val SectionSeparator: String =
+    "=" * Header.length
 
   def format(
     reportContent: Seq[PollReportContent],
     generatedAt: LocalDateTime
   ): String = {
-
     val rows =
       reportContent.map(formatRow)
 
-    (
+    val reportLines =
       Seq(
         SectionSeparator,
-        s"BATCH POLLING RESULTS FOR ${generatedAt.format(DateTimeFormatter)}",
+        s"BATCH POLLING RESULTS FOR ${generatedAt.format(ReportDateTimeFormatter)}",
         Header,
         Underline
       ) ++
@@ -125,32 +117,43 @@ object PollReportFormatter {
           Underline,
           SectionSeparator
         )
-    ).mkString(System.lineSeparator())
+
+    reportLines.mkString(System.lineSeparator())
   }
 
   private def formatRow(
     content: PollReportContent
   ): String =
-    Indent +
+    formatColumns(_.value(content))
+
+  private def formatColumns(
+    value: Column => String
+  ): String =
+    RowStart +
       Columns
         .map { column =>
           formatField(
-            column.value(content),
+            value(column),
             column.width
           )
         }
-        .mkString(ColumnSeparator)
+        .mkString(ColumnSeparator) +
+      RowEnd
 
   private def formatField(
     value: String,
     width: Int
   ): String = {
+    val sanitisedValue =
+      Option(value)
+        .getOrElse("")
+        .replaceAll("[\\r\\n\\t]", " ")
 
     val displayValue =
-      if (value.length > width) {
-        value.take(width - Ellipsis.length) + Ellipsis
+      if (sanitisedValue.length > width) {
+        sanitisedValue.take(width - Ellipsis.length) + Ellipsis
       } else {
-        value
+        sanitisedValue
       }
 
     displayValue.padTo(width, ' ')
