@@ -147,7 +147,7 @@ object PollReportFormatter {
     val sanitisedValue =
       Option(value)
         .getOrElse("")
-        .replaceAll("[\\r\\n\\t]", " ")
+        .replaceAll("[\\x00-\\x1F]", " ")
 
     val displayValue =
       if (sanitisedValue.length > width) {

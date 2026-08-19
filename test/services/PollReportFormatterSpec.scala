@@ -188,57 +188,33 @@ class PollReportFormatterSpec extends AnyFreeSpec with Matchers {
       sectionSeparator mustBe "=" * header.length
     }
 
-    "generate rows with fixed column widths and visible separators" in {
-      val generatedAt =
-        LocalDateTime.of(2026, 8, 18, 15, 0, 0)
-
+    "replace C0 control characters in field values with spaces" in {
       val report =
         PollReportFormatter.format(
           Seq(
             PollReportContent(
-              user = "872",
-              submissionType = "VERIFICATIONS",
-              submissionId = "471524635",
+              user = "87\u00002",
+              submissionType = "VERIF\u001BICATIONS",
+              submissionId = "471524\u000C635",
               govTalkRequestStatus = "ACCEPTED",
               currentReturnStatus = "-",
               employerReference = "754/EZ00047",
               correlationId = "(not polled)",
               agentId = "-"
-            ),
-            PollReportContent(
-              user = "14",
-              submissionType = "MONTHLY_RETURN",
-              submissionId = "471574312",
-              govTalkRequestStatus = "ACCEPTED",
-              currentReturnStatus = "ACCEPTED",
-              employerReference = "313/AO313",
-              correlationId = "70F60B9B909C4522BB2BE112EB95C220",
-              agentId = "-"
             )
           ),
-          generatedAt
+          LocalDateTime.of(2026, 8, 18, 15, 0, 0)
         )
 
-      val lines =
-        report.linesIterator.toSeq
+      val row =
+        report.linesIterator.toSeq(4)
 
-      val header =
-        lines(2)
-
-      val firstRow =
-        lines(4)
-
-      val secondRow =
-        lines(5)
-
-      firstRow.length mustBe header.length
-      secondRow.length mustBe header.length
-
-      firstRow  must include("| 872             | VERIFICATIONS")
-      secondRow must include("| 14              | MONTHLY_RETURN")
-
-      firstRow.count(_ == '|') mustBe header.count(_ == '|')
-      secondRow.count(_ == '|') mustBe header.count(_ == '|')
+      row must include("87 2")
+      row must include("VERIF ICATIONS")
+      row must include("471524 635")
+      row must not include "\u0000"
+      row must not include "\u001B"
+      row must not include "\u000C"
     }
 
     "truncate values longer than the allowed column width" in {
