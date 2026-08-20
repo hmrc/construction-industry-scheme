@@ -151,7 +151,9 @@ object VerificationSubmissionContextBuilder {
                                        .get(subcontractorId)
                                        .toRight(s"No subcontractor found for subcontractorId: $subcontractorId")
           verificationResourceRef <-
-            subcontractor.subbieResourceRef.toRight(s"Missing subbieResourceRef for subcontractorId: $subcontractorId")
+            verification.verificationResourceRef.toRight(
+              s"Missing verificationResourceRef for verificationId: ${verification.verificationId}"
+            )
           actionIndicator         <- verification.actionIndicator
                                        .map(_.trim)
                                        .filter(_.nonEmpty)

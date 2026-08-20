@@ -1371,7 +1371,8 @@ final class SubmissionServiceSpec extends SpecBase {
             verificationBatchId = Some(100L),
             subcontractorId = Some(10L),
             actionIndicator = Some("verify"),
-            proceed = Some("Y")
+            proceed = Some("Y"),
+            verificationResourceRef = Some(13L)
           )
         ),
         subcontractors = Seq(
