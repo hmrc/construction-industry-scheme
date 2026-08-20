@@ -21,6 +21,7 @@ import org.scalatest.OptionValues.convertOptionToValuable
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
+import play.api.http.HeaderNames.AUTHORIZATION
 import play.api.http.Status.{BAD_GATEWAY, NO_CONTENT, OK}
 import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
@@ -37,7 +38,8 @@ class FormpProxyConnectorIntegrationSpec
     with ScalaFutures
     with IntegrationPatience {
 
-  private val connector = app.injector.instanceOf[FormpProxyConnector]
+  private val connector          = app.injector.instanceOf[FormpProxyConnector]
+  private val internalAuthToken  = app.configuration.get[String]("internal-auth.token")
 
   private val instanceId        = "123"
   private val subbieResourceRef = 456L
@@ -56,6 +58,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/monthly-returns"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
           .willReturn(
             aResponse()
@@ -109,6 +112,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/monthly-return/nil/create"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(200).withBody(respJson.toString()))
       )
@@ -149,6 +153,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/monthly-return/update"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
@@ -193,6 +198,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/monthly-return/standard/create"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(201))
       )
@@ -235,6 +241,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/submissions/create"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(201).withBody(responseJson.toString()))
       )
@@ -272,6 +279,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/submissions/update"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
@@ -320,6 +328,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         get(urlPathEqualTo(s"/formp-proxy/scheme/$instanceId"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -387,6 +396,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/scheme"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -445,6 +455,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/scheme/update"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(200))
       )
@@ -496,6 +507,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/scheme/version-update"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -571,6 +583,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/scheme/prepopulate"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -660,6 +673,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/retrieve-unsubmitted-monthly-returns"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
           .willReturn(aResponse().withStatus(200).withBody(responseJson.toString()))
       )
@@ -718,6 +732,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/retrieve-submitted-monthly-returns"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
           .willReturn(aResponse().withStatus(200).withBody(responseJson.toString()))
       )
@@ -755,6 +770,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(NO_CONTENT))
       )
@@ -775,6 +791,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(NO_CONTENT))
       )
@@ -796,6 +813,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/create-and-update"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(NO_CONTENT))
       )
@@ -845,6 +863,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/monthly-return-edit"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -913,6 +932,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -952,6 +972,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -991,6 +1012,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/monthly-return-item/sync"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
@@ -1034,6 +1056,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/monthly-return-item/delete"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
@@ -1101,6 +1124,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/monthly-return-item/update"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
@@ -1168,6 +1192,7 @@ class FormpProxyConnectorIntegrationSpec
         post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/get"))
           .withQueryParam("stage", equalTo("polling"))
           .withHeader("Content-Type", containing("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -1190,6 +1215,7 @@ class FormpProxyConnectorIntegrationSpec
         post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/get"))
           .withQueryParam("stage", equalTo("initial"))
           .withHeader("Content-Type", containing("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -1239,6 +1265,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/create"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(201))
       )
@@ -1278,6 +1305,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/update-status"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
@@ -1318,6 +1346,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/update-correlationID"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
@@ -1361,6 +1390,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/update-statistics"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
@@ -1432,6 +1462,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         get(urlPathEqualTo(s"/formp-proxy/cis/verification-batch/newest/$instanceId"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -1487,6 +1518,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         get(urlPathEqualTo(s"/formp-proxy/cis/verification-batch/newest/$instanceId"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -1543,6 +1575,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         get(urlPathEqualTo(s"/formp-proxy/cis/verification-batch/current/$instanceId"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -1604,6 +1637,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         get(urlPathEqualTo(s"/formp-proxy/cis/verification-batch/last/$instanceId"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -1647,6 +1681,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/monthly-returns/unsubmitted/delete"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
@@ -1756,6 +1791,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/monthly-return-complete"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(completeReq).toString(), true, true))
           .willReturn(
             aResponse()
@@ -1792,6 +1828,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/monthly-return-complete"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(completeReq).toString(), true, true))
           .willReturn(aResponse().withStatus(200).withBody(emptyResponseJson.toString()))
       )
@@ -1838,6 +1875,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification-batch/create"))
           .withHeader("Content-Type", containing("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -1888,6 +1926,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/amend-monthly-return/create"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(201))
       )
@@ -1945,6 +1984,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/submission/create"))
           .withHeader("Content-Type", containing("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -2020,6 +2060,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/retrieve-submitted-monthly-returns-data"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -2073,6 +2114,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification-batch/modify"))
           .withHeader("Content-Type", containing("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
@@ -2126,6 +2168,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/submission/update"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(request).toString(), true, true))
           .willReturn(
             aResponse()
@@ -2189,6 +2232,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(
             equalToJson(Json.toJson[ProcessVerificationResponseFromChrisRequest](request).toString(), true, true)
           )
@@ -2239,6 +2283,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/scheme/email"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(instanceReqJson.toString(), true, true))
           .willReturn(
             aResponse()
@@ -2304,6 +2349,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/govtalkstatus/reset"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(204))
       )
@@ -2368,6 +2414,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         get(urlPathEqualTo("/formp-proxy/cis/batchpoll-submissions"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -2421,6 +2468,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/response/process"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(NO_CONTENT))
       )
@@ -2475,7 +2523,8 @@ class FormpProxyConnectorIntegrationSpec
           urlPathEqualTo(
             s"/formp-proxy/cis/subcontractor/$instanceId/$subbieResourceRef/delete-status"
           )
-        ).willReturn(
+        ).withHeader("Authorization", equalTo(internalAuthToken))
+          .willReturn(
           aResponse()
             .withStatus(200)
             .withHeader("Content-Type", "application/json")
@@ -2508,7 +2557,8 @@ class FormpProxyConnectorIntegrationSpec
           urlPathEqualTo(
             s"/formp-proxy/cis/subcontractor/$instanceId/$subbieResourceRef/delete-status"
           )
-        ).willReturn(
+        ).withHeader("Authorization", equalTo(internalAuthToken))
+          .willReturn(
           aResponse()
             .withStatus(200)
             .withHeader("Content-Type", "application/json")
@@ -2623,6 +2673,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -2657,6 +2708,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         get(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -2751,6 +2803,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/submitted-verifications"))
           .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -2814,6 +2867,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/submission-batch"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(
             equalToJson(
               Json.toJson(request).toString(),
@@ -2906,7 +2960,8 @@ class FormpProxyConnectorIntegrationSpec
           urlPathEqualTo(
             s"/formp-proxy/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef"
           )
-        ).willReturn(
+        ).withHeader("Authorization", equalTo(internalAuthToken))
+          .willReturn(
           aResponse()
             .withStatus(200)
             .withBody(responseJson.toString())
@@ -2993,6 +3048,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         get(urlPathEqualTo(s"/formp-proxy/cis/subcontractor/$cisId/$subbieResourceRef"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .willReturn(
             aResponse()
               .withStatus(OK)
