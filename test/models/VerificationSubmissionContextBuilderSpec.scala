@@ -118,7 +118,8 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
               partnershipUtr = None,
               subcontractorType = Some("soletrader")
             )
-          )
+          ),
+          emailRecipient = Some("test@test.com")
         )
       )
     }
@@ -260,7 +261,8 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
               partnershipUtr = None,
               subcontractorType = Some("soletrader")
             )
-          )
+          ),
+          emailRecipient = None
         )
       )
     }

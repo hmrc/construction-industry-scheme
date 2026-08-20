@@ -360,6 +360,83 @@ final class SubmissionServiceSpec extends SpecBase {
       )(using any[HeaderCarrier])
     }
 
+    "sends verification email when verification poll response status is submitted" in {
+      val s = setup
+      import s._
+
+      val response =
+        stubVerificationPollScenario(
+          s = s,
+          status = SUBMITTED,
+          emailRecipient = Some("user@example.com")
+        )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatus("sub-123", "/poll/123", ChrisPollJourney.Verification)
+        .futureValue mustBe response
+
+      verify(emailConnector).sendEmail(
+        eqTo(SubcontractorVerificationEmail("user@example.com"))
+      )(any[HeaderCarrier])
+    }
+
+    "sends verification email when verification poll response status is submitted with no receipt" in {
+      val s = setup
+      import s._
+
+      val response =
+        stubVerificationPollScenario(
+          s = s,
+          status = SUBMITTED_NO_RECEIPT,
+          emailRecipient = Some("user@example.com")
+        )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatus("sub-123", "/poll/123", ChrisPollJourney.Verification)
+        .futureValue mustBe response
+
+      verify(emailConnector).sendEmail(
+        eqTo(SubcontractorVerificationEmail("user@example.com"))
+      )(any[HeaderCarrier])
+    }
+
+    "sends verification email when verification poll response status is departmental error" in {
+      val s = setup
+      import s._
+
+      val response =
+        stubVerificationPollScenario(
+          s = s,
+          status = DEPARTMENTAL_ERROR,
+          emailRecipient = Some("user@example.com")
+        )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatus("sub-123", "/poll/123", ChrisPollJourney.Verification)
+        .futureValue mustBe response
+
+      verify(emailConnector).sendEmail(
+        eqTo(SubcontractorVerificationEmail("user@example.com"))
+      )(any[HeaderCarrier])
+    }
+
+    "does not send verification email when verification poll response status is not eligible" in {
+      val s = setup
+      import s._
+
+      stubVerificationPollScenario(
+        s = s,
+        status = ACCEPTED,
+        emailRecipient = Some("user@example.com")
+      )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatus("sub-123", "/poll/123", ChrisPollJourney.Verification)
+        .futureValue
+
+      verify(emailConnector, never()).sendEmail(any[SendEmailRequest])(any[HeaderCarrier])
+    }
+
     "fails when no session exists" in {
       val s = setup
       import s._
@@ -1390,7 +1467,8 @@ final class SubmissionServiceSpec extends SpecBase {
               partnershipUtr = None,
               subcontractorType = Some("soletrader")
             )
-          )
+          ),
+          emailRecipient = Some("user@example.com")
         )
 
       val expectedSession =
@@ -1855,6 +1933,135 @@ final class SubmissionServiceSpec extends SpecBase {
 
     when(
       s.formpProxyConnector.updateGovTalkStatus(
+        any[UpdateGovTalkStatusRequest]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.unit)
+
+    pollResponse
+  }
+
+  private def stubVerificationPollScenario(
+    s: Setup,
+    status: SubmissionStatus,
+    emailRecipient: Option[String]
+  ): ChrisPollResponse = {
+    import s._
+
+    val submissionId = "sub-123"
+    val instanceId   = "instance-123"
+    val correlation  = "corr-123"
+    val pollUrl      = "/poll/123"
+
+    val session =
+      ChrisSubmissionSessionData(
+        submissionId = submissionId,
+        instanceId = instanceId,
+        correlationId = correlation,
+        lastMessageDate = Instant.parse("2025-01-01T00:00:00Z"),
+        numPolls = 0,
+        pollInterval = 10,
+        pollUrl = pollUrl,
+        govTalkStatus = None,
+        verificationContext = Some(
+          pollVerificationContext.copy(emailRecipient = emailRecipient)
+        )
+      )
+
+    val govTalk =
+      GetGovTalkStatusResponse(Seq.empty)
+
+    val sessionWithGovTalk =
+      session.copy(govTalkStatus = Some(govTalk))
+
+    val updatedSession =
+      sessionWithGovTalk.copy(
+        lastMessageDate = Instant.parse("2025-01-02T00:00:00Z"),
+        numPolls = 1,
+        pollInterval = 20,
+        pollUrl = "/poll/999"
+      )
+
+    val pollResponse =
+      ChrisPollResponse(
+        status = status,
+        correlationId = correlation,
+        pollUrl = Some("/poll/999"),
+        pollInterval = Some(20),
+        error = None,
+        irMarkReceived = None,
+        lastMessageDate = Some("2025-01-02T00:00:00Z"),
+        acceptedTime = Some("2025-01-02T00:00:00Z")
+      )
+
+    when(chrisSubmissionSessionRepository.get(eqTo(submissionId)))
+      .thenReturn(Future.successful(Some(session)))
+      .thenReturn(Future.successful(Some(session)))
+      .thenReturn(Future.successful(Some(sessionWithGovTalk)))
+      .thenReturn(Future.successful(Some(updatedSession)))
+      .thenReturn(Future.successful(Some(updatedSession)))
+
+    when(
+      formpProxyConnector.getGovTalkStatus(
+        eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+        eqTo(Polling)
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.successful(Some(govTalk)))
+
+    when(chrisSubmissionSessionRepository.upsert(any[ChrisSubmissionSessionData]))
+      .thenReturn(Future.unit)
+
+    when(
+      chrisConnector.pollSubmission(
+        eqTo(correlation),
+        eqTo(pollUrl),
+        eqTo(ChrisPollJourney.Verification),
+        eqTo("verification-hmrc-mark")
+      )(using any[HeaderCarrier])
+    ).thenReturn(Future.successful(pollResponse))
+
+    when(
+      formPSubmissionUpdateProcessorRegistry.processorFor(
+        eqTo(ChrisPollJourney.Verification)
+      )
+    ).thenReturn(formPSubmissionUpdateProcessor)
+
+    when(
+      formPSubmissionUpdateProcessor.handlePollResponse(
+        any[ChrisSubmissionSessionData],
+        any[ChrisPollResponse]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.unit)
+
+    when(
+      chrisConnector.deleteSubmission(
+        eqTo(correlation),
+        eqTo(pollUrl),
+        eqTo(ChrisPollJourney.Verification)
+      )(using any[HeaderCarrier])
+    ).thenReturn(Future.unit)
+
+    emailRecipient.foreach { email =>
+      when(
+        emailConnector.sendEmail(
+          eqTo(SubcontractorVerificationEmail(email))
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Done))
+    }
+
+    when(
+      formpProxyConnector.updateGovTalkStatusCorrelationId(
+        any[UpdateGovTalkStatusCorrelationIdRequest]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.unit)
+
+    when(
+      formpProxyConnector.updateGovTalkStatusStatistics(
+        any[UpdateGovTalkStatusStatisticsRequest]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.unit)
+
+    when(
+      formpProxyConnector.updateGovTalkStatus(
         any[UpdateGovTalkStatusRequest]
       )(any[HeaderCarrier])
     ).thenReturn(Future.unit)
