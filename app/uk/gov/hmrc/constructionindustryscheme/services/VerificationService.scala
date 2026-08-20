@@ -62,6 +62,11 @@ class VerificationService @Inject() (formpProxyConnector: FormpProxyConnector) {
   )(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.processVerificationResponseFromChris(request)
 
+  def deleteVerification(
+    request: DeleteVerificationRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    formpProxyConnector.deleteVerification(request)
+
   def getSubmittedVerifications(
     request: GetSubmittedVerificationsRequest
   )(implicit hc: HeaderCarrier): Future[GetSubmittedVerificationsResponse] =

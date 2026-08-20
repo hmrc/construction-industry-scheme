@@ -300,6 +300,36 @@ final class VerificationServiceSpec extends SpecBase {
     }
   }
 
+  "VerificationService#deleteVerification" - {
+
+    val request = DeleteVerificationRequest(
+      instanceId = "abc-123",
+      verificationResourceRef = 98765L
+    )
+
+    "delegates to FormpProxyConnector and returns Unit" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.deleteVerification(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.deleteVerification(request).futureValue mustBe ()
+
+      verify(connector).deleteVerification(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.deleteVerification(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.deleteVerification(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
   "VerificationService#getSubmittedVerifications" - {
 
     val request = GetSubmittedVerificationsRequest(

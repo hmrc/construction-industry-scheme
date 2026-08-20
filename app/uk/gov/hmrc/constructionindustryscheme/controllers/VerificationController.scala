@@ -160,6 +160,26 @@ class VerificationController @Inject() (
         )
     }
 
+  def deleteVerification(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      request.body
+        .validate[DeleteVerificationRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          body =>
+            verificationService
+              .deleteVerification(body)
+              .map(_ => NoContent)
+              .recover { case ex =>
+                logger.error(
+                  s"[deleteVerification] formp-proxy delete failed (instanceId=${body.instanceId}, verificationResourceRef=${body.verificationResourceRef})",
+                  ex
+                )
+                BadGateway(Json.obj("message" -> "delete-verification-failed"))
+              }
+        )
+    }
+
   def getSubmittedVerifications(): Action[JsValue] =
     authorise(parse.json).async { implicit request =>
       request.body
