@@ -328,6 +328,13 @@ class FormpProxyConnector @Inject() (
       .get(url"$base/cis/verification-batch/newest/$instanceId")
       .execute[GetNewestVerificationBatchResponse]
 
+  def getLastSubmittedVerificationBatch(
+    instanceId: String
+  )(implicit hc: HeaderCarrier): Future[GetLastSubmittedVerificationBatchResponse] =
+    http
+      .get(url"$base/cis/verification-batch/last/$instanceId")
+      .execute[GetLastSubmittedVerificationBatchResponse]
+
   def getCurrentVerificationBatch(
     instanceId: String
   )(implicit hc: HeaderCarrier): Future[GetCurrentVerificationBatchResponse] =

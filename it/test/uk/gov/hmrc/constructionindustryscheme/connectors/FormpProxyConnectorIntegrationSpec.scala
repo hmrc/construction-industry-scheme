@@ -1509,6 +1509,70 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector getLastSubmittedVerificationBatch" should {
+
+    "GET /formp-proxy/cis/verification-batch/last/:instanceId and return payload (200)" in {
+
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "subcontractors": [
+           |    {
+           |      "subcontractorId": 1
+           |    }
+           |  ],
+           |  "scheme": {
+           |      "name": "David"
+           |    },
+           |  "verificationBatch": {
+           |      "verificationBatchId": 99
+           |    },
+           |  "verifications": [
+           |    {
+           |      "verificationId": 1001
+           |    }
+           |  ],
+           |  "submission": {
+           |      "submissionId": 555,
+           |      "submissionType": "VERIFICATIONS",
+           |       "schemeId": 1
+           |    }
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/verification-batch/last/$instanceId"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val outJson = Json.toJson(connector.getLastSubmittedVerificationBatch(instanceId).futureValue)
+
+      (outJson \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
+      (outJson \ "scheme").\("name").as[String] mustBe "David"
+
+      (outJson \ "verificationBatch").\("verificationBatchId").as[Long] mustBe 99L
+      (outJson \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L
+
+      (outJson \ "submission").\("submissionId").as[Long] mustBe 555L
+    }
+
+    "fail the future when upstream returns a non-2xx (e.g. 500)" in {
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/verification-batch/last/$instanceId"))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.getLastSubmittedVerificationBatch(instanceId).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
   "FormpProxyConnector deleteUnsubmittedMonthlyReturn" should {
 
     "POST /formp-proxy/cis/monthly-return-item/delete and return Unit on 204" in {
@@ -2690,16 +2754,17 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/submission-batch"))
           .withRequestBody(
-          equalToJson(
-            Json.toJson(request).toString(),
-            true,
-            true
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
           )
-        ).willReturn(
-          aResponse()
-            .withStatus(200)
-            .withBody(responseJson.toString())
-        )
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
       )
 
       val out =
