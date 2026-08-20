@@ -20,22 +20,12 @@ import base.SpecBase
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.should.Matchers.{should, shouldBe}
 import org.scalatestplus.mockito.MockitoSugar
-import uk.gov.hmrc.auth.core.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisVerificationRequest
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 
 class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoSugar {
-
-  private def fakeEnrolments(taxOfficeNumber: String, taxOfficeReference: String): Enrolments = {
-    val identifiers = Seq(
-      EnrolmentIdentifier("TaxOfficeNumber", taxOfficeNumber),
-      EnrolmentIdentifier("TaxOfficeReference", taxOfficeReference)
-    )
-    val enrolment   = new Enrolment("HMRC-CIS-ORG", identifiers, "activated", None)
-    Enrolments(Set(enrolment))
-  }
 
   private val subcontractor = SubcontractorCurrentVerification(
     subcontractorId = 1L,
@@ -73,9 +63,6 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
   )
 
   "buildPayload creates correct payload for non-agent request" in {
-
-    val enrolments = fakeEnrolments("123", "ABC456")
-
     val request = ChrisVerificationRequest(
       instanceId = "id-1",
       contractorUTR = "1234567890",
@@ -91,12 +78,12 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
     )
 
     val payload =
-      CisVerificationSubmission.buildPayload(request, enrolments)
+      CisVerificationSubmission.buildPayload(request)
 
     payload.irMark.length should be > 0
 
-    (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeNumber").map(_.text).getOrElse("")    shouldBe "123"
-    (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeReference").map(_.text).getOrElse("") shouldBe "ABC456"
+    (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeNumber").map(_.text).getOrElse("")    shouldBe "999"
+    (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeReference").map(_.text).getOrElse("") shouldBe "XYZ123"
 
     (payload.envelope \\ "Contractor" \\ "UTR").text shouldBe "1234567890"
     (payload.envelope \\ "AOref").text               shouldBe "123/AB456"
@@ -121,36 +108,12 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
       clientTaxOfficeRef = "XYZ123"
     )
 
-    val payload =
-      CisVerificationSubmission.buildPayload(request, fakeEnrolments("ignored", "ignored"))
+    val payload = CisVerificationSubmission.buildPayload(request)
 
     payload.irMark.length should be > 0
 
     (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeNumber").map(_.text).getOrElse("")    shouldBe "999"
     (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeReference").map(_.text).getOrElse("") shouldBe "XYZ123"
-  }
-
-  "buildPayload throws for non-agent request when CIS enrolment identifiers are missing" in {
-
-    val request = ChrisVerificationRequest(
-      instanceId = "id-1",
-      contractorUTR = "1234567890",
-      contractorAORef = "123/AB456",
-      verificationBatchId = "batch-1",
-      verificationBatchResourceRef = "batch-ref",
-      emailRecipient = None,
-      subcontractors = Seq(subcontractor),
-      verifications = Seq.empty,
-      isAgent = false,
-      clientTaxOfficeNumber = "",
-      clientTaxOfficeRef = ""
-    )
-
-    val thrown = intercept[IllegalStateException] {
-      CisVerificationSubmission.buildPayload(request, Enrolments(Set.empty))
-    }
-
-    thrown.getMessage should include("Missing CIS enrolment identifiers")
   }
 
   "buildPayload uses last day of current month as PeriodEnd" in {
@@ -172,12 +135,7 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
       clientTaxOfficeRef = "XYZ123"
     )
 
-    val payload =
-      CisVerificationSubmission.buildPayload(
-        request,
-        fakeEnrolments("ignored", "ignored"),
-        fixedClock
-      )
+    val payload = CisVerificationSubmission.buildPayload(request, fixedClock)
 
     (payload.envelope \\ "PeriodEnd").text shouldBe "2026-06-30"
   }

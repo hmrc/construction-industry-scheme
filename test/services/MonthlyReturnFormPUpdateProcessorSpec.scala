@@ -18,7 +18,7 @@ package services
 
 import base.SpecBase
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, ChrisPollJourney, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, ChrisPollJourney, GovTalkError, GovTalkMeta, ResponseEndPoint, SUBMITTED, SubmissionResult, SubmissionStatus}
 import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnFormPUpdateProcessor
 
@@ -48,6 +48,22 @@ class MonthlyReturnFormPUpdateProcessorSpec extends SpecBase {
       )
 
       processor.handleInitialAccepted(session, mkSubmissionResult(ACCEPTED)).futureValue mustBe ()
+    }
+
+    "handle initial failure as no-op" in {
+      val processor = new MonthlyReturnFormPUpdateProcessor()
+      val session   = ChrisSubmissionSessionData(
+        submissionId = "sub-123",
+        instanceId = "instance-123",
+        correlationId = "corr-123",
+        lastMessageDate = Instant.parse("2025-01-01T00:00:00Z"),
+        numPolls = 0,
+        pollInterval = 10,
+        pollUrl = "/poll/123",
+        govTalkStatus = None
+      )
+
+      processor.handleInitialFailure(session, GovTalkError("xxxx", "timeOut", "timed out")).futureValue mustBe ()
     }
 
     "handle poll response as no-op" in {

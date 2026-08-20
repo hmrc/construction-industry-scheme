@@ -14,21 +14,11 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.utils
+package uk.gov.hmrc.constructionindustryscheme.e2e
 
-import uk.gov.hmrc.auth.core.Enrolments
-
-object CisEnrolmentHelper {
-
-  def extractTaxOfficeIdentifiers(
-    enrolments: Enrolments
-  ): Option[(String, String)] =
-    enrolments
-      .getEnrolment("HMRC-CIS-ORG")
-      .flatMap { e =>
-        for {
-          ton <- e.getIdentifier("TaxOfficeNumber")
-          tor <- e.getIdentifier("TaxOfficeReference")
-        } yield (ton.value, tor.value)
-      }
+/** Request body param isAgent=true */
+class AgentModeE2eSpec extends E2eBaseSpec {
+  Scenarios.agent.foreach { s =>
+    test(s"[agent] TON=${s.ton} ${s.label}")(runScenario(Mode.Agent, s))
+  }
 }

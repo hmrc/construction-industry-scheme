@@ -428,7 +428,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       verifyNoInteractions(submissionService)
     }
 
-    "returns 200 OK with SUBMITTED when ChRIS submit fails but failure is recoverable" in {
+    "returns 200 OK with FATAL_ERROR and connection refused GovTalkError when ChRIS submit fails with a non-5xx exception" in {
       val submissionService = mock[SubmissionService]
       val xmlValidator      = mock[XmlValidator]
 
@@ -450,7 +450,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[EmployerReference],
           any[String],
           any[String],
-          any[String]
+          any[String],
+          any[ChrisPollJourney],
+          any[ChrisSubmissionContext],
+          any[GovTalkError]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -466,13 +469,16 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val js = contentAsJson(result)
 
       (js \ "submissionId").as[String] mustBe submissionId
-      (js \ "status").as[String] mustBe "STARTED"
+      (js \ "status").as[String] mustBe "FATAL_ERROR"
+      (js \ "error" \ "number").as[String] mustBe "xxxx"
+      (js \ "error" \ "type").as[String] mustBe "timeOut"
+      (js \ "error" \ "text").as[String] mustBe "timed out"
 
       verify(submissionService, times(1))
         .submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
-    "returns 200 OK with STARTED and ServerError govTalkErrorStatus when ChRIS submit fails with a 5xx UpstreamErrorResponse" in {
+    "returns 200 OK with FATAL_ERROR and timeout GovTalkError when ChRIS submit fails with a 5xx UpstreamErrorResponse" in {
       val submissionService = mock[SubmissionService]
       val xmlValidator      = mock[XmlValidator]
 
@@ -494,7 +500,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[EmployerReference],
           any[String],
           any[String],
-          any[String]
+          any[String],
+          any[ChrisPollJourney],
+          any[ChrisSubmissionContext],
+          any[GovTalkError]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -509,9 +518,12 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val js = contentAsJson(result)
       (js \ "submissionId").as[String] mustBe submissionId
-      (js \ "status").as[String] mustBe "STARTED"
+      (js \ "status").as[String] mustBe "FATAL_ERROR"
       (js \ "govTalkErrorStatus" \ "kind").as[String] mustBe "ServerError"
       (js \ "govTalkErrorStatus" \ "httpStatus").as[Int] mustBe 503
+      (js \ "error" \ "number").as[String] mustBe "500"
+      (js \ "error" \ "type").as[String] mustBe "timeOut"
+      (js \ "error" \ "text").as[String] mustBe "timeOut"
 
       verify(submissionService, times(1))
         .submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
@@ -548,7 +560,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       verify(submissionService).submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
-    "returns 500 InternalServerError when GovTalk initialisation/update fails in recoverable ChRIS failure flow" in {
+    "returns 500 InternalServerError with GovTalkError when GovTalk initialisation/update fails in ChRIS failure flow" in {
       val submissionService = mock[SubmissionService]
       val xmlValidator      = mock[XmlValidator]
 
@@ -572,7 +584,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[EmployerReference],
           any[String],
           any[String],
-          any[String]
+          any[String],
+          any[ChrisPollJourney],
+          any[ChrisSubmissionContext],
+          any[GovTalkError]
         )(any[HeaderCarrier])
       ).thenReturn(Future.failed(new RuntimeException("govtalk failure")))
 
@@ -585,9 +600,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       status(result) mustBe INTERNAL_SERVER_ERROR
       val js = contentAsJson(result)
-      (js \ "submissionId").as[String] mustBe submissionId
-      (js \ "status").as[String] mustBe "FATAL_ERROR"
-      (js \ "error" \ "text").as[String] mustBe "GovTalk status already exists"
+      (js \ "statusCode").as[Int] mustBe 500
+      (js \ "message").as[String] must endWith("govtalk failure")
     }
 
     "returns 502 BadGateway when handling initial ChRIS response fails" in {
@@ -1570,7 +1584,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         )(any[HeaderCarrier])
     }
 
-    "returns 200 with STARTED when ChRIS verification submit fails but failure is recoverable" in {
+    "returns 200 with FATAL_ERROR and connection refused GovTalkError when ChRIS verification submit fails" in {
       val submissionService  = mock[SubmissionService]
       val xmlValidator       = mock[XmlValidator]
       val verificationSchema = mock[Schema]
@@ -1593,7 +1607,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[EmployerReference],
           any[String],
           any[String],
-          any[String]
+          any[String],
+          any[ChrisPollJourney],
+          any[ChrisSubmissionContext],
+          any[GovTalkError]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -1609,8 +1626,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val js = contentAsJson(result)
 
       (js \ "submissionId").as[String] mustBe submissionId
-      (js \ "status").as[String] mustBe "STARTED"
-      (js \ "error" \ "text").as[String] mustBe "Chris verification failure"
+      (js \ "status").as[String] mustBe "FATAL_ERROR"
+      (js \ "error" \ "number").as[String] mustBe "xxxx"
+      (js \ "error" \ "type").as[String] mustBe "timeOut"
+      (js \ "error" \ "text").as[String] mustBe "timed out"
 
       verify(submissionService, times(1))
         .submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier])
@@ -1619,7 +1638,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           eqTo(EmployerReference("999", "XYZ123")),
           eqTo(submissionId),
           any[String],
-          eqTo("http://chris.example/verification-gateway")
+          eqTo("http://chris.example/verification-gateway"),
+          eqTo(ChrisPollJourney.Verification),
+          any[ChrisSubmissionContext],
+          any[GovTalkError]
         )(any[HeaderCarrier])
     }
 

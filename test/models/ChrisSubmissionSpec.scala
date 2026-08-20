@@ -21,24 +21,12 @@ import org.mockito.Mockito.*
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.should.Matchers.{should, shouldBe}
 import org.scalatestplus.mockito.MockitoSugar
-import uk.gov.hmrc.auth.core.*
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{AuthenticatedRequest, ChrisSubmissionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisSubmissionRequest
 import uk.gov.hmrc.constructionindustryscheme.models.{ChRISSubmission, MonthlyReturnType}
 
 class ChrisSubmissionSpec extends SpecBase with Matchers with MockitoSugar {
 
-  private def fakeEnrolments(taxOfficeNumber: String, taxOfficeReference: String): Enrolments = {
-    val identifiers = Seq(
-      EnrolmentIdentifier("TaxOfficeNumber", taxOfficeNumber),
-      EnrolmentIdentifier("TaxOfficeReference", taxOfficeReference)
-    )
-    val enrolment   = new Enrolment("HMRC-CIS-ORG", identifiers, "activated", None)
-    Enrolments(Set(enrolment))
-  }
-
   "buildPayload creates correct payload for non-agent request" in {
-    val authRequest = mock[AuthenticatedRequest[_]]
-    when(authRequest.enrolments).thenReturn(fakeEnrolments("123", "ABC456"))
 
     val submissionRequest = ChrisSubmissionRequest(
       utr = "1234567890",
@@ -55,21 +43,18 @@ class ChrisSubmissionSpec extends SpecBase with Matchers with MockitoSugar {
       standard = None
     )
 
-    val payload = ChRISSubmission.buildPayload(submissionRequest, authRequest)
+    val payload = ChRISSubmission.buildPayload(submissionRequest)
 
     payload.irMark.length should be > 0
 
-    (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeNumber").map(_.text).getOrElse("")    shouldBe "123"
-    (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeReference").map(_.text).getOrElse("") shouldBe "ABC456"
+    (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeNumber").map(_.text).getOrElse("")    shouldBe "999"
+    (payload.envelope \\ "Key").find(_ \@ "Type" == "TaxOfficeReference").map(_.text).getOrElse("") shouldBe "XYZ123"
     (payload.envelope \\ "PeriodEnd").text                                                          shouldBe "2025-05-05"
     (payload.envelope \\ "UTR").text                                                                shouldBe "1234567890"
     (payload.envelope \\ "AOref").text                                                              shouldBe "123/AB456"
   }
 
   "buildPayload creates correct payload for agent request" in {
-    val authRequest = mock[AuthenticatedRequest[_]]
-    when(authRequest.enrolments).thenReturn(Enrolments(Set.empty)) // ignored for agent
-
     val submissionRequest = ChrisSubmissionRequest(
       utr = "1234567890",
       aoReference = "123/AB456",
@@ -85,7 +70,7 @@ class ChrisSubmissionSpec extends SpecBase with Matchers with MockitoSugar {
       standard = None
     )
 
-    val payload = ChRISSubmission.buildPayload(submissionRequest, authRequest)
+    val payload = ChRISSubmission.buildPayload(submissionRequest)
 
     payload.irMark.length should be > 0
 
@@ -95,32 +80,6 @@ class ChrisSubmissionSpec extends SpecBase with Matchers with MockitoSugar {
     (payload.envelope \\ "UTR").text                                                                shouldBe "1234567890"
     (payload.envelope \\ "AOref").text                                                              shouldBe "123/AB456"
     (payload.envelope \\ "Inactivity").text                                                         shouldBe "yes"
-  }
-
-  "buildPayload throws for non-agent request when CIS enrolment identifiers are missing" in {
-    val authRequest = mock[AuthenticatedRequest[_]]
-    when(authRequest.enrolments).thenReturn(Enrolments(Set.empty))
-
-    val submissionRequest = ChrisSubmissionRequest(
-      utr = "1234567890",
-      aoReference = "123/AB456",
-      monthYear = "2025-05",
-      email = Some("test@test.com"),
-      isAgent = false,
-      isResubmission = false,
-      clientTaxOfficeNumber = "",
-      clientTaxOfficeRef = "",
-      returnType = MonthlyReturnType.Nil,
-      informationCorrect = "yes",
-      inactivity = "no",
-      standard = None
-    )
-
-    val thrown = intercept[IllegalStateException] {
-      ChRISSubmission.buildPayload(submissionRequest, authRequest)
-    }
-
-    thrown.getMessage should include("Missing CIS enrolment identifiers")
   }
 
   "parsePeriodEnd throws for invalid date" in {

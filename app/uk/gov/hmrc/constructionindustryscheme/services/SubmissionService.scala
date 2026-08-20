@@ -30,8 +30,8 @@ import uk.gov.hmrc.http.HeaderCarrier
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
 import scala.util.Try
+import scala.util.control.NonFatal
 
 @Singleton
 class SubmissionService @Inject() (
@@ -46,8 +46,7 @@ class SubmissionService @Inject() (
 )(implicit ec: ExecutionContext)
     extends Logging {
 
-  import SubmissionService.ChrisDeletionOutcome
-  import SubmissionService.GovTalkStatusUpdate
+  import SubmissionService.{ChrisDeletionOutcome, GovTalkStatusUpdate}
 
   def createSubmission(request: CreateSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
     formpProxyConnector.createSubmission(request)
@@ -248,11 +247,32 @@ class SubmissionService @Inject() (
     employerReference: EmployerReference,
     submissionId: String,
     correlationId: String,
-    gatewayURL: String
+    gatewayURL: String,
+    journey: ChrisPollJourney,
+    context: ChrisSubmissionContext,
+    govTalkError: GovTalkError
   )(implicit hc: HeaderCarrier): Future[Unit] =
     for {
       instanceId <- initialiseGovTalkStatus(employerReference, submissionId, correlationId, gatewayURL)
       _          <- updateGovTalkStatus(UpdateGovTalkStatusRequest(instanceId, submissionId, None, "dataRequest"))
+      sessionData = ChrisSubmissionSessionData(
+                      submissionId = submissionId,
+                      instanceId = instanceId,
+                      correlationId = correlationId,
+                      lastMessageDate = Instant.now(clock),
+                      numPolls = 0,
+                      pollInterval = 0,
+                      pollUrl = "",
+                      govTalkStatus = None,
+                      monthlyReturnContext = context.monthlyReturnContext,
+                      verificationContext = context.verificationContext
+                    )
+      _          <- formPSubmissionUpdateProcessorRegistry
+                      .processorFor(journey)
+                      .handleInitialFailure(sessionData, govTalkError)
+      _          <- updateGovTalkStatus(
+                      UpdateGovTalkStatusRequest(instanceId, submissionId, Some(LocalDateTime.now(clock)), "endState")
+                    )
     } yield ()
 
   private case class PollAndValidateResult(

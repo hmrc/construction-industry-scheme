@@ -22,6 +22,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
 import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, StoredVerificationContext}
 import uk.gov.hmrc.http.HeaderCarrier
+import play.api.Logging
 
 import java.time.LocalDateTime
 import javax.inject.{Inject, Singleton}
@@ -33,7 +34,8 @@ class VerificationFormPUpdateProcessor @Inject() (
   formpProxyConnector: FormpProxyConnector,
   verificationResultMapper: VerificationResultMapper
 )(implicit ex: ExecutionContext)
-    extends FormPSubmissionUpdateProcessor {
+    extends FormPSubmissionUpdateProcessor
+    with Logging {
 
   override val journey: ChrisPollJourney = ChrisPollJourney.Verification
 
@@ -48,18 +50,59 @@ class VerificationFormPUpdateProcessor @Inject() (
         )
       )
 
-    formpProxyConnector.updateVerificationSubmission(
-      UpdateVerificationSubmissionRequest(
-        instanceId = session.instanceId,
-        verificationBatchResourceRef = ctx.verificationBatchResourceRef,
-        submittableStatus = response.status.toString,
-        submissionRequestDate = Some(ctx.submissionRequestDate),
-        hmrcMarkGenerated = Some(ctx.hmrcMarkGenerated),
-        govtalkErrorCode = response.meta.error.map(_.errorNumber),
-        govtalkErrorType = response.meta.error.map(_.errorType),
-        govtalkErrorMessage = response.meta.error.map(_.errorText)
+    formpProxyConnector
+      .updateVerificationSubmission(
+        UpdateVerificationSubmissionRequest(
+          instanceId = session.instanceId,
+          verificationBatchResourceRef = ctx.verificationBatchResourceRef,
+          submittableStatus = response.status.toString,
+          submissionRequestDate = Some(ctx.submissionRequestDate),
+          hmrcMarkGenerated = Some(ctx.hmrcMarkGenerated),
+          govtalkErrorCode = response.meta.error.map(_.errorNumber),
+          govtalkErrorType = response.meta.error.map(_.errorType),
+          govtalkErrorMessage = response.meta.error.map(_.errorText)
+        )
       )
-    )
+      .map { _ =>
+        logger.info(
+          s"[VerificationFormPUpdateProcessor] FormP updateVerificationSubmission succeeded on initial ChRIS accepted " +
+            s"for submissionId=${session.submissionId}, submittableStatus=${response.status.toString}"
+        )
+      }
+  }
+
+  override def handleInitialFailure(
+    session: ChrisSubmissionSessionData,
+    govTalkError: GovTalkError
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
+    val ctx =
+      session.verificationContext.getOrElse(
+        throw new IllegalStateException(
+          s"Verification context is missing for submissionId: ${session.submissionId}"
+        )
+      )
+
+    formpProxyConnector
+      .updateVerificationSubmission(
+        UpdateVerificationSubmissionRequest(
+          instanceId = session.instanceId,
+          verificationBatchResourceRef = ctx.verificationBatchResourceRef,
+          submittableStatus = FATAL_ERROR.toString,
+          submissionRequestDate = Some(ctx.submissionRequestDate),
+          hmrcMarkGenerated = Some(ctx.hmrcMarkGenerated),
+          govtalkErrorCode = Some(govTalkError.errorNumber),
+          govtalkErrorType = Some(govTalkError.errorType),
+          govtalkErrorMessage = Some(govTalkError.errorText)
+        )
+      )
+      .map { _ =>
+        logger.info(
+          s"[VerificationFormPUpdateProcessor] FormP updateVerificationSubmission succeeded on initial ChRIS failure " +
+            s"for submissionId=${session.submissionId}, submittableStatus=${FATAL_ERROR.toString}, " +
+            s"govtalkErrorCode=${govTalkError.errorNumber}, govtalkErrorType=${govTalkError.errorType}, " +
+            s"govtalkErrorMessage=${govTalkError.errorText}"
+        )
+      }
   }
 
   override def handlePollResponse(
@@ -117,6 +160,11 @@ class VerificationFormPUpdateProcessor @Inject() (
                                  verificationResults = mappedResults
                                )
                              )
+            _              = logger.info(
+                               s"[VerificationFormPUpdateProcessor] FormP processVerificationResponseFromChris succeeded " +
+                                 s"on successful poll for submissionId=${session.submissionId}, " +
+                                 s"submittableStatus=${response.status.toString}, results=${mappedResults.size}"
+                             )
           } yield ()
     }
   }
@@ -125,19 +173,32 @@ class VerificationFormPUpdateProcessor @Inject() (
     session: ChrisSubmissionSessionData,
     ctx: StoredVerificationContext,
     response: ChrisPollResponse
-  )(implicit hc: HeaderCarrier): Future[Unit] =
-    formpProxyConnector.updateVerificationSubmission(
-      UpdateVerificationSubmissionRequest(
-        instanceId = session.instanceId,
-        verificationBatchResourceRef = ctx.verificationBatchResourceRef,
-        submittableStatus = response.status.toString,
-        submissionRequestDate = Some(ctx.submissionRequestDate),
-        hmrcMarkGenerated = Some(ctx.hmrcMarkGenerated),
-        govtalkErrorCode = response.error.flatMap(error => (error \ "errorNumber").asOpt[String]),
-        govtalkErrorType = response.error.flatMap(error => (error \ "errorType").asOpt[String]),
-        govtalkErrorMessage = response.error.flatMap(error => (error \ "errorText").asOpt[String])
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
+    val govtalkErrorCode    = response.error.flatMap(error => (error \ "errorNumber").asOpt[String])
+    val govtalkErrorType    = response.error.flatMap(error => (error \ "errorType").asOpt[String])
+    val govtalkErrorMessage = response.error.flatMap(error => (error \ "errorText").asOpt[String])
+
+    formpProxyConnector
+      .updateVerificationSubmission(
+        UpdateVerificationSubmissionRequest(
+          instanceId = session.instanceId,
+          verificationBatchResourceRef = ctx.verificationBatchResourceRef,
+          submittableStatus = response.status.toString,
+          submissionRequestDate = Some(ctx.submissionRequestDate),
+          hmrcMarkGenerated = Some(ctx.hmrcMarkGenerated),
+          govtalkErrorCode = govtalkErrorCode,
+          govtalkErrorType = govtalkErrorType,
+          govtalkErrorMessage = govtalkErrorMessage
+        )
       )
-    )
+      .map { _ =>
+        logger.info(
+          s"[VerificationFormPUpdateProcessor] FormP updateVerificationSubmission succeeded on non-success poll " +
+            s"for submissionId=${session.submissionId}, submittableStatus=${response.status.toString}, " +
+            s"govtalkErrorCode=$govtalkErrorCode, govtalkErrorType=$govtalkErrorType, govtalkErrorMessage=$govtalkErrorMessage"
+        )
+      }
+  }
 
   private def isVerificationSuccess(response: ChrisPollResponse): Boolean =
     response.status == SUBMITTED || response.status == SUBMITTED_NO_RECEIPT

@@ -18,17 +18,16 @@ package services
 
 import base.SpecBase
 import org.apache.pekko.Done
-import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
-import org.mockito.ArgumentMatchers.eq as eqTo
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{ChrisPollJourney, *}
+import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
-import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository, StoredMonthlyReturnContext, StoredRequestedVerification, StoredVerificationContext}
+import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.repositories.*
 import uk.gov.hmrc.constructionindustryscheme.services.*
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -76,7 +75,7 @@ final class SubmissionServiceSpec extends SpecBase {
   "createSubmission" - {
 
     "delegates to FormpProxyConnector and returns submissionId" in {
-      val s = setup; import s._
+      val s = setup; import s.*
 
       val req = CreateSubmissionRequest("123", 2024, 4, "N")
 
@@ -89,7 +88,7 @@ final class SubmissionServiceSpec extends SpecBase {
     }
 
     "propagates failures from FormpProxyConnector" in {
-      val s = setup; import s._
+      val s = setup; import s.*
 
       val req = CreateSubmissionRequest("123", 2024, 4, "N")
 
@@ -103,7 +102,7 @@ final class SubmissionServiceSpec extends SpecBase {
   "updateSubmission" - {
 
     "delegates to FormpProxyConnector and completes" in {
-      val s = setup; import s._
+      val s = setup; import s.*
 
       val req = UpdateSubmissionRequest(
         instanceId = "123",
@@ -123,7 +122,7 @@ final class SubmissionServiceSpec extends SpecBase {
     }
 
     "propagates failures from FormpProxyConnector" in {
-      val s = setup; import s._
+      val s = setup; import s.*
 
       val req = UpdateSubmissionRequest(
         instanceId = "123",
@@ -143,7 +142,7 @@ final class SubmissionServiceSpec extends SpecBase {
   "resetGovTalkStatus" - {
 
     "delegates to FormpProxyConnector and completes" in {
-      val s = setup; import s._
+      val s = setup; import s.*
 
       val req = ResetGovTalkStatusRequest(
         userIdentifier = "123",
@@ -161,7 +160,7 @@ final class SubmissionServiceSpec extends SpecBase {
     }
 
     "propagates failures from FormpProxyConnector" in {
-      val s = setup; import s._
+      val s = setup; import s.*
 
       val req = ResetGovTalkStatusRequest(
         userIdentifier = "123",
@@ -181,7 +180,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "passes envelope + correlationId to ChrisConnector and returns SubmissionResult" in {
       val s = setup
-      import s._
+      import s.*
 
       val payload  = mkPayload(corrId = "ABCDEF1234567890ABCDEF1234567890")
       val expected = mkResult(SUBMITTED, corrId = payload.correlationId)
@@ -198,7 +197,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "propagates failures from ChrisConnector" in {
       val s = setup
-      import s._
+      import s.*
 
       val payload = mkPayload()
 
@@ -220,9 +219,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val response = stubPollScenario(
         s = s,
         status = SUBMITTED,
-        deleteResult = Some(Future.unit),
-        expectedProtocolStatus = "endState",
-        expectedEndState = Some(s.expectedEndStateDate)
+        deleteResult = Some(Future.unit)
       )
 
       s.service
@@ -246,8 +243,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val response = stubPollScenario(
         s = s,
         status = SUBMITTED,
-        deleteResult = Some(Future.failed(new RuntimeException("delete failed"))),
-        expectedEndState = None
+        deleteResult = Some(Future.failed(new RuntimeException("delete failed")))
       )
 
       s.service
@@ -269,8 +265,7 @@ final class SubmissionServiceSpec extends SpecBase {
       val s        = setup
       val response = stubPollScenario(
         s = s,
-        status = ACCEPTED,
-        expectedEndState = None
+        status = ACCEPTED
       )
 
       s.service
@@ -290,7 +285,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "passes Verification journey to Chris connector" in {
       val s = setup
-      import s._
+      import s.*
 
       val submissionId = "sub-123"
       val instanceId   = "instance-123"
@@ -439,7 +434,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "fails when no session exists" in {
       val s = setup
-      import s._
+      import s.*
 
       when(chrisSubmissionSessionRepository.get(eqTo("sub-123")))
         .thenReturn(Future.successful(None))
@@ -453,7 +448,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "fails when polled correlationId does not match existing session correlationId" in {
       val s = setup
-      import s._
+      import s.*
 
       val submissionId = "sub-123"
       val instanceId   = "instance-123"
@@ -521,7 +516,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "fails when no GovTalk status is found after polling" in {
       val s = setup
-      import s._
+      import s.*
 
       val submissionId = "sub-123"
       val instanceId   = "instance-123"
@@ -566,7 +561,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "builds NilMonthlyReturnOrgSuccessEmail and calls EmailConnector, returning Unit" in {
       val s = setup
-      import s._
+      import s.*
 
       val submissionId = "90001"
       val req          = SendSuccessEmailRequest(
@@ -593,7 +588,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "propagates failures from EmailConnector" in {
       val s = setup
-      import s._
+      import s.*
 
       val submissionId = "90001"
       val req          = SendSuccessEmailRequest("test@test.com", "September", "2025")
@@ -618,7 +613,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "builds SubcontractorVerificationEmail and calls EmailConnector, returning Unit" in {
       val s = setup
-      import s._
+      import s.*
 
       val req = SubcontractorVerificationEmailRequest("test@test.com")
 
@@ -640,7 +635,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "propagates failures from EmailConnector" in {
       val s = setup
-      import s._
+      import s.*
 
       val req = SubcontractorVerificationEmailRequest("test@test.com")
 
@@ -664,7 +659,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "delegates to FormpProxyConnector and completes" in {
       val s = setup
-      import s._
+      import s.*
 
       val req = CreateGovTalkStatusRecordRequest(
         userIdentifier = "123",
@@ -685,7 +680,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "propagates failures from FormpProxyConnector" in {
       val s = setup
-      import s._
+      import s.*
 
       val req = CreateGovTalkStatusRecordRequest(
         userIdentifier = "123",
@@ -707,7 +702,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "delegates to FormpProxyConnector and completes" in {
       val s = setup
-      import s._
+      import s.*
 
       val req = UpdateGovTalkStatusRequest(
         userIdentifier = "instance-123",
@@ -727,7 +722,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "propagates failures from FormpProxyConnector" in {
       val s = setup
-      import s._
+      import s.*
 
       val req = UpdateGovTalkStatusRequest(
         userIdentifier = "instance-123",
@@ -748,7 +743,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "delegates to FormpProxyConnector and completes" in {
       val s = setup
-      import s._
+      import s.*
 
       val req = UpdateGovTalkStatusCorrelationIdRequest(
         userIdentifier = "instance-123",
@@ -770,7 +765,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "propagates failures from FormpProxyConnector" in {
       val s = setup
-      import s._
+      import s.*
 
       val req = UpdateGovTalkStatusCorrelationIdRequest(
         userIdentifier = "instance-123",
@@ -791,7 +786,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "delegates to FormpProxyConnector and completes" in {
       val s = setup
-      import s._
+      import s.*
 
       val req = UpdateGovTalkStatusStatisticsRequest(
         userIdentifier = "instance-123",
@@ -814,7 +809,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "propagates failures from FormpProxyConnector" in {
       val s = setup
-      import s._
+      import s.*
 
       val req = UpdateGovTalkStatusStatisticsRequest(
         userIdentifier = "instance-123",
@@ -836,7 +831,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "initialises govtalk, saves session, and runs govtalk update steps" in {
       val s = setup
-      import s._
+      import s.*
 
       val employerRef         = EmployerReference("123", "AB456")
       val submissionId        = "sub-123"
@@ -951,7 +946,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "fails when correlationId does not match" in {
       val s = setup
-      import s._
+      import s.*
 
       service
         .processInitialChrisAck(
@@ -984,7 +979,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "initialises govtalk and updates status to dataRequest" in {
       val s = setup
-      import s._
+      import s.*
 
       val employerRef   = EmployerReference("123", "AB456")
       val submissionId  = "sub-123"
@@ -1008,13 +1003,60 @@ final class SubmissionServiceSpec extends SpecBase {
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
+      when(formpProxyConnector.updateGovTalkStatus(any)(any)) thenReturn Future.unit
+
+      val journey      = ChrisPollJourney.MonthlyReturn
+      val context      = MonthlyReturnSubmissionContext(
+        hmrcMarkGenerated = "hmrc-mark",
+        submissionRequestDate = LocalDateTime.of(2025, 1, 1, 0, 0)
+      )
+      val govTalkError = GovTalkError("xxxx", "timeOut", "timed out")
+
+      when(formPSubmissionUpdateProcessorRegistry.processorFor(eqTo(journey)))
+        .thenReturn(formPSubmissionUpdateProcessor)
+
       when(
-        formpProxyConnector.updateGovTalkStatus(
-          eqTo(UpdateGovTalkStatusRequest("instance-123", submissionId, None, "dataRequest"))
-        )(any[HeaderCarrier])
+        formPSubmissionUpdateProcessor.handleInitialFailure(any[ChrisSubmissionSessionData], eqTo(govTalkError))(
+          any[HeaderCarrier]
+        )
       ).thenReturn(Future.unit)
 
-      service.processInitialChrisFailure(employerRef, submissionId, correlationId, gatewayUrl).futureValue mustBe ()
+      service
+        .processInitialChrisFailure(
+          employerRef,
+          submissionId,
+          correlationId,
+          gatewayUrl,
+          journey,
+          context,
+          govTalkError
+        )
+        .futureValue mustBe ()
+
+      verify(formPSubmissionUpdateProcessor)
+        .handleInitialFailure(any[ChrisSubmissionSessionData], eqTo(govTalkError))(any[HeaderCarrier])
+
+      verify(formpProxyConnector).getGovTalkStatus(
+        eqTo(GetGovTalkStatusRequest("instance-123", submissionId)),
+        eqTo(Initial)
+      )(any[HeaderCarrier])
+      verify(formpProxyConnector).createGovTalkStatusRecord(
+        eqTo(CreateGovTalkStatusRecordRequest("instance-123", submissionId, correlationId, gatewayUrl))
+      )(any[HeaderCarrier])
+      verify(formpProxyConnector).updateGovTalkStatus(
+        eqTo(UpdateGovTalkStatusRequest("instance-123", submissionId, None, "dataRequest"))
+      )(any)
+      verify(formpProxyConnector).updateGovTalkStatus(
+        eqTo(
+          UpdateGovTalkStatusRequest(
+            "instance-123",
+            submissionId,
+            Some(LocalDateTime parse "2025-01-01T00:00"),
+            "endState"
+          )
+        )
+      )(any)
+      verifyNoMoreInteractions(formpProxyConnector)
     }
   }
 
@@ -1022,7 +1064,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "returns instanceId when taxpayer exists and no GovTalk status record exists" in {
       val s = setup
-      import s._
+      import s.*
 
       val employerRef   = EmployerReference("", "")
       val submissionId  = "sub-123"
@@ -1079,7 +1121,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "fails when GovTalk status record already exists and this is not a resubmission" in {
       val s = setup
-      import s._
+      import s.*
 
       val employerRef   = EmployerReference("", "")
       val submissionId  = "sub-123"
@@ -1129,7 +1171,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "fails when FormP returns an empty GovTalk status response and this is not a resubmission" in {
       val s = setup
-      import s._
+      import s.*
 
       val employerRef   = EmployerReference("", "")
       val submissionId  = "sub-123"
@@ -1174,7 +1216,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "resets existing GovTalk status when this is a resubmission" in {
       val s = setup
-      import s._
+      import s.*
 
       val employerRef   = EmployerReference("", "")
       val submissionId  = "sub-123"
@@ -1231,7 +1273,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "fails when this is a resubmission but no GovTalk status record exists" in {
       val s = setup
-      import s._
+      import s.*
 
       val employerRef   = EmployerReference("", "")
       val submissionId  = "sub-123"
@@ -1273,7 +1315,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "fails when FormP returns an empty GovTalk status response for resubmission" in {
       val s = setup
-      import s._
+      import s.*
 
       val employerRef   = EmployerReference("", "")
       val submissionId  = "sub-123"
@@ -1687,7 +1729,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "get govtalk status, saves session, runs govtalk update steps, and returns gatewayURL" in {
       val s = setup
-      import s._
+      import s.*
 
       val instanceId          = "instance-123"
       val submissionId        = "sub-123"
@@ -1780,7 +1822,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "failed when govTalkStatus response is None" in {
       val s = setup
-      import s._
+      import s.*
 
       val instanceId      = "instance-123"
       val submissionId    = "sub-123"
@@ -1802,7 +1844,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
     "failed when govTalkStatus response is empty" in {
       val s = setup
-      import s._
+      import s.*
 
       val instanceId      = "instance-123"
       val submissionId    = "sub-123"
@@ -1826,11 +1868,9 @@ final class SubmissionServiceSpec extends SpecBase {
   private def stubPollScenario(
     s: Setup,
     status: SubmissionStatus,
-    deleteResult: Option[Future[Unit]] = None,
-    expectedProtocolStatus: String = "dataPoll",
-    expectedEndState: Option[LocalDateTime] = None
+    deleteResult: Option[Future[Unit]] = None
   ): ChrisPollResponse = {
-    import s._
+    import s.*
 
     val submissionId = "sub-123"
     val instanceId   = "instance-123"

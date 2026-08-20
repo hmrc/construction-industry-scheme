@@ -20,6 +20,14 @@ To run all tests and coverage: `./run_all_tests.sh`
 To start the server locally: `sbt -Dconfig.resource=application.no.stubs.conf run`
 This forces the service to use the application.no.stubs.conf file which points to the real cis-filing-db service.
 
+## End-to-end tests
+
+An opt-in e2e suite drives the verification flows against locally running
+services (backend, external stub, auth, auth-login-api): `sbt e2e/test`.
+It is excluded from `sbt test`, `sbt it/test` and CI; see
+[`e2e/README.md`](e2e/README.md).
+
 ### License
 
 This code is open source software licensed under the [Apache 2.0 License]("http://www.apache.org/licenses/LICENSE-2.0.html").
+

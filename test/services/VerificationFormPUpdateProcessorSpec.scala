@@ -316,6 +316,35 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       )
     }
 
+    "update verification submission with FATAL_ERROR and GovTalk error on initial failure" in {
+      val formpProxyConnector      = mock[FormpProxyConnector]
+      val verificationResultMapper = mock[VerificationResultMapper]
+      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
+
+      when(
+        formpProxyConnector.updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      processor
+        .handleInitialFailure(sessionData(), GovTalkError("xxxx", "timeOut", "timed out"))
+        .futureValue mustBe ()
+
+      val requestCaptor =
+        org.mockito.ArgumentCaptor.forClass(classOf[UpdateVerificationSubmissionRequest])
+
+      verify(formpProxyConnector).updateVerificationSubmission(requestCaptor.capture())(any[HeaderCarrier])
+
+      requestCaptor.getValue.submittableStatus mustBe FATAL_ERROR.toString
+      requestCaptor.getValue.hmrcMarkGenerated mustBe Some("hmrc-mark")
+      requestCaptor.getValue.govtalkErrorCode mustBe Some("xxxx")
+      requestCaptor.getValue.govtalkErrorType mustBe Some("timeOut")
+      requestCaptor.getValue.govtalkErrorMessage mustBe Some("timed out")
+
+      verify(formpProxyConnector, never()).processVerificationResponseFromChris(
+        any[ProcessVerificationResponseFromChrisRequest]
+      )(any[HeaderCarrier])
+    }
+
     "fail when verification context is missing" in {
       val processor = new VerificationFormPUpdateProcessor(
         mock[FormpProxyConnector],

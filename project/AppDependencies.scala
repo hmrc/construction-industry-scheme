@@ -24,4 +24,12 @@ object AppDependencies {
   )
 
   val it: Seq[Nothing] = Seq.empty
+
+  // e2e is classpath-isolated (no dependsOn), so it declares everything it needs
+  val e2e: Seq[ModuleID] = Seq(
+    "org.scalatest"       %% "scalatest"    % "3.2.19" % Test,
+    "org.playframework"   %% "play-json"    % "3.0.6"  % Test,
+    // itSettings() adds ScalaTest's HTML report option, which needs flexmark at runtime
+    "com.vladsch.flexmark" % "flexmark-all" % "0.64.8" % Test
+  )
 }

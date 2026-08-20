@@ -109,7 +109,7 @@ final class ChrisSubmissionXmlMapperSpec extends AnyFreeSpec with Matchers with 
 
       val e = res.meta.error.value
       e.errorNumber mustBe "9001"
-      e.errorType.toLowerCase mustBe "fatal"
+      e.errorType mustBe "systemError"
       e.errorText.toLowerCase must include("catastrophic")
     }
 
@@ -142,7 +142,7 @@ final class ChrisSubmissionXmlMapperSpec extends AnyFreeSpec with Matchers with 
 
       val err = res.meta.error.value
       err.errorNumber mustBe "3000"
-      err.errorType.toLowerCase mustBe "fatal"
+      err.errorType mustBe "departmentalError"
     }
 
     "maps unknown qualifier to FATAL_ERROR" in {

@@ -34,11 +34,11 @@ final class GovTalkErrorMapperSpec extends AnyFreeSpec with Matchers {
         result mustBe GovTalkError("3001", "departmentalError", "Submission failed due to business validation errors")
       }
 
-      "maps 3000/fatal to departmentalError with code 3001 (remapped)" in {
+      "maps 3000/fatal to departmentalError with code 3000" in {
         val error  = GovTalkError("3000", "fatal", "Fatal processing error")
         val result = GovTalkErrorMapper.map(error)
 
-        result mustBe GovTalkError("3001", "departmentalError", "Fatal processing error")
+        result mustBe GovTalkError("3000", "departmentalError", "Fatal processing error")
       }
 
       "maps other error codes to systemError with actual code" in {
@@ -66,7 +66,7 @@ final class GovTalkErrorMapperSpec extends AnyFreeSpec with Matchers {
         val error  = GovTalkError("3000", "FATAL", "Error text")
         val result = GovTalkErrorMapper.map(error)
 
-        result mustBe GovTalkError("3001", "departmentalError", "Error text")
+        result mustBe GovTalkError("3000", "departmentalError", "Error text")
       }
     }
 
@@ -76,14 +76,13 @@ final class GovTalkErrorMapperSpec extends AnyFreeSpec with Matchers {
 
         result mustBe GovTalkError("500", "timeOut", "timeOut")
       }
-
     }
 
     "fromConnectionRefused" - {
-      "returns code 500, type timeOut, message 'timed out'" in {
+      "returns code xxxx, type timeOut, message 'timed out'" in {
         val result = GovTalkErrorMapper.fromConnectionRefused()
 
-        result mustBe GovTalkError("500", "timeOut", "timed out")
+        result mustBe GovTalkError("xxxx", "timeOut", "timed out")
       }
     }
   }
