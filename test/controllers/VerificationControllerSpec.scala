@@ -935,4 +935,75 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       verify(verificationService).getSubmittedVerifications(eqTo(validRequest))(any[HeaderCarrier])
     }
   }
+
+  "proceedInsufficientVerification" - {
+
+    val url = "/cis/verification/proceed-with-insufficient-data"
+
+    val validRequest: ProceedInsufficientVerificationRequest =
+      ProceedInsufficientVerificationRequest(
+        instanceId = "1",
+        verificationBatchResourceRef = 10L,
+        verificationResourceRef = 9L,
+        proceed = "Y"
+      )
+
+    val validJson: JsValue = Json.toJson(validRequest)
+
+    "returns 200 when service succeeds" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      when(verificationService.proceedInsufficientVerification(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val req = FakeRequest(POST, url)
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.proceedInsufficientVerification()(req)
+
+      status(result) mustBe OK
+      verify(verificationService).proceedInsufficientVerification(eqTo(validRequest))(any[HeaderCarrier])
+    }
+
+    "returns 400 BadRequest when JSON is invalid" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      val badJson = Json.obj("bad" -> "json")
+
+      val req = FakeRequest(POST, url)
+        .withBody(badJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.proceedInsufficientVerification()(req)
+
+      status(result) mustBe BAD_REQUEST
+      verifyNoInteractions(verificationService)
+    }
+
+    "returns 502 BadGateway with error body when service fails" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      when(verificationService.proceedInsufficientVerification(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req = FakeRequest(POST, url)
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.proceedInsufficientVerification()(req)
+
+      status(result) mustBe BAD_GATEWAY
+      contentType(result) mustBe Some(JSON)
+      contentAsJson(result) mustBe Json.obj("message" -> "proceed-insufficient-verification-failed")
+
+      verify(verificationService).proceedInsufficientVerification(eqTo(validRequest))(any[HeaderCarrier])
+    }
+  }
 }

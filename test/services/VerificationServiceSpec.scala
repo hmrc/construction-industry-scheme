@@ -371,4 +371,36 @@ final class VerificationServiceSpec extends SpecBase {
       service.getSubmittedVerifications(request).failed.futureValue.getMessage must include("boom")
     }
   }
+
+  "VerificationService#proceedInsufficientVerification" - {
+
+    val request = ProceedInsufficientVerificationRequest(
+      instanceId = "1",
+      verificationBatchResourceRef = 10L,
+      verificationResourceRef = 9L,
+      proceed = "Y"
+    )
+
+    "delegates to FormpProxyConnector and returns response" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.proceedInsufficientVerification(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.proceedInsufficientVerification(request).futureValue mustBe ()
+
+      verify(connector).proceedInsufficientVerification(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.proceedInsufficientVerification(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.proceedInsufficientVerification(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
 }
