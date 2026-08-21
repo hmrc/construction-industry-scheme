@@ -1552,7 +1552,7 @@ final class SubmissionServiceSpec extends SpecBase {
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(snapshotResponse))
 
-      val result: Throwable =
+      val result =
         service
           .syncVerificationSessionForPolling(submissionToPoll)
           .failed
@@ -1597,7 +1597,7 @@ final class SubmissionServiceSpec extends SpecBase {
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(snapshotResponse))
 
-      val result: Throwable =
+      val result =
         service
           .syncVerificationSessionForPolling(submissionToPoll)
           .failed

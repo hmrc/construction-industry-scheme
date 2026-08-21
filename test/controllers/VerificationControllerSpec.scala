@@ -100,8 +100,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             verificationNumber = Some("V0000000001"),
             taxTreatment = Some("0"),
             verificationBatchId = Some(99L),
-            subcontractorId = Some(1L),
-            verificationResourceRef = Some(10L)
+            subcontractorId = Some(1L)
           )
         ),
         submission = Some(

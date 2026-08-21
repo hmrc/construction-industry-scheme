@@ -77,7 +77,6 @@ class GetSubmissionWithVerificationBatchResponseSpec extends SpecBase {
               taxTreatment = None,
               verificationBatchId = Some(99L),
               subcontractorId = Some(1L),
-              verificationResourceRef = Some(10L),
               actionIndicator = Some("VERIFY"),
               proceed = Some("Y")
             )
