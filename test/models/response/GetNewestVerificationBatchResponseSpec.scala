@@ -92,8 +92,7 @@ final class GetNewestVerificationBatchResponseSpec extends AnyWordSpec with Matc
           VerificationBatch(
             verificationBatchId = 99L,
             status = Some("STARTED"),
-            verificationNumber = Some("V0000000001"),
-            verifBatchResourceRef = Some(9L)
+            verificationNumber = Some("V0000000001")
           )
         ),
         verifications = Seq(

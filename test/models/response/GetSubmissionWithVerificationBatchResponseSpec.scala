@@ -66,8 +66,7 @@ class GetSubmissionWithVerificationBatchResponseSpec extends SpecBase {
             VerificationBatch(
               verificationBatchId = 99L,
               status = Some("SUBMITTED"),
-              verificationNumber = None,
-              verifBatchResourceRef = Some(9L)
+              verificationNumber = None
             )
           ),
           verifications = Seq(

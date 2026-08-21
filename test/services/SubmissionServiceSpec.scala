@@ -1370,7 +1370,6 @@ final class SubmissionServiceSpec extends SpecBase {
             taxTreatment = None,
             verificationBatchId = Some(100L),
             subcontractorId = Some(10L),
-            verificationResourceRef = Some(10L),
             actionIndicator = Some("verify"),
             proceed = Some("Y"),
             verificationResourceRef = Some(13L)
