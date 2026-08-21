@@ -22,10 +22,11 @@ import uk.gov.hmrc.constructionindustryscheme.models.CacheItem
 
 import javax.inject.{Inject, Singleton}
 import scala.collection.concurrent.TrieMap
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
 @Singleton
-class CacheService @Inject (actorSystem: ActorSystem) {
+class CacheService @Inject (actorSystem: ActorSystem)(implicit ec: ExecutionContext) {
 
   private val cache: TrieMap[String, String] = TrieMap.empty
 
@@ -60,10 +61,8 @@ class CacheService @Inject (actorSystem: ActorSystem) {
       scheduleEviction(key, ttl)
     }
 
-  private def scheduleEviction(key: String, ttl: FiniteDuration): Unit = {
-    import scala.concurrent.ExecutionContext.Implicits.global
+  private def scheduleEviction(key: String, ttl: FiniteDuration): Unit =
     actorSystem.scheduler.scheduleOnce(ttl) {
       cache.remove(key)
     }
-  }
 }

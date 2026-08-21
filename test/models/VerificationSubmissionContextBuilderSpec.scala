@@ -118,7 +118,8 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
               partnershipUtr = None,
               subcontractorType = Some("soletrader")
             )
-          )
+          ),
+          emailRecipient = Some("test@test.com")
         )
       )
     }
@@ -184,7 +185,8 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
               subcontractorId = Some(10L),
               verificationResourceRef = Some(10L),
               actionIndicator = Some("verify"),
-              proceed = Some("Y")
+              proceed = Some("Y"),
+              verificationResourceRef = Some(13L)
             )
           ),
           subcontractors = Seq(
@@ -261,7 +263,8 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
               partnershipUtr = None,
               subcontractorType = Some("soletrader")
             )
-          )
+          ),
+          emailRecipient = None
         )
       )
     }

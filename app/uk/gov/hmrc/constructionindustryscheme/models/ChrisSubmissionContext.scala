@@ -50,7 +50,8 @@ final case class VerificationSubmissionContext(
   submissionRequestDate: LocalDateTime,
   verificationBatchResourceRef: Long,
   actionIndicators: Seq[VerificationActionIndicator],
-  requestedVerifications: Seq[StoredRequestedVerification]
+  requestedVerifications: Seq[StoredRequestedVerification],
+  emailRecipient: Option[String] = None
 ) extends ChrisSubmissionContext {
 
   override def monthlyReturnContext: Option[StoredMonthlyReturnContext] = None
@@ -62,7 +63,8 @@ final case class VerificationSubmissionContext(
         submissionRequestDate = submissionRequestDate,
         verificationBatchResourceRef = verificationBatchResourceRef,
         actionIndicators = actionIndicators,
-        requestedVerifications = requestedVerifications
+        requestedVerifications = requestedVerifications,
+        emailRecipient = emailRecipient
       )
     )
 }

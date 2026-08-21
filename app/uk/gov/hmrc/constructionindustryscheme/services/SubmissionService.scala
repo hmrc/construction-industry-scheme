@@ -387,6 +387,13 @@ class SubmissionService @Inject() (
                result
              )
 
+      _ <- sendVerificationEmailAndRecover(
+             journey = journey,
+             status = result.status,
+             emailRecipient = session.verificationContext.flatMap(_.emailRecipient),
+             submissionId = submissionId
+           )
+
       deleteOutcome <- deleteChrisResourcesIfNeeded(
                          result.status,
                          session.correlationId,
@@ -425,6 +432,54 @@ class SubmissionService @Inject() (
            )
     } yield ()
   }
+
+  private def sendVerificationEmailAndRecover(
+    journey: ChrisPollJourney,
+    status: SubmissionStatus,
+    emailRecipient: Option[String],
+    submissionId: String
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    sendVerificationEmailIfRequired(
+      journey = journey,
+      status = status,
+      emailRecipient = emailRecipient,
+      submissionId = submissionId
+    ).recover { case NonFatal(exception) =>
+      logger.error(
+        s"[SubmissionService][sendVerificationEmailAndRecover] Failed to send verification email for " +
+          s"submissionId=$submissionId, but verification polling has completed successfully.",
+        exception
+      )
+    }
+
+  private def sendVerificationEmailIfRequired(
+    journey: ChrisPollJourney,
+    status: SubmissionStatus,
+    emailRecipient: Option[String],
+    submissionId: String
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    (journey, status) match {
+      case (ChrisPollJourney.Verification, SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR) =>
+        emailRecipient match {
+          case Some(email) =>
+            logger.info(
+              s"[SubmissionService][sendVerificationEmailIfRequired] Sending email because status is = $status"
+            )
+            sendEmailForVerification(SubcontractorVerificationEmailRequest(email))
+          case None        =>
+            logger.warn(
+              s"[SubmissionService][sendVerificationEmailIfRequired] No emailRecipient for verification " +
+                s"submissionId=$submissionId, skipping email; status $status"
+            )
+            Future.unit
+        }
+
+      case _ =>
+        logger.warn(
+          s"[SubmissionService][sendVerificationEmailIfRequired] Not sending email; status $status is ineligible for sending email"
+        )
+        Future.unit
+    }
 
   def processMonthlyReturnGovTalkStatusCheck(
     instanceId: String,

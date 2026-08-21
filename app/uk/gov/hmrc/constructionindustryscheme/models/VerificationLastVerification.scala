@@ -18,18 +18,17 @@ package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.libs.json.{Json, OFormat}
 
-final case class Verification(
+case class VerificationLastVerification(
   verificationId: Long,
+  verificationBatchId: Option[Long],
+  verificationResourceRef: Option[Long],
   matched: Option[String],
   verificationNumber: Option[String],
   taxTreatment: Option[String],
-  verificationBatchId: Option[Long],
-  subcontractorId: Option[Long],
-  verificationResourceRef: Option[Long],
-  actionIndicator: Option[String] = None,
-  proceed: Option[String] = None,
-  verificationResourceRef: Option[Long] = None
+  subcontractorName: Option[String],
+  subcontractorId: Option[Long]
 )
 
-object Verification:
-  given format: OFormat[Verification] = Json.format[Verification]
+object VerificationLastVerification {
+  given format: OFormat[VerificationLastVerification] = Json.format[VerificationLastVerification]
+}
