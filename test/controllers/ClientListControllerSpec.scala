@@ -366,4 +366,43 @@ class ClientListControllerSpec extends SpecBase {
       contentAsJson(result) mustBe Json.obj("error" -> "Failed to check client")
     }
   }
+
+  "ClientListController.removeClient" - {
+
+    val taxOfficeNumber    = "123"
+    val taxOfficeReference = "AB456"
+    val irAgentId          = "SA123456"
+    val credId             = "cred-123"
+
+    "return 200 OK when client removed successfully" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.removeClient(any[String], any[String], any[String])(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(1L))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, agentAction, mockService, cc)
+
+      val result = controller.removeClient(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+      status(result) mustBe OK
+
+      verify(mockService, times(1)).removeClient(any[String], any[String], any[String])(using any[HeaderCarrier])
+    }
+
+    "return 500 InternalServerError when service fails" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.removeClient(any[String], any[String], any[String])(using any[HeaderCarrier]))
+        .thenReturn(Future.failed(UpstreamErrorResponse("Service error", 500, 500)))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, agentAction, mockService, cc)
+
+      val result = controller.removeClient(taxOfficeNumber, taxOfficeReference)(fakeRequest)
+
+      status(result) mustBe INTERNAL_SERVER_ERROR
+      contentAsJson(result) mustBe Json.obj("message" -> "Unexpected error")
+    }
+  }
 }
