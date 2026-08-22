@@ -17,20 +17,20 @@
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
 import play.api.Logging
-import play.api.http.Status.{NOT_FOUND, OK}
-
-import javax.inject.*
-import scala.concurrent.{ExecutionContext, Future}
+import play.api.http.Status.NOT_FOUND
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{EnqueueClobRequest, EnqueueMessageHeaderRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{EnqueueClobResponse, EnqueueMessageHeaderResponse}
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, ClientListStatus, EmployerReference, PrePopContractorBody, PrePopContractorResponse, PrePopSubcontractor, PrePopSubcontractorsResponse, PrepopKnownFacts}
+import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
+
+import javax.inject.*
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class DatacacheProxyConnector @Inject() (

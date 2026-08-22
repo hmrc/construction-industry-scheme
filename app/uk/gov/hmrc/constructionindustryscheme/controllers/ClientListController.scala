@@ -68,3 +68,14 @@ class ClientListController @Inject() (
           InternalServerError(Json.obj("error" -> "Failed to check client"))
         }
     }
+
+  def removeClient(taxOfficeNumber: String, taxOfficeReference: String): Action[AnyContent] =
+    (authorise andThen isAgent).async { implicit request =>
+      service
+        .removeClient(taxOfficeNumber, taxOfficeReference, request.agentId)
+        .map(_ => Ok)
+        .recover { case t =>
+          logger.error("[removeClient] failed", t)
+          InternalServerError(Json.obj("message" -> "Unexpected error"))
+        }
+    }
