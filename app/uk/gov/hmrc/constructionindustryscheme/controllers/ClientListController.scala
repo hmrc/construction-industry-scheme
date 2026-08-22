@@ -20,6 +20,7 @@ import play.api.Logging
 import play.api.libs.json.*
 import play.api.mvc.*
 import uk.gov.hmrc.constructionindustryscheme.actions.{AgentAction, AuthAction}
+import uk.gov.hmrc.constructionindustryscheme.models.CisClientsSearchResultByEmpRef
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.*
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
@@ -68,3 +69,18 @@ class ClientListController @Inject() (
           InternalServerError(Json.obj("error" -> "Failed to check client"))
         }
     }
+
+  def getClientsByEmployersReference(employerRef: String): Action[AnyContent] = (authorise andThen isAgent).async {
+    implicit request =>
+      service
+        .getClientsByEmployersReference(request.agentId, request.credentialId, employerRef)
+        .map(result => Ok(Json.toJson(result)))
+        .recover { case e: Exception =>
+          logger.error(
+            s"[ClientListController.getClientsByEmployersReference] error to fetch clients by employer ref: ${e.getMessage}",
+            e
+          )
+          InternalServerError(Json.obj("error" -> "Failed to fetch clients by employer ref"))
+        }
+
+  }

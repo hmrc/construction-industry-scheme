@@ -34,6 +34,7 @@ GET        /agent/has-client/:taxOfficeNumber/:taxOfficeReference        uk.gov.
 GET        /agent/client-taxpayer/:taxOfficeNumber/:taxOfficeReference   uk.gov.hmrc.constructionindustryscheme.controllers.MonthlyReturnsController.getCisClientTaxpayer(taxOfficeNumber: String, taxOfficeReference: String)
 POST       /contractor-known-facts/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId                     uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorKnownFacts(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
 POST       /scheme/prepopulate/:taxOfficeNumber/:taxOfficeReference/:instanceId                                     uk.gov.hmrc.constructionindustryscheme.controllers.PrepopulationController.prepopulateContractorAndSubcontractors(taxOfficeNumber: String, taxOfficeReference: String, instanceId: String)
+GET        /agent/client-empRef/:employerRef                              uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController.getClientsByEmployersReference(employerRef: String)
 
 POST       /subcontractor/create-and-update                              uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.createAndUpdateSubcontractor()
 GET        /subcontractors/utr/:cisId                                    uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractorUTRs(cisId: String)

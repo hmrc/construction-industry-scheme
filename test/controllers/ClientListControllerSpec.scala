@@ -25,7 +25,7 @@ import play.api.mvc.PlayBodyParsers
 import play.api.test.Helpers.*
 import uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.{Failed, InProgress, InitiateDownload, Succeeded}
-import uk.gov.hmrc.constructionindustryscheme.models.CisTaxpayerSearchResult
+import uk.gov.hmrc.constructionindustryscheme.models.{CisClientsSearchResultByEmpRef, CisTaxpayerSearchResult}
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.*
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
@@ -279,6 +279,78 @@ class ClientListControllerSpec extends SpecBase {
       }
       thrown.statusCode mustBe 503
       thrown.message must include("Service unavailable")
+    }
+  }
+
+  "ClientListController.getClientsByEmployersReference" - {
+
+    val irAgentId   = "SA123456"
+    val credId      = "cred-123"
+    val employerRef = "123456"
+
+    "return 200 OK with ClientsSearchResultByEmpRef when both irAgentId, credentialId and employerRef are available" in {
+      val mockService = mock[ClientListService]
+
+      val clientSearchResultByEmpRef = CisClientsSearchResultByEmpRef(
+        clients = List(
+          CisTaxpayerSearchResult(
+            uniqueId = "client-1",
+            taxOfficeNumber = "111",
+            taxOfficeRef = "test111",
+            aoDistrict = Some("district1"),
+            aoPayType = Some("type1"),
+            aoCheckCode = Some("check1"),
+            aoReference = Some("ref1"),
+            validBusinessAddr = Some("Y"),
+            correlation = Some("corr1"),
+            ggAgentId = Some("agent1"),
+            employerName1 = Some("Test Company Ltd"),
+            employerName2 = Some("Test Company"),
+            agentOwnRef = Some("own-ref-1"),
+            schemeName = Some("Test Scheme")
+          )
+        ),
+        clientNameStartingCharacters = List("T")
+      )
+
+      when(mockService.getClientsByEmployersReference(any[String], any[String], any[String])(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(clientSearchResultByEmpRef))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, agentAction, mockService, cc)
+
+      val result = controller.getClientsByEmployersReference(employerRef)(fakeRequest)
+
+      status(result) mustBe OK
+      val json = contentAsJson(result)
+      (json \ "clients").as[List[CisTaxpayerSearchResult]] must have size 1
+      (json \ "clientNameStartingCharacters").as[List[String]] mustBe List("T")
+
+      verify(mockService, times(1)).getClientsByEmployersReference(any[String], any[String], any[String])(using
+        any[HeaderCarrier]
+      )
+    }
+
+    "return 200 OK with empty client list when no clients found" in {
+      val mockService = mock[ClientListService]
+
+      val emptyResult = CisClientsSearchResultByEmpRef(
+        clients = List.empty,
+        clientNameStartingCharacters = List.empty
+      )
+
+      when(mockService.getClientsByEmployersReference(any[String], any[String], any[String])(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(emptyResult))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, agentAction, mockService, cc)
+
+      val result = controller.getClientsByEmployersReference("")(fakeRequest)
+
+      status(result) mustBe OK
+      val json = contentAsJson(result)
+      (json \ "clients").as[List[CisTaxpayerSearchResult]] mustBe empty
+      (json \ "clientNameStartingCharacters").as[List[String]] mustBe empty
     }
   }
 

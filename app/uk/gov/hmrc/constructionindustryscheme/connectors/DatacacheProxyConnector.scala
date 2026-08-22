@@ -24,7 +24,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.*
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, ClientListStatus, EmployerReference, PrePopContractorBody, PrePopContractorResponse, PrePopSubcontractor, PrePopSubcontractorsResponse, PrepopKnownFacts}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisClientsSearchResultByEmpRef, CisTaxpayer, ClientListStatus, EmployerReference, PrePopContractorBody, PrePopContractorResponse, PrePopSubcontractor, PrePopSubcontractorsResponse, PrepopKnownFacts}
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
@@ -111,6 +111,17 @@ class DatacacheProxyConnector @Inject() (
     http
       .get(endpoint)
       .execute[ClientSearchResult]
+  }
+
+  def getClientsByEmployersReference(irAgentId: String, credentialId: String, employerRef: String)(using
+    HeaderCarrier
+  ): Future[CisClientsSearchResultByEmpRef] = {
+
+    val endpoint =
+      url"$base/cis/client-empRef?&irAgentId=$irAgentId&credentialId=$credentialId&employerRef=$employerRef"
+    http
+      .get(endpoint)
+      .execute[CisClientsSearchResultByEmpRef]
   }
 
   def getSchemePrepopByKnownFacts(
