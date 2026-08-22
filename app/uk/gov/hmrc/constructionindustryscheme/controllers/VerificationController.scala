@@ -193,18 +193,27 @@ class VerificationController @Inject() (
 
   def proceedInsufficientVerification(): Action[JsValue] =
     authorise(parse.json).async { implicit request =>
-      request.body
-        .validate[ProceedInsufficientVerificationRequest]
-        .fold(
-          errs => Future.successful(BadRequest(JsError.toJson(errs))),
-          body =>
-            verificationService
-              .proceedInsufficientVerification(body)
-              .map(_ => Ok)
-              .recover { case ex =>
-                logger.error("[proceedInsufficientVerification] formp-proxy create failed", ex)
-                BadGateway(Json.obj("message" -> "proceed-insufficient-verification-failed"))
-              }
-        )
+      withJsonBody[ProceedVerificationRequest](req =>
+        verificationService
+          .proceedInsufficientVerification(req)
+          .map(_ => Ok)
+          .recover { case ex =>
+            logger.error("[proceedInsufficientVerification] formp-proxy create failed", ex)
+            BadGateway(Json.obj("message" -> "proceed-insufficient-verification-failed"))
+          }
+      )
+    }
+
+  def proceedUnmatchedVerification(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      withJsonBody[ProceedVerificationRequest](req =>
+        verificationService
+          .proceedUnmatchedVerification(req)
+          .map(_ => Ok)
+          .recover { case ex =>
+            logger.error("[proceedUnmatchedVerification] formp-proxy create failed", ex)
+            BadGateway(Json.obj("message" -> "proceed-unmatched-verification-failed"))
+          }
+      )
     }
 }

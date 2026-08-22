@@ -488,11 +488,11 @@ class FormpProxyConnector @Inject() (
       .get(url"$base/cis/subcontractor/$cisId/$subbieResourceRef")
       .execute[GetSubcontractorResponse]
 
-  def proceedInsufficientVerification(
-    request: ProceedInsufficientVerificationRequest
+  def proceedVerification(
+    request: ProceedVerificationProxyRequest
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
-      .post(url"$base/cis/verification/proceed-with-insufficient-data")
+      .post(url"$base/cis/verification/proceed")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>

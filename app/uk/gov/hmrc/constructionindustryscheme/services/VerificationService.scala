@@ -73,7 +73,28 @@ class VerificationService @Inject() (formpProxyConnector: FormpProxyConnector) {
     formpProxyConnector.getSubmittedVerifications(request)
 
   def proceedInsufficientVerification(
-    request: ProceedInsufficientVerificationRequest
+    request: ProceedVerificationRequest
   )(implicit hc: HeaderCarrier): Future[Unit] =
-    formpProxyConnector.proceedInsufficientVerification(request)
+    formpProxyConnector.proceedVerification(
+      ProceedVerificationProxyRequest(
+        instanceId = request.instanceId,
+        verificationBatchResourceRef = request.verificationBatchResourceRef,
+        verificationResourceRef = request.verificationResourceRef,
+        proceed = "Y",
+        taxTreatment = None
+      )
+    )
+
+  def proceedUnmatchedVerification(
+    request: ProceedVerificationRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    formpProxyConnector.proceedVerification(
+      ProceedVerificationProxyRequest(
+        instanceId = request.instanceId,
+        verificationBatchResourceRef = request.verificationBatchResourceRef,
+        verificationResourceRef = request.verificationResourceRef,
+        proceed = "Y",
+        taxTreatment = Some("NotKnown")
+      )
+    )
 }
