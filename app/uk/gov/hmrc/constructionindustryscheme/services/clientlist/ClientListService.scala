@@ -26,7 +26,7 @@ import org.apache.pekko.actor.ActorSystem
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.services.AuditService
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
-import uk.gov.hmrc.constructionindustryscheme.models.{AsynchronousProcessWaitTime, ClientListStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{AsynchronousProcessWaitTime, CisClientsSearchResultByEmpRef, ClientListStatus}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
@@ -54,6 +54,11 @@ class ClientListService @Inject() (
 
   def getClientList(irAgentId: String, credentialId: String)(using HeaderCarrier): Future[ClientSearchResult] =
     datacacheProxyConnector.getClientList(irAgentId, credentialId)
+
+  def getClientsByEmployersReference(irAgentId: String, credentialId: String, employerRef: String)(using
+    HeaderCarrier
+  ): Future[CisClientsSearchResultByEmpRef] =
+    datacacheProxyConnector.getClientsByEmployersReference(irAgentId, credentialId, employerRef)
 
   def hasClient(
     taxOfficeNumber: String,
