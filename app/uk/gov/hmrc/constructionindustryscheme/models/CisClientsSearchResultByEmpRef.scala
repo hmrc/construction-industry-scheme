@@ -18,9 +18,10 @@ package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.libs.json.{Json, OFormat}
 
-case class CisClientsSearchResultByEmpRef (clients: List[CisTaxpayerSearchResult],
-                                           clientNameStartingCharacters: List[String]
-                                          )
+case class CisClientsSearchResultByEmpRef(
+  clients: List[CisTaxpayerSearchResult],
+  clientNameStartingCharacters: List[String]
+)
 
 object CisClientsSearchResultByEmpRef {
   implicit val format: OFormat[CisClientsSearchResultByEmpRef] = Json.format[CisClientsSearchResultByEmpRef]
