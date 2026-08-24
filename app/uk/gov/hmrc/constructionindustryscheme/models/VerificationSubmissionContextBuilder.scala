@@ -46,7 +46,8 @@ object VerificationSubmissionContextBuilder {
       submissionRequestDate = submissionRequestDate,
       verificationBatchResourceRef = batchResourceRef,
       actionIndicators = actionIndicators,
-      requestedVerifications = requestedVerifications
+      requestedVerifications = requestedVerifications,
+      emailRecipient = request.emailRecipient
     )
 
   def buildFromFormpSnapshot(
@@ -73,7 +74,8 @@ object VerificationSubmissionContextBuilder {
           actionIndicator = requested.actionIndicator
         )
       },
-      requestedVerifications = requestedVerifications
+      requestedVerifications = requestedVerifications,
+      emailRecipient = submission.emailRecipient
     )
 
   private def buildRequestedVerifications(
@@ -149,7 +151,9 @@ object VerificationSubmissionContextBuilder {
                                        .get(subcontractorId)
                                        .toRight(s"No subcontractor found for subcontractorId: $subcontractorId")
           verificationResourceRef <-
-            subcontractor.subbieResourceRef.toRight(s"Missing subbieResourceRef for subcontractorId: $subcontractorId")
+            verification.verificationResourceRef.toRight(
+              s"Missing verificationResourceRef for verificationId: ${verification.verificationId}"
+            )
           actionIndicator         <- verification.actionIndicator
                                        .map(_.trim)
                                        .filter(_.nonEmpty)
