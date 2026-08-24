@@ -944,8 +944,8 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
     val validRequest: ProceedInsufficientVerificationRequest =
       ProceedInsufficientVerificationRequest(
         instanceId = "1",
-        verificationBatchResourceRef = 10L,
-        verificationResourceRef = 9L,
+        verificationBatchResourceRef = 9L,
+        verificationResourceRef = 10L,
         proceed = "Y"
       )
 

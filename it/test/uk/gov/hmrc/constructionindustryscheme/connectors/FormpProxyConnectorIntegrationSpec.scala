@@ -2117,8 +2117,8 @@ class FormpProxyConnectorIntegrationSpec
     "POST /formp-proxy/cis/verification/proceed-with-insufficient-data and return payload (204)" in {
       val req = ProceedInsufficientVerificationRequest(
         instanceId = "1",
-        verificationBatchResourceRef = 10L,
-        verificationResourceRef = 9L,
+        verificationBatchResourceRef = 9L,
+        verificationResourceRef = 10L,
         proceed = "Y"
       )
 
