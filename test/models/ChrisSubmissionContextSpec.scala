@@ -64,7 +64,8 @@ class ChrisSubmissionContextSpec extends SpecBase {
           submissionRequestDate = dateTime,
           verificationBatchResourceRef = 5L,
           actionIndicators = Seq.empty,
-          requestedVerifications = Seq.empty
+          requestedVerifications = Seq.empty,
+          emailRecipient = None
         )
       )
     }
