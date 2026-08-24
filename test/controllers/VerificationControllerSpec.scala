@@ -965,7 +965,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       val result = controller.proceedInsufficientVerification()(req)
 
-      status(result) mustBe OK
+      status(result) mustBe NO_CONTENT
       verify(verificationService).proceedInsufficientVerification(eqTo(validRequest))(any[HeaderCarrier])
     }
 
