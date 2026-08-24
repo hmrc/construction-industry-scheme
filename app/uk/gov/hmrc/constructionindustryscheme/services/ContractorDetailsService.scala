@@ -34,9 +34,9 @@ class ContractorDetailsService @Inject() (
     req: UpdateContractorSchemeParams
   )(implicit hc: HeaderCarrier): Future[Unit] =
     for {
-      _ <- cisConnector.updateContractorScheme(req)
-      _ <- cisConnector.updateSchemeVersion(
-             UpdateSchemeVersionRequest(req.instanceId, req.version.getOrElse(0))
-           )
+      newVersion <- cisConnector.updateSchemeVersion(
+                      UpdateSchemeVersionRequest(req.instanceId, req.version.getOrElse(0))
+                    )
+      _          <- cisConnector.updateContractorScheme(req.copy(version = Some(newVersion)))
     } yield ()
 }

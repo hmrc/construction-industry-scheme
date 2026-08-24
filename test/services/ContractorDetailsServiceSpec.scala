@@ -49,22 +49,22 @@ class ContractorDetailsServiceSpec extends AnyWordSpec with Matchers with Mockit
 
   "ContractorDetailsService.submitContractorDetails" should {
 
-    "update contractor scheme and then update scheme version" in {
+    "update scheme version and then update contractor scheme with new version" in {
 
       val mockConnector =
         mock[FormpProxyConnector]
-
-      when(
-        mockConnector.updateContractorScheme(
-          eqTo(updateContractorSchemeParams)
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.successful(()))
 
       when(
         mockConnector.updateSchemeVersion(
           eqTo(UpdateSchemeVersionRequest("cisId", 7))
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(8))
+
+      when(
+        mockConnector.updateContractorScheme(
+          eqTo(updateContractorSchemeParams.copy(version = Some(8)))
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
 
       val service =
         new ContractorDetailsService(mockConnector)
@@ -75,13 +75,13 @@ class ContractorDetailsServiceSpec extends AnyWordSpec with Matchers with Mockit
       result mustBe (())
 
       verify(mockConnector)
-        .updateContractorScheme(
-          eqTo(updateContractorSchemeParams)
+        .updateSchemeVersion(
+          eqTo(UpdateSchemeVersionRequest("cisId", 7))
         )(any[HeaderCarrier])
 
       verify(mockConnector)
-        .updateSchemeVersion(
-          eqTo(UpdateSchemeVersionRequest("cisId", 7))
+        .updateContractorScheme(
+          eqTo(updateContractorSchemeParams.copy(version = Some(8)))
         )(any[HeaderCarrier])
     }
 
@@ -94,16 +94,16 @@ class ContractorDetailsServiceSpec extends AnyWordSpec with Matchers with Mockit
         updateContractorSchemeParams.copy(version = None)
 
       when(
-        mockConnector.updateContractorScheme(
-          eqTo(requestWithoutVersion)
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.successful(()))
-
-      when(
         mockConnector.updateSchemeVersion(
           eqTo(UpdateSchemeVersionRequest("cisId", 0))
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(1))
+
+      when(
+        mockConnector.updateContractorScheme(
+          eqTo(requestWithoutVersion.copy(version = Some(1)))
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
 
       val service =
         new ContractorDetailsService(mockConnector)
@@ -114,62 +114,23 @@ class ContractorDetailsServiceSpec extends AnyWordSpec with Matchers with Mockit
       result mustBe (())
 
       verify(mockConnector)
-        .updateContractorScheme(
-          eqTo(requestWithoutVersion)
-        )(any[HeaderCarrier])
-
-      verify(mockConnector)
         .updateSchemeVersion(
           eqTo(UpdateSchemeVersionRequest("cisId", 0))
         )(any[HeaderCarrier])
-    }
-
-    "not update scheme version when updating contractor scheme fails" in {
-
-      val mockConnector =
-        mock[FormpProxyConnector]
-
-      val exception =
-        new RuntimeException("update contractor scheme failed")
-
-      when(
-        mockConnector.updateContractorScheme(
-          eqTo(updateContractorSchemeParams)
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.failed(exception))
-
-      val service =
-        new ContractorDetailsService(mockConnector)
-
-      val result =
-        service.submitContractorDetails(updateContractorSchemeParams).failed.futureValue
-
-      result mustBe exception
 
       verify(mockConnector)
         .updateContractorScheme(
-          eqTo(updateContractorSchemeParams)
-        )(any[HeaderCarrier])
-
-      verify(mockConnector, never())
-        .updateSchemeVersion(
-          any[UpdateSchemeVersionRequest]
+          eqTo(requestWithoutVersion.copy(version = Some(1)))
         )(any[HeaderCarrier])
     }
 
-    "fail when updating scheme version fails" in {
+    "not update contractor scheme when updating scheme version fails" in {
 
       val mockConnector =
         mock[FormpProxyConnector]
 
       val exception =
         new RuntimeException("update scheme version failed")
-
-      when(
-        mockConnector.updateContractorScheme(
-          eqTo(updateContractorSchemeParams)
-        )(any[HeaderCarrier])
-      ).thenReturn(Future.successful(()))
 
       when(
         mockConnector.updateSchemeVersion(
@@ -186,13 +147,52 @@ class ContractorDetailsServiceSpec extends AnyWordSpec with Matchers with Mockit
       result mustBe exception
 
       verify(mockConnector)
-        .updateContractorScheme(
-          eqTo(updateContractorSchemeParams)
+        .updateSchemeVersion(
+          eqTo(UpdateSchemeVersionRequest("cisId", 7))
         )(any[HeaderCarrier])
+
+      verify(mockConnector, never())
+        .updateContractorScheme(
+          any[UpdateContractorSchemeParams]
+        )(any[HeaderCarrier])
+    }
+
+    "fail when updating contractor scheme fails" in {
+
+      val mockConnector =
+        mock[FormpProxyConnector]
+
+      val exception =
+        new RuntimeException("update contractor scheme failed")
+
+      when(
+        mockConnector.updateSchemeVersion(
+          eqTo(UpdateSchemeVersionRequest("cisId", 7))
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(8))
+
+      when(
+        mockConnector.updateContractorScheme(
+          eqTo(updateContractorSchemeParams.copy(version = Some(8)))
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.failed(exception))
+
+      val service =
+        new ContractorDetailsService(mockConnector)
+
+      val result =
+        service.submitContractorDetails(updateContractorSchemeParams).failed.futureValue
+
+      result mustBe exception
 
       verify(mockConnector)
         .updateSchemeVersion(
           eqTo(UpdateSchemeVersionRequest("cisId", 7))
+        )(any[HeaderCarrier])
+
+      verify(mockConnector)
+        .updateContractorScheme(
+          eqTo(updateContractorSchemeParams.copy(version = Some(8)))
         )(any[HeaderCarrier])
     }
   }
