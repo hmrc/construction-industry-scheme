@@ -2126,7 +2126,7 @@ class FormpProxyConnectorIntegrationSpec
         post(urlPathEqualTo("/formp-proxy/cis/verification/proceed-with-insufficient-data"))
           .withHeader("Content-Type", containing("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
-          .willReturn(aResponse().withStatus(OK))
+          .willReturn(aResponse().withStatus(NO_CONTENT))
       )
 
       connector.proceedInsufficientVerification(req).futureValue mustBe ((): Unit)
