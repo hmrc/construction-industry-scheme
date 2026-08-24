@@ -2135,8 +2135,8 @@ class FormpProxyConnectorIntegrationSpec
     "fail the future when upstream returns a non-2xx (e.g. 500)" in {
       val req = ProceedInsufficientVerificationRequest(
         instanceId = "1",
-        verificationBatchResourceRef = 10L,
-        verificationResourceRef = 9L,
+        verificationBatchResourceRef = 9L,
+        verificationResourceRef = 10L,
         proceed = "Y"
       )
 
