@@ -18,10 +18,8 @@ package models.requests
 
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import play.api.libs.json.{JsSuccess, Json}
+import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.models.requests.DeleteVerificationRequest
-
-import java.time.LocalDateTime
 
 class DeleteVerificationRequestSpec extends AnyWordSpec with Matchers {
 
