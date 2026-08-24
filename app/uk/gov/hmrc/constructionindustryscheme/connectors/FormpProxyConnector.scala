@@ -496,7 +496,7 @@ class FormpProxyConnector @Inject() (
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
-        if (response.status == 200) Future.unit
+        if (response.status == NO_CONTENT) Future.unit
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
 }

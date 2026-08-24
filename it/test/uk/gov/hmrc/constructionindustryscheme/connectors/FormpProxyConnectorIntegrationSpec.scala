@@ -3035,27 +3035,24 @@ class FormpProxyConnectorIntegrationSpec
 
   "FormpProxyConnector deleteVerification" should {
 
+    val req = DeleteVerificationRequest(
+      instanceId = "1",
+      verificationResourceRef = 10L
+    )
+
     "POST /formp-proxy/cis/verification/delete and return payload (204)" in {
-      val req = DeleteVerificationRequest(
-        instanceId = "1",
-        verificationResourceRef = 9L
-      )
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/delete"))
           .withHeader("Content-Type", containing("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
-          .willReturn(aResponse().withStatus(OK))
+          .willReturn(aResponse().withStatus(NO_CONTENT))
       )
 
       connector.deleteVerification(req).futureValue mustBe ((): Unit)
     }
 
     "fail the future when upstream returns a non-2xx (e.g. 500)" in {
-      val req = DeleteVerificationRequest(
-        instanceId = "1",
-        verificationResourceRef = 9L
-      )
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/delete"))

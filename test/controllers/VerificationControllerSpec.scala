@@ -963,7 +963,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       val result = controller.deleteVerification()(req)
 
-      status(result) mustBe OK
+      status(result) mustBe NO_CONTENT
       verify(verificationService).deleteVerification(eqTo(validRequest))(any[HeaderCarrier])
     }
 

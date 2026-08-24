@@ -376,7 +376,7 @@ final class VerificationServiceSpec extends SpecBase {
 
     val request = DeleteVerificationRequest(
       instanceId = "1",
-      verificationResourceRef = 9L
+      verificationResourceRef = 10L
     )
 
     "delegates to FormpProxyConnector and returns response" in {

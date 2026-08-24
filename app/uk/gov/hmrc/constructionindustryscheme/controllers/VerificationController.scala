@@ -196,7 +196,7 @@ class VerificationController @Inject() (
       withJsonBody[DeleteVerificationRequest](req =>
         verificationService
           .deleteVerification(req)
-          .map(_ => Ok)
+          .map(_ => NoContent)
           .recover { case ex =>
             logger.error("[deleteVerification] formp-proxy create failed", ex)
             BadGateway(Json.obj("message" -> "delete-verification-failed"))
