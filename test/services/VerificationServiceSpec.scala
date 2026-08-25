@@ -376,14 +376,14 @@ final class VerificationServiceSpec extends SpecBase {
 
     val request = ProceedVerificationRequest(
       instanceId = "1",
-      verificationBatchResourceRef = 10L,
-      verificationResourceRef = 9L
+      verificationBatchResourceRef = 9L,
+      verificationResourceRef = 10L
     )
 
     val mockProxyRequest = ProceedVerificationProxyRequest(
       instanceId = "1",
-      verificationBatchResourceRef = 10L,
-      verificationResourceRef = 9L,
+      verificationBatchResourceRef = 9L,
+      verificationResourceRef = 10L,
       proceed = "Y",
       taxTreatment = None
     )
@@ -415,14 +415,14 @@ final class VerificationServiceSpec extends SpecBase {
 
     val request = ProceedVerificationRequest(
       instanceId = "1",
-      verificationBatchResourceRef = 10L,
-      verificationResourceRef = 9L
+      verificationBatchResourceRef = 9L,
+      verificationResourceRef = 10L
     )
 
     val mockProxyRequest = ProceedVerificationProxyRequest(
       instanceId = "1",
-      verificationBatchResourceRef = 10L,
-      verificationResourceRef = 9L,
+      verificationBatchResourceRef = 9L,
+      verificationResourceRef = 10L,
       proceed = "Y",
       taxTreatment = Some("NotKnown")
     )

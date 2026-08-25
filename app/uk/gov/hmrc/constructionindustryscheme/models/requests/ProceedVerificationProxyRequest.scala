@@ -26,6 +26,5 @@ case class ProceedVerificationProxyRequest(
   taxTreatment: Option[String]
 )
 object ProceedVerificationProxyRequest {
-  implicit val format: OFormat[ProceedVerificationProxyRequest] =
-    Json.format[ProceedVerificationProxyRequest]
+  given OFormat[ProceedVerificationProxyRequest] = Json.format
 }

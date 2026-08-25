@@ -944,8 +944,8 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
     val validRequest: ProceedVerificationRequest =
       ProceedVerificationRequest(
         instanceId = "1",
-        verificationBatchResourceRef = 10L,
-        verificationResourceRef = 9L
+        verificationBatchResourceRef = 9L,
+        verificationResourceRef = 10L
       )
 
     val validJson: JsValue = Json.toJson(validRequest)
@@ -964,7 +964,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       val result = controller.proceedInsufficientVerification()(req)
 
-      status(result) mustBe OK
+      status(result) mustBe NO_CONTENT
       verify(verificationService).proceedInsufficientVerification(eqTo(validRequest))(any[HeaderCarrier])
     }
 
@@ -1014,8 +1014,8 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
     val validRequest: ProceedVerificationRequest =
       ProceedVerificationRequest(
         instanceId = "1",
-        verificationBatchResourceRef = 10L,
-        verificationResourceRef = 9L
+        verificationBatchResourceRef = 9L,
+        verificationResourceRef = 10L
       )
 
     val validJson: JsValue = Json.toJson(validRequest)
@@ -1034,7 +1034,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       val result = controller.proceedUnmatchedVerification()(req)
 
-      status(result) mustBe OK
+      status(result) mustBe NO_CONTENT
       verify(verificationService).proceedUnmatchedVerification(eqTo(validRequest))(any[HeaderCarrier])
     }
 

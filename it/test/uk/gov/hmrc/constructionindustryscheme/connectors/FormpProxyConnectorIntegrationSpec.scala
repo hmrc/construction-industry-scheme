@@ -2117,8 +2117,8 @@ class FormpProxyConnectorIntegrationSpec
     "POST /formp-proxy/cis/verification/proceed and return payload (204)" in {
       val req = ProceedVerificationProxyRequest(
         instanceId = "1",
-        verificationBatchResourceRef = 10L,
-        verificationResourceRef = 9L,
+        verificationBatchResourceRef = 9L,
+        verificationResourceRef = 10L,
         proceed = "Y",
         taxTreatment = Some("NotKnown")
       )
@@ -2127,7 +2127,7 @@ class FormpProxyConnectorIntegrationSpec
         post(urlPathEqualTo("/formp-proxy/cis/verification/proceed"))
           .withHeader("Content-Type", containing("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
-          .willReturn(aResponse().withStatus(OK))
+          .willReturn(aResponse().withStatus(NO_CONTENT))
       )
 
       connector.proceedVerification(req).futureValue mustBe ((): Unit)
@@ -2136,8 +2136,8 @@ class FormpProxyConnectorIntegrationSpec
     "fail the future when upstream returns a non-2xx (e.g. 500)" in {
       val req = ProceedVerificationProxyRequest(
         instanceId = "1",
-        verificationBatchResourceRef = 10L,
-        verificationResourceRef = 9L,
+        verificationBatchResourceRef = 9L,
+        verificationResourceRef = 10L,
         proceed = "Y",
         taxTreatment = Some("NotKnown")
       )
