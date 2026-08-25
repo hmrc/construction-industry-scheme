@@ -2798,13 +2798,15 @@ class FormpProxyConnectorIntegrationSpec
           .as[Subcontractor]
       )
 
-    "POST /formp-proxy/cis/subcontractor/update and return updated version" in {
+    "POST /formp-proxy/cis/subcontractor/update and return updated version when FormP returns 200 with JSON" in {
       stubFor(
         post(urlPathEqualTo(updateUrl))
+          .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(Json.toJson(request).toString(), true, true))
           .willReturn(
             aResponse()
               .withStatus(OK)
+              .withHeader("Content-Type", "application/json")
               .withBody("""{ "version": 6 }""")
           )
       )
@@ -2820,9 +2822,38 @@ class FormpProxyConnectorIntegrationSpec
       )
     }
 
+    "fail with UpstreamErrorResponse when FormP returns 204 No Content because version body is required" in {
+      stubFor(
+        post(urlPathEqualTo(updateUrl))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(request).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(NO_CONTENT)
+          )
+      )
+
+      val ex =
+        connector.updateSubcontractor(request).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+
+      val upstream =
+        ex.asInstanceOf[UpstreamErrorResponse]
+
+      upstream.statusCode mustBe NO_CONTENT
+      upstream.message must include(
+        "FormP returned 204 No Content for updateSubcontractor"
+      )
+      upstream.message must include(
+        "expected response body with version"
+      )
+    }
+
     "fails with UpstreamErrorResponse when FormP returns non-2xx" in {
       stubFor(
         post(urlPathEqualTo(updateUrl))
+          .withRequestBody(equalToJson(Json.toJson(request).toString(), true, true))
           .willReturn(
             aResponse()
               .withStatus(BAD_GATEWAY)
@@ -2835,6 +2866,7 @@ class FormpProxyConnectorIntegrationSpec
 
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_GATEWAY
+      ex.asInstanceOf[UpstreamErrorResponse].message mustBe "FormP error"
     }
   }
 }
