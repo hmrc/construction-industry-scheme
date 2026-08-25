@@ -951,7 +951,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
     val validJson: JsValue = Json.toJson(validRequest)
 
-    "returns 200 when service succeeds" in {
+    "returns 204 when service succeeds" in {
       val verificationService = mock[VerificationService]
       val submissionService   = mock[SubmissionService]
       val controller          = mockController(verificationService, submissionService)

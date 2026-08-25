@@ -197,7 +197,7 @@ class VerificationController @Inject() (
         verificationService
           .proceedInsufficientVerification(body)
           .map(_ => NoContent)
-          .recover { ex =>
+          .recover { case ex =>
             logger.error("[proceedInsufficientVerification] formp-proxy create failed", ex)
             BadGateway(Json.obj("message" -> "proceed-insufficient-verification-failed"))
           }
