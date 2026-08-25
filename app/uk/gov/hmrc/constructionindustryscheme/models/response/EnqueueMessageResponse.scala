@@ -18,10 +18,10 @@ package uk.gov.hmrc.constructionindustryscheme.models.response
 
 import play.api.libs.json.{Json, OFormat}
 
-case class EnqueueClobResponse(
+case class EnqueueMessageResponse(
   messageIDOut: Long
 )
 
-object EnqueueClobResponse {
-  implicit val format: OFormat[EnqueueClobResponse] = Json.format[EnqueueClobResponse]
+object EnqueueMessageResponse {
+  given format: OFormat[EnqueueMessageResponse] = Json.format[EnqueueMessageResponse]
 }

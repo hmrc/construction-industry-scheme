@@ -23,8 +23,8 @@ import org.scalatest.matchers.must.Matchers.mustBe
 import play.api.http.Status.{INTERNAL_SERVER_ERROR, OK}
 import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{EnqueueClobRequest, EnqueueMessageHeaderRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{EnqueueClobResponse, EnqueueMessageHeaderResponse}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.EnqueueMessageRequest
+import uk.gov.hmrc.constructionindustryscheme.models.response.EnqueueMessageResponse
 import uk.gov.hmrc.constructionindustryscheme.models.{ClientListStatus, EmployerReference, PrepopKnownFacts}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
@@ -585,62 +585,14 @@ class DatacacheProxyConnectorIntegrationSpec
     }
   }
 
-  "DatacacheProxyConnector enqueueMessageHeader" should {
+  "DatacacheProxyConnector enqueueMessage" should {
 
-    "POST /rds-datacache-proxy/cis/enqueue-message-header and return messageId (200)" in {
-      val req = EnqueueMessageHeaderRequest(
+    "POST /rds-datacache-proxy/cis/enqueue-message and return messageIDOut (200)" in {
+      val req = EnqueueMessageRequest(
         sender = "Portal",
         queueName = "AGTAUTH",
         replyQueue = "",
-        correlationId = "",
-        filter = "RemoveClient"
-      )
-
-      val response = EnqueueMessageHeaderResponse(messageId = 1L)
-      stubFor(
-        post(urlPathEqualTo("/rds-datacache-proxy/cis/enqueue-message-header"))
-          .withHeader("Content-Type", containing("application/json"))
-          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
-          .willReturn(aResponse().withStatus(OK).withBody(Json.toJson(response).toString()))
-      )
-
-      connector.enqueueMessageHeader(req).futureValue mustBe response.messageId
-    }
-
-    "fail the future when upstream returns a non-200 (e.g. 500)" in {
-      val req = EnqueueMessageHeaderRequest(
-        sender = "Portal",
-        queueName = "AGTAUTH",
-        replyQueue = "",
-        correlationId = "",
-        filter = "RemoveClient"
-      )
-
-      stubFor(
-        post(urlPathEqualTo("/rds-datacache-proxy/cis/enqueue-message-header"))
-          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
-          .willReturn(
-            aResponse()
-              .withStatus(INTERNAL_SERVER_ERROR)
-              .withBody("""{"message":"boom"}""")
-          )
-      )
-
-      val ex = connector.enqueueMessageHeader(req).failed.futureValue
-      ex mustBe a[UpstreamErrorResponse]
-      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe INTERNAL_SERVER_ERROR
-    }
-  }
-
-  "DatacacheProxyConnector enqueueClob" should {
-
-    "POST /rds-datacache-proxy/cis/enqueue-message-header and return messageId (200)" in {
-      val req = EnqueueClobRequest(
-        messageId = 12345L,
-        sender = "Portal",
-        queueName = "AGTAUTH",
-        replyQueue = "",
-        correlationId = "",
+        correlationID = "",
         filter = "RemoveClient",
         payload = Map(
           "IRAgentID"    -> "123456789",
@@ -649,24 +601,23 @@ class DatacacheProxyConnectorIntegrationSpec
         )
       )
 
-      val response = EnqueueClobResponse(messageIDOut = 1L)
+      val response = EnqueueMessageResponse(messageIDOut = 1L)
       stubFor(
-        post(urlPathEqualTo("/rds-datacache-proxy/cis/enqueue-clob"))
+        post(urlPathEqualTo("/rds-datacache-proxy/cis/enqueue-message"))
           .withHeader("Content-Type", containing("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(OK).withBody(Json.toJson(response).toString()))
       )
 
-      connector.enqueueClob(req).futureValue mustBe response.messageIDOut
+      connector.enqueueMessage(req).futureValue mustBe response.messageIDOut
     }
 
     "fail the future when upstream returns a non-200 (e.g. 500)" in {
-      val req = EnqueueClobRequest(
-        messageId = 12345L,
+      val req = EnqueueMessageRequest(
         sender = "Portal",
         queueName = "AGTAUTH",
         replyQueue = "",
-        correlationId = "",
+        correlationID = "",
         filter = "RemoveClient",
         payload = Map(
           "IRAgentID"    -> "123456789",
@@ -676,7 +627,7 @@ class DatacacheProxyConnectorIntegrationSpec
       )
 
       stubFor(
-        post(urlPathEqualTo("/rds-datacache-proxy/cis/enqueue-clob"))
+        post(urlPathEqualTo("/rds-datacache-proxy/cis/enqueue-message"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -685,7 +636,7 @@ class DatacacheProxyConnectorIntegrationSpec
           )
       )
 
-      val ex = connector.enqueueClob(req).failed.futureValue
+      val ex = connector.enqueueMessage(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe INTERNAL_SERVER_ERROR
     }

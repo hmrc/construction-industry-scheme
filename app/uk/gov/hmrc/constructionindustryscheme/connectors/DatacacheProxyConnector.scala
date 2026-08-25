@@ -21,8 +21,8 @@ import play.api.http.Status.NOT_FOUND
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.*
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{EnqueueClobRequest, EnqueueMessageHeaderRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{EnqueueClobResponse, EnqueueMessageHeaderResponse}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.EnqueueMessageRequest
+import uk.gov.hmrc.constructionindustryscheme.models.response.EnqueueMessageResponse
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
@@ -139,21 +139,12 @@ class DatacacheProxyConnector @Inject() (
         case u: UpstreamErrorResponse if u.statusCode == NOT_FOUND => Future.successful(Seq.empty)
       }
 
-  def enqueueMessageHeader(
-    request: EnqueueMessageHeaderRequest
+  def enqueueMessage(
+    request: EnqueueMessageRequest
   )(implicit hc: HeaderCarrier): Future[Long] =
     http
-      .post(url"$base/cis/enqueue-message-header")
+      .post(url"$base/cis/enqueue-message")
       .withBody(Json.toJson(request))
-      .execute[EnqueueMessageHeaderResponse]
-      .map(_.messageId)
-
-  def enqueueClob(
-    request: EnqueueClobRequest
-  )(implicit hc: HeaderCarrier): Future[Long] =
-    http
-      .post(url"$base/cis/enqueue-clob")
-      .withBody(Json.toJson(request))
-      .execute[EnqueueClobResponse]
+      .execute[EnqueueMessageResponse]
       .map(_.messageIDOut)
 }

@@ -631,29 +631,23 @@ class ClientListServiceSpec extends SpecBase {
     val taxOfficeReference = "AB456"
     val agentId            = "SA123456"
 
-    "return true when hasClient from connector returns true" in {
+    "return messageIDOut when removeClient from connector returns messageIDOut" in {
       val (service, datacache, _, _, cache) = setupService()
 
-      when(datacache.enqueueMessageHeader(any)(any))
-        .thenReturn(Future.successful(1L))
-
-      when(datacache.enqueueClob(any)(any))
+      when(datacache.enqueueMessage(any)(any))
         .thenReturn(Future.successful(1L))
 
       val result =
         service.removeClient(taxOfficeNumber, taxOfficeReference, agentId)(using mock[HeaderCarrier]).futureValue
 
       result shouldBe 1
-      verify(datacache, times(1)).enqueueMessageHeader(any)(any)
-      verify(datacache, times(1)).enqueueClob(any)(any)
+      verify(datacache, times(1)).enqueueMessage(any)(any)
     }
 
     "propagate connector errors" in {
       val (service, datacache, _, _, cache) = setupService()
 
-      when(datacache.enqueueMessageHeader(any)(any))
-        .thenReturn(Future.successful(1L))
-      when(datacache.enqueueClob(any)(any))
+      when(datacache.enqueueMessage(any)(any))
         .thenReturn(Future.failed(UpstreamErrorResponse("Boom", 500, 500)))
 
       val ex =

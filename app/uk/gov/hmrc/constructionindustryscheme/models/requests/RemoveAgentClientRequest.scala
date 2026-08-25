@@ -18,14 +18,11 @@ package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
 
-final case class EnqueueMessageHeaderRequest(
-  sender: String,
-  queueName: String,
-  replyQueue: String,
-  correlationId: String,
-  filter: String
+case class RemoveAgentClientRequest(
+  taxOfficeNumber: String,
+  taxOfficeReference: String
 )
 
-object EnqueueMessageHeaderRequest {
-  implicit val format: OFormat[EnqueueMessageHeaderRequest] = Json.format[EnqueueMessageHeaderRequest]
+object RemoveAgentClientRequest {
+  given format: OFormat[RemoveAgentClientRequest] = Json.format[RemoveAgentClientRequest]
 }

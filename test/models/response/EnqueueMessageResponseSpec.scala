@@ -19,11 +19,11 @@ package models.response
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.Json
-import uk.gov.hmrc.constructionindustryscheme.models.response.EnqueueClobResponse
+import uk.gov.hmrc.constructionindustryscheme.models.response.EnqueueMessageResponse
 
-class EnqueueClobResponseSpec extends AnyWordSpec with Matchers {
+class EnqueueMessageResponseSpec extends AnyWordSpec with Matchers {
 
-  "EnqueueClobResponse (JSON)" should {
+  "EnqueueMessageResponse (JSON)" should {
 
     "read and write with mandatory fields" in {
       val json = Json.parse("""
@@ -32,7 +32,7 @@ class EnqueueClobResponseSpec extends AnyWordSpec with Matchers {
           |}
          """.stripMargin)
 
-      val model = json.as[EnqueueClobResponse]
+      val model = json.as[EnqueueMessageResponse]
       model.messageIDOut mustBe 1L
       Json.toJson(model) mustBe json
     }
@@ -40,7 +40,7 @@ class EnqueueClobResponseSpec extends AnyWordSpec with Matchers {
     "fail to read missing messageIDOut" in {
       val json = Json.parse("{}")
 
-      val result = json.validate[EnqueueClobResponse]
+      val result = json.validate[EnqueueMessageResponse]
       result.isError mustBe true
     }
   }
