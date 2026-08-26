@@ -28,8 +28,6 @@ import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, stat
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController
 import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, Subcontractor}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorForEditRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorForDeleteResponse, GetSubcontractorListResponse, GetSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorForDeleteResponse, GetSubcontractorListResponse, GetSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
@@ -345,6 +343,150 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
       (contentAsJson(result) \ "message").as[String] mustBe "update-subcontractor-failed"
 
       verify(service).updateSubcontractor(eqTo(updateRequest))(any[HeaderCarrier])
+    }
+  }
+
+  "updateSubcontractorForEdit" - {
+
+    val updateUrl = "/subcontractor/edit"
+
+    val validJson: JsValue =
+      Json.parse(
+        """
+          |{
+          |  "cisId": "abc-123",
+          |  "subcontractor": {
+          |    "subcontractorId": 999,
+          |    "subbieResourceRef": 10,
+          |    "utr": "1234567890",
+          |    "pageVisited": 1,
+          |    "firstName": "John",
+          |    "nino": "AA123456A",
+          |    "secondName": "Q",
+          |    "surname": "Smith",
+          |    "tradingName": "John Smith Trading",
+          |    "subcontractorType": "soletrader",
+          |    "addressLine1": "1 Main Street",
+          |    "addressLine2": "Flat 2",
+          |    "addressLine3": "London",
+          |    "country": "United Kingdom",
+          |    "postcode": "AA1 1AA",
+          |    "matched": "Y",
+          |    "autoVerified": "N",
+          |    "verified": "Y",
+          |    "verificationNumber": "V123456",
+          |    "taxTreatment": "NET",
+          |    "updatedTaxTreatment": "NET",
+          |    "version": 5
+          |  }
+          |}
+          |""".stripMargin
+      )
+
+    val updateRequest =
+      validJson.as[UpdateSubcontractorRequest]
+
+    "returns 200 with updated version when service succeeds" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      val response =
+        UpdateSubcontractorResponse(version = 6)
+
+      when(
+        service.updateSubcontractorForEdit(eqTo(updateRequest))(any[HeaderCarrier])
+      ).thenReturn(Future.successful(response))
+
+      val req =
+        FakeRequest(POST, updateUrl)
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result =
+        controller.updateSubcontractorForEdit()(req)
+
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.obj("version" -> 6)
+
+      verify(service)
+        .updateSubcontractorForEdit(eqTo(updateRequest))(any[HeaderCarrier])
+    }
+
+    "returns 400 when JSON is invalid" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      val badJson =
+        Json.obj("bad" -> "payload")
+
+      val req =
+        FakeRequest(POST, updateUrl)
+          .withBody(badJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result =
+        controller.updateSubcontractorForEdit()(req)
+
+      status(result) mustBe BAD_REQUEST
+      (contentAsJson(result) \ "message").as[String] mustBe "Invalid payload"
+
+      verifyNoInteractions(service)
+    }
+
+    "propagates UpstreamErrorResponse status and message" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      when(
+        service.updateSubcontractorForEdit(eqTo(updateRequest))(any[HeaderCarrier])
+      ).thenReturn(
+        Future.failed(
+          UpstreamErrorResponse(
+            message = "formp update failed",
+            statusCode = SERVICE_UNAVAILABLE,
+            reportAs = SERVICE_UNAVAILABLE
+          )
+        )
+      )
+
+      val req =
+        FakeRequest(POST, updateUrl)
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result =
+        controller.updateSubcontractorForEdit()(req)
+
+      status(result) mustBe SERVICE_UNAVAILABLE
+      (contentAsJson(result) \ "message").as[String] must include("formp update failed")
+
+      verify(service)
+        .updateSubcontractorForEdit(eqTo(updateRequest))(any[HeaderCarrier])
+    }
+
+    "returns 502 when service throws NonFatal" in {
+      val service    = mock[SubcontractorService]
+      val controller = mockController(service)
+
+      when(
+        service.updateSubcontractorForEdit(eqTo(updateRequest))(any[HeaderCarrier])
+      ).thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req =
+        FakeRequest(POST, updateUrl)
+          .withBody(validJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result =
+        controller.updateSubcontractorForEdit()(req)
+
+      status(result) mustBe BAD_GATEWAY
+
+      (contentAsJson(result) \ "message").as[String] mustBe
+        "update-subcontractor-failed"
+
+      verify(service)
+        .updateSubcontractorForEdit(eqTo(updateRequest))(any[HeaderCarrier])
     }
   }
 
@@ -721,102 +863,6 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
       (contentAsJson(result) \ "message").as[String] mustBe "get-subcontractor-failed"
 
       verify(service).getSubcontractor(eqTo(cisId), eqTo(subbieResourceRef))(any[HeaderCarrier])
-    }
-  }
-
-  "updateSubcontractorForEdit" - {
-
-    val updateSubcontractorForEditUrl = "/subcontractor/edit"
-
-    val validJson: JsValue = Json.toJson(
-      UpdateSubcontractorForEditRequest(
-        cisId = cisId,
-        subbieResourceRef = subbieResourceRef,
-        utr = Some("1111111111"),
-        pageVisited = Some(0),
-        partnerUtr = None,
-        crn = None,
-        firstName = Some("A"),
-        nino = Some("PX123456A"),
-        secondName = None,
-        surname = Some("Alice"),
-        partnershipTradingName = None,
-        tradingName = None,
-        addressLine1 = Some("1 Test Street"),
-        addressLine2 = Some("Test Area"),
-        addressLine3 = Some("Newcastle"),
-        addressLine4 = Some("Tyne and Wear"),
-        country = Some("GB"),
-        postcode = Some("NE1 1AA"),
-        emailAddress = Some("alice@example.com"),
-        phoneNumber = Some("01911234567"),
-        mobilePhoneNumber = Some("07123456789"),
-        worksReferenceNumber = Some("WORKS123"),
-        matched = Some("Y"),
-        autoVerified = Some("Y"),
-        version = Some(2)
-      )
-    )
-
-    "returns 204 when service succeeds" in {
-      val service    = mock[SubcontractorService]
-      val controller = mockController(service)
-
-      when(
-        service.updateSubcontractorForEdit(any[UpdateSubcontractorForEditRequest])(any[HeaderCarrier])
-      ).thenReturn(Future.successful(()))
-
-      val req = FakeRequest(POST, updateSubcontractorForEditUrl)
-        .withBody(validJson)
-        .withHeaders(CONTENT_TYPE -> JSON)
-
-      val result = controller.updateSubcontractorForEdit()(req)
-
-      status(result) mustBe NO_CONTENT
-
-      verify(service)
-        .updateSubcontractorForEdit(any[UpdateSubcontractorForEditRequest])(any[HeaderCarrier])
-    }
-
-    "returns 400 when JSON is invalid" in {
-      val service    = mock[SubcontractorService]
-      val controller = mockController(service)
-
-      val badJson = Json.obj(
-        "invalid" -> "payload"
-      )
-
-      val req = FakeRequest(POST, updateSubcontractorForEditUrl)
-        .withBody(badJson)
-        .withHeaders(CONTENT_TYPE -> JSON)
-
-      val result = controller.updateSubcontractorForEdit()(req)
-
-      status(result) mustBe BAD_REQUEST
-
-      verifyNoInteractions(service)
-    }
-
-    "returns 502 when service fails" in {
-      val service    = mock[SubcontractorService]
-      val controller = mockController(service)
-
-      when(
-        service.updateSubcontractorForEdit(any[UpdateSubcontractorForEditRequest])(any[HeaderCarrier])
-      ).thenReturn(
-        Future.failed(new RuntimeException("formp down"))
-      )
-
-      val req = FakeRequest(POST, updateSubcontractorForEditUrl)
-        .withBody(validJson)
-        .withHeaders(CONTENT_TYPE -> JSON)
-
-      val result = controller.updateSubcontractorForEdit()(req)
-
-      status(result) mustBe BAD_GATEWAY
-
-      (contentAsJson(result) \ "message").as[String] mustBe
-        "update-subcontractor-for-edit-failed"
     }
   }
 
