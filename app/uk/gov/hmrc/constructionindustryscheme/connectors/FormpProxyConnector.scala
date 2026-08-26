@@ -549,16 +549,12 @@ class FormpProxyConnector @Inject() (
       }
 
   def updateSubcontractorForEdit(
-    request: UpdateSubcontractorForEditRequest
-  )(implicit hc: HeaderCarrier): Future[Unit] =
+    request: UpdateSubcontractorRequest
+  )(implicit hc: HeaderCarrier): Future[UpdateSubcontractorResponse] =
     http
       .post(url"$base/cis/subcontractor/edit")
       .withBody(Json.toJson(request))
-      .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status == NO_CONTENT) Future.unit
-        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-      }
+      .execute[UpdateSubcontractorResponse]
 
   def updateSubcontractor(
     request: UpdateSubcontractorRequest

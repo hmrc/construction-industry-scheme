@@ -22,7 +22,6 @@ import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorResponse
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorForEditRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHeaderForwarding
 import uk.gov.hmrc.http.UpstreamErrorResponse
@@ -56,23 +55,6 @@ class SubcontractorController @Inject() (
             }
       )
   }
-
-  def updateSubcontractorForEdit(): Action[JsValue] =
-    authorise(parse.json).async { implicit request =>
-      request.body
-        .validate[UpdateSubcontractorForEditRequest]
-        .fold(
-          errs => Future.successful(BadRequest(JsError.toJson(errs))),
-          updateRequest =>
-            subcontractorService
-              .updateSubcontractorForEdit(updateRequest)
-              .map(_ => NoContent)
-              .recover { case ex =>
-                logger.error("[updateSubcontractorForEdit] formp-proxy update failed", ex)
-                BadGateway(Json.obj("message" -> "update-subcontractor-for-edit-failed"))
-              }
-        )
-    }
 
   def getSubcontractorUTRs(cisId: String): Action[AnyContent] = authorise.async { implicit request =>
     subcontractorService
@@ -178,6 +160,36 @@ class SubcontractorController @Inject() (
 
                 case NonFatal(t) =>
                   logger.error("[updateSubcontractor] formp-proxy update failed", t)
+                  BadGateway(Json.obj("message" -> "update-subcontractor-failed"))
+              }
+        )
+    }
+
+  def updateSubcontractorForEdit(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      request.body
+        .validate[UpdateSubcontractorRequest]
+        .fold(
+          errs =>
+            Future.successful(
+              BadRequest(
+                Json.obj(
+                  "message" -> "Invalid payload",
+                  "errors"  -> JsError.toJson(errs)
+                )
+              )
+            ),
+          updateRequest =>
+            subcontractorService
+              .updateSubcontractorForEdit(updateRequest)
+              .map(response => Ok(Json.toJson(response)))
+              .recover {
+                case u: UpstreamErrorResponse =>
+                  logger.error("[updateSubcontractorForEdit] formp-proxy update failed", u)
+                  Status(u.statusCode)(Json.obj("message" -> u.message))
+
+                case NonFatal(t) =>
+                  logger.error("[updateSubcontractorForEdit] formp-proxy update failed", t)
                   BadGateway(Json.obj("message" -> "update-subcontractor-failed"))
               }
         )

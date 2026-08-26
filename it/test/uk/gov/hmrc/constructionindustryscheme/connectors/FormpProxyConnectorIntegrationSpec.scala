@@ -3251,136 +3251,27 @@ class FormpProxyConnectorIntegrationSpec
 
   "FormpProxyConnector updateSubcontractorForEdit" should {
 
-    "POST request to edit subcontractor endpoint and return Unit when upstream returns 204" in {
+    val editUrl = "/formp-proxy/cis/subcontractor/edit"
 
-      val request = UpdateSubcontractorForEditRequest(
-        cisId = instanceId,
-        subbieResourceRef = subbieResourceRef,
-        utr = Some("1111111111"),
-        pageVisited = Some(0),
-        partnerUtr = None,
-        crn = None,
-        firstName = Some("A"),
-        nino = Some("PX123456A"),
-        secondName = None,
-        surname = Some("Alice"),
-        partnershipTradingName = None,
-        tradingName = None,
-        addressLine1 = Some("1 Test Street"),
-        addressLine2 = Some("Test Area"),
-        addressLine3 = Some("Newcastle"),
-        addressLine4 = Some("Tyne and Wear"),
-        country = Some("GB"),
-        postcode = Some("NE1 1AA"),
-        emailAddress = Some("alice@example.com"),
-        phoneNumber = Some("01911234567"),
-        mobilePhoneNumber = Some("07123456789"),
-        worksReferenceNumber = Some("WORKS123"),
-        matched = Some("Y"),
-        autoVerified = Some("Y"),
-        version = Some(2)
-      )
-
-      stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/edit"))
-          .withHeader("Content-Type", equalTo("application/json"))
-          .withRequestBody(equalToJson(Json.toJson(request).toString(), true, true))
-          .willReturn(
-            aResponse()
-              .withStatus(NO_CONTENT)
+    val request =
+      UpdateSubcontractorRequest(
+        cisId = "abc-123",
+        subcontractor = Json
+          .obj(
+            "subcontractorId" -> 999L,
+            "subbieResourceRef" -> 10L,
+            "utr" -> "1234567890",
+            "firstName" -> "John",
+            "surname" -> "Smith",
+            "subcontractorType" -> "soletrader",
+            "version" -> 5
           )
+          .as[Subcontractor]
       )
 
-      connector
-        .updateSubcontractorForEdit(request)
-        .futureValue mustBe ()
-    }
-
-    "fail when upstream returns non-204 response" in {
-
-      val request = UpdateSubcontractorForEditRequest(
-        cisId = instanceId,
-        subbieResourceRef = subbieResourceRef,
-        utr = Some("1111111111"),
-        pageVisited = Some(0),
-        partnerUtr = None,
-        crn = None,
-        firstName = Some("A"),
-        nino = Some("PX123456A"),
-        secondName = None,
-        surname = Some("Alice"),
-        partnershipTradingName = None,
-        tradingName = None,
-        addressLine1 = None,
-        addressLine2 = None,
-        addressLine3 = None,
-        addressLine4 = None,
-        country = None,
-        postcode = None,
-        emailAddress = None,
-        phoneNumber = None,
-        mobilePhoneNumber = None,
-        worksReferenceNumber = None,
-        matched = Some("Y"),
-        autoVerified = Some("Y"),
-        version = Some(2)
-      )
-
+    "POST /formp-proxy/cis/subcontractor/edit and return updated version" in {
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/edit"))
-          .willReturn(
-            aResponse()
-              .withStatus(BAD_GATEWAY)
-              .withBody("formp error")
-          )
-      )
-
-      val exception =
-        connector
-          .updateSubcontractorForEdit(request)
-          .failed
-          .futureValue
-
-      exception mustBe a[UpstreamErrorResponse]
-      exception.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_GATEWAY
-    }
-  }
-
-  "FormpProxyConnector updateSubcontractorForEdit" should {
-
-    "POST request to /formp-proxy/cis/subcontractor/edit and return Unit when upstream returns 204" in {
-
-      val request = UpdateSubcontractorForEditRequest(
-        cisId = instanceId,
-        subbieResourceRef = subbieResourceRef,
-        utr = Some("1111111111"),
-        pageVisited = Some(0),
-        partnerUtr = None,
-        crn = None,
-        firstName = Some("A"),
-        nino = Some("PX123456A"),
-        secondName = None,
-        surname = Some("Alice"),
-        partnershipTradingName = None,
-        tradingName = None,
-        addressLine1 = Some("1 Test Street"),
-        addressLine2 = Some("Test Area"),
-        addressLine3 = Some("Newcastle"),
-        addressLine4 = Some("Tyne and Wear"),
-        country = Some("GB"),
-        postcode = Some("NE1 1AA"),
-        emailAddress = Some("alice@example.com"),
-        phoneNumber = Some("01911234567"),
-        mobilePhoneNumber = Some("07123456789"),
-        worksReferenceNumber = Some("WORKS123"),
-        matched = Some("Y"),
-        autoVerified = Some("Y"),
-        version = Some(2)
-      )
-
-      stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/edit"))
-          .withHeader("Content-Type", equalTo("application/json"))
+        post(urlPathEqualTo(editUrl))
           .withRequestBody(
             equalToJson(
               Json.toJson(request).toString(),
@@ -3390,16 +3281,18 @@ class FormpProxyConnectorIntegrationSpec
           )
           .willReturn(
             aResponse()
-              .withStatus(NO_CONTENT)
+              .withStatus(OK)
+              .withBody("""{ "version": 6 }""")
           )
       )
 
-      connector
-        .updateSubcontractorForEdit(request)
-        .futureValue mustBe ((): Unit)
+      val response =
+        connector.updateSubcontractorForEdit(request).futureValue
+
+      response mustBe UpdateSubcontractorResponse(version = 6)
 
       verify(
-        postRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractor/edit"))
+        postRequestedFor(urlPathEqualTo(editUrl))
           .withRequestBody(
             equalToJson(
               Json.toJson(request).toString(),
@@ -3410,72 +3303,22 @@ class FormpProxyConnectorIntegrationSpec
       )
     }
 
-    "fail with UpstreamErrorResponse when upstream returns non-2xx" in {
-
-      val request = UpdateSubcontractorForEditRequest(
-        cisId = instanceId,
-        subbieResourceRef = subbieResourceRef,
-        utr = Some("1111111111"),
-        pageVisited = Some(0),
-        partnerUtr = None,
-        crn = None,
-        firstName = Some("A"),
-        nino = Some("PX123456A"),
-        secondName = None,
-        surname = Some("Alice"),
-        partnershipTradingName = None,
-        tradingName = None,
-        addressLine1 = None,
-        addressLine2 = None,
-        addressLine3 = None,
-        addressLine4 = None,
-        country = None,
-        postcode = None,
-        emailAddress = None,
-        phoneNumber = None,
-        mobilePhoneNumber = None,
-        worksReferenceNumber = None,
-        matched = Some("Y"),
-        autoVerified = Some("Y"),
-        version = Some(2)
-      )
-
+    "fails with UpstreamErrorResponse when FormP returns non-2xx" in {
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/edit"))
-          .withHeader("Content-Type", equalTo("application/json"))
-          .withRequestBody(
-            equalToJson(
-              Json.toJson(request).toString(),
-              true,
-              true
-            )
-          )
+        post(urlPathEqualTo(editUrl))
           .willReturn(
             aResponse()
               .withStatus(BAD_GATEWAY)
-              .withBody("""{"message":"update-subcontractor-for-edit-failed"}""")
+              .withBody("FormP error")
           )
       )
 
       val ex =
-        connector
-          .updateSubcontractorForEdit(request)
-          .failed
-          .futureValue
+        connector.updateSubcontractorForEdit(request).failed.futureValue
 
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_GATEWAY
-
-      verify(
-        postRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractor/edit"))
-          .withRequestBody(
-            equalToJson(
-              Json.toJson(request).toString(),
-              true,
-              true
-            )
-          )
-      )
     }
   }
+  
 }
