@@ -282,7 +282,7 @@ class ClientListService @Inject() (
                 "GGIS_DTSTAMP"    -> LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd HHmmssSSS")),
                 "MESSAGE_TYPE"    -> "AGENT_AUTH_PORTAL",
                 "ADDITIONAL_INFO" -> "Request client removal",
-                "GW_AGENT_ID"     -> agentId, // TODO check agent code = agentId
+                "GW_AGENT_ID"     -> agentId,
                 "IR_CLIENT_REF"   -> s"$taxOfficeNumber/$taxOfficeReference",
                 "USER_ID"         -> credentialId,
                 "Service"         -> "CIS"
