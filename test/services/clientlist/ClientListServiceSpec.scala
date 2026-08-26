@@ -630,6 +630,7 @@ class ClientListServiceSpec extends SpecBase {
     val taxOfficeNumber    = "123"
     val taxOfficeReference = "AB456"
     val agentId            = "SA123456"
+    val credId             = "cred-123"
 
     "return messageIDOut when removeClient from connector returns messageIDOut" in {
       val (service, datacache, _, _, cache) = setupService()
@@ -638,7 +639,9 @@ class ClientListServiceSpec extends SpecBase {
         .thenReturn(Future.successful(1L))
 
       val result =
-        service.removeClient(taxOfficeNumber, taxOfficeReference, agentId)(using mock[HeaderCarrier]).futureValue
+        service
+          .removeClient(taxOfficeNumber, taxOfficeReference, agentId, credId)(using mock[HeaderCarrier])
+          .futureValue
 
       result shouldBe 1
       verify(datacache, times(1)).enqueueMessage(any)(any)
@@ -651,7 +654,10 @@ class ClientListServiceSpec extends SpecBase {
         .thenReturn(Future.failed(UpstreamErrorResponse("Boom", 500, 500)))
 
       val ex =
-        service.removeClient(taxOfficeNumber, taxOfficeReference, agentId)(using mock[HeaderCarrier]).failed.futureValue
+        service
+          .removeClient(taxOfficeNumber, taxOfficeReference, agentId, credId)(using mock[HeaderCarrier])
+          .failed
+          .futureValue
 
       ex                                                shouldBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode shouldBe 500

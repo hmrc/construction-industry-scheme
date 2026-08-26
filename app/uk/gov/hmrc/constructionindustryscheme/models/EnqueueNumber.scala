@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 HM Revenue & Customs
+ * Copyright 2025 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,21 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.models
 
-import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.constructionindustryscheme.models.{EnqueueMessage, EnqueueTracking}
+import play.api.libs.json.*
 
-final case class EnqueueMessageRequest(
-  message: EnqueueMessage,
-  tracking: Option[EnqueueTracking] = None
+final case class EnqueueNumber(
+  dataType: Int,
+  payload: Map[String, Long]
 )
 
-object EnqueueMessageRequest {
-  given OFormat[EnqueueMessageRequest] = Json.format[EnqueueMessageRequest]
+object EnqueueNumber {
+  implicit private val reads: Reads[EnqueueNumber] = Json
+    .reads[EnqueueNumber]
+    .filter(JsonValidationError("payload must not be empty"))(_.payload.nonEmpty)
+
+  implicit private val writes: OWrites[EnqueueNumber] = Json.writes[EnqueueNumber]
+
+  implicit val format: OFormat[EnqueueNumber] = OFormat(reads, writes)
 }

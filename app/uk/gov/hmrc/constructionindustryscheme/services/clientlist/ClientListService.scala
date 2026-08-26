@@ -27,9 +27,12 @@ import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.services.AuditService
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.requests.EnqueueMessageRequest
-import uk.gov.hmrc.constructionindustryscheme.models.{AsynchronousProcessWaitTime, ClientListStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.{AsynchronousProcessWaitTime, ClientListStatus, EnqueueMessage, EnqueueNumber, EnqueueTracking}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
+
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 final case class ClientListDownloadFailedException(msg: String) extends RuntimeException(msg)
 
@@ -250,20 +253,48 @@ class ClientListService @Inject() (
         case _: SystemException                       => InitiateDownload
       }
 
-  def removeClient(taxOfficeNumber: String, taxOfficeReference: String, agentId: String)(implicit
+  def removeClient(taxOfficeNumber: String, taxOfficeReference: String, agentId: String, credentialId: String)(implicit
     hc: HeaderCarrier
   ): Future[Long] =
     datacacheProxyConnector.enqueueMessage(
       EnqueueMessageRequest(
-        sender = "Portal",
-        queueName = "AGTAUTH",
-        replyQueue = "",
-        correlationID = "",
-        filter = "RemoveClient",
-        payload = Map(
-          "IRAgentID"    -> agentId,
-          "Service"      -> "CIS",
-          "TaxReference" -> s"$taxOfficeNumber/$taxOfficeReference"
+        message = EnqueueMessage(
+          sender = "Portal",
+          queueName = "AGTAUTH",
+          replyQueue = "",
+          correlationID = "",
+          filter = "RemoveClient",
+          payload = Map(
+            "IRAgentID"    -> agentId,
+            "Service"      -> "CIS",
+            "TaxReference" -> s"$taxOfficeNumber/$taxOfficeReference"
+          )
+        ),
+        tracking = Some(
+          EnqueueTracking(
+            message = EnqueueMessage(
+              sender = "Portal",
+              queueName = "AGTAUTH",
+              replyQueue = "",
+              correlationID = "",
+              filter = "AGENTAUTH",
+              payload = Map(
+                "GGIS_DTSTAMP"    -> LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd HHmmssSSS")),
+                "MESSAGE_TYPE"    -> "AGENT_AUTH_PORTAL",
+                "ADDITIONAL_INFO" -> "Request client removal",
+                "GW_AGENT_ID"     -> agentId, // TODO check agent code = agentId
+                "IR_CLIENT_REF"   -> s"$taxOfficeNumber/$taxOfficeReference",
+                "USER_ID"         -> credentialId,
+                "Service"         -> "CIS"
+              )
+            ),
+            number = EnqueueNumber(
+              dataType = 1,
+              payload = Map(
+                "EVENT_TYPE" -> 1010L
+              )
+            )
+          )
         )
       )
     )
