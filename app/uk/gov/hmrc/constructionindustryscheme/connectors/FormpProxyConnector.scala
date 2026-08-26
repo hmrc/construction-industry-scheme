@@ -456,15 +456,13 @@ class FormpProxyConnector @Inject() (
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
 
-  def deleteVerification(request: DeleteVerificationRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+  def deleteVerification(
+    request: DeleteVerificationRequest
+  )(implicit hc: HeaderCarrier): Future[DeleteVerificationResponse] =
     http
       .post(url"$base/cis/verification/delete")
       .withBody(Json.toJson(request))
-      .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status == 204) Future.unit
-        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-      }
+      .execute[DeleteVerificationResponse]
 
   def getSubmittedVerifications(
     request: GetSubmittedVerificationsRequest

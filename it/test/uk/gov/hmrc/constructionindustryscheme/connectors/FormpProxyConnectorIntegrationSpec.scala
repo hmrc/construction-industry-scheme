@@ -2119,18 +2119,20 @@ class FormpProxyConnectorIntegrationSpec
       verificationResourceRef = 98765L
     )
 
-    "POST /formp-proxy/cis/verification/delete and return Unit on 204" in {
+    val response = DeleteVerificationResponse(verificationsCounter = Some(1L))
+
+    "POST /formp-proxy/cis/verification/delete and return response on 200" in {
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/delete"))
           .withHeader("Content-Type", containing("application/json"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
-          .willReturn(aResponse().withStatus(204))
+          .willReturn(aResponse().withStatus(200).withBody(Json.toJson(response).toString()))
       )
 
-      connector.deleteVerification(req).futureValue mustBe ((): Unit)
+      connector.deleteVerification(req).futureValue mustBe response
     }
 
-    "fail the future when upstream returns non-204" in {
+    "fail the future when upstream returns non-200" in {
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/delete"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))

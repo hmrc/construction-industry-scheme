@@ -180,7 +180,7 @@ class VerificationController @Inject() (
           body =>
             verificationService
               .deleteVerification(body)
-              .map(_ => NoContent)
+              .map(res => Ok(Json.toJson(res)))
               .recover { case ex =>
                 logger.error(
                   s"[deleteVerification] formp-proxy delete failed (instanceId=${body.instanceId}, verificationResourceRef=${body.verificationResourceRef})",

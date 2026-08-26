@@ -342,14 +342,16 @@ final class VerificationServiceSpec extends SpecBase {
       verificationResourceRef = 98765L
     )
 
-    "delegates to FormpProxyConnector and returns Unit" in {
+    val response = DeleteVerificationResponse(verificationsCounter = Some(1L))
+
+    "delegates to FormpProxyConnector and returns the response" in {
       val connector: FormpProxyConnector = mock[FormpProxyConnector]
       val service                        = new VerificationService(connector)
 
       when(connector.deleteVerification(eqTo(request))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(()))
+        .thenReturn(Future.successful(response))
 
-      service.deleteVerification(request).futureValue mustBe ()
+      service.deleteVerification(request).futureValue mustBe response
 
       verify(connector).deleteVerification(eqTo(request))(any[HeaderCarrier])
     }

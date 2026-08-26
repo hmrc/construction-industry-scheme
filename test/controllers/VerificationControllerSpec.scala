@@ -872,13 +872,15 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
     val validJson: JsValue = Json.toJson(validRequest)
 
-    "returns 204 NoContent when service succeeds" in {
+    val response = DeleteVerificationResponse(verificationsCounter = Some(1L))
+
+    "returns 200 OK with response body when service succeeds" in {
       val verificationService = mock[VerificationService]
       val submissionService   = mock[SubmissionService]
       val controller          = mockController(verificationService, submissionService)
 
       when(verificationService.deleteVerification(eqTo(validRequest))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(()))
+        .thenReturn(Future.successful(response))
 
       val req = FakeRequest(POST, url)
         .withBody(validJson)
@@ -886,7 +888,8 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
       val result = controller.deleteVerification()(req)
 
-      status(result) mustBe NO_CONTENT
+      status(result) mustBe OK
+      contentAsJson(result) mustBe Json.toJson(response)
 
       verify(verificationService).deleteVerification(eqTo(validRequest))(any[HeaderCarrier])
     }
