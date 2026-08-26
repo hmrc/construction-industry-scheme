@@ -21,7 +21,6 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
 import uk.gov.hmrc.constructionindustryscheme.models.{BatchChRISPollResult, PollReportContent, SUBMITTED, SubmissionStatus}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.SubcontractorVerificationEmailRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, VerificationSubmissionToPoll}
 import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
 import uk.gov.hmrc.constructionindustryscheme.services.{SubmissionService, VerificationPollingProcessService}
@@ -34,7 +33,7 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
 
   "VerificationPollingProcessService process" - {
 
-    "must return PollReportContent and send email for verification submissions" in new Setup {
+    "must return PollReportContent for verification submissions" in new Setup {
       val submissions =
         Seq(verificationSubmission)
 
@@ -57,12 +56,6 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
         )
       )
 
-      when(
-        mockSubmissionService.sendEmailForVerification(
-          SubcontractorVerificationEmailRequest(emailRecipient)
-        )
-      ).thenReturn(Future.unit)
-
       service.process(submissions).futureValue mustBe Seq(
         expectedReportContent
       )
@@ -75,11 +68,6 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
           verificationSubmission.submissionId.toString,
           chrisSession.pollUrl,
           Verification
-        )
-
-      verify(mockSubmissionService)
-        .sendEmailForVerification(
-          SubcontractorVerificationEmailRequest(emailRecipient)
         )
 
       verifyNoMoreInteractions(mockSubmissionService)
@@ -118,11 +106,6 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
           Verification
         )
 
-      verify(mockSubmissionService, never)
-        .sendEmailForVerification(any[SubcontractorVerificationEmailRequest])(
-          any[HeaderCarrier]
-        )
-
       verifyNoMoreInteractions(mockSubmissionService)
     }
 
@@ -157,11 +140,6 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
           verificationSubmission.submissionId.toString,
           chrisSession.pollUrl,
           Verification
-        )
-
-      verify(mockSubmissionService, never)
-        .sendEmailForVerification(any[SubcontractorVerificationEmailRequest])(
-          any[HeaderCarrier]
         )
 
       verifyNoMoreInteractions(mockSubmissionService)

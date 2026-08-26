@@ -46,7 +46,8 @@ case class StoredVerificationContext(
   hmrcMarkGenerated: String,
   submissionRequestDate: LocalDateTime,
   actionIndicators: Seq[VerificationActionIndicator],
-  requestedVerifications: Seq[StoredRequestedVerification]
+  requestedVerifications: Seq[StoredRequestedVerification],
+  emailRecipient: Option[String] = None
 )
 
 case class StoredRequestedVerification(
