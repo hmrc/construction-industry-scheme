@@ -116,7 +116,7 @@ class EnqueueMessageRequestSpec extends AnyFreeSpec with Matchers {
             "correlationID" -> "",
             "filter"        -> "AGENTAUTH",
             "payload"       -> Json.obj(
-              "GGIS_DTSTAMP"    -> "20260826",
+              "GGIS_DTSTAMP"    -> "20260827 154512747",
               "MESSAGE_TYPE"    -> "AGENT_AUTH_PORTAL",
               "ADDITIONAL_INFO" -> "Request client removal",
               "GW_AGENT_ID"     -> "AGENT123",
@@ -158,7 +158,7 @@ class EnqueueMessageRequestSpec extends AnyFreeSpec with Matchers {
               correlationID = "",
               filter = "AGENTAUTH",
               payload = Map(
-                "GGIS_DTSTAMP"    -> "20260826",
+                "GGIS_DTSTAMP"    -> "20260827 154512747",
                 "MESSAGE_TYPE"    -> "AGENT_AUTH_PORTAL",
                 "ADDITIONAL_INFO" -> "Request client removal",
                 "GW_AGENT_ID"     -> "AGENT123",
@@ -201,7 +201,7 @@ class EnqueueMessageRequestSpec extends AnyFreeSpec with Matchers {
               correlationID = "",
               filter = "AGENTAUTH",
               payload = Map(
-                "GGIS_DTSTAMP"    -> "20260826",
+                "GGIS_DTSTAMP"    -> "20260827 154512747",
                 "MESSAGE_TYPE"    -> "AGENT_AUTH_PORTAL",
                 "ADDITIONAL_INFO" -> "Request client removal",
                 "GW_AGENT_ID"     -> "AGENT123",
@@ -243,7 +243,7 @@ class EnqueueMessageRequestSpec extends AnyFreeSpec with Matchers {
             "correlationID" -> "",
             "filter"        -> "AGENTAUTH",
             "payload"       -> Json.obj(
-              "GGIS_DTSTAMP"    -> "20260826",
+              "GGIS_DTSTAMP"    -> "20260827 154512747",
               "MESSAGE_TYPE"    -> "AGENT_AUTH_PORTAL",
               "ADDITIONAL_INFO" -> "Request client removal",
               "GW_AGENT_ID"     -> "AGENT123",

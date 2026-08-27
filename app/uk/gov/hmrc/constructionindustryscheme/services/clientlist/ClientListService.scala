@@ -31,7 +31,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.{AsynchronousProcessWaitTim
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
-import java.time.LocalDateTime
+import java.time.{LocalDateTime, ZoneId}
 import java.time.format.DateTimeFormatter
 
 final case class ClientListDownloadFailedException(msg: String) extends RuntimeException(msg)
@@ -279,7 +279,9 @@ class ClientListService @Inject() (
               correlationID = "",
               filter = "AGENTAUTH",
               payload = Map(
-                "GGIS_DTSTAMP"    -> LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd HHmmssSSS")),
+                "GGIS_DTSTAMP"    -> LocalDateTime
+                  .now(ZoneId.of("Europe/London"))
+                  .format(DateTimeFormatter.ofPattern("yyyyMMdd HHmmssSSS")),
                 "MESSAGE_TYPE"    -> "AGENT_AUTH_PORTAL",
                 "ADDITIONAL_INFO" -> "Request client removal",
                 "GW_AGENT_ID"     -> agentId,
