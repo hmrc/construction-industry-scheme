@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.models
 
-import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.constructionindustryscheme.models.{EnqueueMessage, EnqueueTracking}
+import play.api.libs.json.*
 
-final case class EnqueueMessageRequest(
+final case class EnqueueTracking(
   message: EnqueueMessage,
-  tracking: Option[EnqueueTracking] = None
+  number: EnqueueNumber
 )
 
-object EnqueueMessageRequest {
-  given OFormat[EnqueueMessageRequest] = Json.format[EnqueueMessageRequest]
+object EnqueueTracking {
+  given OFormat[EnqueueTracking] = Json.format[EnqueueTracking]
 }
