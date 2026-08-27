@@ -460,5 +460,77 @@ class SubcontractorControllerIntegrationSpec
       resp.status mustBe SERVICE_UNAVAILABLE
       (resp.json \ "message").as[String] must include("FormP unavailable")
     }
+
+    "return 500 when FormP returns 204 because the version body is required" in {
+      AuthStub.authorisedWithCisEnrolment()
+
+      val payload =
+        Json.parse(
+          """{
+            |  "cisId": "abc-123",
+            |  "subcontractor": {
+            |    "subcontractorId": 999,
+            |    "subbieResourceRef": 10,
+            |    "subcontractorType": "soletrader",
+            |    "version": 5
+            |  }
+            |}""".stripMargin
+        )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
+          .willReturn(aResponse().withStatus(NO_CONTENT))
+      )
+
+      val resp =
+        postJson(
+          updateSubcontractorUrl,
+          payload,
+          "X-Session-Id"  -> "Session-123",
+          "Authorization" -> "Bearer it-token"
+        )
+
+      resp.status mustBe INTERNAL_SERVER_ERROR
+      (resp.json \ "message").as[String] must include(
+        "FormP returned 204 No Content for updateSubcontractor"
+      )
+    }
+
+    "return 500 when FormP returns an unexpected 2xx without the expected body" in {
+      AuthStub.authorisedWithCisEnrolment()
+
+      val payload =
+        Json.parse(
+          """{
+            |  "cisId": "abc-123",
+            |  "subcontractor": {
+            |    "subcontractorId": 999,
+            |    "subbieResourceRef": 10,
+            |    "subcontractorType": "soletrader",
+            |    "version": 5
+            |  }
+            |}""".stripMargin
+        )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/update"))
+          .willReturn(
+            aResponse()
+              .withStatus(202)
+              .withBody("accepted without version")
+          )
+      )
+
+      val resp =
+        postJson(
+          updateSubcontractorUrl,
+          payload,
+          "X-Session-Id"  -> "Session-123",
+          "Authorization" -> "Bearer it-token"
+        )
+
+      resp.status mustBe INTERNAL_SERVER_ERROR
+      (resp.json \ "message").as[String] mustBe "accepted without version"
+    }
   }
 }

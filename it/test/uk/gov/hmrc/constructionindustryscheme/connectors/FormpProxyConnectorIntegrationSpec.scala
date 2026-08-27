@@ -21,7 +21,7 @@ import org.scalatest.OptionValues.convertOptionToValuable
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
-import play.api.http.Status.{BAD_GATEWAY, NO_CONTENT, OK}
+import play.api.http.Status.{BAD_GATEWAY, INTERNAL_SERVER_ERROR, NO_CONTENT, OK}
 import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
@@ -2841,7 +2841,7 @@ class FormpProxyConnectorIntegrationSpec
       val upstream =
         ex.asInstanceOf[UpstreamErrorResponse]
 
-      upstream.statusCode mustBe NO_CONTENT
+      upstream.statusCode mustBe INTERNAL_SERVER_ERROR
       upstream.message must include(
         "FormP returned 204 No Content for updateSubcontractor"
       )
@@ -2867,6 +2867,26 @@ class FormpProxyConnectorIntegrationSpec
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_GATEWAY
       ex.asInstanceOf[UpstreamErrorResponse].message mustBe "FormP error"
+    }
+
+    "fails with 500 UpstreamErrorResponse when FormP returns an unexpected 2xx without the expected body" in {
+      stubFor(
+        post(urlPathEqualTo(updateUrl))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(request).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(202)
+              .withBody("accepted without version")
+          )
+      )
+
+      val ex =
+        connector.updateSubcontractor(request).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe INTERNAL_SERVER_ERROR
+      ex.asInstanceOf[UpstreamErrorResponse].message mustBe "accepted without version"
     }
   }
 }
