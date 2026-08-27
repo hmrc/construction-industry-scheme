@@ -111,7 +111,7 @@ class EnqueueMessageRequestSpec extends AnyFreeSpec with Matchers {
         "tracking" -> Json.obj(
           "message" -> Json.obj(
             "sender"        -> "Portal",
-            "queueName"     -> "AGTAUTH",
+            "queueName"     -> "Tracking",
             "replyQueue"    -> "",
             "correlationID" -> "",
             "filter"        -> "AGENTAUTH",
@@ -153,7 +153,7 @@ class EnqueueMessageRequestSpec extends AnyFreeSpec with Matchers {
           EnqueueTracking(
             message = EnqueueMessage(
               sender = "Portal",
-              queueName = "AGTAUTH",
+              queueName = "Tracking",
               replyQueue = "",
               correlationID = "",
               filter = "AGENTAUTH",
@@ -196,7 +196,7 @@ class EnqueueMessageRequestSpec extends AnyFreeSpec with Matchers {
           EnqueueTracking(
             message = EnqueueMessage(
               sender = "Portal",
-              queueName = "AGTAUTH",
+              queueName = "Tracking",
               replyQueue = "",
               correlationID = "",
               filter = "AGENTAUTH",
@@ -238,7 +238,7 @@ class EnqueueMessageRequestSpec extends AnyFreeSpec with Matchers {
         "tracking" -> Json.obj(
           "message" -> Json.obj(
             "sender"        -> "Portal",
-            "queueName"     -> "AGTAUTH",
+            "queueName"     -> "Tracking",
             "replyQueue"    -> "",
             "correlationID" -> "",
             "filter"        -> "AGENTAUTH",

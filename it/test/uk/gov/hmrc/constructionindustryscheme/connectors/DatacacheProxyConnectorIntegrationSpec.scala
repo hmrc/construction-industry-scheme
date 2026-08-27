@@ -604,7 +604,7 @@ class DatacacheProxyConnectorIntegrationSpec
         EnqueueTracking(
           message = EnqueueMessage(
             sender = "Portal",
-            queueName = "AGTAUTH",
+            queueName = "Tracking",
             replyQueue = "",
             correlationID = "",
             filter = "AGENTAUTH",
