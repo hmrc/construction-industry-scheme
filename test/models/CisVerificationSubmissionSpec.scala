@@ -23,7 +23,8 @@ import org.scalatestplus.mockito.MockitoSugar
 import uk.gov.hmrc.auth.core.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisVerificationRequest
-import java.time.{Clock, Instant, ZoneOffset}
+
+import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 
 class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoSugar {
 
@@ -55,7 +56,20 @@ class CisVerificationSubmissionSpec extends SpecBase with Matchers with MockitoS
     addressLine4 = Some("Line 4"),
     country = Some("UK"),
     postcode = Some("NE1 1AA"),
-    worksReferenceNumber = Some("WRN123")
+    emailAddress = Some("john@test.com"),
+    phoneNumber = Some("01911234567"),
+    mobilePhoneNumber = Some("07123456789"),
+    worksReferenceNumber = Some("WRN123"),
+    matched = Some("Y"),
+    autoVerified = Some("N"),
+    verified = Some("Y"),
+    verificationNumber = Some("V123456"),
+    taxTreatment = Some("0"),
+    verificationDate = Some(LocalDateTime.parse("2026-07-23T10:15:30")),
+    version = Some(1),
+    updatedTaxTreatment = Some("1"),
+    lastMonthlyReturnDate = Some(LocalDateTime.parse("2026-06-30T00:00:00")),
+    pendingVerifications = Some(2)
   )
 
   "buildPayload creates correct payload for non-agent request" in {

@@ -32,6 +32,11 @@ class VerificationService @Inject() (formpProxyConnector: FormpProxyConnector) {
   ): Future[GetNewestVerificationBatchResponse] =
     formpProxyConnector.getNewestVerificationBatch(instanceId)
 
+  def getLastSubmittedVerificationBatch(instanceId: String)(implicit
+    hc: HeaderCarrier
+  ): Future[GetLastSubmittedVerificationBatchResponse] =
+    formpProxyConnector.getLastSubmittedVerificationBatch(instanceId)
+
   def getCurrentVerificationBatch(instanceId: String)(implicit
     hc: HeaderCarrier
   ): Future[GetCurrentVerificationBatchResponse] =
@@ -66,4 +71,9 @@ class VerificationService @Inject() (formpProxyConnector: FormpProxyConnector) {
     request: GetSubmittedVerificationsRequest
   )(implicit hc: HeaderCarrier): Future[GetSubmittedVerificationsResponse] =
     formpProxyConnector.getSubmittedVerifications(request)
+
+  def proceedInsufficientVerification(
+    request: ProceedInsufficientVerificationRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    formpProxyConnector.proceedInsufficientVerification(request)
 }

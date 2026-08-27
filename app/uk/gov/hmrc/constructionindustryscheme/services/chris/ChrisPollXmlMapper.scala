@@ -20,38 +20,32 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 
 import java.time.Instant
-import scala.xml.*
 
 object ChrisPollXmlMapper extends ChrisXmlMapper {
 
-  def parse(xml: String, now: Instant = Instant.now()): Either[String, ChrisPollResponse] =
-    parsePoll(xml, now)(derivePollStatus)
+  def parse(xml: String, hmrcMarkGenerated: String, now: Instant = Instant.now()): Either[String, ChrisPollResponse] =
+    parsePoll(xml, hmrcMarkGenerated, now)(derivePollStatus)
 
   /** Stage 2 (polling) status mapping. */
   private def derivePollStatus(
     qualifier: String,
     errOpt: Option[GovTalkError],
-    doc: Elem
+    irMarkMatch: Boolean
   ): SubmissionStatus =
     qualifier.toLowerCase match {
       case "acknowledgement" => ACCEPTED
-      case "response"        => SUBMITTED
+      case "response"        => if (irMarkMatch) SUBMITTED else SUBMITTED_NO_RECEIPT
       case "error"           =>
-        // Special case: IRMark mismatch ⇒ SUBMITTED_NO_RECEIPT
-        if (isIrmarkMismatch(doc)) {
-          SUBMITTED_NO_RECEIPT
-        } else {
-          errOpt match {
-            // 3001 + business => DEPARTMENTAL_ERROR
-            case Some(err) if err.errorNumber == "3001" && err.errorType.equalsIgnoreCase("business") =>
-              DEPARTMENTAL_ERROR
+        errOpt match {
+          // 3001 + business => DEPARTMENTAL_ERROR
+          case Some(err) if err.errorNumber == "3001" && err.errorType.equalsIgnoreCase("business") =>
+            DEPARTMENTAL_ERROR
 
-            // recoverable errors (3000, 2005, 1000) => STARTED
-            case Some(err) if Set("3000", "2005", "1000").contains(err.errorNumber)                   => STARTED
+          // recoverable errors (3000, 2005, 1000) => STARTED
+          case Some(err) if Set("3000", "2005", "1000").contains(err.errorNumber)                   => STARTED
 
-            // all other errors => FATAL_ERROR
-            case _ => FATAL_ERROR
-          }
+          // all other errors => FATAL_ERROR
+          case _ => FATAL_ERROR
         }
       case _                 => FATAL_ERROR
     }

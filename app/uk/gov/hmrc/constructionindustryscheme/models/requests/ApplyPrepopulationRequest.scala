@@ -17,7 +17,6 @@
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.constructionindustryscheme.models.SubcontractorType
 
 case class ApplyPrepopulationRequest(
   schemeId: Int,
@@ -32,7 +31,7 @@ case class ApplyPrepopulationRequest(
   prePopCount: Int,
   prePopSuccessful: String,
   version: Int,
-  subcontractorTypes: Seq[SubcontractorType]
+  subcontractors: Seq[PrepopulationSubcontractor]
 )
 
 object ApplyPrepopulationRequest {

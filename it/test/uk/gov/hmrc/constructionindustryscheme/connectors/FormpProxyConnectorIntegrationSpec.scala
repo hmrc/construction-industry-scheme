@@ -538,7 +538,32 @@ class FormpProxyConnectorIntegrationSpec
         prePopCount = 5,
         prePopSuccessful = "Y",
         version = 1,
-        subcontractorTypes = Seq(SoleTrader, Company)
+        subcontractors = Seq(
+          PrepopulationSubcontractor(
+            subcontractorType = SoleTrader,
+            utr = "1111111111",
+            verificationNumber = Some("V1"),
+            firstName = Some("A"),
+            secondName = None,
+            surname = Some("B"),
+            tradingName = None,
+            partnershipTradingName = None,
+            verified = Some("Y"),
+            autoVerified = Some("Y")
+          ),
+          PrepopulationSubcontractor(
+            subcontractorType = Company,
+            utr = "2222222222",
+            verificationNumber = Some("V2"),
+            firstName = None,
+            secondName = None,
+            surname = None,
+            tradingName = Some("Acme"),
+            partnershipTradingName = None,
+            verified = Some("Y"),
+            autoVerified = Some("Y")
+          )
+        )
       )
 
       val responseJson = Json.obj("version" -> 2)
@@ -572,7 +597,32 @@ class FormpProxyConnectorIntegrationSpec
         prePopCount = 5,
         prePopSuccessful = "Y",
         version = 1,
-        subcontractorTypes = Seq(SoleTrader, Company)
+        subcontractors = Seq(
+          PrepopulationSubcontractor(
+            subcontractorType = SoleTrader,
+            utr = "1111111111",
+            verificationNumber = Some("V1"),
+            firstName = Some("A"),
+            secondName = None,
+            surname = Some("B"),
+            tradingName = None,
+            partnershipTradingName = None,
+            verified = Some("Y"),
+            autoVerified = Some("Y")
+          ),
+          PrepopulationSubcontractor(
+            subcontractorType = Company,
+            utr = "2222222222",
+            verificationNumber = Some("V2"),
+            firstName = None,
+            secondName = None,
+            surname = None,
+            tradingName = Some("Acme"),
+            partnershipTradingName = None,
+            verified = Some("Y"),
+            autoVerified = Some("Y")
+          )
+        )
       )
 
       stubFor(
@@ -1349,18 +1399,25 @@ class FormpProxyConnectorIntegrationSpec
            |{
            |  "subcontractors": [
            |    {
-           |      "subcontractorId": 1
+           |      "subcontractorId": 1,
+           |      "subbieResourceRef": 10
            |    }
            |  ],
            |  "scheme": {
            |      "name": "david"
            |    },
            |  "verificationBatch": {
-           |      "verificationBatchId": 99
+           |      "verificationBatchId": 99,
+           |      "status": "SUBMITTED"
            |    },
            |  "verifications": [
            |    {
-           |      "verificationId": 1001
+           |      "verificationId": 1001,
+           |      "matched": "N",
+           |      "verificationNumber": "V0000000001",
+           |      "actionIndicator": "VERIFY",
+           |      "proceed": "Y",
+           |      "verificationResourceRef": 10
            |    }
            |  ],
            |  "submission": {
@@ -1385,13 +1442,67 @@ class FormpProxyConnectorIntegrationSpec
       val outJson = Json.toJson(connector.getNewestVerificationBatch(instanceId).futureValue)
 
       (outJson \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
+      (outJson \ "subcontractors")(0).\("subbieResourceRef").as[Long] mustBe 10L
       (outJson \ "scheme").\("name").as[String] mustBe "david"
 
       (outJson \ "verificationBatch").\("verificationBatchId").as[Long] mustBe 99L
+      (outJson \ "verificationBatch" \ "status").as[String] mustBe "SUBMITTED"
+
       (outJson \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L
+      (outJson \ "verifications")(0).\("matched").as[String] mustBe "N"
+      (outJson \ "verifications")(0).\("verificationResourceRef").as[Long] mustBe 10L
+      (outJson \ "verifications")(0).\("verificationNumber").as[String] mustBe "V0000000001"
+      (outJson \ "verifications")(0).\("actionIndicator").as[String] mustBe "VERIFY"
+      (outJson \ "verifications")(0).\("proceed").as[String] mustBe "Y"
 
       (outJson \ "submission").\("submissionId").as[Long] mustBe 555L
       (outJson \ "monthlyReturn").\("monthlyReturnId").as[Long] mustBe 777L
+    }
+
+    "return payload with an unmatched verification and no verificationResourceRef (200)" in {
+
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "subcontractors": [],
+           |  "scheme": {
+           |      "name": "david"
+           |    },
+           |  "verificationBatch": {
+           |      "verificationBatchId": 100,
+           |      "status": "PENDING"
+           |    },
+           |  "verifications": [
+           |    {
+           |      "verificationId": 1002,
+           |      "matched": "N",
+           |      "verificationNumber": "V0000000002",
+           |      "actionIndicator": "MATCH",
+           |      "proceed": "N"
+           |    }
+           |  ]
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/verification-batch/newest/$instanceId"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val outJson = Json.toJson(connector.getNewestVerificationBatch(instanceId).futureValue)
+
+      (outJson \ "verificationBatch" \ "status").as[String] mustBe "PENDING"
+
+      (outJson \ "verifications")(0).\("verificationId").as[Long] mustBe 1002L
+      (outJson \ "verifications")(0).\("matched").as[String] mustBe "N"
+      (outJson \ "verifications")(0).\("actionIndicator").as[String] mustBe "MATCH"
+      (outJson \ "verifications")(0).\("proceed").as[String] mustBe "N"
+      (outJson \ "verifications")(0).\("verificationResourceRef").toOption mustBe None
     }
 
     "fail the future when upstream returns a non-2xx (e.g. 500)" in {
@@ -1454,6 +1565,70 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = connector.getCurrentVerificationBatch(instanceId).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector getLastSubmittedVerificationBatch" should {
+
+    "GET /formp-proxy/cis/verification-batch/last/:instanceId and return payload (200)" in {
+
+      val responseJson = Json.parse(
+        s"""
+           |{
+           |  "subcontractors": [
+           |    {
+           |      "subcontractorId": 1
+           |    }
+           |  ],
+           |  "scheme": {
+           |      "name": "David"
+           |    },
+           |  "verificationBatch": {
+           |      "verificationBatchId": 99
+           |    },
+           |  "verifications": [
+           |    {
+           |      "verificationId": 1001
+           |    }
+           |  ],
+           |  "submission": {
+           |      "submissionId": 555,
+           |      "submissionType": "VERIFICATIONS",
+           |       "schemeId": 1
+           |    }
+           |}
+           |""".stripMargin
+      )
+
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/verification-batch/last/$instanceId"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(responseJson.toString())
+          )
+      )
+
+      val outJson = Json.toJson(connector.getLastSubmittedVerificationBatch(instanceId).futureValue)
+
+      (outJson \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
+      (outJson \ "scheme").\("name").as[String] mustBe "David"
+
+      (outJson \ "verificationBatch").\("verificationBatchId").as[Long] mustBe 99L
+      (outJson \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L
+
+      (outJson \ "submission").\("submissionId").as[Long] mustBe 555L
+    }
+
+    "fail the future when upstream returns a non-2xx (e.g. 500)" in {
+      stubFor(
+        get(urlPathEqualTo(s"/formp-proxy/cis/verification-batch/last/$instanceId"))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.getLastSubmittedVerificationBatch(instanceId).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
@@ -1932,6 +2107,50 @@ class FormpProxyConnectorIntegrationSpec
       )
 
       val ex = connector.modifyVerifications(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
+  "FormpProxyConnector proceedInsufficientVerification" should {
+
+    "POST /formp-proxy/cis/verification/proceed-with-insufficient-data and return payload (204)" in {
+      val req = ProceedInsufficientVerificationRequest(
+        instanceId = "1",
+        verificationBatchResourceRef = 9L,
+        verificationResourceRef = 10L,
+        proceed = "Y"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/proceed-with-insufficient-data"))
+          .withHeader("Content-Type", containing("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(NO_CONTENT))
+      )
+
+      connector.proceedInsufficientVerification(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail the future when upstream returns a non-2xx (e.g. 500)" in {
+      val req = ProceedInsufficientVerificationRequest(
+        instanceId = "1",
+        verificationBatchResourceRef = 9L,
+        verificationResourceRef = 10L,
+        proceed = "Y"
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/proceed-with-insufficient-data"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(500)
+              .withBody("""{"message":"boom"}""")
+          )
+      )
+
+      val ex = connector.proceedInsufficientVerification(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
@@ -2616,7 +2835,7 @@ class FormpProxyConnectorIntegrationSpec
 
   "FormpProxyConnector getSubmissionWithVerificationBatch" should {
 
-    "POST the request and return the response when upstream returns 200" in {
+    "POST /formp-proxy/cis/verification/submission-batch and return response (200)" in {
       val request =
         GetSubmissionWithVerificationBatchRequest(
           instanceId = instanceId,
@@ -2634,9 +2853,11 @@ class FormpProxyConnectorIntegrationSpec
             |}""".stripMargin
         )
 
+      val expectedResponse =
+        responseJson.as[GetSubmissionWithVerificationBatchResponse]
+
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/submission-batch"))
-          .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(
             equalToJson(
               Json.toJson(request).toString(),
@@ -2647,26 +2868,33 @@ class FormpProxyConnectorIntegrationSpec
           .willReturn(
             aResponse()
               .withStatus(200)
-              .withHeader("Content-Type", "application/json")
               .withBody(responseJson.toString())
           )
       )
 
-      val result =
+      val out =
         connector
           .getSubmissionWithVerificationBatch(request)
           .futureValue
 
-      result mustBe GetSubmissionWithVerificationBatchResponse(
-        scheme = None,
-        submission = None,
-        verificationBatch = None,
-        verifications = Seq.empty,
-        subcontractors = Seq.empty
+      out mustBe expectedResponse
+
+      verify(
+        postRequestedFor(
+          urlPathEqualTo(
+            "/formp-proxy/cis/verification/submission-batch"
+          )
+        ).withRequestBody(
+          equalToJson(
+            Json.toJson(request).toString(),
+            true,
+            true
+          )
+        )
       )
     }
 
-    "fail the future when upstream returns 500" in {
+    "POST /formp-proxy/cis/verification/submission-batch should fail the future when upstream returns a non-2xx response" in {
       val request =
         GetSubmissionWithVerificationBatchRequest(
           instanceId = instanceId,
@@ -2689,14 +2917,85 @@ class FormpProxyConnectorIntegrationSpec
           )
       )
 
-      val exception =
-        intercept[Throwable] {
-          connector
-            .getSubmissionWithVerificationBatch(request)
-            .futureValue
-        }
+      val ex =
+        connector
+          .getSubmissionWithVerificationBatch(request)
+          .failed
+          .futureValue
 
-      exception.getMessage must include("500")
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+
+    "GET /formp-proxy/cis/verification/submission-batch/:instanceId/:verificationBatchResourceRef and return response (200)" in {
+      val verificationBatchResourceRef = 77L
+
+      val responseJson = Json.parse(
+        """
+          |{
+          |  "scheme": null,
+          |  "subcontractors": [],
+          |  "verifications": [],
+          |  "verificationBatch": null,
+          |  "submission": null
+          |}
+          |""".stripMargin
+      )
+
+      val expectedResponse =
+        responseJson.as[GetSubmissionWithVerificationBatchResponse]
+
+      stubFor(
+        get(
+          urlPathEqualTo(
+            s"/formp-proxy/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef"
+          )
+        ).willReturn(
+          aResponse()
+            .withStatus(200)
+            .withBody(responseJson.toString())
+        )
+      )
+
+      val out =
+        connector
+          .getSubmissionWithVerificationBatch(instanceId, verificationBatchResourceRef)
+          .futureValue
+
+      out mustBe expectedResponse
+
+      verify(
+        getRequestedFor(
+          urlPathEqualTo(
+            s"/formp-proxy/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef"
+          )
+        )
+      )
+    }
+
+    "GET /formp-proxy/cis/verification/submission-batch/:instanceId/:verificationBatchResourceRef should fail the future when upstream returns a non-2xx response" in {
+      val verificationBatchResourceRef = 77L
+
+      stubFor(
+        get(
+          urlPathEqualTo(
+            s"/formp-proxy/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef"
+          )
+        ).willReturn(
+          aResponse()
+            .withStatus(500)
+            .withBody("""{"message":"boom"}""")
+        )
+      )
+
+      val ex =
+        connector
+          .getSubmissionWithVerificationBatch(instanceId, verificationBatchResourceRef)
+          .failed
+          .futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
 

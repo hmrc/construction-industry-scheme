@@ -68,6 +68,41 @@ final class VerificationServiceSpec extends SpecBase {
     }
   }
 
+  "VerificationService#getLastSubmittedVerificationBatch" - {
+
+    val instanceId = "abc-123"
+
+    val response = GetLastSubmittedVerificationBatchResponse(
+      scheme = None,
+      subcontractors = Seq.empty,
+      verificationBatch = None,
+      verifications = Seq.empty,
+      submission = None
+    )
+
+    "delegates to FormpProxyConnector and returns response" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.getLastSubmittedVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      service.getLastSubmittedVerificationBatch(instanceId).futureValue mustBe response
+
+      verify(connector).getLastSubmittedVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.getLastSubmittedVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.getLastSubmittedVerificationBatch(instanceId).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
   "VerificationService#getCurrentVerificationBatch" - {
 
     val instanceId = "abc-123"
@@ -334,6 +369,38 @@ final class VerificationServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.getSubmittedVerifications(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "VerificationService#proceedInsufficientVerification" - {
+
+    val request = ProceedInsufficientVerificationRequest(
+      instanceId = "1",
+      verificationBatchResourceRef = 9L,
+      verificationResourceRef = 10L,
+      proceed = "Y"
+    )
+
+    "delegates to FormpProxyConnector and returns response" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.proceedInsufficientVerification(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.proceedInsufficientVerification(request).futureValue mustBe ()
+
+      verify(connector).proceedInsufficientVerification(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.proceedInsufficientVerification(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.proceedInsufficientVerification(request).failed.futureValue.getMessage must include("boom")
     }
   }
 }

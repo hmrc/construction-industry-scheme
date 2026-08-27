@@ -171,6 +171,107 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
     }
   }
 
+  "getLastSubmittedVerificationBatch" - {
+
+    val instanceId = "abc-123"
+    val url        = s"/cis/verification-batch/last/$instanceId"
+
+    "returns 200 OK with JSON body when service succeeds (full payload)" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      val response = GetLastSubmittedVerificationBatchResponse(
+        scheme = Some(
+          ContractorSchemeLastVerification(
+            accountsOfficeReference = Some("123PA00123456"),
+            utr = Some("1111111111"),
+            name = Some("ABC Construction Ltd"),
+            emailAddress = Some("ops@example.com")
+          )
+        ),
+        subcontractors = Seq(
+          SubcontractorLastVerification(
+            subcontractorId = 1L,
+            subcontractorType = Some("soletrader"),
+            subbieResourceRef = Some(10L),
+            utr = Some("1111111111")
+          )
+        ),
+        verificationBatch = Some(
+          VerificationBatchLastVerification(
+            verificationBatchId = 99L,
+            verifBatchResourceRef = Some(1234567L),
+            status = Some("ACCEPTED")
+          )
+        ),
+        verifications = Seq(
+          VerificationLastVerification(
+            verificationId = 1001L,
+            verificationBatchId = Some(99L),
+            verificationResourceRef = Some(12345),
+            matched = Some("Y"),
+            verificationNumber = Some("V0000000001"),
+            taxTreatment = Some("0"),
+            subcontractorName = Some("James Star"),
+            subcontractorId = Some(22L),
+            actionIndicator = Some("verify")
+          )
+        ),
+        submission = Some(
+          SubmissionNewVerification(
+            submissionId = 1234L,
+            activeObjectId = Some(98765L),
+            status = Some("ACCEPTED"),
+            submissionRequestDate = Some(LocalDateTime.of(2026, 8, 11, 11, 50, 0))
+          )
+        )
+      )
+
+      when(verificationService.getLastSubmittedVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, url)
+      val result                                   = controller.getLastSubmittedVerificationBatch(instanceId)(req)
+
+      status(result) mustBe OK
+      contentType(result) mustBe Some(JSON)
+
+      val json = contentAsJson(result)
+
+      (json \ "scheme").\("name").as[String] mustBe "ABC Construction Ltd"
+
+      (json \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 1L
+
+      (json \ "verificationBatch").\("verificationBatchId").as[Long] mustBe 99L
+      (json \ "verifications")(0).\("verificationId").as[Long] mustBe 1001L
+
+      (json \ "submission").\("submissionId").as[Long] mustBe 1234L
+
+      json mustBe Json.toJson(response)
+
+      verify(verificationService).getLastSubmittedVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+    }
+
+    "returns 502 BadGateway with error body when service fails" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      when(verificationService.getLastSubmittedVerificationBatch(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, url)
+      val result                                   = controller.getLastSubmittedVerificationBatch(instanceId)(req)
+
+      status(result) mustBe BAD_GATEWAY
+      contentType(result) mustBe Some(JSON)
+      contentAsJson(result) mustBe Json.obj("message" -> "get-last-submitted-verification-batch-failed")
+
+      verify(verificationService).getLastSubmittedVerificationBatch(eqTo(instanceId))(any[HeaderCarrier])
+    }
+  }
+
   "getCurrentVerificationBatch" - {
 
     val instanceId = "abc-123"
@@ -202,7 +303,20 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             addressLine4 = Some("Line 4"),
             country = Some("UK"),
             postcode = Some("NE1 1AA"),
-            worksReferenceNumber = Some("WRN123")
+            emailAddress = Some("test@test.com"),
+            phoneNumber = Some("1234567891"),
+            mobilePhoneNumber = Some("4545457888"),
+            worksReferenceNumber = Some("WRN123"),
+            matched = Some("Y"),
+            autoVerified = Some("N"),
+            verified = Some("Y"),
+            verificationNumber = Some("V56432233"),
+            taxTreatment = Some("standardTax"),
+            verificationDate = Some(LocalDateTime.parse("2026-07-23T10:15:30")),
+            version = Some(1),
+            updatedTaxTreatment = Some("updatedTax"),
+            lastMonthlyReturnDate = Some(LocalDateTime.parse("2026-07-23T10:15:30")),
+            pendingVerifications = Some(1)
           )
         ),
         verificationBatch = Some(
@@ -216,7 +330,13 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
             verificationId = 1001L,
             verificationBatchId = Some(99L),
             subcontractorId = Some(1L),
-            verificationResourceRef = Some(1L)
+            verificationResourceRef = Some(1L),
+            subcontractorName = Some("John Smith"),
+            verificationNumber = Some("V56432233"),
+            taxTreatment = Some("standardTax"),
+            actionIndicator = Some("N"),
+            proceed = Some("Y"),
+            matched = Some("Y")
           )
         )
       )
@@ -814,6 +934,77 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentAsJson(result) mustBe Json.obj("message" -> "get-submitted-verifications-failed")
 
       verify(verificationService).getSubmittedVerifications(eqTo(validRequest))(any[HeaderCarrier])
+    }
+  }
+
+  "proceedInsufficientVerification" - {
+
+    val url = "/cis/verification/proceed-with-insufficient-data"
+
+    val validRequest: ProceedInsufficientVerificationRequest =
+      ProceedInsufficientVerificationRequest(
+        instanceId = "1",
+        verificationBatchResourceRef = 9L,
+        verificationResourceRef = 10L,
+        proceed = "Y"
+      )
+
+    val validJson: JsValue = Json.toJson(validRequest)
+
+    "returns 204 when service succeeds" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      when(verificationService.proceedInsufficientVerification(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val req = FakeRequest(POST, url)
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.proceedInsufficientVerification()(req)
+
+      status(result) mustBe NO_CONTENT
+      verify(verificationService).proceedInsufficientVerification(eqTo(validRequest))(any[HeaderCarrier])
+    }
+
+    "returns 400 BadRequest when JSON is invalid" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      val badJson = Json.obj("bad" -> "json")
+
+      val req = FakeRequest(POST, url)
+        .withBody(badJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.proceedInsufficientVerification()(req)
+
+      status(result) mustBe BAD_REQUEST
+      verifyNoInteractions(verificationService)
+    }
+
+    "returns 502 BadGateway with error body when service fails" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      when(verificationService.proceedInsufficientVerification(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req = FakeRequest(POST, url)
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.proceedInsufficientVerification()(req)
+
+      status(result) mustBe BAD_GATEWAY
+      contentType(result) mustBe Some(JSON)
+      contentAsJson(result) mustBe Json.obj("message" -> "proceed-insufficient-verification-failed")
+
+      verify(verificationService).proceedInsufficientVerification(eqTo(validRequest))(any[HeaderCarrier])
     }
   }
 }

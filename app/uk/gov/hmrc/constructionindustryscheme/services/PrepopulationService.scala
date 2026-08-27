@@ -19,7 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.services
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.*
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, UpdateSchemeVersionRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, PrepopulationSubcontractor, UpdateSchemeVersionRequest}
 
 import scala.concurrent.Future
 import javax.inject.{Inject, Singleton}
@@ -150,9 +150,6 @@ class PrepopulationService @Inject() (
                                 val currentVersion  = existing.version.getOrElse(0)
                                 val nextPrePopCount = existing.prePopCount.getOrElse(0) + 1
 
-                                val subTypes: Seq[SubcontractorType] =
-                                  subcontractors.map(s => toSubcontractorType(s.subcontractorType))
-
                                 val req = ApplyPrepopulationRequest(
                                   schemeId = existing.schemeId,
                                   instanceId = instanceId,
@@ -166,14 +163,49 @@ class PrepopulationService @Inject() (
                                   prePopCount = nextPrePopCount,
                                   prePopSuccessful = "Y",
                                   version = currentVersion,
-                                  subcontractorTypes = subTypes
+                                  subcontractors = subcontractors.map(toPrepopulationSubcontractor)
                                 )
 
-                                // This is atomic in FORMP: Update_Scheme + Create_Subcontractor* + Update_Version_Number
+                                // Atomic in FORMP: Update_Scheme + Create_Subcontractor_Prepop* + Update_Version_Number
                                 formp.applyPrepopulation(req).map(_ => ())
                             }
       } yield ()
     }
+
+  private def toPrepopulationSubcontractor(source: PrePopSubcontractor): PrepopulationSubcontractor = {
+    val subcontractorType  = toSubcontractorType(source.subcontractorType)
+    val verificationNumber = nonEmpty(source.verificationNumber)
+    val verifiedFlag       = verificationNumber.map(_ => "Y")
+    val tradingName        = source.tradingName.flatMap(nonEmpty)
+
+    val (mappedTradingName, partnershipTradingName) = subcontractorType match {
+      case Partnership => (None, tradingName)
+      case _           => (tradingName, None)
+    }
+
+    val (firstName, secondName, surname) = subcontractorType match {
+      case SoleTrader =>
+        (nonEmpty(source.firstName), nonEmpty(source.secondName), nonEmpty(source.surname))
+      case _          =>
+        (None, None, None)
+    }
+
+    PrepopulationSubcontractor(
+      subcontractorType = subcontractorType,
+      utr = source.utr,
+      verificationNumber = verificationNumber,
+      firstName = firstName,
+      secondName = secondName,
+      surname = surname,
+      tradingName = mappedTradingName,
+      partnershipTradingName = partnershipTradingName,
+      verified = verifiedFlag,
+      autoVerified = verifiedFlag
+    )
+  }
+
+  private def nonEmpty(value: String): Option[String] =
+    Option(value).map(_.trim).filter(_.nonEmpty)
 
   private def toSubcontractorType(raw: String): SubcontractorType =
     raw.trim.toUpperCase match {

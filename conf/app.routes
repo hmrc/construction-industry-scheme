@@ -51,16 +51,20 @@ POST          /user-cache/agent-client/:id                               uk.gov.
 DELETE        /user-cache/agent-client/:id                               uk.gov.hmrc.constructionindustryscheme.controllers.AgentClientController.remove(id: String)
 
 GET           /verification-batch/newest/:instanceId                     uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getNewestVerificationBatch(instanceId: String)
+
+GET           /verification-batch/last/:instanceId                     uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getLastSubmittedVerificationBatch(instanceId: String)
+
 GET           /verification-batch/current/:instanceId                    uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getCurrentVerificationBatch(instanceId: String)
 POST          /verification-batch/modify                                 uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.modifyVerifications()
+POST          /verification/proceed-with-insufficient-data           uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.proceedInsufficientVerification()
 
 POST          /verification-batch/create                                 uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createVerificationBatchAndVerifications()
 POST          /verification/submission/create                            uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createSubmissionAndUpdateVerifications()
 POST          /verification/submission/update                            uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.updateVerificationSubmission()
 POST          /verification-batch/send-email                             uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.sendEmailForVerification
-POST          /verification/response/process                       uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.processVerificationResponseFromChris()
-POST          /verification/submitted-verifications                    uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getSubmittedVerifications()
+POST          /verification/response/process                             uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.processVerificationResponseFromChris()
+POST          /verification/submitted-verifications                      uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getSubmittedVerifications()
 
-GET          /journey-handoffs/:journeyType/:id                          uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.get(journeyType: String, id: String)
-POST         /journey-handoffs/:journeyType                              uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.create(journeyType: String)
-DELETE       /journey-handoffs/:journeyType/:id                          uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.delete(journeyType: String, id: String)
+GET           /journey-handoffs/:journeyType/:id                         uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.get(journeyType: String, id: String)
+POST          /journey-handoffs/:journeyType                             uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.create(journeyType: String)
+DELETE        /journey-handoffs/:journeyType/:id                         uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.delete(journeyType: String, id: String)

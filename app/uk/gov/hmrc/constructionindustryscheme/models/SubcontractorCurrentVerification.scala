@@ -18,6 +18,8 @@ package uk.gov.hmrc.constructionindustryscheme.models
 
 import play.api.libs.json.{Json, OFormat}
 
+import java.time.LocalDateTime
+
 case class SubcontractorCurrentVerification(
   subcontractorId: Long,
   subbieResourceRef: Option[Long],
@@ -37,7 +39,20 @@ case class SubcontractorCurrentVerification(
   addressLine4: Option[String],
   country: Option[String],
   postcode: Option[String],
-  worksReferenceNumber: Option[String]
+  emailAddress: Option[String],
+  phoneNumber: Option[String],
+  mobilePhoneNumber: Option[String],
+  worksReferenceNumber: Option[String],
+  matched: Option[String],
+  autoVerified: Option[String],
+  verified: Option[String],
+  verificationNumber: Option[String],
+  taxTreatment: Option[String],
+  verificationDate: Option[LocalDateTime],
+  version: Option[Int],
+  updatedTaxTreatment: Option[String],
+  lastMonthlyReturnDate: Option[LocalDateTime],
+  pendingVerifications: Option[Int]
 )
 
 object SubcontractorCurrentVerification {

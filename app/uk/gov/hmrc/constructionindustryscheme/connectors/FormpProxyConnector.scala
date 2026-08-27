@@ -328,6 +328,13 @@ class FormpProxyConnector @Inject() (
       .get(url"$base/cis/verification-batch/newest/$instanceId")
       .execute[GetNewestVerificationBatchResponse]
 
+  def getLastSubmittedVerificationBatch(
+    instanceId: String
+  )(implicit hc: HeaderCarrier): Future[GetLastSubmittedVerificationBatchResponse] =
+    http
+      .get(url"$base/cis/verification-batch/last/$instanceId")
+      .execute[GetLastSubmittedVerificationBatchResponse]
+
   def getCurrentVerificationBatch(
     instanceId: String
   )(implicit hc: HeaderCarrier): Future[GetCurrentVerificationBatchResponse] =
@@ -465,6 +472,14 @@ class FormpProxyConnector @Inject() (
       .withBody(Json.toJson(request))
       .execute[GetSubmissionWithVerificationBatchResponse]
 
+  def getSubmissionWithVerificationBatch(
+    instanceId: String,
+    verificationBatchResourceRef: Long
+  )(implicit hc: HeaderCarrier): Future[GetSubmissionWithVerificationBatchResponse] =
+    http
+      .get(url"$base/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef")
+      .execute[GetSubmissionWithVerificationBatchResponse]
+
   def getSubcontractor(
     cisId: String,
     subbieResourceRef: Long
@@ -472,6 +487,18 @@ class FormpProxyConnector @Inject() (
     http
       .get(url"$base/cis/subcontractor/$cisId/$subbieResourceRef")
       .execute[GetSubcontractorResponse]
+
+  def proceedInsufficientVerification(
+    request: ProceedInsufficientVerificationRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/verification/proceed-with-insufficient-data")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == NO_CONTENT) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+      }
 
   def updateSubcontractor(
     request: UpdateSubcontractorRequest

@@ -20,35 +20,30 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 
 import java.time.Instant
-import scala.xml.*
 
 object ChrisVerificationPollXmlMapper extends ChrisXmlMapper {
 
-  def parse(xml: String, now: Instant = Instant.now()): Either[String, ChrisPollResponse] =
-    parsePoll(xml, now)(derivePollStatus)
+  def parse(xml: String, hmrcMarkGenerated: String, now: Instant = Instant.now()): Either[String, ChrisPollResponse] =
+    parsePoll(xml, hmrcMarkGenerated: String, now)(derivePollStatus)
 
   /** Verification poll status mapping per F18. */
   private def derivePollStatus(
     qualifier: String,
     errOpt: Option[GovTalkError],
-    doc: Elem
+    irMarkMatch: Boolean
   ): SubmissionStatus =
     qualifier.toLowerCase match {
       case "acknowledgement" => ACCEPTED
-      case "response"        => SUBMITTED
+      case "response"        => if (irMarkMatch) SUBMITTED else SUBMITTED_NO_RECEIPT
       case "error"           =>
-        if (isIrmarkMismatch(doc)) {
-          SUBMITTED_NO_RECEIPT
-        } else {
-          errOpt match {
-            case Some(err) if err.errorNumber == "3001" && err.errorType.equalsIgnoreCase("business") =>
-              DEPARTMENTAL_ERROR
+        errOpt match {
+          case Some(err) if err.errorNumber == "3001" && err.errorType.equalsIgnoreCase("business") =>
+            DEPARTMENTAL_ERROR
 
-            case Some(err) if err.errorNumber == "3000" && err.errorType.equalsIgnoreCase("fatal") =>
-              DEPARTMENTAL_ERROR
+          case Some(err) if err.errorNumber == "3000" && err.errorType.equalsIgnoreCase("fatal") =>
+            DEPARTMENTAL_ERROR
 
-            case _ => FATAL_ERROR
-          }
+          case _ => FATAL_ERROR
         }
       case _                 => FATAL_ERROR
     }

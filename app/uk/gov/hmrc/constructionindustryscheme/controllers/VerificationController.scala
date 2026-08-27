@@ -47,6 +47,17 @@ class VerificationController @Inject() (
         }
     }
 
+  def getLastSubmittedVerificationBatch(instanceId: String): Action[AnyContent] =
+    authorise.async { implicit request =>
+      verificationService
+        .getLastSubmittedVerificationBatch(instanceId)
+        .map(res => Ok(Json.toJson(res)))
+        .recover { case ex =>
+          logger.error(s"[getLastSubmittedVerificationBatch] formp-proxy get failed (instanceId=$instanceId)", ex)
+          BadGateway(Json.obj("message" -> "get-last-submitted-verification-batch-failed"))
+        }
+    }
+
   def getCurrentVerificationBatch(instanceId: String): Action[AnyContent] =
     authorise.async { implicit request =>
       verificationService
@@ -180,4 +191,16 @@ class VerificationController @Inject() (
         )
     }
 
+  def proceedInsufficientVerification(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      withJsonBody { (body: ProceedInsufficientVerificationRequest) =>
+        verificationService
+          .proceedInsufficientVerification(body)
+          .map(_ => NoContent)
+          .recover { case ex =>
+            logger.error("[proceedInsufficientVerification] formp-proxy create failed", ex)
+            BadGateway(Json.obj("message" -> "proceed-insufficient-verification-failed"))
+          }
+      }
+    }
 }

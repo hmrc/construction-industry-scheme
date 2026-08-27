@@ -17,10 +17,11 @@
 package services
 
 import base.SpecBase
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
-import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
-import uk.gov.hmrc.constructionindustryscheme.models.response.VerificationSubmissionToPoll
+import uk.gov.hmrc.constructionindustryscheme.models.{BatchChRISPollResult, PollReportContent, SUBMITTED, SubmissionStatus}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{ChrisPollResponse, VerificationSubmissionToPoll}
 import uk.gov.hmrc.constructionindustryscheme.repositories.ChrisSubmissionSessionData
 import uk.gov.hmrc.constructionindustryscheme.services.{SubmissionService, VerificationPollingProcessService}
 import uk.gov.hmrc.http.HeaderCarrier
@@ -32,29 +33,38 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
 
   "VerificationPollingProcessService process" - {
 
-    "must complete successfully for verification submissions" in new Setup {
-      val submissions = Seq(verificationSubmission)
+    "must return PollReportContent for verification submissions" in new Setup {
+      val submissions =
+        Seq(verificationSubmission)
 
       when(
         mockSubmissionService
           .syncVerificationSessionForPolling(verificationSubmission)
-      ).thenReturn(Future.successful(chrisSession))
+      ).thenReturn(Future.successful(syncedSession))
 
       when(
-        mockSubmissionService.pollSubmissionAndUpdateGovTalkStatus(
+        mockSubmissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
           verificationSubmission.submissionId.toString,
           chrisSession.pollUrl,
           Verification
         )
-      ).thenReturn(Future.unit)
+      ).thenReturn(
+        Future.successful(
+          BatchChRISPollResult.Completed(
+            pollResponse
+          )
+        )
+      )
 
-      service.process(submissions).futureValue mustBe ()
+      service.process(submissions).futureValue mustBe Seq(
+        expectedReportContent
+      )
 
       verify(mockSubmissionService)
         .syncVerificationSessionForPolling(verificationSubmission)
 
       verify(mockSubmissionService)
-        .pollSubmissionAndUpdateGovTalkStatus(
+        .pollSubmissionAndUpdateGovTalkStatusForBatch(
           verificationSubmission.submissionId.toString,
           chrisSession.pollUrl,
           Verification
@@ -63,22 +73,171 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
       verifyNoMoreInteractions(mockSubmissionService)
     }
 
-    "must complete successfully for empty verification submissions" in new Setup {
-      service.process(Seq.empty).futureValue mustBe ()
+    "must not send an email when submission status is not eligible" in new Setup {
+      val ineligibleStatus       = mock[SubmissionStatus]
+      val ineligiblePollResponse = pollResponse.copy(status = ineligibleStatus)
+
+      when(
+        mockSubmissionService
+          .syncVerificationSessionForPolling(verificationSubmission)
+      ).thenReturn(Future.successful(syncedSession))
+
+      when(
+        mockSubmissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
+          verificationSubmission.submissionId.toString,
+          chrisSession.pollUrl,
+          Verification
+        )
+      ).thenReturn(
+        Future.successful(
+          BatchChRISPollResult.Completed(ineligiblePollResponse)
+        )
+      )
+
+      service.process(Seq(verificationSubmission)).futureValue
+
+      verify(mockSubmissionService)
+        .syncVerificationSessionForPolling(verificationSubmission)
+
+      verify(mockSubmissionService)
+        .pollSubmissionAndUpdateGovTalkStatusForBatch(
+          verificationSubmission.submissionId.toString,
+          chrisSession.pollUrl,
+          Verification
+        )
+
+      verifyNoMoreInteractions(mockSubmissionService)
+    }
+
+    "must complete successfully when email recipient is missing" in new Setup {
+      val sessionWithoutEmail =
+        syncedSession.copy(emailRecipient = None)
+
+      when(
+        mockSubmissionService
+          .syncVerificationSessionForPolling(verificationSubmission)
+      ).thenReturn(Future.successful(sessionWithoutEmail))
+
+      when(
+        mockSubmissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
+          verificationSubmission.submissionId.toString,
+          chrisSession.pollUrl,
+          Verification
+        )
+      ).thenReturn(
+        Future.successful(
+          BatchChRISPollResult.Completed(pollResponse)
+        )
+      )
+
+      service.process(Seq(verificationSubmission)).futureValue
+
+      verify(mockSubmissionService)
+        .syncVerificationSessionForPolling(verificationSubmission)
+
+      verify(mockSubmissionService)
+        .pollSubmissionAndUpdateGovTalkStatusForBatch(
+          verificationSubmission.submissionId.toString,
+          chrisSession.pollUrl,
+          Verification
+        )
+
+      verifyNoMoreInteractions(mockSubmissionService)
+    }
+
+    "must return empty report content for empty verification submissions" in new Setup {
+      service.process(Seq.empty).futureValue mustBe Seq.empty
 
       verifyNoInteractions(mockSubmissionService)
+    }
+
+    "must return failed report content when verification polling fails" in new Setup {
+      when(
+        mockSubmissionService
+          .syncVerificationSessionForPolling(verificationSubmission)
+      ).thenReturn(
+        Future.failed(
+          new RuntimeException("verification sync failed")
+        )
+      )
+
+      val result =
+        service
+          .process(Seq(verificationSubmission))
+          .futureValue
+
+      result mustBe Seq(
+        PollReportContent(
+          user = verificationSubmission.instanceId,
+          submissionType = verificationSubmission.submissionType,
+          submissionId = verificationSubmission.submissionId.toString,
+          govTalkRequestStatus = verificationSubmission.status,
+          currentReturnStatus = "-",
+          employerReference = s"${verificationSubmission.taxOfficeNumber}/${verificationSubmission.taxOfficeReference}",
+          correlationId = "(not polled)",
+          agentId = "A123456"
+        )
+      )
+
+      verify(mockSubmissionService)
+        .syncVerificationSessionForPolling(verificationSubmission)
+
+      verifyNoMoreInteractions(mockSubmissionService)
+    }
+
+    "must return poll report content when post-poll processing fails" in new Setup {
+      when(
+        mockSubmissionService
+          .syncVerificationSessionForPolling(verificationSubmission)
+      ).thenReturn(Future.successful(syncedSession))
+
+      when(
+        mockSubmissionService.pollSubmissionAndUpdateGovTalkStatusForBatch(
+          verificationSubmission.submissionId.toString,
+          chrisSession.pollUrl,
+          Verification
+        )
+      ).thenReturn(
+        Future.successful(
+          BatchChRISPollResult.PostProcessingFailed(
+            response = pollResponse,
+            exception = new RuntimeException("post-poll failed")
+          )
+        )
+      )
+
+      service.process(Seq(verificationSubmission)).futureValue mustBe Seq(
+        expectedReportContent
+      )
+
+      verify(mockSubmissionService)
+        .syncVerificationSessionForPolling(verificationSubmission)
+
+      verify(mockSubmissionService)
+        .pollSubmissionAndUpdateGovTalkStatusForBatch(
+          verificationSubmission.submissionId.toString,
+          chrisSession.pollUrl,
+          Verification
+        )
+
+      verifyNoMoreInteractions(mockSubmissionService)
     }
   }
 
   private trait Setup {
-    given ExecutionContext = scala.concurrent.ExecutionContext.global
-    given HeaderCarrier    = HeaderCarrier()
+    given ExecutionContext =
+      scala.concurrent.ExecutionContext.global
+
+    given HeaderCarrier =
+      HeaderCarrier()
 
     val mockSubmissionService: SubmissionService =
       mock[SubmissionService]
 
     val service =
       new VerificationPollingProcessService(mockSubmissionService)
+
+    val emailRecipient = "user@example.com"
 
     val verificationSubmission: VerificationSubmissionToPoll =
       VerificationSubmissionToPoll(
@@ -102,6 +261,37 @@ class VerificationPollingProcessServiceSpec extends SpecBase {
         pollInterval = 5,
         pollUrl = "http://localhost:6997/submission/ChRIS/poll/IR-CIS-VERIFY/0?final=SUBMITTED",
         govTalkStatus = None
+      )
+
+    val syncedSession: SubmissionService.SyncedVerificationSession =
+      SubmissionService.SyncedVerificationSession(
+        sessionData = chrisSession,
+        emailRecipient = Some(emailRecipient)
+      )
+
+    val pollResponse: ChrisPollResponse =
+      ChrisPollResponse(
+        status = SUBMITTED,
+        correlationId = chrisSession.correlationId,
+        pollUrl = None,
+        pollInterval = None,
+        error = None,
+        irMarkReceived = None,
+        lastMessageDate = None,
+        acceptedTime = None,
+        govTalkErrorStatus = None
+      )
+
+    val expectedReportContent: PollReportContent =
+      PollReportContent(
+        user = verificationSubmission.instanceId,
+        submissionType = verificationSubmission.submissionType,
+        submissionId = verificationSubmission.submissionId.toString,
+        govTalkRequestStatus = verificationSubmission.status,
+        currentReturnStatus = "SUBMITTED",
+        employerReference = s"${verificationSubmission.taxOfficeNumber}/${verificationSubmission.taxOfficeReference}",
+        correlationId = chrisSession.correlationId,
+        agentId = "A123456"
       )
   }
 }

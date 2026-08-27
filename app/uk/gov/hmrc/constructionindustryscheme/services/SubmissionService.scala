@@ -23,7 +23,8 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository}
+import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository, StoredMonthlyReturnContext}
+import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService.SyncedVerificationSession
 import uk.gov.hmrc.http.HeaderCarrier
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
@@ -85,15 +86,16 @@ class SubmissionService @Inject() (
   private def deleteChrisResourcesIfNeeded(
     status: SubmissionStatus,
     correlationId: String,
-    pollUrl: String
+    pollUrl: String,
+    journey: ChrisPollJourney
   )(implicit hc: HeaderCarrier): Future[ChrisDeletionOutcome] =
     status match {
       case SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR =>
         chrisConnector
-          .deleteSubmission(correlationId, pollUrl)
+          .deleteSubmission(correlationId, pollUrl, journey)
           .map { _ =>
             logger.info(
-              s"[SubmissionService] Successfully deleted Chris resources for corrId=$correlationId url=$pollUrl"
+              s"[SubmissionService] Successfully deleted Chris resources for corrId=$correlationId url=$pollUrl journey=$journey"
             )
             ChrisDeletionOutcome.Deleted
           }
@@ -253,54 +255,236 @@ class SubmissionService @Inject() (
       _          <- updateGovTalkStatus(UpdateGovTalkStatusRequest(instanceId, submissionId, None, "dataRequest"))
     } yield ()
 
+  private case class PollAndValidateResult(
+    session: ChrisSubmissionSessionData,
+    response: ChrisPollResponse
+  )
+
   def pollSubmissionAndUpdateGovTalkStatus(
     submissionId: String,
     pollUrl: String,
     journey: ChrisPollJourney
   )(implicit hc: HeaderCarrier): Future[ChrisPollResponse] =
     for {
-      session            <- getChrisSubmissionSession(submissionId)
-      _                  <- fetchAndStoreGovTalkStatus(session.instanceId, submissionId)
-      result             <- chrisConnector.pollSubmission(session.correlationId, pollUrl, journey)
-      _                  <- validateCorrelationId(session.correlationId, result.correlationId) match {
-                              case Right(_)     => Future.unit
-                              case Left(reason) => Future.failed(new RuntimeException(reason))
-                            }
-      _                  <- formPSubmissionUpdateProcessorRegistry
-                              .processorFor(journey)
-                              .handlePollResponse(session, result)
-      deleteOutcome      <- deleteChrisResourcesIfNeeded(result.status, session.correlationId, pollUrl)
-      govTalkStatusUpdate = toGovTalkStatusUpdate(deleteOutcome)
-      nextLastMessageDate = result.lastMessageDate
-                              .flatMap(ts => Try(Instant.parse(ts)).toOption)
-                              .getOrElse(session.lastMessageDate)
-      nextPollUrl         = result.pollUrl.getOrElse(session.pollUrl)
-      nextPollInterval    = result.pollInterval.getOrElse(session.pollInterval)
-      _                  <- updateChrisSessionAfterPoll(
-                              submissionId,
-                              result.correlationId,
-                              nextLastMessageDate,
-                              nextPollInterval,
-                              nextPollUrl
-                            )
-      updatedSession     <- getChrisSubmissionSession(submissionId)
-      _                  <- runGovTalkStatusUpdateSteps(
-                              updatedSession.instanceId,
-                              submissionId,
-                              updatedSession.correlationId,
-                              nextLastMessageDate,
-                              updatedSession.numPolls,
-                              nextPollInterval,
-                              nextPollUrl,
-                              govTalkStatusUpdate.protocolStatus,
-                              govTalkStatusUpdate.endStateDate
-                            )
-      _                  <- fetchAndStoreGovTalkStatus(session.instanceId, submissionId)
-    } yield result
+      pollResult <- pollAndValidate(
+                      submissionId,
+                      pollUrl,
+                      journey
+                    )
+
+      _ <- runPostPollSteps(
+             submissionId = submissionId,
+             pollUrl = pollUrl,
+             journey = journey,
+             pollResult = pollResult
+           )
+    } yield pollResult.response
+
+  def pollSubmissionAndUpdateGovTalkStatusForBatch(
+    submissionId: String,
+    pollUrl: String,
+    journey: ChrisPollJourney
+  )(implicit hc: HeaderCarrier): Future[BatchChRISPollResult] =
+    pollAndValidate(
+      submissionId,
+      pollUrl,
+      journey
+    ).flatMap { pollResult =>
+      runPostPollSteps(
+        submissionId = submissionId,
+        pollUrl = pollUrl,
+        journey = journey,
+        pollResult = pollResult
+      ).map { _ =>
+        BatchChRISPollResult.Completed(
+          pollResult.response
+        )
+      }.recover { case NonFatal(exception) =>
+        logger.error(
+          s"[SubmissionService][pollSubmissionAndUpdateGovTalkStatusForBatch] " +
+            s"Post-poll processing failed for submissionId=$submissionId",
+          exception
+        )
+
+        BatchChRISPollResult.PostProcessingFailed(
+          response = pollResult.response,
+          exception = exception
+        )
+      }
+    }
+
+  private def pollAndValidate(
+    submissionId: String,
+    pollUrl: String,
+    journey: ChrisPollJourney
+  )(implicit hc: HeaderCarrier): Future[PollAndValidateResult] =
+    for {
+      session <- getChrisSubmissionSession(submissionId)
+
+      _ <- fetchAndStoreGovTalkStatus(
+             session.instanceId,
+             submissionId
+           )
+
+      hmrcMarkGenerated =
+        (journey match {
+          case ChrisPollJourney.MonthlyReturn => session.monthlyReturnContext.map(_.hmrcMarkGenerated)
+          case ChrisPollJourney.Verification  => session.verificationContext.map(_.hmrcMarkGenerated)
+        }).getOrElse {
+          throw new IllegalStateException("hmrcMarkGenerated not found in session")
+        }
+
+      result <- chrisConnector.pollSubmission(
+                  session.correlationId,
+                  pollUrl,
+                  journey,
+                  hmrcMarkGenerated
+                )
+
+      _ <- validateCorrelationId(
+             session.correlationId,
+             result.correlationId
+           ) match {
+             case Right(_) =>
+               Future.unit
+
+             case Left(reason) =>
+               Future.failed(new RuntimeException(reason))
+           }
+    } yield PollAndValidateResult(
+      session = session,
+      response = result
+    )
+
+  private def runPostPollSteps(
+    submissionId: String,
+    pollUrl: String,
+    journey: ChrisPollJourney,
+    pollResult: PollAndValidateResult
+  )(implicit hc: HeaderCarrier): Future[Unit] = {
+    val session =
+      pollResult.session
+
+    val result =
+      pollResult.response
+
+    val nextLastMessageDate =
+      result.lastMessageDate
+        .flatMap(ts => Try(Instant.parse(ts)).toOption)
+        .getOrElse(session.lastMessageDate)
+
+    val nextPollUrl =
+      result.pollUrl.getOrElse(session.pollUrl)
+
+    val nextPollInterval =
+      result.pollInterval.getOrElse(session.pollInterval)
+
+    for {
+      _ <- formPSubmissionUpdateProcessorRegistry
+             .processorFor(journey)
+             .handlePollResponse(
+               session,
+               result
+             )
+
+      _ <- sendVerificationEmailAndRecover(
+             journey = journey,
+             status = result.status,
+             emailRecipient = session.verificationContext.flatMap(_.emailRecipient),
+             submissionId = submissionId
+           )
+
+      deleteOutcome <- deleteChrisResourcesIfNeeded(
+                         result.status,
+                         session.correlationId,
+                         pollUrl,
+                         journey
+                       )
+
+      govTalkStatusUpdate =
+        toGovTalkStatusUpdate(deleteOutcome)
+
+      _ <- updateChrisSessionAfterPoll(
+             submissionId,
+             result.correlationId,
+             nextLastMessageDate,
+             nextPollInterval,
+             nextPollUrl
+           )
+
+      updatedSession <- getChrisSubmissionSession(submissionId)
+
+      _ <- runGovTalkStatusUpdateSteps(
+             updatedSession.instanceId,
+             submissionId,
+             updatedSession.correlationId,
+             nextLastMessageDate,
+             updatedSession.numPolls,
+             nextPollInterval,
+             nextPollUrl,
+             govTalkStatusUpdate.protocolStatus,
+             govTalkStatusUpdate.endStateDate
+           )
+
+      _ <- fetchAndStoreGovTalkStatus(
+             session.instanceId,
+             submissionId
+           )
+    } yield ()
+  }
+
+  private def sendVerificationEmailAndRecover(
+    journey: ChrisPollJourney,
+    status: SubmissionStatus,
+    emailRecipient: Option[String],
+    submissionId: String
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    sendVerificationEmailIfRequired(
+      journey = journey,
+      status = status,
+      emailRecipient = emailRecipient,
+      submissionId = submissionId
+    ).recover { case NonFatal(exception) =>
+      logger.error(
+        s"[SubmissionService][sendVerificationEmailAndRecover] Failed to send verification email for " +
+          s"submissionId=$submissionId, but verification polling has completed successfully.",
+        exception
+      )
+    }
+
+  private def sendVerificationEmailIfRequired(
+    journey: ChrisPollJourney,
+    status: SubmissionStatus,
+    emailRecipient: Option[String],
+    submissionId: String
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    (journey, status) match {
+      case (ChrisPollJourney.Verification, SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR) =>
+        emailRecipient match {
+          case Some(email) =>
+            logger.info(
+              s"[SubmissionService][sendVerificationEmailIfRequired] Sending email because status is = $status"
+            )
+            sendEmailForVerification(SubcontractorVerificationEmailRequest(email))
+          case None        =>
+            logger.warn(
+              s"[SubmissionService][sendVerificationEmailIfRequired] No emailRecipient for verification " +
+                s"submissionId=$submissionId, skipping email; status $status"
+            )
+            Future.unit
+        }
+
+      case _ =>
+        logger.warn(
+          s"[SubmissionService][sendVerificationEmailIfRequired] Not sending email; status $status is ineligible for sending email"
+        )
+        Future.unit
+    }
 
   def processMonthlyReturnGovTalkStatusCheck(
     instanceId: String,
     submissionId: String,
+    monthlyReturnContext: StoredMonthlyReturnContext,
     lastMessageDate: Instant = Instant.now
   )(implicit hc: HeaderCarrier): Future[String] = {
     logger.info(
@@ -320,14 +504,15 @@ class SubmissionService @Inject() (
                            )
       _                 <- chrisSubmissionSessionRepository.upsert(
                              ChrisSubmissionSessionData(
-                               submissionId,
-                               instanceId,
-                               statusRecord.correlationID,
-                               lastMessageDate,
-                               statusRecord.numPolls,
-                               statusRecord.pollInterval,
-                               statusRecord.gatewayURL,
-                               None
+                               submissionId = submissionId,
+                               instanceId = instanceId,
+                               correlationId = statusRecord.correlationID,
+                               lastMessageDate = lastMessageDate,
+                               numPolls = statusRecord.numPolls,
+                               pollInterval = statusRecord.pollInterval,
+                               pollUrl = statusRecord.gatewayURL,
+                               govTalkStatus = None,
+                               monthlyReturnContext = Some(monthlyReturnContext)
                              )
                            )
       _                 <- runGovTalkStatusUpdateSteps(
@@ -344,7 +529,7 @@ class SubmissionService @Inject() (
 
   def syncVerificationSessionForPolling(
     submission: VerificationSubmissionToPoll
-  )(implicit hc: HeaderCarrier): Future[ChrisSubmissionSessionData] = {
+  )(implicit hc: HeaderCarrier): Future[SyncedVerificationSession] = {
 
     val submissionId = submission.submissionId.toString
 
@@ -372,10 +557,8 @@ class SubmissionService @Inject() (
     val verificationContextFuture =
       formpProxyConnector
         .getSubmissionWithVerificationBatch(
-          GetSubmissionWithVerificationBatchRequest(
-            instanceId = submission.instanceId,
-            verificationBatchResourceRef = submission.verificationBatchResourceRef
-          )
+          submission.instanceId,
+          submission.verificationBatchResourceRef
         )
         .flatMap { response =>
           VerificationSubmissionContextBuilder
@@ -385,13 +568,16 @@ class SubmissionService @Inject() (
             )
             .fold(
               error => Future.failed(new RuntimeException(s"Failed to build verification context: $error")),
-              Future.successful
+              verificationContext =>
+                Future.successful(
+                  verificationContext -> response.submission.flatMap(_.emailRecipient)
+                )
             )
         }
 
     govTalkStatusFuture
       .zip(verificationContextFuture)
-      .flatMap { case (statusResponse, verificationContext) =>
+      .flatMap { case (statusResponse, (verificationContext, emailRecipient)) =>
         val statusRecord = statusResponse.govtalk_status.head
 
         val sessionData = ChrisSubmissionSessionData(
@@ -409,7 +595,12 @@ class SubmissionService @Inject() (
 
         chrisSubmissionSessionRepository
           .upsert(sessionData)
-          .map(_ => sessionData)
+          .map(_ =>
+            SyncedVerificationSession(
+              sessionData = sessionData,
+              emailRecipient = emailRecipient
+            )
+          )
       }
   }
 
@@ -541,6 +732,10 @@ class SubmissionService @Inject() (
 }
 
 object SubmissionService {
+  final case class SyncedVerificationSession(
+    sessionData: ChrisSubmissionSessionData,
+    emailRecipient: Option[String]
+  )
 
   private[services] enum ChrisDeletionOutcome {
     case Deleted

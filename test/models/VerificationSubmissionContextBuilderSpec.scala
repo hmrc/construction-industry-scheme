@@ -60,7 +60,20 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
             addressLine4 = None,
             country = None,
             postcode = None,
-            worksReferenceNumber = None
+            emailAddress = None,
+            phoneNumber = None,
+            mobilePhoneNumber = None,
+            worksReferenceNumber = None,
+            matched = None,
+            autoVerified = None,
+            verified = None,
+            verificationNumber = None,
+            taxTreatment = None,
+            verificationDate = None,
+            version = None,
+            updatedTaxTreatment = None,
+            lastMonthlyReturnDate = None,
+            pendingVerifications = None
           )
         ),
         verifications = Seq(
@@ -105,7 +118,8 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
               partnershipUtr = None,
               subcontractorType = Some("soletrader")
             )
-          )
+          ),
+          emailRecipient = Some("test@test.com")
         )
       )
     }
@@ -170,7 +184,8 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
               verificationBatchId = Some(200L),
               subcontractorId = Some(10L),
               actionIndicator = Some("verify"),
-              proceed = Some("Y")
+              proceed = Some("Y"),
+              verificationResourceRef = Some(13L)
             )
           ),
           subcontractors = Seq(
@@ -247,7 +262,8 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
               partnershipUtr = None,
               subcontractorType = Some("soletrader")
             )
-          )
+          ),
+          emailRecipient = None
         )
       )
     }
