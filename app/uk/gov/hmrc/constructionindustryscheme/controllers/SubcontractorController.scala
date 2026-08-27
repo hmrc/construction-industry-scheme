@@ -21,7 +21,7 @@ import play.api.libs.json.{JsError, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorResponse
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -131,6 +131,36 @@ class SubcontractorController @Inject() (
             logger.error("[deleteSubcontractor] formp-proxy delete failed", t)
             BadGateway(Json.obj("message" -> "delete-subcontractor-failed"))
         }
+    }
+
+  def updateSubcontractor(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      request.body
+        .validate[UpdateSubcontractorRequest]
+        .fold(
+          errs =>
+            Future.successful(
+              BadRequest(
+                Json.obj(
+                  "message" -> "Invalid payload",
+                  "errors"  -> JsError.toJson(errs)
+                )
+              )
+            ),
+          updateRequest =>
+            subcontractorService
+              .updateSubcontractor(updateRequest)
+              .map(response => Ok(Json.toJson(response)))
+              .recover {
+                case u: UpstreamErrorResponse =>
+                  logger.error("[updateSubcontractor] formp-proxy update failed", u)
+                  Status(u.statusCode)(Json.obj("message" -> u.message))
+
+                case NonFatal(t) =>
+                  logger.error("[updateSubcontractor] formp-proxy update failed", t)
+                  BadGateway(Json.obj("message" -> "update-subcontractor-failed"))
+              }
+        )
     }
 
 }

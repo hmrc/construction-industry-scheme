@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
-import play.api.http.Status.{NOT_FOUND, NO_CONTENT, OK}
+import play.api.http.Status.{INTERNAL_SERVER_ERROR, NOT_FOUND, NO_CONTENT, OK}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
@@ -498,5 +498,38 @@ class FormpProxyConnector @Inject() (
       .flatMap { response =>
         if (response.status == NO_CONTENT) Future.unit
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+      }
+
+  def updateSubcontractor(
+    request: UpdateSubcontractorRequest
+  )(implicit hc: HeaderCarrier): Future[UpdateSubcontractorResponse] =
+    http
+      .post(url"$base/cis/subcontractor/update")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        response.status match {
+          case OK =>
+            Future.fromTry(
+              scala.util.Try(response.json.as[UpdateSubcontractorResponse])
+            )
+
+          case NO_CONTENT =>
+            Future.failed(
+              UpstreamErrorResponse(
+                "FormP returned 204 No Content for updateSubcontractor; expected response body with version",
+                INTERNAL_SERVER_ERROR,
+                INTERNAL_SERVER_ERROR
+              )
+            )
+
+          case status =>
+            val errorStatus =
+              if (status / 100 == 2) INTERNAL_SERVER_ERROR else status
+
+            Future.failed(
+              UpstreamErrorResponse(response.body, errorStatus, errorStatus)
+            )
+        }
       }
 }
