@@ -21,11 +21,10 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.AuthenticatedReque
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendHeaderCarrierProvider
 
-/** Overrides the implicit `hc` derivation so that any outbound call made from within an
-  * `AuthenticatedRequest` action block automatically carries `X-Tax-Office-Number` and
-  * `X-Tax-Office-Reference` headers. The stub (construction-industry-scheme-external-stub)
-  * reads these headers when using internal-auth to reconstruct the user's HMRC-CIS-ORG enrolment
-  * and return the correct stubbed response.
+/** Overrides the implicit `hc` derivation so that any outbound call made from within an `AuthenticatedRequest` action
+  * block automatically carries `X-Tax-Office-Number` and `X-Tax-Office-Reference` headers. The stub
+  * (construction-industry-scheme-external-stub) reads these headers when using internal-auth to reconstruct the user's
+  * HMRC-CIS-ORG enrolment and return the correct stubbed response.
   */
 trait CisEnrolmentHeaderForwarding extends BackendHeaderCarrierProvider {
 
