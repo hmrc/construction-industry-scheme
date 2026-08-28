@@ -22,7 +22,7 @@ case class ProceedVerificationProxyRequest(
   instanceId: String,
   verificationBatchResourceRef: Long,
   verificationResourceRef: Long,
-  proceed: String,
+  proceed: Boolean,
   taxTreatment: Option[String]
 )
 object ProceedVerificationProxyRequest {

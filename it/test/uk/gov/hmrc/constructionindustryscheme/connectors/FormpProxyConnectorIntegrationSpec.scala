@@ -2114,14 +2114,15 @@ class FormpProxyConnectorIntegrationSpec
 
   "FormpProxyConnector proceedVerification" should {
 
+    val req = ProceedVerificationProxyRequest(
+      instanceId = "1",
+      verificationBatchResourceRef = 9L,
+      verificationResourceRef = 10L,
+      proceed = true,
+      taxTreatment = Some("NotKnown")
+    )
+
     "POST /formp-proxy/cis/verification/proceed and return payload (204)" in {
-      val req = ProceedVerificationProxyRequest(
-        instanceId = "1",
-        verificationBatchResourceRef = 9L,
-        verificationResourceRef = 10L,
-        proceed = "Y",
-        taxTreatment = Some("NotKnown")
-      )
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/proceed"))
@@ -2134,13 +2135,6 @@ class FormpProxyConnectorIntegrationSpec
     }
 
     "fail the future when upstream returns a non-2xx (e.g. 500)" in {
-      val req = ProceedVerificationProxyRequest(
-        instanceId = "1",
-        verificationBatchResourceRef = 9L,
-        verificationResourceRef = 10L,
-        proceed = "Y",
-        taxTreatment = Some("NotKnown")
-      )
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/proceed"))
@@ -2337,6 +2331,7 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
+
   "FormpProxyConnector resetGovTalkStatus" should {
 
     "POST /formp-proxy/cis/govtalkstatus/reset and return Unit on 204" in {

@@ -80,7 +80,7 @@ class VerificationService @Inject() (formpProxyConnector: FormpProxyConnector) {
         instanceId = request.instanceId,
         verificationBatchResourceRef = request.verificationBatchResourceRef,
         verificationResourceRef = request.verificationResourceRef,
-        proceed = "Y",
+        proceed = true,
         taxTreatment = None
       )
     )
@@ -93,7 +93,7 @@ class VerificationService @Inject() (formpProxyConnector: FormpProxyConnector) {
         instanceId = request.instanceId,
         verificationBatchResourceRef = request.verificationBatchResourceRef,
         verificationResourceRef = request.verificationResourceRef,
-        proceed = "Y",
+        proceed = true,
         taxTreatment = Some("NotKnown")
       )
     )
