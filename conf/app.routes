@@ -41,6 +41,7 @@ GET        /subcontractors/:cisId                                        uk.gov.
 GET        /subcontractor/:cisId/:subbieResourceRef/delete-status        uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractorDeleteStatus(cisId: String, subbieResourceRef: Long)
 GET        /subcontractor/:cisId/:subbieResourceRef                      uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractor(cisId: String, subbieResourceRef: Long)
 POST       /subcontractor/delete                                         uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.deleteSubcontractor()
+POST       /subcontractor/update                                        uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.updateSubcontractor()
 
 POST       /amend-monthly-return/create                                  uk.gov.hmrc.constructionindustryscheme.controllers.AmendMonthlyReturnController.createAmendedMonthlyReturn()
 
@@ -55,6 +56,7 @@ GET           /verification-batch/last/:instanceId                     uk.gov.hm
 
 GET           /verification-batch/current/:instanceId                    uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.getCurrentVerificationBatch(instanceId: String)
 POST          /verification-batch/modify                                 uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.modifyVerifications()
+POST          /verification/proceed-with-insufficient-data           uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.proceedInsufficientVerification()
 
 POST          /verification-batch/create                                 uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createVerificationBatchAndVerifications()
 POST          /verification/submission/create                            uk.gov.hmrc.constructionindustryscheme.controllers.VerificationController.createSubmissionAndUpdateVerifications()
