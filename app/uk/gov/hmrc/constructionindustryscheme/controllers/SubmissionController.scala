@@ -29,7 +29,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.GovTalkErrorStatusClassifier
 import uk.gov.hmrc.http.UpstreamErrorResponse
-import uk.gov.hmrc.constructionindustryscheme.utils.{UriHelper, XmlToJsonConvertor, XmlValidator}
+import uk.gov.hmrc.constructionindustryscheme.utils.{CisEnrolmentHeaderForwarding, UriHelper, XmlToJsonConvertor, XmlValidator}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
@@ -51,6 +51,7 @@ class SubmissionController @Inject() (
   clock: Clock
 )(implicit ec: ExecutionContext)
     extends BackendController(cc)
+    with CisEnrolmentHeaderForwarding
     with Logging {
 
   implicit val reads: Reads[ChrisSubmissionRequest] = Json.reads[ChrisSubmissionRequest]
