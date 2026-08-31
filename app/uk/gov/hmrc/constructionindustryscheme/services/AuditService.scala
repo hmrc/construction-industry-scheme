@@ -37,6 +37,14 @@ class AuditService @Inject (
   ): Future[AuditResult] =
     auditConnector.sendExtendedEvent(MonthlyNilReturnResponseEvent(response).extendedDataEvent)
 
+  def monthlyReturnRequestEvent(jsonData: JsValue)(implicit hc: HeaderCarrier): Future[AuditResult] =
+    auditConnector.sendExtendedEvent(MonthlyReturnRequestEvent(jsonData).extendedDataEvent)
+
+  def monthlyReturnResponseEvent(response: AuditResponseReceivedModel)(implicit
+    hc: HeaderCarrier
+  ): Future[AuditResult] =
+    auditConnector.sendExtendedEvent(MonthlyReturnResponseEvent(response).extendedDataEvent)
+
   def clientListRetrievalFailed(credentialId: String, phase: String, reason: Option[String] = None)(implicit
     hc: HeaderCarrier
   ): Future[AuditResult] =

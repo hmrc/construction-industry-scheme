@@ -46,6 +46,24 @@ object MonthlyNilReturnResponseEvent {
   implicit val formats: Format[MonthlyNilReturnResponseEvent] = Json.format[MonthlyNilReturnResponseEvent]
 }
 
+case class MonthlyReturnRequestEvent(payload: JsValue) extends AuditEventModel {
+  override val auditType: String   = "monthlyReturnRequest"
+  override val detailJson: JsValue = Json.toJson(this)
+}
+
+case class MonthlyReturnResponseEvent(response: AuditResponseReceivedModel) extends AuditEventModel {
+  override val auditType: String   = "monthlyReturnResponse"
+  override val detailJson: JsValue = Json.toJson(this)
+}
+
+object MonthlyReturnRequestEvent {
+  implicit val formats: Format[MonthlyReturnRequestEvent] = Json.format[MonthlyReturnRequestEvent]
+}
+
+object MonthlyReturnResponseEvent {
+  implicit val formats: Format[MonthlyReturnResponseEvent] = Json.format[MonthlyReturnResponseEvent]
+}
+
 final case class ClientListRetrievalFailedEvent(
   credentialId: String,
   phase: String,
