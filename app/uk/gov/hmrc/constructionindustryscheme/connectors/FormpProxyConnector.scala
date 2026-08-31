@@ -532,4 +532,16 @@ class FormpProxyConnector @Inject() (
             )
         }
       }
+
+  def updateSubcontractorForFinalValidation(
+    request: FinalValidationUpdateSubcontractorRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/subcontractor/final-validation/update")
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == NO_CONTENT) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
+      }
 }

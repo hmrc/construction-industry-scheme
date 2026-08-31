@@ -17,11 +17,8 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorForDeleteResponse
-import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorListResponse
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorResponse
-import uk.gov.hmrc.constructionindustryscheme.models.response.UpdateSubcontractorResponse
+import uk.gov.hmrc.constructionindustryscheme.models.requests.*
+import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.Inject
@@ -61,4 +58,9 @@ class SubcontractorService @Inject() (formpProxyConnector: FormpProxyConnector) 
     hc: HeaderCarrier
   ): Future[UpdateSubcontractorResponse] =
     formpProxyConnector.updateSubcontractor(request)
+
+  def updateSubcontractorForFinalValidation(request: FinalValidationUpdateSubcontractorRequest)(implicit
+    hc: HeaderCarrier
+  ): Future[Unit] =
+    formpProxyConnector.updateSubcontractorForFinalValidation(request)
 }
