@@ -61,9 +61,7 @@ class ContractorSchemeControllerSpec extends SpecBase {
 
       val result =
         controller(service).updateSchemeVersion()(
-          FakeRequest(POST, url)
-            .withBody(validJson)
-            .withHeaders(CONTENT_TYPE -> JSON)
+          fakeRequest.withBody(validRequest)
         )
 
       status(result) mustBe OK
@@ -94,9 +92,7 @@ class ContractorSchemeControllerSpec extends SpecBase {
 
       val result =
         controller(service).updateSchemeVersion()(
-          FakeRequest(POST, url)
-            .withBody(validJson)
-            .withHeaders(CONTENT_TYPE -> JSON)
+          fakeRequest.withBody(validRequest)
         )
 
       status(result) mustBe BAD_GATEWAY
@@ -113,9 +109,7 @@ class ContractorSchemeControllerSpec extends SpecBase {
 
       val result =
         controller(service).updateSchemeVersion()(
-          FakeRequest(POST, url)
-            .withBody(validJson)
-            .withHeaders(CONTENT_TYPE -> JSON)
+          fakeRequest.withBody(validRequest)
         )
 
       status(result) mustBe INTERNAL_SERVER_ERROR
