@@ -148,6 +148,14 @@ class FormpProxyConnector @Inject() (
       .execute[JsValue]
       .map(json => (json \ "version").as[Int])
 
+  def updateContractorSchemeVersion(
+    req: UpdateContractorSchemeVersionRequest
+  )(implicit hc: HeaderCarrier): Future[UpdateContractorSchemeVersionResponse] =
+    http
+      .post(url"$base/scheme/version-update")
+      .withBody(Json.toJson(req))
+      .execute[UpdateContractorSchemeVersionResponse]
+
   def applyPrepopulation(req: ApplyPrepopulationRequest)(implicit hc: HeaderCarrier): Future[Int] =
     http
       .post(url"$base/scheme/prepopulate")

@@ -522,6 +522,48 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector updateContractorSchemeVersion" should {
+
+    "POST /formp-proxy/scheme/version-update and return new version from JSON" in {
+      val req = UpdateContractorSchemeVersionRequest(
+        currentVersion = 1,
+        instanceId = instanceId
+      )
+
+      val response = UpdateContractorSchemeVersionResponse(newVersion = 2)
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/version-update"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody(Json.toJson(response).toString())
+          )
+      )
+
+      connector.updateContractorSchemeVersion(req).futureValue mustBe response
+    }
+
+    "fail the future when upstream responds with non-2xx" in {
+      val req = UpdateContractorSchemeVersionRequest(
+        currentVersion = 1,
+        instanceId = instanceId
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/version-update"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.updateContractorSchemeVersion(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
   "FormpProxyConnector applyPrepopulation" should {
 
     "POST /formp-proxy/scheme/prepopulate and return version from JSON" in {
