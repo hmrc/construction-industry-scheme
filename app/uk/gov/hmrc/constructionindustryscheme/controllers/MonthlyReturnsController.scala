@@ -24,6 +24,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.{EmployerReference, NilMonthlyReturnRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.MonthlyReturnService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.ClientListService
+import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHeaderForwarding
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -39,6 +40,7 @@ class MonthlyReturnsController @Inject() (
   val cc: ControllerComponents
 )(implicit ec: ExecutionContext)
     extends BackendController(cc)
+    with CisEnrolmentHeaderForwarding
     with Logging {
 
   def getCisClientTaxpayer(taxOfficeNumber: String, taxOfficeReference: String): Action[AnyContent] =

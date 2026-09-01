@@ -23,6 +23,7 @@ import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorResponse
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
+import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHeaderForwarding
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -36,6 +37,7 @@ class SubcontractorController @Inject() (
   cc: ControllerComponents
 )(implicit ec: ExecutionContext)
     extends BackendController(cc)
+    with CisEnrolmentHeaderForwarding
     with Logging {
 
   def createAndUpdateSubcontractor(): Action[JsValue] = authorise(parse.json).async { implicit request =>
