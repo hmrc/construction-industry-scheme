@@ -625,6 +625,39 @@ class ClientListServiceSpec extends SpecBase {
     }
   }
 
+  "ClientListService.removeClient" - {
+
+    val taxOfficeNumber    = "123"
+    val taxOfficeReference = "AB456"
+    val agentId            = "SA123456"
+
+    "return messageIDOut when removeClient from connector returns messageIDOut" in {
+      val (service, datacache, _, _, cache) = setupService()
+
+      when(datacache.enqueueMessage(any)(any))
+        .thenReturn(Future.successful(1L))
+
+      val result =
+        service.removeClient(taxOfficeNumber, taxOfficeReference, agentId)(using mock[HeaderCarrier]).futureValue
+
+      result shouldBe 1
+      verify(datacache, times(1)).enqueueMessage(any)(any)
+    }
+
+    "propagate connector errors" in {
+      val (service, datacache, _, _, cache) = setupService()
+
+      when(datacache.enqueueMessage(any)(any))
+        .thenReturn(Future.failed(UpstreamErrorResponse("Boom", 500, 500)))
+
+      val ex =
+        service.removeClient(taxOfficeNumber, taxOfficeReference, agentId)(using mock[HeaderCarrier]).failed.futureValue
+
+      ex                                                shouldBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode shouldBe 500
+    }
+  }
+
   class RealCacheService extends CacheService(actorSystem) {
     // Simple test cache implementation that bypasses ActorSystem
     override def cache[T](key: String, value: T, ttl: FiniteDuration)(using Format[T]): Unit =
