@@ -483,6 +483,60 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector updateContractorSchemeDetails" should {
+
+    "POST /formp-proxy/scheme/update and return Unit when upstream responds with 2xx" in {
+      val req = UpdateContractorSchemeRequest(
+        schemeId = 999,
+        instanceId = instanceId,
+        taxOfficeNumber = "163",
+        taxOfficeReference = "AB0063",
+        accountsOfficeReference = "123PA00123456",
+        prePopCount = 1,
+        prePopSuccessful = "Y",
+        uniqueTaxReference = "1234567890",
+        name = "ABC Construction Ltd",
+        emailAddress = "test@example.com",
+        version = 3
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/update"))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(204))
+      )
+
+      connector.updateContractorSchemeDetails(req).futureValue mustBe ((): Unit)
+    }
+
+    "fail with UpstreamErrorResponse when upstream responds with non-2xx" in {
+      val req = UpdateContractorSchemeRequest(
+        schemeId = 999,
+        instanceId = instanceId,
+        taxOfficeNumber = "163",
+        taxOfficeReference = "AB0063",
+        accountsOfficeReference = "123PA00123456",
+        prePopCount = 1,
+        prePopSuccessful = "Y",
+        uniqueTaxReference = "1234567890",
+        name = "ABC Construction Ltd",
+        emailAddress = "test@example.com",
+        version = 3
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/update"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(502).withBody("bad gateway"))
+      )
+
+      val ex = connector.updateContractorSchemeDetails(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 502
+    }
+  }
+
   "FormpProxyConnector updateSchemeVersion" should {
 
     "POST /formp-proxy/scheme/version-update and return version from JSON" in {

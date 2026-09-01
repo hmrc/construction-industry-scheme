@@ -20,7 +20,7 @@ import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.requests.UpdateContractorSchemeVersionRequest
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{UpdateContractorSchemeRequest, UpdateContractorSchemeVersionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.ContractorSchemeService
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -36,6 +36,22 @@ class ContractorSchemeController @Inject() (
 )(implicit ec: ExecutionContext)
     extends BackendController(cc)
     with Logging {
+
+  def updateScheme(): Action[UpdateContractorSchemeRequest] =
+    authorise.async(parse.json[UpdateContractorSchemeRequest]) { implicit request =>
+      service
+        .updateScheme(request.body)
+        .map(_ => NoContent)
+        .recover {
+          case u: UpstreamErrorResponse =>
+            logger.error("[updateScheme] formp-proxy update failed", u)
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+
+          case NonFatal(t) =>
+            logger.error("[updateScheme] formp-proxy update failed", t)
+            InternalServerError(Json.obj("message" -> "Unexpected error"))
+        }
+    }
 
   def updateSchemeVersion(): Action[UpdateContractorSchemeVersionRequest] =
     authorise.async(parse.json[UpdateContractorSchemeVersionRequest]) { implicit request =>

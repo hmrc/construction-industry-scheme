@@ -141,6 +141,16 @@ class FormpProxyConnector @Inject() (
         else Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
       }
 
+  def updateContractorSchemeDetails(req: UpdateContractorSchemeRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/scheme/update")
+      .withBody(Json.toJson(req))
+      .execute[HttpResponse]
+      .flatMap { resp =>
+        if (resp.status / 100 == 2) Future.unit
+        else Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
+      }
+
   def updateSchemeVersion(req: UpdateSchemeVersionRequest)(implicit hc: HeaderCarrier): Future[Int] =
     http
       .post(url"$base/scheme/version-update")
