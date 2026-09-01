@@ -20,7 +20,7 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.requests.UpdateContractorSchemeVersionRequest
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{UpdateContractorSchemeRequest, UpdateContractorSchemeVersionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.UpdateContractorSchemeVersionResponse
 import uk.gov.hmrc.constructionindustryscheme.services.ContractorSchemeService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -28,6 +28,45 @@ import uk.gov.hmrc.http.HeaderCarrier
 import scala.concurrent.Future
 
 class ContractorSchemeServiceSpec extends SpecBase {
+
+  "updateScheme" - {
+
+    val request = UpdateContractorSchemeRequest(
+      schemeId = 123,
+      instanceId = "abc-123",
+      taxOfficeNumber = "163",
+      taxOfficeReference = "AB0063",
+      accountsOfficeReference = "123PA00123456",
+      prePopCount = 1,
+      prePopSuccessful = "Y",
+      uniqueTaxReference = "1234567890",
+      name = "ABC Construction Ltd",
+      emailAddress = "test@example.com",
+      version = 2
+    )
+
+    "delegates to FormpProxyConnector and returns Unit" in {
+      val connector = mock[FormpProxyConnector]
+      val service   = new ContractorSchemeService(connector)
+
+      when(connector.updateContractorSchemeDetails(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.updateScheme(request).futureValue mustBe ((): Unit)
+
+      verify(connector).updateContractorSchemeDetails(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector = mock[FormpProxyConnector]
+      val service   = new ContractorSchemeService(connector)
+
+      when(connector.updateContractorSchemeDetails(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.updateScheme(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
 
   "updateSchemeVersion" - {
 

@@ -19,12 +19,12 @@ package controllers
 import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, verifyNoInteractions, when}
-import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, INTERNAL_SERVER_ERROR, OK}
+import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, INTERNAL_SERVER_ERROR, NO_CONTENT, OK}
 import play.api.libs.json.{JsValue, Json}
 import play.api.test.FakeRequest
 import play.api.test.Helpers.{CONTENT_TYPE, JSON, POST, contentAsJson, status}
 import uk.gov.hmrc.constructionindustryscheme.controllers.ContractorSchemeController
-import uk.gov.hmrc.constructionindustryscheme.models.requests.UpdateContractorSchemeVersionRequest
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{UpdateContractorSchemeRequest, UpdateContractorSchemeVersionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.UpdateContractorSchemeVersionResponse
 import uk.gov.hmrc.constructionindustryscheme.services.ContractorSchemeService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
@@ -35,6 +35,89 @@ class ContractorSchemeControllerSpec extends SpecBase {
 
   private def controller(service: ContractorSchemeService): ContractorSchemeController =
     new ContractorSchemeController(fakeAuthAction(), service, cc)
+
+  "updateScheme" - {
+
+    val url = "/scheme/update"
+
+    val validRequest = UpdateContractorSchemeRequest(
+      schemeId = 123,
+      instanceId = "abc-123",
+      taxOfficeNumber = "163",
+      taxOfficeReference = "AB0063",
+      accountsOfficeReference = "123PA00123456",
+      prePopCount = 1,
+      prePopSuccessful = "Y",
+      uniqueTaxReference = "1234567890",
+      name = "ABC Construction Ltd",
+      emailAddress = "test@example.com",
+      version = 2
+    )
+
+    "returns 204 NoContent when service succeeds" in {
+      val service = mock[ContractorSchemeService]
+
+      when(service.updateScheme(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val result =
+        controller(service).updateScheme()(
+          fakeRequest.withBody(validRequest)
+        )
+
+      status(result) mustBe NO_CONTENT
+
+      verify(service).updateScheme(eqTo(validRequest))(any[HeaderCarrier])
+    }
+
+    "returns 400 BadRequest when JSON is invalid" in {
+      val service = mock[ContractorSchemeService]
+
+      val result =
+        controller(service).updateScheme()(
+          FakeRequest(POST, url)
+            .withBody(Json.obj("instanceId" -> "abc-123"))
+            .withHeaders(CONTENT_TYPE -> JSON)
+        )
+
+      status(result) mustBe BAD_REQUEST
+      verifyNoInteractions(service)
+    }
+
+    "returns upstream status and message when service fails with UpstreamErrorResponse" in {
+      val service = mock[ContractorSchemeService]
+
+      when(service.updateScheme(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(UpstreamErrorResponse("formp failed", BAD_GATEWAY, BAD_GATEWAY)))
+
+      val result =
+        controller(service).updateScheme()(
+          fakeRequest.withBody(validRequest)
+        )
+
+      status(result) mustBe BAD_GATEWAY
+      (contentAsJson(result) \ "message").as[String] mustBe "formp failed"
+
+      verify(service).updateScheme(eqTo(validRequest))(any[HeaderCarrier])
+    }
+
+    "returns 500 InternalServerError when service fails with an unexpected exception" in {
+      val service = mock[ContractorSchemeService]
+
+      when(service.updateScheme(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val result =
+        controller(service).updateScheme()(
+          fakeRequest.withBody(validRequest)
+        )
+
+      status(result) mustBe INTERNAL_SERVER_ERROR
+      (contentAsJson(result) \ "message").as[String] mustBe "Unexpected error"
+
+      verify(service).updateScheme(eqTo(validRequest))(any[HeaderCarrier])
+    }
+  }
 
   "updateSchemeVersion" - {
 

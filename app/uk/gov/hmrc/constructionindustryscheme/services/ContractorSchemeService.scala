@@ -17,7 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
-import uk.gov.hmrc.constructionindustryscheme.models.requests.UpdateContractorSchemeVersionRequest
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{UpdateContractorSchemeRequest, UpdateContractorSchemeVersionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.UpdateContractorSchemeVersionResponse
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -26,6 +26,9 @@ import scala.concurrent.Future
 
 @Singleton
 class ContractorSchemeService @Inject() (formpProxyConnector: FormpProxyConnector) {
+
+  def updateScheme(request: UpdateContractorSchemeRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    formpProxyConnector.updateContractorSchemeDetails(request)
 
   def updateSchemeVersion(
     request: UpdateContractorSchemeVersionRequest
