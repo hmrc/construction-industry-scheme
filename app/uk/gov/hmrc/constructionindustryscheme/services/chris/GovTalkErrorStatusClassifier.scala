@@ -21,20 +21,23 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 
 object GovTalkErrorStatusClassifier {
 
-  private val RecoverableCodes = Set("3000", "2005", "1000")
-  private val ServerErrorRange = 500 to 505
+  private val RecoverableCodes       = Set("3000", "2005", "1000")
+  private val DepartmentalErrorCodes = Set("3000", "3001")
+  private val ServerErrorRange       = 500 to 505
 
   def fromXmlOutcome(status: SubmissionStatus, error: Option[GovTalkError]): GovTalkErrorStatus =
     (status, error.map(_.errorNumber)) match {
-      case (DEPARTMENTAL_ERROR, _)                                                =>
-        DepartmentalError(error.map(_.errorText).getOrElse(""))
-      case (STARTED | FATAL_ERROR, Some(code)) if RecoverableCodes.contains(code) =>
+      case (DEPARTMENTAL_ERROR, Some(code)) if DepartmentalErrorCodes.contains(code) =>
+        error.map(e => DepartmentalError(e.errorNumber, e.errorText)).getOrElse(OtherStatus)
+      case (STARTED | FATAL_ERROR, Some(code)) if RecoverableCodes.contains(code)    =>
         error.map(e => RecoverableError(e.errorNumber, e.errorText)).getOrElse(OtherStatus)
-      case (FATAL_ERROR, Some(_))                                                 =>
+      case (FATAL_ERROR, Some(_))                                                    =>
         error.map(e => FatalError(e.errorNumber, e.errorText)).getOrElse(OtherStatus)
-      case (FATAL_ERROR, None)                                                    =>
+      case (DEPARTMENTAL_ERROR, None)                                                =>
         OtherStatus
-      case _                                                                      =>
+      case (FATAL_ERROR, None)                                                       =>
+        OtherStatus
+      case _                                                                         =>
         OtherStatus
     }
 
