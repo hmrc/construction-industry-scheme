@@ -3272,6 +3272,15 @@ class FormpProxyConnectorIntegrationSpec
     "POST /formp-proxy/cis/subcontractor/edit and return updated version" in {
       stubFor(
         post(urlPathEqualTo(editUrl))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
+          .withRequestBody(
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
+          )
           .withRequestBody(
             equalToJson(
               Json.toJson(request).toString(),
@@ -3319,6 +3328,51 @@ class FormpProxyConnectorIntegrationSpec
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_GATEWAY
     }
+
+    "fail with UpstreamErrorResponse when FormP returns 204 No Content because version body is required" in {
+      stubFor(
+        post(urlPathEqualTo(editUrl))
+          .willReturn(
+            aResponse()
+              .withStatus(NO_CONTENT)
+          )
+      )
+
+      val ex =
+        connector.updateSubcontractorForEdit(request).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+
+      val upstream =
+        ex.asInstanceOf[UpstreamErrorResponse]
+
+      upstream.statusCode mustBe INTERNAL_SERVER_ERROR
+      upstream.message must include(
+        "FormP returned 204 No Content for updateSubcontractorForEdit"
+      )
+    }
+
+    "fails with 500 UpstreamErrorResponse when FormP returns an unexpected 2xx without the expected body" in {
+      stubFor(
+        post(urlPathEqualTo(editUrl))
+          .willReturn(
+            aResponse()
+              .withStatus(202)
+              .withBody("accepted without version")
+          )
+      )
+
+      val ex =
+        connector.updateSubcontractorForEdit(request).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe INTERNAL_SERVER_ERROR
+      ex.asInstanceOf[UpstreamErrorResponse].message mustBe "accepted without version"
+    }
+
+
+
   }
   
 }

@@ -483,7 +483,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
       status(result) mustBe BAD_GATEWAY
 
       (contentAsJson(result) \ "message").as[String] mustBe
-        "update-subcontractor-failed"
+        "update-subcontractor-for-edit-failed"
 
       verify(service)
         .updateSubcontractorForEdit(eqTo(updateRequest))(any[HeaderCarrier])
