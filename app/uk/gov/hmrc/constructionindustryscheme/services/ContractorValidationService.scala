@@ -40,12 +40,14 @@ class ContractorValidationService @Inject() (
     formpProxyConnector.getContractorScheme(instanceId).map {
       case None         => None
       case Some(scheme) =>
-        Some(ContractorValidationResponse(
-          utrValid          = validateUtr(scheme.utr),
-          schemeNameValid   = validateSchemeName(scheme.name),
-          emailAddressValid = validateEmail(scheme.emailAddress),
-          scheme            = scheme
-        ))
+        Some(
+          ContractorValidationResponse(
+            utrValid = validateUtr(scheme.utr),
+            schemeNameValid = validateSchemeName(scheme.name),
+            emailAddressValid = validateEmail(scheme.emailAddress),
+            scheme = scheme
+          )
+        )
     }
 
   private def validateUtr(utr: Option[String]): Boolean =
@@ -53,8 +55,8 @@ class ContractorValidationService @Inject() (
       case None        => false
       case Some(value) =>
         value.matches("[0-9]+") &&
-          value.length == 10 &&
-          passesUtrAlgorithm(value)
+        value.length == 10 &&
+        passesUtrAlgorithm(value)
     }
 
   private def passesUtrAlgorithm(utr: String): Boolean = {

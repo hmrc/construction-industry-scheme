@@ -24,21 +24,21 @@ import uk.gov.hmrc.constructionindustryscheme.models.response.ContractorValidati
 class ContractorValidationResponseSpec extends SpecBase {
 
   private val scheme = ContractorScheme(
-    schemeId               = 1,
-    instanceId             = "inst-001",
+    schemeId = 1,
+    instanceId = "inst-001",
     accountsOfficeReference = "123PX00123456",
-    taxOfficeNumber        = "123",
-    taxOfficeReference     = "AB456",
-    utr                   = Some("2234567890"),
-    name                  = Some("ACME Ltd"),
-    emailAddress          = Some("test@example.com")
+    taxOfficeNumber = "123",
+    taxOfficeReference = "AB456",
+    utr = Some("2234567890"),
+    name = Some("ACME Ltd"),
+    emailAddress = Some("test@example.com")
   )
 
   private val response = ContractorValidationResponse(
-    utrValid          = true,
-    schemeNameValid   = true,
+    utrValid = true,
+    schemeNameValid = true,
     emailAddressValid = true,
-    scheme            = scheme
+    scheme = scheme
   )
 
   "ContractorValidationResponse JSON format" - {
@@ -46,8 +46,8 @@ class ContractorValidationResponseSpec extends SpecBase {
     "serialises to JSON" in {
       val json = Json.toJson(response)
 
-      (json \ "utrValid").as[Boolean]          mustBe true
-      (json \ "schemeNameValid").as[Boolean]   mustBe true
+      (json \ "utrValid").as[Boolean] mustBe true
+      (json \ "schemeNameValid").as[Boolean] mustBe true
       (json \ "emailAddressValid").as[Boolean] mustBe true
       (json \ "scheme" \ "instanceId").as[String] mustBe "inst-001"
     }

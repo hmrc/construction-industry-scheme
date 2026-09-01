@@ -31,11 +31,11 @@ class ContractorValidationServiceSpec extends SpecBase {
   private val instanceId = "inst-001"
 
   private val baseScheme = ContractorScheme(
-    schemeId                = 1,
-    instanceId              = instanceId,
+    schemeId = 1,
+    instanceId = instanceId,
     accountsOfficeReference = "123PX00123456",
-    taxOfficeNumber         = "123",
-    taxOfficeReference      = "AB456"
+    taxOfficeNumber = "123",
+    taxOfficeReference = "AB456"
   )
 
   private def mkService(connector: FormpProxyConnector) =
@@ -60,18 +60,18 @@ class ContractorValidationServiceSpec extends SpecBase {
     "returns Some with all fields valid when scheme has valid data" in {
       val connector = mock[FormpProxyConnector]
       val scheme    = baseScheme.copy(
-        utr          = Some("2234567890"),
-        name         = Some("ACME Ltd"),
+        utr = Some("2234567890"),
+        name = Some("ACME Ltd"),
         emailAddress = Some("test@example.com")
       )
       stubScheme(connector, scheme)
 
       val result = mkService(connector).validateContractorDetails(instanceId).futureValue
 
-      result.value.utrValid          mustBe true
-      result.value.schemeNameValid   mustBe true
+      result.value.utrValid mustBe true
+      result.value.schemeNameValid mustBe true
       result.value.emailAddressValid mustBe true
-      result.value.scheme            mustBe scheme
+      result.value.scheme mustBe scheme
     }
 
     "UTR validation" - {
@@ -169,8 +169,8 @@ class ContractorValidationServiceSpec extends SpecBase {
       }
 
       "emailAddressValid is false when email exceeds 256 characters" in {
-        val connector  = mock[FormpProxyConnector]
-        val longLocal  = "a" * 250
+        val connector = mock[FormpProxyConnector]
+        val longLocal = "a" * 250
         stubScheme(connector, baseScheme.copy(emailAddress = Some(s"$longLocal@example.com")))
         mkService(connector).validateContractorDetails(instanceId).futureValue.value.emailAddressValid mustBe false
       }
