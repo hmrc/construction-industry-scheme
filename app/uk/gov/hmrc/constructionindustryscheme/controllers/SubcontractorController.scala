@@ -190,7 +190,7 @@ class SubcontractorController @Inject() (
 
                 case NonFatal(t) =>
                   logger.error("[updateSubcontractorForEdit] formp-proxy update failed", t)
-                  BadGateway(Json.obj("message" -> "update-subcontractor-failed"))
+                  BadGateway(Json.obj("message" -> "update-subcontractor-for-edit-failed"))
               }
         )
     }
