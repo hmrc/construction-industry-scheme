@@ -20,8 +20,9 @@ import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.requests.UpdateContractorSchemeVersionRequest
-import uk.gov.hmrc.constructionindustryscheme.services.ContractorSchemeService
+import uk.gov.hmrc.constructionindustryscheme.models.UpdateContractorSchemeParams
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ContractorValidationRequest, UpdateContractorSchemeVersionRequest}
+import uk.gov.hmrc.constructionindustryscheme.services.{ContractorSchemeService, ContractorValidationService}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -32,6 +33,7 @@ import scala.util.control.NonFatal
 class ContractorSchemeController @Inject() (
   authorise: AuthAction,
   service: ContractorSchemeService,
+  validationService: ContractorValidationService,
   cc: ControllerComponents
 )(implicit ec: ExecutionContext)
     extends BackendController(cc)
@@ -49,6 +51,41 @@ class ContractorSchemeController @Inject() (
 
           case NonFatal(t) =>
             logger.error("[updateSchemeVersion] formp-proxy update failed", t)
+            InternalServerError(Json.obj("message" -> "Unexpected error"))
+        }
+    }
+
+  def validateContractorDetails(): Action[ContractorValidationRequest] =
+    authorise.async(parse.json[ContractorValidationRequest]) { implicit request =>
+      validationService
+        .validateContractorDetails(request.body.instanceId)
+        .map {
+          case Some(response) => Ok(Json.toJson(response))
+          case None           => NotFound(Json.obj("message" -> "Scheme not found"))
+        }
+        .recover {
+          case u: UpstreamErrorResponse =>
+            logger.error("[validateContractorDetails] formp-proxy call failed", u)
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+
+          case NonFatal(t) =>
+            logger.error("[validateContractorDetails] unexpected error", t)
+            InternalServerError(Json.obj("message" -> "Unexpected error"))
+        }
+    }
+
+  def updateScheme(): Action[UpdateContractorSchemeParams] =
+    authorise.async(parse.json[UpdateContractorSchemeParams]) { implicit request =>
+      service
+        .updateScheme(request.body)
+        .map(_ => NoContent)
+        .recover {
+          case u: UpstreamErrorResponse =>
+            logger.error("[updateScheme] formp-proxy update failed", u)
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+
+          case NonFatal(t) =>
+            logger.error("[updateScheme] unexpected error", t)
             InternalServerError(Json.obj("message" -> "Unexpected error"))
         }
     }

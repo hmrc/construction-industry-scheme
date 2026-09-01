@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
+import uk.gov.hmrc.constructionindustryscheme.models.UpdateContractorSchemeParams
 import uk.gov.hmrc.constructionindustryscheme.models.requests.UpdateContractorSchemeVersionRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.UpdateContractorSchemeVersionResponse
 import uk.gov.hmrc.http.HeaderCarrier
@@ -31,4 +32,9 @@ class ContractorSchemeService @Inject() (formpProxyConnector: FormpProxyConnecto
     request: UpdateContractorSchemeVersionRequest
   )(implicit hc: HeaderCarrier): Future[UpdateContractorSchemeVersionResponse] =
     formpProxyConnector.updateContractorSchemeVersion(request)
+
+  def updateScheme(
+    params: UpdateContractorSchemeParams
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    formpProxyConnector.updateContractorScheme(params)
 }

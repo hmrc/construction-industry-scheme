@@ -20,6 +20,7 @@ import base.SpecBase
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{verify, when}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
+import uk.gov.hmrc.constructionindustryscheme.models.UpdateContractorSchemeParams
 import uk.gov.hmrc.constructionindustryscheme.models.requests.UpdateContractorSchemeVersionRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.UpdateContractorSchemeVersionResponse
 import uk.gov.hmrc.constructionindustryscheme.services.ContractorSchemeService
@@ -58,6 +59,42 @@ class ContractorSchemeServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.updateSchemeVersion(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "updateScheme" - {
+
+    val params = UpdateContractorSchemeParams(
+      schemeId = 1,
+      instanceId = "abc-123",
+      accountsOfficeReference = "123PX00123456",
+      taxOfficeNumber = "123",
+      taxOfficeReference = "AB456",
+      utr = Some("2234567890"),
+      name = Some("ACME Ltd"),
+      emailAddress = Some("test@example.com")
+    )
+
+    "delegates to FormpProxyConnector and returns Unit" in {
+      val connector = mock[FormpProxyConnector]
+      val service   = new ContractorSchemeService(connector)
+
+      when(connector.updateContractorScheme(eqTo(params))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.updateScheme(params).futureValue mustBe ()
+
+      verify(connector).updateContractorScheme(eqTo(params))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector = mock[FormpProxyConnector]
+      val service   = new ContractorSchemeService(connector)
+
+      when(connector.updateContractorScheme(eqTo(params))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.updateScheme(params).failed.futureValue.getMessage must include("boom")
     }
   }
 }
