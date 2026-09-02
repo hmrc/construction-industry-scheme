@@ -589,7 +589,7 @@ class FormpProxyConnector @Inject() (
           )
           .recoverWith { case t =>
             logger.error(
-              s"[FormpProxyConnector][$operation] Failed to parse successful response from FormP. Body: ${response.body}",
+              s"[FormpProxyConnector][$operation] Failed to parse successful response from FormP. Status=${response.status}",
               t
             )
             Future.failed(t)

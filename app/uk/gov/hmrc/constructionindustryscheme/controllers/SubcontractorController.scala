@@ -18,13 +18,13 @@ package uk.gov.hmrc.constructionindustryscheme.controllers
 
 import play.api.Logging
 import play.api.libs.json.{JsError, JsValue, Json}
-import play.api.mvc.{Action, AnyContent, ControllerComponents}
+import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorResponse
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHeaderForwarding
-import uk.gov.hmrc.http.UpstreamErrorResponse
+import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.Inject
@@ -145,23 +145,17 @@ class SubcontractorController @Inject() (
               BadRequest(
                 Json.obj(
                   "message" -> "Invalid payload",
-                  "errors"  -> JsError.toJson(errs)
+                  "errors" -> JsError.toJson(errs)
                 )
               )
             ),
           updateRequest =>
-            subcontractorService
-              .updateSubcontractor(updateRequest)
-              .map(response => Ok(Json.toJson(response)))
-              .recover {
-                case u: UpstreamErrorResponse =>
-                  logger.error("[updateSubcontractor] formp-proxy update failed", u)
-                  Status(u.statusCode)(Json.obj("message" -> u.message))
-
-                case NonFatal(t) =>
-                  logger.error("[updateSubcontractor] formp-proxy update failed", t)
-                  BadGateway(Json.obj("message" -> "update-subcontractor-failed"))
-              }
+            handleUpdateSubcontractor(
+              updateRequest,
+              subcontractorService.updateSubcontractor,
+              "updateSubcontractor",
+              "update-subcontractor-failed"
+            )
         )
     }
 
@@ -175,24 +169,49 @@ class SubcontractorController @Inject() (
               BadRequest(
                 Json.obj(
                   "message" -> "Invalid payload",
-                  "errors"  -> JsError.toJson(errs)
+                  "errors" -> JsError.toJson(errs)
                 )
               )
             ),
           updateRequest =>
-            subcontractorService
-              .updateSubcontractorForEdit(updateRequest)
-              .map(response => Ok(Json.toJson(response)))
-              .recover {
-                case u: UpstreamErrorResponse =>
-                  logger.error("[updateSubcontractorForEdit] formp-proxy update failed", u)
-                  Status(u.statusCode)(Json.obj("message" -> u.message))
-
-                case NonFatal(t) =>
-                  logger.error("[updateSubcontractorForEdit] formp-proxy update failed", t)
-                  BadGateway(Json.obj("message" -> "update-subcontractor-for-edit-failed"))
-              }
+            handleUpdateSubcontractor(
+              updateRequest,
+              subcontractorService.updateSubcontractorForEdit,
+              "updateSubcontractorForEdit",
+              "update-subcontractor-for-edit-failed"
+            )
         )
     }
 
+  private def handleUpdateSubcontractor(
+                                         updateRequest: UpdateSubcontractorRequest,
+                                         updateFn: UpdateSubcontractorRequest => Future[UpdateSubcontractorResponse],
+                                         operation: String,
+                                         genericFailureMessage: String
+                                       ): Future[Result] =
+    updateFn(updateRequest)
+      .map(response => Ok(Json.toJson(response)))
+      .recover {
+        case u: UpstreamErrorResponse =>
+          logger.error(
+            s"[$operation] formp-proxy update failed",
+            u
+          )
+
+          Status(u.statusCode)(
+            Json.obj("message" -> u.message)
+          )
+
+        case NonFatal(t) =>
+          logger.error(
+            s"[$operation] formp-proxy update failed",
+            t
+          )
+
+          BadGateway(
+            Json.obj(
+              "message" -> genericFailureMessage
+            )
+          )
+      }
 }
