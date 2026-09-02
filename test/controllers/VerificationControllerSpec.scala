@@ -939,14 +939,13 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
   "proceedInsufficientVerification" - {
 
-    val url = "/cis/verification/proceed-with-insufficient-data"
+    val url = "/verification/proceed-with-insufficient-data"
 
-    val validRequest: ProceedInsufficientVerificationRequest =
-      ProceedInsufficientVerificationRequest(
+    val validRequest: ProceedVerificationRequest =
+      ProceedVerificationRequest(
         instanceId = "1",
         verificationBatchResourceRef = 9L,
-        verificationResourceRef = 10L,
-        proceed = "Y"
+        verificationResourceRef = 10L
       )
 
     val validJson: JsValue = Json.toJson(validRequest)
@@ -1005,6 +1004,76 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
       contentAsJson(result) mustBe Json.obj("message" -> "proceed-insufficient-verification-failed")
 
       verify(verificationService).proceedInsufficientVerification(eqTo(validRequest))(any[HeaderCarrier])
+    }
+  }
+
+  "proceedUnmatchedVerification" - {
+
+    val url = "/verification/proceed-with-unmatched-data"
+
+    val validRequest: ProceedVerificationRequest =
+      ProceedVerificationRequest(
+        instanceId = "1",
+        verificationBatchResourceRef = 9L,
+        verificationResourceRef = 10L
+      )
+
+    val validJson: JsValue = Json.toJson(validRequest)
+
+    "returns 204 when service succeeds" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      when(verificationService.proceedUnmatchedVerification(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      val req = FakeRequest(POST, url)
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.proceedUnmatchedVerification()(req)
+
+      status(result) mustBe NO_CONTENT
+      verify(verificationService).proceedUnmatchedVerification(eqTo(validRequest))(any[HeaderCarrier])
+    }
+
+    "returns 400 BadRequest when JSON is invalid" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      val badJson = Json.obj("bad" -> "json")
+
+      val req = FakeRequest(POST, url)
+        .withBody(badJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.proceedUnmatchedVerification()(req)
+
+      status(result) mustBe BAD_REQUEST
+      verifyNoInteractions(verificationService)
+    }
+
+    "returns 502 BadGateway with error body when service fails" in {
+      val verificationService = mock[VerificationService]
+      val submissionService   = mock[SubmissionService]
+      val controller          = mockController(verificationService, submissionService)
+
+      when(verificationService.proceedUnmatchedVerification(eqTo(validRequest))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      val req = FakeRequest(POST, url)
+        .withBody(validJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.proceedUnmatchedVerification()(req)
+
+      status(result) mustBe BAD_GATEWAY
+      contentType(result) mustBe Some(JSON)
+      contentAsJson(result) mustBe Json.obj("message" -> "proceed-unmatched-verification-failed")
+
+      verify(verificationService).proceedUnmatchedVerification(eqTo(validRequest))(any[HeaderCarrier])
     }
   }
 }

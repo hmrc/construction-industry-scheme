@@ -535,19 +535,6 @@ class FormpProxyConnector @Inject() (
       .setHeader("Authorization" -> internalAuthToken)
       .execute[GetSubcontractorResponse]
 
-  def proceedInsufficientVerification(
-    request: ProceedInsufficientVerificationRequest
-  )(implicit hc: HeaderCarrier): Future[Unit] =
-    http
-      .post(url"$base/cis/verification/proceed-with-insufficient-data")
-      .setHeader("Authorization" -> internalAuthToken)
-      .withBody(Json.toJson(request))
-      .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status == NO_CONTENT) Future.unit
-        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-      }
-
   def updateSubcontractor(
     request: UpdateSubcontractorRequest
   )(implicit hc: HeaderCarrier): Future[UpdateSubcontractorResponse] =
@@ -580,5 +567,18 @@ class FormpProxyConnector @Inject() (
               UpstreamErrorResponse(response.body, errorStatus, errorStatus)
             )
         }
+      }
+
+  def proceedVerification(
+    request: ProceedVerificationProxyRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/verification/proceed")
+      .setHeader("Authorization" -> internalAuthToken)
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap { response =>
+        if (response.status == NO_CONTENT) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
 }

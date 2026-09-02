@@ -2154,37 +2154,33 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
-  "FormpProxyConnector proceedInsufficientVerification" should {
+  "FormpProxyConnector proceedVerification" should {
 
-    "POST /formp-proxy/cis/verification/proceed-with-insufficient-data and return payload (204)" in {
-      val req = ProceedInsufficientVerificationRequest(
-        instanceId = "1",
-        verificationBatchResourceRef = 9L,
-        verificationResourceRef = 10L,
-        proceed = "Y"
-      )
+    val req = ProceedVerificationProxyRequest(
+      instanceId = "1",
+      verificationBatchResourceRef = 9L,
+      verificationResourceRef = 10L,
+      proceed = true,
+      taxTreatment = Some("NotKnown")
+    )
+
+    "POST /formp-proxy/cis/verification/proceed and return payload (204)" in {
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/verification/proceed-with-insufficient-data"))
+        post(urlPathEqualTo("/formp-proxy/cis/verification/proceed"))
           .withHeader("Content-Type", containing("application/json"))
           .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(NO_CONTENT))
       )
 
-      connector.proceedInsufficientVerification(req).futureValue mustBe ((): Unit)
+      connector.proceedVerification(req).futureValue mustBe ((): Unit)
     }
 
     "fail the future when upstream returns a non-2xx (e.g. 500)" in {
-      val req = ProceedInsufficientVerificationRequest(
-        instanceId = "1",
-        verificationBatchResourceRef = 9L,
-        verificationResourceRef = 10L,
-        proceed = "Y"
-      )
 
       stubFor(
-        post(urlPathEqualTo("/formp-proxy/cis/verification/proceed-with-insufficient-data"))
+        post(urlPathEqualTo("/formp-proxy/cis/verification/proceed"))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(
             aResponse()
@@ -2193,7 +2189,7 @@ class FormpProxyConnectorIntegrationSpec
           )
       )
 
-      val ex = connector.proceedInsufficientVerification(req).failed.futureValue
+      val ex = connector.proceedVerification(req).failed.futureValue
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
@@ -2381,6 +2377,7 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
     }
   }
+
   "FormpProxyConnector resetGovTalkStatus" should {
 
     "POST /formp-proxy/cis/govtalkstatus/reset and return Unit on 204" in {
