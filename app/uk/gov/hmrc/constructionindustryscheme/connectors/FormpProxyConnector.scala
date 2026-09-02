@@ -100,6 +100,7 @@ class FormpProxyConnector @Inject() (
   def createMonthlyReturn(req: MonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/monthly-return/standard/create")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
       .map { response =>

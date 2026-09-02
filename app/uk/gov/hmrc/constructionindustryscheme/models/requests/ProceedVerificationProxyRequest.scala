@@ -25,6 +25,7 @@ case class ProceedVerificationProxyRequest(
   proceed: Boolean,
   taxTreatment: Option[String]
 )
+
 object ProceedVerificationProxyRequest {
   given OFormat[ProceedVerificationProxyRequest] = Json.format
 }

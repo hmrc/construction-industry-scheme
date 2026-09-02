@@ -23,6 +23,7 @@ case class ProceedVerificationRequest(
   verificationBatchResourceRef: Long,
   verificationResourceRef: Long
 )
+
 object ProceedVerificationRequest {
   implicit val format: OFormat[ProceedVerificationRequest] =
     Json.format[ProceedVerificationRequest]
