@@ -3315,13 +3315,6 @@ class FormpProxyConnectorIntegrationSpec
               true
             )
           )
-          .withRequestBody(
-            equalToJson(
-              Json.toJson(request).toString(),
-              true,
-              true
-            )
-          )
           .willReturn(
             aResponse()
               .withStatus(OK)
