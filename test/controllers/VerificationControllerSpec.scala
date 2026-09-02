@@ -939,7 +939,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
   "proceedInsufficientVerification" - {
 
-    val url = "/cis/verification/proceed-with-insufficient-data"
+    val url = "/verification/proceed-with-insufficient-data"
 
     val validRequest: ProceedVerificationRequest =
       ProceedVerificationRequest(
@@ -950,7 +950,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
     val validJson: JsValue = Json.toJson(validRequest)
 
-    "returns 200 when service succeeds" in {
+    "returns 204 when service succeeds" in {
       val verificationService = mock[VerificationService]
       val submissionService   = mock[SubmissionService]
       val controller          = mockController(verificationService, submissionService)
@@ -1009,7 +1009,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
   "proceedUnmatchedVerification" - {
 
-    val url = "/cis/verification/proceed-with-unmatched-data"
+    val url = "/verification/proceed-with-unmatched-data"
 
     val validRequest: ProceedVerificationRequest =
       ProceedVerificationRequest(
@@ -1020,7 +1020,7 @@ class VerificationControllerSpec extends SpecBase with EitherValues {
 
     val validJson: JsValue = Json.toJson(validRequest)
 
-    "returns 200 when service succeeds" in {
+    "returns 204 when service succeeds" in {
       val verificationService = mock[VerificationService]
       val submissionService   = mock[SubmissionService]
       val controller          = mockController(verificationService, submissionService)
