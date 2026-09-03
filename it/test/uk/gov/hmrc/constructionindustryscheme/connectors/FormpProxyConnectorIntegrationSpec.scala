@@ -2199,6 +2199,40 @@ class FormpProxyConnectorIntegrationSpec
     }
   }
 
+  "FormpProxyConnector deleteVerification" should {
+
+    val req = DeleteVerificationRequest(
+      instanceId = "abc-123",
+      verificationResourceRef = 98765L
+    )
+
+    val response = DeleteVerificationResponse(verificationsCounter = Some(1L))
+
+    "POST /formp-proxy/cis/verification/delete and return response on 200" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/delete"))
+          .withHeader("Content-Type", containing("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(200).withBody(Json.toJson(response).toString()))
+      )
+
+      connector.deleteVerification(req).futureValue mustBe response
+    }
+
+    "fail the future when upstream returns non-200" in {
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/verification/delete"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(500).withBody("""{"message":"boom"}"""))
+      )
+
+      val ex = connector.deleteVerification(req).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe 500
+    }
+  }
+
   "FormpProxyConnector updateVerificationSubmission" should {
 
     "POST request to /formp-proxy/cis/verification/submission/update and return Unit when upstream returns 204" in {
