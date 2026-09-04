@@ -14,21 +14,16 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models
+package uk.gov.hmrc.constructionindustryscheme.models.finalvalidation
 
-import play.api.libs.json.{Json, OFormat}
+import play.api.libs.json.{Format, Json}
 
-final case class FinalValidationSubcontractorPatch(
-  utr: Option[String] = None,
-  partnerUtr: Option[String] = None,
-  crn: Option[String] = None,
+case class FinalValidationSubcontractorDetails(
   firstName: Option[String] = None,
   secondName: Option[String] = None,
   surname: Option[String] = None,
   partnershipTradingName: Option[String] = None,
   tradingName: Option[String] = None,
-  nino: Option[String] = None,
-  worksReferenceNumber: Option[String] = None,
   addressLine1: Option[String] = None,
   addressLine2: Option[String] = None,
   addressLine3: Option[String] = None,
@@ -37,9 +32,14 @@ final case class FinalValidationSubcontractorPatch(
   postcode: Option[String] = None,
   emailAddress: Option[String] = None,
   phoneNumber: Option[String] = None,
-  mobilePhoneNumber: Option[String] = None
+  mobilePhoneNumber: Option[String] = None,
+  utr: Option[String] = None,
+  partnerUtr: Option[String] = None,
+  nino: Option[String] = None,
+  crn: Option[String] = None,
+  worksReferenceNumber: Option[String] = None
 )
 
-object FinalValidationSubcontractorPatch {
-  given format: OFormat[FinalValidationSubcontractorPatch] = Json.format[FinalValidationSubcontractorPatch]
+object FinalValidationSubcontractorDetails {
+  given format: Format[FinalValidationSubcontractorDetails] = Json.format[FinalValidationSubcontractorDetails]
 }

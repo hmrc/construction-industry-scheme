@@ -14,20 +14,22 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.models.finalvalidation
 
-import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.constructionindustryscheme.models.FinalValidationSubcontractorPatch
+import play.api.libs.json.*
 
-final case class FinalValidationUpdateSubcontractorRequest(
-  instanceId: String,
-  subcontractorId: Long,
-  subbieResourceRef: Long,
-  changeTargets: Set[String],
-  patch: FinalValidationSubcontractorPatch
-)
+case class FinalValidationDraft(
+  subcontractors: Seq[FinalValidationDraftSubcontractor]
+) {
+  
+  def subcontractor(subcontractorId: Long): Option[FinalValidationDraftSubcontractor] =
+    subcontractors.find(_.subcontractorId == subcontractorId)
+    
+  def allComplete: Boolean =
+    subcontractors.forall(_.readiness == FinalValidationReadiness.Complete)
+    
+}
 
-object FinalValidationUpdateSubcontractorRequest {
-  given format: OFormat[FinalValidationUpdateSubcontractorRequest] =
-    Json.format[FinalValidationUpdateSubcontractorRequest]
+object FinalValidationDraft {
+  given format: OFormat[FinalValidationDraft] = Json.format[FinalValidationDraft]
 }

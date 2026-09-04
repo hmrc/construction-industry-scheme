@@ -69,3 +69,11 @@ POST          /verification/submitted-verifications                      uk.gov.
 GET           /journey-handoffs/:journeyType/:id                         uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.get(journeyType: String, id: String)
 POST          /journey-handoffs/:journeyType                             uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.create(journeyType: String)
 DELETE        /journey-handoffs/:journeyType/:id                         uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.delete(journeyType: String, id: String)
+
+# Final Validation draft
+
+POST          /final-validation/drafts                                   uk.gov.hmrc.constructionindustryscheme.controllers.FinalValidationDraftController.create()
+GET           /final-validation/drafts/:instanceId/:draftId              uk.gov.hmrc.constructionindustryscheme.controllers.FinalValidationDraftController.get(instanceId: String, draftId: String)
+PUT           /final-validation/drafts/:instanceId/:draftId/correction   uk.gov.hmrc.constructionindustryscheme.controllers.FinalValidationDraftController.updateCorrection(instanceId: String, draftId: String)
+PUT           /final-validation/drafts/:instanceId/:draftId/readiness    uk.gov.hmrc.constructionindustryscheme.controllers.FinalValidationDraftController.updateReadiness(instanceId: String, draftId: String)
+POST          /final-validation/drafts/:instanceId/:draftId/commit       uk.gov.hmrc.constructionindustryscheme.controllers.FinalValidationDraftController.commit(instanceId: String, draftId: String)

@@ -16,18 +16,15 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models.requests
 
-import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.constructionindustryscheme.models.FinalValidationSubcontractorPatch
+import play.api.libs.json.{Format, Json}
+import uk.gov.hmrc.constructionindustryscheme.models.finalvalidation.FinalValidationDraftIssue
 
-final case class FinalValidationUpdateSubcontractorRequest(
-  instanceId: String,
+case class UpdateFinalValidationReadinessRequest(
   subcontractorId: Long,
-  subbieResourceRef: Long,
-  changeTargets: Set[String],
-  patch: FinalValidationSubcontractorPatch
+  issues: Seq[FinalValidationDraftIssue]
 )
 
-object FinalValidationUpdateSubcontractorRequest {
-  given format: OFormat[FinalValidationUpdateSubcontractorRequest] =
-    Json.format[FinalValidationUpdateSubcontractorRequest]
+object UpdateFinalValidationReadinessRequest {
+  given format: Format[UpdateFinalValidationReadinessRequest] =
+    Json.format[UpdateFinalValidationReadinessRequest]
 }

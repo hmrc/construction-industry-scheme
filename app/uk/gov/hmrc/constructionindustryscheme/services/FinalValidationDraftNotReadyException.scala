@@ -14,20 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.services
 
-import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.constructionindustryscheme.models.FinalValidationSubcontractorPatch
-
-final case class FinalValidationUpdateSubcontractorRequest(
-  instanceId: String,
-  subcontractorId: Long,
-  subbieResourceRef: Long,
-  changeTargets: Set[String],
-  patch: FinalValidationSubcontractorPatch
-)
-
-object FinalValidationUpdateSubcontractorRequest {
-  given format: OFormat[FinalValidationUpdateSubcontractorRequest] =
-    Json.format[FinalValidationUpdateSubcontractorRequest]
-}
+final class FinalValidationDraftNotReadyException(message: String)
+  extends RuntimeException(message)
