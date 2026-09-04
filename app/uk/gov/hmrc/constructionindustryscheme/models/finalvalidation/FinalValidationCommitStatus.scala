@@ -22,10 +22,10 @@ sealed trait FinalValidationCommitStatus
 
 object FinalValidationCommitStatus {
 
-  case object Pending     extends FinalValidationCommitStatus
+  case object Pending extends FinalValidationCommitStatus
   case object NotRequired extends FinalValidationCommitStatus
-  case object Committed   extends FinalValidationCommitStatus
-  case object Failed      extends FinalValidationCommitStatus
+  case object Committed extends FinalValidationCommitStatus
+  case object Failed extends FinalValidationCommitStatus
 
   given format: Format[FinalValidationCommitStatus] =
     new Format[FinalValidationCommitStatus] {

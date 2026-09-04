@@ -21,13 +21,13 @@ import play.api.libs.json.*
 case class FinalValidationDraft(
   subcontractors: Seq[FinalValidationDraftSubcontractor]
 ) {
-  
+
   def subcontractor(subcontractorId: Long): Option[FinalValidationDraftSubcontractor] =
     subcontractors.find(_.subcontractorId == subcontractorId)
-    
+
   def allComplete: Boolean =
     subcontractors.forall(_.readiness == FinalValidationReadiness.Complete)
-    
+
 }
 
 object FinalValidationDraft {

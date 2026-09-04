@@ -31,7 +31,7 @@ case class FinalValidationDraftData(
 )
 
 object FinalValidationDraftData {
-  given instantFormat: Format[Instant]        = MongoJavatimeFormats.instantFormat
+  given instantFormat: Format[Instant]           = MongoJavatimeFormats.instantFormat
   given format: Format[FinalValidationDraftData] = Json.format[FinalValidationDraftData]
 }
 

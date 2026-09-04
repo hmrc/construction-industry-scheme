@@ -31,7 +31,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 @Singleton
-class FinalValidationDraftService @Inject()(
+class FinalValidationDraftService @Inject() (
   repository: FinalValidationDraftRepository,
   formpProxyConnector: FormpProxyConnector
 )(using ec: ExecutionContext) {
@@ -39,8 +39,7 @@ class FinalValidationDraftService @Inject()(
   def create(
     userId: String,
     request: CreateFinalValidationDraftRequest
-  ): Future[String] = {
-
+  ): Future[String] =
     if (request.subcontractors.isEmpty) {
       Future.failed(
         new IllegalArgumentException(
@@ -89,7 +88,6 @@ class FinalValidationDraftService @Inject()(
           )
       }
     }
-  }
 
   def get(
     draftId: String,
@@ -98,7 +96,7 @@ class FinalValidationDraftService @Inject()(
   ): Future[FinalValidationDraft] =
     for {
       stored <- getStored(draftId, userId, instanceId)
-      draft <- decode(stored)
+      draft  <- decode(stored)
     } yield draft
 
   def updateCorrection(
@@ -172,21 +170,21 @@ class FinalValidationDraftService @Inject()(
   )(implicit hc: HeaderCarrier): Future[Unit] =
     for {
       draft <- get(draftId, userId, instanceId)
-      _ <- if (draft.allComplete) {
-        Future.unit
-      } else {
-        Future.failed(
-          new FinalValidationDraftNotReadyException(
-            s"Final Validation draft $draftId is not ready to commit"
-          )
-        )
-      }
-      _ <- commitSubcontractors(
-        draftId,
-        userId,
-        instanceId,
-        draft.subcontractors.map(_.subcontractorId)
-      )
+      _     <- if (draft.allComplete) {
+                 Future.unit
+               } else {
+                 Future.failed(
+                   new FinalValidationDraftNotReadyException(
+                     s"Final Validation draft $draftId is not ready to commit"
+                   )
+                 )
+               }
+      _     <- commitSubcontractors(
+                 draftId,
+                 userId,
+                 instanceId,
+                 draft.subcontractors.map(_.subcontractorId)
+               )
     } yield ()
 
   private def commitSubcontractors(
@@ -213,7 +211,6 @@ class FinalValidationDraftService @Inject()(
     subcontractorId: Long
   )(implicit hc: HeaderCarrier): Future[Unit] =
     get(draftId, userId, instanceId).flatMap { draft =>
-
       draft.subcontractor(subcontractorId) match {
 
         case None =>
@@ -418,9 +415,9 @@ class FinalValidationDraftService @Inject()(
     }
 
   private def updateSubcontractor(
-     draft: FinalValidationDraft,
-     subcontractorId: Long
-   )(update: FinalValidationDraftSubcontractor => FinalValidationDraftSubcontractor): FinalValidationDraft = {
+    draft: FinalValidationDraft,
+    subcontractorId: Long
+  )(update: FinalValidationDraftSubcontractor => FinalValidationDraftSubcontractor): FinalValidationDraft = {
 
     val index =
       draft.subcontractors.indexWhere(
@@ -437,11 +434,10 @@ class FinalValidationDraftService @Inject()(
       draft.subcontractors(index)
 
     draft.copy(
-      subcontractors =
-        draft.subcontractors.updated(
-          index,
-          update(existing)
-        )
+      subcontractors = draft.subcontractors.updated(
+        index,
+        update(existing)
+      )
     )
   }
 
@@ -451,22 +447,22 @@ class FinalValidationDraftService @Inject()(
     instanceId: String
   )(update: FinalValidationDraft => FinalValidationDraft): Future[FinalValidationDraft] =
     for {
-      stored <- getStored(draftId, userId, instanceId)
-      current <- decode(stored)
-      updated <- Future.fromTry(Try(update(current)))
+      stored   <- getStored(draftId, userId, instanceId)
+      current  <- decode(stored)
+      updated  <- Future.fromTry(Try(update(current)))
       replaced <- repository.replace(
-        stored,
-        Json.toJsObject(updated)
-      )
-      _ <- if (replaced) {
-        Future.unit
-      } else {
-        Future.failed(
-          new IllegalStateException(
-            s"Failed to update Final Validation draft $draftId due to version mismatch"
-          )
-        )
-      }
+                    stored,
+                    Json.toJsObject(updated)
+                  )
+      _        <- if (replaced) {
+                    Future.unit
+                  } else {
+                    Future.failed(
+                      new IllegalStateException(
+                        s"Failed to update Final Validation draft $draftId due to version mismatch"
+                      )
+                    )
+                  }
     } yield updated
 
   private def getStored(
@@ -500,5 +496,5 @@ class FinalValidationDraftService @Inject()(
           )
         )
     }
-  
+
 }

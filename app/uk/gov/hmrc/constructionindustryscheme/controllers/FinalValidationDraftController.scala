@@ -35,7 +35,7 @@ class FinalValidationDraftController @Inject() (
   finalValidationDraftService: FinalValidationDraftService,
   cc: ControllerComponents
 )(using ec: ExecutionContext)
-  extends BackendController(cc)
+    extends BackendController(cc)
     with Logging {
 
   def create(): Action[CreateFinalValidationDraftRequest] =
@@ -47,16 +47,14 @@ class FinalValidationDraftController @Inject() (
             Json.obj("draftId" -> draftId)
           )
         }
-        .recover {
-          case NonFatal(error) =>
-            logger.error("[FinalValidationDraftController.create] failed to create Final Validation draft", error)
-            InternalServerError(Json.obj("error" -> "Failed to create Final Validation draft"))
+        .recover { case NonFatal(error) =>
+          logger.error("[FinalValidationDraftController.create] failed to create Final Validation draft", error)
+          InternalServerError(Json.obj("error" -> "Failed to create Final Validation draft"))
         }
     }
 
   def get(instanceId: String, draftId: String): Action[AnyContent] =
     authorise.async { implicit request =>
-
       finalValidationDraftService
         .get(draftId, request.credentialId, instanceId)
         .map { draft =>
@@ -83,7 +81,6 @@ class FinalValidationDraftController @Inject() (
     draftId: String
   ): Action[FinalValidationCorrectionRequest] =
     authorise.async(parse.json[FinalValidationCorrectionRequest]) { implicit request =>
-
       finalValidationDraftService
         .updateCorrection(
           draftId,
@@ -118,7 +115,6 @@ class FinalValidationDraftController @Inject() (
     draftId: String
   ): Action[UpdateFinalValidationReadinessRequest] =
     authorise.async(parse.json[UpdateFinalValidationReadinessRequest]) { implicit request =>
-
       finalValidationDraftService
         .updateReadiness(
           draftId,
@@ -153,7 +149,6 @@ class FinalValidationDraftController @Inject() (
     draftId: String
   ): Action[AnyContent] =
     authorise.async { implicit request =>
-
       finalValidationDraftService
         .commit(
           draftId,

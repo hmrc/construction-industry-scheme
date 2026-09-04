@@ -23,9 +23,9 @@ sealed trait FinalValidationReadiness { def key: String }
 object FinalValidationReadiness {
   case object Incomplete extends FinalValidationReadiness { val key = "Incomplete" }
   case object Complete extends FinalValidationReadiness { val key = "Complete" }
-  
+
   given format: Format[FinalValidationReadiness] = new Format[FinalValidationReadiness] {
-    
+
     override def reads(json: JsValue): JsResult[FinalValidationReadiness] =
       json.validate[String].flatMap {
         case Incomplete.key => JsSuccess(Incomplete)
@@ -36,6 +36,5 @@ object FinalValidationReadiness {
     override def writes(value: FinalValidationReadiness): JsValue =
       JsString(value.key)
   }
-  
-}
 
+}

@@ -71,7 +71,7 @@ class FinalValidationDraftRepository @Inject() (
       .headOption()
 
   def create(userId: String, instanceId: String, context: String, data: JsObject): Future[String] = {
-    val id = UUID.randomUUID().toString
+    val id    = UUID.randomUUID().toString
     val draft = FinalValidationDraftData(
       id = id,
       userId = userId,
@@ -91,16 +91,19 @@ class FinalValidationDraftRepository @Inject() (
       lastUpdated = now
     )
 
-    collection.replaceOne(
-      Filters.and(
-        Filters.equal(FinalValidationDraftDataKeys.idField, existing.id),
-        Filters.equal(FinalValidationDraftDataKeys.userIdField, existing.userId),
-        Filters.equal(FinalValidationDraftDataKeys.instanceIdField, existing.instanceId),
-        Filters.equal(FinalValidationDraftDataKeys.versionField, existing.version)
-      ),
-      replacement,
-      ReplaceOptions().upsert(false)
-    ).toFuture().map(_.getModifiedCount == 1)
+    collection
+      .replaceOne(
+        Filters.and(
+          Filters.equal(FinalValidationDraftDataKeys.idField, existing.id),
+          Filters.equal(FinalValidationDraftDataKeys.userIdField, existing.userId),
+          Filters.equal(FinalValidationDraftDataKeys.instanceIdField, existing.instanceId),
+          Filters.equal(FinalValidationDraftDataKeys.versionField, existing.version)
+        ),
+        replacement,
+        ReplaceOptions().upsert(false)
+      )
+      .toFuture()
+      .map(_.getModifiedCount == 1)
   }
 
   def delete(id: String, userId: String, instanceId: String): Future[Boolean] =

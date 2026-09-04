@@ -16,5 +16,4 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services
 
-final class FinalValidationDraftNotReadyException(message: String)
-  extends RuntimeException(message)
+final class FinalValidationDraftNotReadyException(message: String) extends RuntimeException(message)

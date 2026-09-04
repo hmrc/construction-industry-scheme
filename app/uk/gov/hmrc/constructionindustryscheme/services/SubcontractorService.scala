@@ -58,9 +58,4 @@ class SubcontractorService @Inject() (formpProxyConnector: FormpProxyConnector) 
     hc: HeaderCarrier
   ): Future[UpdateSubcontractorResponse] =
     formpProxyConnector.updateSubcontractor(request)
-
-  def updateSubcontractorForFinalValidation(request: FinalValidationUpdateSubcontractorRequest)(implicit
-    hc: HeaderCarrier
-  ): Future[Unit] =
-    formpProxyConnector.updateSubcontractorForFinalValidation(request)
 }
