@@ -3282,4 +3282,124 @@ class FormpProxyConnectorIntegrationSpec
       ex.asInstanceOf[UpstreamErrorResponse].message mustBe "accepted without version"
     }
   }
+
+  "FormpProxyConnector updateSubcontractorForEdit" should {
+
+    val editUrl = "/formp-proxy/cis/subcontractor/edit"
+
+    val request =
+      UpdateSubcontractorRequest(
+        cisId = "abc-123",
+        subcontractor = Json
+          .obj(
+            "subcontractorId" -> 999L,
+            "subbieResourceRef" -> 10L,
+            "utr" -> "1234567890",
+            "firstName" -> "John",
+            "surname" -> "Smith",
+            "subcontractorType" -> "soletrader",
+            "version" -> 5
+          )
+          .as[Subcontractor]
+      )
+
+    "POST /formp-proxy/cis/subcontractor/edit and return updated version" in {
+      stubFor(
+        post(urlPathEqualTo(editUrl))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
+          .withRequestBody(
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
+          )
+          .willReturn(
+            aResponse()
+              .withStatus(OK)
+              .withBody("""{ "version": 6 }""")
+          )
+      )
+
+      val response =
+        connector.updateSubcontractorForEdit(request).futureValue
+
+      response mustBe UpdateSubcontractorResponse(version = 6)
+
+      verify(
+        postRequestedFor(urlPathEqualTo(editUrl))
+          .withRequestBody(
+            equalToJson(
+              Json.toJson(request).toString(),
+              true,
+              true
+            )
+          )
+      )
+    }
+
+    "fails with UpstreamErrorResponse when FormP returns non-2xx" in {
+      stubFor(
+        post(urlPathEqualTo(editUrl))
+          .willReturn(
+            aResponse()
+              .withStatus(BAD_GATEWAY)
+              .withBody("FormP error")
+          )
+      )
+
+      val ex =
+        connector.updateSubcontractorForEdit(request).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe BAD_GATEWAY
+    }
+
+    "fail with UpstreamErrorResponse when FormP returns 204 No Content because version body is required" in {
+      stubFor(
+        post(urlPathEqualTo(editUrl))
+          .willReturn(
+            aResponse()
+              .withStatus(NO_CONTENT)
+          )
+      )
+
+      val ex =
+        connector.updateSubcontractorForEdit(request).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+
+      val upstream =
+        ex.asInstanceOf[UpstreamErrorResponse]
+
+      upstream.statusCode mustBe INTERNAL_SERVER_ERROR
+      upstream.message must include(
+        "FormP returned 204 No Content for updateSubcontractorForEdit"
+      )
+    }
+
+    "fails with 500 UpstreamErrorResponse when FormP returns an unexpected 2xx without the expected body" in {
+      stubFor(
+        post(urlPathEqualTo(editUrl))
+          .willReturn(
+            aResponse()
+              .withStatus(202)
+              .withBody("accepted without version")
+          )
+      )
+
+      val ex =
+        connector.updateSubcontractorForEdit(request).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe INTERNAL_SERVER_ERROR
+      ex.asInstanceOf[UpstreamErrorResponse].message mustBe "accepted without version"
+    }
+
+
+
+  }
+  
 }
