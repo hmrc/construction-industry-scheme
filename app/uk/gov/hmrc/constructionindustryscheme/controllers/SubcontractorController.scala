@@ -145,7 +145,7 @@ class SubcontractorController @Inject() (
               BadRequest(
                 Json.obj(
                   "message" -> "Invalid payload",
-                  "errors" -> JsError.toJson(errs)
+                  "errors"  -> JsError.toJson(errs)
                 )
               )
             ),
@@ -169,7 +169,7 @@ class SubcontractorController @Inject() (
               BadRequest(
                 Json.obj(
                   "message" -> "Invalid payload",
-                  "errors" -> JsError.toJson(errs)
+                  "errors"  -> JsError.toJson(errs)
                 )
               )
             ),
@@ -184,11 +184,11 @@ class SubcontractorController @Inject() (
     }
 
   private def handleUpdateSubcontractor(
-                                         updateRequest: UpdateSubcontractorRequest,
-                                         updateFn: UpdateSubcontractorRequest => Future[UpdateSubcontractorResponse],
-                                         operation: String,
-                                         genericFailureMessage: String
-                                       ): Future[Result] =
+    updateRequest: UpdateSubcontractorRequest,
+    updateFn: UpdateSubcontractorRequest => Future[UpdateSubcontractorResponse],
+    operation: String,
+    genericFailureMessage: String
+  ): Future[Result] =
     updateFn(updateRequest)
       .map(response => Ok(Json.toJson(response)))
       .recover {
