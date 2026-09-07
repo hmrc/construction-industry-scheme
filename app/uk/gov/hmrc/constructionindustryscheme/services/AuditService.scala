@@ -37,6 +37,20 @@ class AuditService @Inject (
   ): Future[AuditResult] =
     auditConnector.sendExtendedEvent(MonthlyNilReturnResponseEvent(response).extendedDataEvent)
 
+  def monthlyReturnPollResponseEvent(response: JsValue)(implicit hc: HeaderCarrier): Future[AuditResult] =
+    auditConnector.sendExtendedEvent(MonthlyReturnPollResponseEvent(response).extendedDataEvent)
+
+  def verificationPollResponseEvent(response: JsValue)(implicit hc: HeaderCarrier): Future[AuditResult] =
+    auditConnector.sendExtendedEvent(VerificationPollResponseEvent(response).extendedDataEvent)
+
+  def verificationRequestEvent(payload: JsValue)(implicit hc: HeaderCarrier): Future[AuditResult] =
+    auditConnector.sendExtendedEvent(VerificationRequestEvent(payload).extendedDataEvent)
+
+  def verificationResponseEvent(response: AuditResponseReceivedModel)(implicit
+    hc: HeaderCarrier
+  ): Future[AuditResult] =
+    auditConnector.sendExtendedEvent(VerificationResponseEvent(response).extendedDataEvent)
+
   def monthlyReturnRequestEvent(jsonData: JsValue)(implicit hc: HeaderCarrier): Future[AuditResult] =
     auditConnector.sendExtendedEvent(MonthlyReturnRequestEvent(jsonData).extendedDataEvent)
 

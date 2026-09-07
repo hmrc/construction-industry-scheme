@@ -20,7 +20,7 @@ import base.SpecBase
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.should.Matchers.{should, shouldBe}
 import play.api.libs.json.{JsSuccess, JsValue, Json}
-import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, ClientListRetrievalFailedEvent, ClientListRetrievalInProgressEvent, MonthlyNilReturnRequestEvent, MonthlyNilReturnResponseEvent, MonthlyReturnRequestEvent, MonthlyReturnResponseEvent}
+import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, ClientListRetrievalFailedEvent, ClientListRetrievalInProgressEvent, MonthlyNilReturnRequestEvent, MonthlyNilReturnResponseEvent, MonthlyReturnPollResponseEvent, MonthlyReturnRequestEvent, MonthlyReturnResponseEvent, VerificationPollResponseEvent, VerificationRequestEvent, VerificationResponseEvent}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor.convertXmlToJson
 
 class AuditEventModelSpec extends SpecBase {
@@ -258,6 +258,86 @@ class AuditEventModelSpec extends SpecBase {
     }
   }
 
+  "MonthlyReturnPollResponseEvent" - {
+
+    "have the correct auditType and auditSource" in {
+      val response = Json.obj("status" -> "ACCEPTED", "correlationId" -> "corr-123")
+      val event    = MonthlyReturnPollResponseEvent(response)
+      val extended = event.extendedDataEvent
+      extended.auditSource shouldBe "construction-industry-scheme"
+      extended.auditType   shouldBe "monthlyReturnPollResponse"
+      extended.detail      shouldBe event.detailJson
+    }
+
+    "include the full response in the detail JSON" in {
+      val response =
+        Json.obj("status" -> "SUBMITTED", "correlationId" -> "corr-456", "pollUrl" -> "http://example.com/poll")
+      val event    = MonthlyReturnPollResponseEvent(response)
+      event.detailJson shouldBe Json.obj("response" -> response)
+    }
+
+    "serialize and deserialize correctly to/from JSON" in {
+      val response = Json.obj("status" -> "ACCEPTED", "correlationId" -> "corr-123")
+      val event    = MonthlyReturnPollResponseEvent(response)
+      val json     = Json.toJson(event)
+      val parsed   = json.as[MonthlyReturnPollResponseEvent]
+      parsed shouldBe event
+    }
+  }
+
+  "VerificationRequestEvent" - {
+
+    "have the correct auditType and auditSource" in {
+      val jsonPayload = Json.obj("period" -> "2025-09", "submittedBy" -> "user123")
+      val event       = VerificationRequestEvent(jsonPayload)
+      val extended    = event.extendedDataEvent
+      extended.auditSource shouldBe "construction-industry-scheme"
+      extended.auditType   shouldBe "verificationRequest"
+      extended.detail      shouldBe event.detailJson
+    }
+
+    "include the full payload in the detail JSON" in {
+      val jsonPayload = Json.obj("utr" -> "1234567890", "aoRef" -> "123/AB456")
+      val event       = VerificationRequestEvent(jsonPayload)
+      event.detailJson shouldBe Json.obj("payload" -> jsonPayload)
+    }
+
+    "serialize and deserialize correctly to/from JSON" in {
+      val jsonPayload = Json.obj("period" -> "2025-09", "submittedBy" -> "user123")
+      val event       = VerificationRequestEvent(jsonPayload)
+      val json        = Json.toJson(event)
+      val parsed      = json.as[VerificationRequestEvent]
+      parsed shouldBe event
+    }
+  }
+
+  "VerificationPollResponseEvent" - {
+
+    "have the correct auditType and auditSource" in {
+      val response = Json.obj("status" -> "ACCEPTED", "correlationId" -> "corr-123")
+      val event    = VerificationPollResponseEvent(response)
+      val extended = event.extendedDataEvent
+      extended.auditSource shouldBe "construction-industry-scheme"
+      extended.auditType   shouldBe "verificationPollResponse"
+      extended.detail      shouldBe event.detailJson
+    }
+
+    "include the full response in the detail JSON" in {
+      val response =
+        Json.obj("status" -> "SUBMITTED", "correlationId" -> "corr-456", "pollUrl" -> "http://example.com/poll")
+      val event    = VerificationPollResponseEvent(response)
+      event.detailJson shouldBe Json.obj("response" -> response)
+    }
+
+    "serialize and deserialize correctly to/from JSON" in {
+      val response = Json.obj("status" -> "ACCEPTED", "correlationId" -> "corr-123")
+      val event    = VerificationPollResponseEvent(response)
+      val json     = Json.toJson(event)
+      val parsed   = json.as[VerificationPollResponseEvent]
+      parsed shouldBe event
+    }
+  }
+
   "MonthlyReturnRequestEvent" - {
 
     "have the correct auditType and auditSource" in {
@@ -294,6 +374,38 @@ class AuditEventModelSpec extends SpecBase {
       val event         = MonthlyReturnResponseEvent(responseModel)
       val json          = Json.toJson(event)
       val parsed        = json.as[MonthlyReturnResponseEvent]
+      parsed shouldBe event
+    }
+  }
+
+  "VerificationResponseEvent" - {
+
+    "have the correct auditType and auditSource" in {
+      val responseModel = AuditResponseReceivedModel("SUBMITTED", Json.toJson("Verification processed"))
+      val event         = VerificationResponseEvent(responseModel)
+      val extended      = event.extendedDataEvent
+      extended.auditSource shouldBe "construction-industry-scheme"
+      extended.auditType   shouldBe "verificationResponse"
+      extended.detail      shouldBe event.detailJson
+    }
+
+    "include status and responseData in the detail JSON" in {
+      val responseData  = Json.obj("GovTalkMessage" -> Json.obj("Header" -> Json.obj()))
+      val responseModel = AuditResponseReceivedModel("SUBMITTED", responseData)
+      val event         = VerificationResponseEvent(responseModel)
+      event.detailJson shouldBe Json.obj(
+        "response" -> Json.obj(
+          "status"       -> "SUBMITTED",
+          "responseData" -> responseData
+        )
+      )
+    }
+
+    "serialize and deserialize correctly to/from JSON" in {
+      val responseModel = AuditResponseReceivedModel("SUBMITTED", Json.toJson("Verification processed"))
+      val event         = VerificationResponseEvent(responseModel)
+      val json          = Json.toJson(event)
+      val parsed        = json.as[VerificationResponseEvent]
       parsed shouldBe event
     }
   }

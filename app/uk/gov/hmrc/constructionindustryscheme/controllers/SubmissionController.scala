@@ -150,19 +150,23 @@ class SubmissionController @Inject() (
           submissionService
             .pollSubmissionAndUpdateGovTalkStatus(submissionId, overridePollUrl, journey)
             .map { resp =>
-              Ok(
-                Json.obj(
-                  "status"             -> resp.status.toString,
-                  "pollUrl"            -> resp.pollUrl,
-                  "correlationId"      -> resp.correlationId,
-                  "intervalSeconds"    -> resp.pollInterval,
-                  "error"              -> resp.error,
-                  "irMarkReceived"     -> resp.irMarkReceived,
-                  "lastMessageDate"    -> resp.lastMessageDate,
-                  "acceptedTime"       -> resp.acceptedTime,
-                  "govTalkErrorStatus" -> resp.govTalkErrorStatus
-                )
+              val responseJson = Json.obj(
+                "status"             -> resp.status.toString,
+                "pollUrl"            -> resp.pollUrl,
+                "correlationId"      -> resp.correlationId,
+                "intervalSeconds"    -> resp.pollInterval,
+                "error"              -> resp.error,
+                "irMarkReceived"     -> resp.irMarkReceived,
+                "lastMessageDate"    -> resp.lastMessageDate,
+                "acceptedTime"       -> resp.acceptedTime,
+                "govTalkErrorStatus" -> resp.govTalkErrorStatus
               )
+              if (journey == MonthlyReturn) {
+                auditService.monthlyReturnPollResponseEvent(responseJson)
+              } else if (journey == Verification) {
+                auditService.verificationPollResponseEvent(responseJson)
+              }
+              Ok(responseJson)
             }
 
         case Left(value) =>
@@ -189,6 +193,13 @@ class SubmissionController @Inject() (
     }
 
   def createMonthlyNilReturnRequestJson(payload: ChRISSubmission): JsValue =
+    XmlToJsonConvertor.convertXmlToJson(payload.envelope.toString) match {
+      case XmlConversionResult(true, Some(json), _)   => json
+      case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
+      case _                                          => Json.obj("error" -> "unexpected conversion failure")
+    }
+
+  def createVerificationRequestJson(payload: CisVerificationSubmission): JsValue =
     XmlToJsonConvertor.convertXmlToJson(payload.envelope.toString) match {
       case XmlConversionResult(true, Some(json), _)   => json
       case XmlConversionResult(false, _, Some(error)) => Json.obj("error" -> error)
@@ -255,6 +266,14 @@ class SubmissionController @Inject() (
       case MonthlyReturnType.Nil      => auditService.monthlyNilReturnResponseEvent(auditResponse)
       case MonthlyReturnType.Standard => auditService.monthlyReturnResponseEvent(auditResponse)
     }
+    renderChrisResponse(submissionId, payload.irMark, res)
+  }
+
+  private def renderVerificationResponse(submissionId: String, payload: CisVerificationSubmission)(
+    res: SubmissionResult
+  )(implicit hc: HeaderCarrier): Result = {
+    val auditResponse = AuditResponseReceivedModel(res.status.toString, createMonthlyNilReturnResponseJson(res))
+    auditService.verificationResponseEvent(auditResponse)
     renderChrisResponse(submissionId, payload.irMark, res)
   }
 
@@ -450,6 +469,8 @@ class SubmissionController @Inject() (
   )(implicit req: AuthenticatedRequest[JsValue]): Future[Result] = {
     val payload = CisVerificationSubmission.buildPayload(cvr, req.enrolments)
 
+    auditService.verificationRequestEvent(createVerificationRequestJson(payload))
+
     VerificationSubmissionContextBuilder
       .build(
         request = cvr,
@@ -488,7 +509,7 @@ class SubmissionController @Inject() (
               res,
               Verification,
               verificationContext,
-              r => renderChrisResponse(submissionId, payload.irMark, r),
+              r => renderVerificationResponse(submissionId, payload)(r),
               errorLabel = " verification"
             )
           )
