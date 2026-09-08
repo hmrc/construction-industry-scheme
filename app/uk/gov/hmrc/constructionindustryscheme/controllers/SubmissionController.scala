@@ -25,7 +25,7 @@ import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.*
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, ChrisPollJourney, ChrisSubmissionContext, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkErrorStatus, MonthlyReturnSubmissionContext, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult, VerificationSubmissionContextBuilder}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, ChrisPollJourney, ChrisSubmissionContext, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkErrorStatus, MonthlyReturnSubmissionContext, MonthlyReturnType, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult, VerificationSubmissionContextBuilder}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.GovTalkErrorStatusClassifier
 import uk.gov.hmrc.http.UpstreamErrorResponse
@@ -247,13 +247,14 @@ class SubmissionController @Inject() (
     }
   }
 
-  private def renderSubmissionResponse(submissionId: String, payload: ChRISSubmission)(
+  private def renderSubmissionResponse(submissionId: String, payload: ChRISSubmission, returnType: MonthlyReturnType)(
     res: SubmissionResult
   )(implicit hc: HeaderCarrier): Result = {
-    val monthlyNilReturnResponse =
-      AuditResponseReceivedModel(res.status.toString, createMonthlyNilReturnResponseJson(res))
-    auditService.monthlyNilReturnResponseEvent(monthlyNilReturnResponse)
-
+    val auditResponse = AuditResponseReceivedModel(res.status.toString, createMonthlyNilReturnResponseJson(res))
+    returnType match {
+      case MonthlyReturnType.Nil      => auditService.monthlyNilReturnResponseEvent(auditResponse)
+      case MonthlyReturnType.Standard => auditService.monthlyReturnResponseEvent(auditResponse)
+    }
     renderChrisResponse(submissionId, payload.irMark, res)
   }
 
@@ -268,7 +269,12 @@ class SubmissionController @Inject() (
         submissionRequestDate = submissionRequestDate
       )
 
-    auditService.monthlyNilReturnRequestEvent(createMonthlyNilReturnRequestJson(payload))
+    csr.returnType match {
+      case MonthlyReturnType.Nil      =>
+        auditService.monthlyNilReturnRequestEvent(createMonthlyNilReturnRequestJson(payload))
+      case MonthlyReturnType.Standard =>
+        auditService.monthlyReturnRequestEvent(createMonthlyNilReturnRequestJson(payload))
+    }
 
     xmlValidator.validate(payload.irEnvelope, appConfig.cisReturnSchema) match {
       case Failure(e) =>
@@ -296,7 +302,7 @@ class SubmissionController @Inject() (
           res,
           MonthlyReturn,
           monthlyReturnContext,
-          r => renderSubmissionResponse(submissionId, payload)(r),
+          r => renderSubmissionResponse(submissionId, payload, csr.returnType)(r),
           errorLabel = "",
           isResubmission = csr.isResubmission
         )

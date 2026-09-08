@@ -20,7 +20,7 @@ import base.SpecBase
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.should.Matchers.{should, shouldBe}
 import play.api.libs.json.{JsSuccess, JsValue, Json}
-import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, ClientListRetrievalFailedEvent, ClientListRetrievalInProgressEvent, MonthlyNilReturnRequestEvent, MonthlyNilReturnResponseEvent}
+import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, ClientListRetrievalFailedEvent, ClientListRetrievalInProgressEvent, MonthlyNilReturnRequestEvent, MonthlyNilReturnResponseEvent, MonthlyReturnRequestEvent, MonthlyReturnResponseEvent}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor.convertXmlToJson
 
 class AuditEventModelSpec extends SpecBase {
@@ -255,6 +255,46 @@ class AuditEventModelSpec extends SpecBase {
 
     "must serialise correctly" in {
       json mustBe expected
+    }
+  }
+
+  "MonthlyReturnRequestEvent" - {
+
+    "have the correct auditType and auditSource" in {
+      val jsonPayload = Json.obj("period" -> "2025-09", "submittedBy" -> "user123")
+      val event       = MonthlyReturnRequestEvent(jsonPayload)
+      val extended    = event.extendedDataEvent
+      extended.auditSource shouldBe "construction-industry-scheme"
+      extended.auditType   shouldBe "monthlyReturnRequest"
+      extended.detail      shouldBe event.detailJson
+    }
+
+    "serialize and deserialize correctly to/from JSON" in {
+      val jsonPayload = Json.obj("period" -> "2025-09", "submittedBy" -> "user123")
+      val event       = MonthlyReturnRequestEvent(jsonPayload)
+      val json        = Json.toJson(event)
+      val parsed      = json.as[MonthlyReturnRequestEvent]
+      parsed shouldBe event
+    }
+  }
+
+  "MonthlyReturnResponseEvent" - {
+
+    "have the correct auditType and auditSource" in {
+      val responseModel = AuditResponseReceivedModel("SUCCESS", Json.toJson("Processed successfully"))
+      val event         = MonthlyReturnResponseEvent(responseModel)
+      val extended      = event.extendedDataEvent
+      extended.auditSource shouldBe "construction-industry-scheme"
+      extended.auditType   shouldBe "monthlyReturnResponse"
+      extended.detail      shouldBe event.detailJson
+    }
+
+    "serialize and deserialize correctly to/from JSON" in {
+      val responseModel = AuditResponseReceivedModel("SUCCESS", Json.toJson("Processed successfully"))
+      val event         = MonthlyReturnResponseEvent(responseModel)
+      val json          = Json.toJson(event)
+      val parsed        = json.as[MonthlyReturnResponseEvent]
+      parsed shouldBe event
     }
   }
 
