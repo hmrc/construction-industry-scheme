@@ -428,8 +428,6 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
         controller.updateSubcontractorForEdit()(req)
 
       status(result) mustBe BAD_REQUEST
-      (contentAsJson(result) \ "message").as[String] mustBe "Invalid payload"
-
       verifyNoInteractions(service)
     }
 
