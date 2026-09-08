@@ -17,7 +17,6 @@
 package services
 
 import base.SpecBase
-import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.Verification
 import uk.gov.hmrc.constructionindustryscheme.models.{BatchChRISPollResult, PollReportContent, SUBMITTED, SubmissionStatus}
