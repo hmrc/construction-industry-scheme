@@ -20,11 +20,11 @@ import play.api.Logging
 import play.api.libs.json.{JsError, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHeaderForwarding
-import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
+import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.Inject
@@ -161,26 +161,14 @@ class SubcontractorController @Inject() (
 
   def updateSubcontractorForEdit(): Action[JsValue] =
     authorise(parse.json).async { implicit request =>
-      request.body
-        .validate[UpdateSubcontractorRequest]
-        .fold(
-          errs =>
-            Future.successful(
-              BadRequest(
-                Json.obj(
-                  "message" -> "Invalid payload",
-                  "errors"  -> JsError.toJson(errs)
-                )
-              )
-            ),
-          updateRequest =>
-            handleUpdateSubcontractor(
-              updateRequest,
-              subcontractorService.updateSubcontractorForEdit,
-              "updateSubcontractorForEdit",
-              "update-subcontractor-for-edit-failed"
-            )
+      withJsonBody { (updateRequest: UpdateSubcontractorRequest) =>
+        handleUpdateSubcontractor(
+          updateRequest,
+          subcontractorService.updateSubcontractorForEdit,
+          "updateSubcontractorForEdit",
+          "update-subcontractor-for-edit-failed"
         )
+      }
     }
 
   private def handleUpdateSubcontractor(

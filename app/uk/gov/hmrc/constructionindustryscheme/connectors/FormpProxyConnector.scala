@@ -20,6 +20,7 @@ import play.api.Logging
 import play.api.http.Status.{INTERNAL_SERVER_ERROR, NOT_FOUND, NO_CONTENT, OK}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
+import scala.util.Failure
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
@@ -589,18 +590,9 @@ class FormpProxyConnector @Inject() (
     response.status match {
 
       case OK =>
-        Future
-          .fromTry(
-            scala.util.Try(
-              response.json.as[UpdateSubcontractorResponse]
-            )
-          )
-          .recoverWith { case t =>
-            logger.error(
-              s"[FormpProxyConnector][$operation] Failed to parse successful response from FormP. Status=${response.status}",
-              t
-            )
-            Future.failed(t)
+        Future(response.json.as[UpdateSubcontractorResponse])
+          .andThen { case Failure(t) =>
+            logger.error(s"[FormpProxyConnector][$operation] Failed to parse 200 OK response from FormP.", t)
           }
 
       case NO_CONTENT =>
