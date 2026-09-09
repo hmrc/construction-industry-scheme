@@ -31,7 +31,7 @@ import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 @Singleton
 class SubmissionService @Inject() (
@@ -538,6 +538,9 @@ class SubmissionService @Inject() (
         GetGovTalkStatusRequest(submission.instanceId, submissionId)
       ).flatMap {
         case Some(statusResponse) if statusResponse.govtalk_status.nonEmpty =>
+          logger.info(
+            s"[SubmissionService][syncVerificationSessionForPolling] Successfully fetched GovTalk status for instanceId: ${submission.instanceId}, submissionId: $submissionId"
+          )
           Future.successful(statusResponse)
 
         case _ =>
@@ -560,6 +563,18 @@ class SubmissionService @Inject() (
           submission.instanceId,
           submission.verificationBatchResourceRef
         )
+        .andThen {
+          case Success(_) =>
+            logger.info(
+              s"[SubmissionService][syncVerificationSessionForPolling] Successfully fetched F7 verification for instanceId: ${submission.instanceId}, submissionId: $submissionId, verificationBatchResourceRef: ${submission.verificationBatchResourceRef}"
+            )
+
+          case Failure(ex) =>
+            logger.error(
+              s"[SubmissionService][syncVerificationSessionForPolling] Failed to fetch F7 verification for instanceId: ${submission.instanceId}, submissionId: $submissionId, verificationBatchResourceRef: ${submission.verificationBatchResourceRef}",
+              ex
+            )
+        }
         .flatMap { response =>
           VerificationSubmissionContextBuilder
             .buildFromFormpSnapshot(
