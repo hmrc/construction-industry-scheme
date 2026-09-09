@@ -595,6 +595,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/subcontractor/final-validation/update")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>

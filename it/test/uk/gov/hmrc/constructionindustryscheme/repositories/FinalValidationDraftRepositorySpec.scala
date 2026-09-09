@@ -112,11 +112,22 @@ class FinalValidationDraftRepositorySpec
       repository.get(id, userId, instanceId).futureValue mustBe None
     }
 
-    "not delete a draft when userId does not match" in {
+    "return false and not delete a draft when userId does not match" in {
       val id = repository.create(userId, instanceId, context, data).futureValue
 
-      repository.delete(id, "different-user", instanceId).futureValue mustBe true
+      repository.delete(id, "different-user", instanceId).futureValue mustBe false
       repository.get(id, userId, instanceId).futureValue.value.id mustBe id
+    }
+
+    "return false and not delete a draft when instanceId does not match" in {
+      val id = repository.create(userId, instanceId, context, data).futureValue
+
+      repository.delete(id, userId, "different-instance").futureValue mustBe false
+      repository.get(id, userId, instanceId).futureValue.value.id mustBe id
+    }
+
+    "return false when the draft does not exist" in {
+      repository.delete("unknown", userId, instanceId).futureValue mustBe false
     }
   }
 }

@@ -19,7 +19,7 @@ package models.requests
 import base.SpecBase
 import play.api.libs.json.*
 import uk.gov.hmrc.constructionindustryscheme.models.finalvalidation.{FinalValidationDraftIssue, FinalValidationSubcontractorDetails}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateFinalValidationDraftSubcontractor, CreateFinalValidationDraftRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateFinalValidationDraftRequest, CreateFinalValidationDraftSubcontractor}
 
 class CreateFinalValidationDraftRequestSpec extends SpecBase {
 

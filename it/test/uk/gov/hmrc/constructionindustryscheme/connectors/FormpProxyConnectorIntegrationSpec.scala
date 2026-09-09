@@ -3298,6 +3298,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/final-validation/update"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withHeader("Content-Type", equalTo("application/json"))
           .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
           .willReturn(aResponse().withStatus(NO_CONTENT))
@@ -3319,6 +3320,7 @@ class FormpProxyConnectorIntegrationSpec
 
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/subcontractor/final-validation/update"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
           .willReturn(
             aResponse()

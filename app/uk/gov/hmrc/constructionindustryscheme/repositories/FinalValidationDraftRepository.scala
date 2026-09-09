@@ -116,5 +116,5 @@ class FinalValidationDraftRepository @Inject() (
         )
       )
       .toFuture()
-      .map(_.wasAcknowledged())
+      .map(_.getDeletedCount == 1)
 }

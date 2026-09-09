@@ -29,6 +29,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
+import scala.util.control.NonFatal
 
 @Singleton
 class FinalValidationDraftService @Inject() (
@@ -253,7 +254,7 @@ class FinalValidationDraftService @Inject() (
                     Committed
                   )
                 }
-                .recoverWith { case error =>
+                .recoverWith { case NonFatal(error) =>
                   updateCommitStatus(
                     draftId,
                     userId,

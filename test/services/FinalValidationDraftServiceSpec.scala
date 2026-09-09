@@ -44,17 +44,21 @@ class FinalValidationDraftServiceSpec extends SpecBase {
   private val draftId    = "draft-123"
 
   private val details =
-    Json.obj(
-      "firstName" -> "A",
-      "surname"   -> "Alice",
-      "utr"       -> "1111111111"
-    ).as[FinalValidationSubcontractorDetails]
+    Json
+      .obj(
+        "firstName" -> "A",
+        "surname"   -> "Alice",
+        "utr"       -> "1111111111"
+      )
+      .as[FinalValidationSubcontractorDetails]
 
   private val issue =
-    Json.obj(
-      "fieldKey" -> "utr",
-      "value"    -> "1111111111"
-    ).as[FinalValidationDraftIssue]
+    Json
+      .obj(
+        "fieldKey" -> "utr",
+        "value"    -> "1111111111"
+      )
+      .as[FinalValidationDraftIssue]
 
   private def draft(
     readiness: String = "Incomplete",
@@ -66,7 +70,7 @@ class FinalValidationDraftServiceSpec extends SpecBase {
       .obj(
         "subcontractors" -> Json.arr(
           Json.obj(
-            "subcontractorId"  -> 10903L,
+            "subcontractorId"   -> 10903L,
             "subbieResourceRef" -> 7L,
             "baseVersion"       -> 12,
             "subcontractorType" -> "soletrader",
@@ -77,10 +81,10 @@ class FinalValidationDraftServiceSpec extends SpecBase {
               "surname"   -> "Alice",
               "utr"       -> proposedUtr
             ),
-            "changedTargets" -> changedTargets,
-            "issues"         -> Seq(issue),
-            "readiness"      -> readiness,
-            "commitStatus"   -> commitStatus
+            "changedTargets"    -> changedTargets,
+            "issues"            -> Seq(issue),
+            "readiness"         -> readiness,
+            "commitStatus"      -> commitStatus
           )
         )
       )
