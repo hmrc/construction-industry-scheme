@@ -23,7 +23,7 @@ import play.api.mvc.Results.*
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.*
-import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
+import uk.gov.hmrc.constructionindustryscheme.models.audit.XmlConversionResult
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, ChrisPollJourney, ChrisSubmissionContext, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkErrorStatus, MonthlyReturnSubmissionContext, MonthlyReturnType, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult, VerificationSubmissionContextBuilder}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
@@ -35,7 +35,7 @@ import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
 import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
 
-import java.time.{Clock, Instant, LocalDateTime}
+import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -150,6 +150,11 @@ class SubmissionController @Inject() (
           submissionService
             .pollSubmissionAndUpdateGovTalkStatus(submissionId, overridePollUrl, journey)
             .map { resp =>
+              if (journey == MonthlyReturn) {
+                auditService.monthlyReturnPollResponseEvent(resp)
+              } else if (journey == Verification) {
+                auditService.verificationPollResponseEvent(resp)
+              }
               Ok(
                 Json.obj(
                   "status"             -> resp.status.toString,
@@ -250,10 +255,9 @@ class SubmissionController @Inject() (
   private def renderSubmissionResponse(submissionId: String, payload: ChRISSubmission, returnType: MonthlyReturnType)(
     res: SubmissionResult
   )(implicit hc: HeaderCarrier): Result = {
-    val auditResponse = AuditResponseReceivedModel(res.status.toString, createMonthlyNilReturnResponseJson(res))
     returnType match {
-      case MonthlyReturnType.Nil      => auditService.monthlyNilReturnResponseEvent(auditResponse)
-      case MonthlyReturnType.Standard => auditService.monthlyReturnResponseEvent(auditResponse)
+      case MonthlyReturnType.Nil      => auditService.monthlyNilReturnResponseEvent(res)
+      case MonthlyReturnType.Standard => auditService.monthlyReturnResponseEvent(res)
     }
     renderChrisResponse(submissionId, payload.irMark, res)
   }
@@ -271,9 +275,17 @@ class SubmissionController @Inject() (
 
     csr.returnType match {
       case MonthlyReturnType.Nil      =>
-        auditService.monthlyNilReturnRequestEvent(createMonthlyNilReturnRequestJson(payload))
+        auditService.monthlyNilReturnRequestEvent(
+          csr,
+          correlationId = payload.correlationId,
+          submissionDateTime = submissionRequestDate.toInstant(ZoneOffset.UTC).toString
+        )
       case MonthlyReturnType.Standard =>
-        auditService.monthlyReturnRequestEvent(createMonthlyNilReturnRequestJson(payload))
+        auditService.monthlyReturnRequestEvent(
+          csr,
+          correlationId = payload.correlationId,
+          submissionDateTime = submissionRequestDate.toInstant(ZoneOffset.UTC).toString
+        )
     }
 
     xmlValidator.validate(payload.irEnvelope, appConfig.cisReturnSchema) match {
@@ -444,11 +456,20 @@ class SubmissionController @Inject() (
         )
     }
 
+  private def renderVerificationResponse(submissionId: String, payload: CisVerificationSubmission)(
+    res: SubmissionResult
+  )(implicit hc: HeaderCarrier): Result = {
+    auditService.verificationResponseEvent(res)
+    renderChrisResponse(submissionId, payload.irMark, res)
+  }
+
   private def handleSubmitVerificationToChris(
     submissionId: String,
     cvr: ChrisVerificationRequest
   )(implicit req: AuthenticatedRequest[JsValue]): Future[Result] = {
     val payload = CisVerificationSubmission.buildPayload(cvr, req.enrolments)
+
+    auditService.verificationRequestEvent(cvr, payload.correlationId)
 
     VerificationSubmissionContextBuilder
       .build(
@@ -488,7 +509,7 @@ class SubmissionController @Inject() (
               res,
               Verification,
               verificationContext,
-              r => renderChrisResponse(submissionId, payload.irMark, r),
+              r => renderVerificationResponse(submissionId, payload)(r),
               errorLabel = " verification"
             )
           )

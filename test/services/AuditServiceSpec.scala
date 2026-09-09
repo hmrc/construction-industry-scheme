@@ -21,8 +21,10 @@ import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{times, verify, when}
 import org.scalatest.matchers.should.Matchers.shouldBe
-import play.api.libs.json.Json
-import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, ClientListRetrievalFailedEvent, ClientListRetrievalInProgressEvent, MonthlyNilReturnRequestEvent, MonthlyNilReturnResponseEvent, MonthlyReturnRequestEvent, MonthlyReturnResponseEvent}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, GovTalkMeta, MonthlyReturnType, ResponseEndPoint, SUBMITTED, SubmissionResult}
+import uk.gov.hmrc.constructionindustryscheme.models.audit.{ClientListRetrievalFailedEvent, ClientListRetrievalInProgressEvent}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, ChrisVerificationRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.AuditService
 import uk.gov.hmrc.play.audit.http.connector.{AuditConnector, AuditResult}
 import uk.gov.hmrc.play.audit.model.ExtendedDataEvent
@@ -32,73 +34,222 @@ class AuditServiceSpec extends SpecBase {
   "AuditService" - {
     "call AuditConnector.sendExtendedEvent for MonthlyNilReturnRequestEvent" in {
       val mockAuditConnector = mock[AuditConnector]
-      val jsonData           = Json.obj("period" -> "2025-10", "submittedBy" -> "user123")
-      val expectedEvent      = MonthlyNilReturnRequestEvent(jsonData).extendedDataEvent
+      val request            = ChrisSubmissionRequest(
+        utr = "1234567890",
+        aoReference = "123/AB456",
+        monthYear = "2025-05",
+        email = None,
+        isAgent = false,
+        isResubmission = false,
+        clientTaxOfficeNumber = "123",
+        clientTaxOfficeRef = "AB456",
+        returnType = MonthlyReturnType.Nil,
+        informationCorrect = "yes",
+        inactivity = "no",
+        standard = None
+      )
       when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
         .thenReturn(Future.successful(AuditResult.Success))
       val service            = new AuditService(mockAuditConnector)
-      val resultF            = service.monthlyNilReturnRequestEvent(jsonData)
+      val resultF            = service.monthlyNilReturnRequestEvent(request, "CORR-456", "2025-05-09T10:30:00Z")
       resultF.map { result =>
         result shouldBe AuditResult.Success
         val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
         verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
         val capturedEvent = captor.getValue
-        capturedEvent.auditType shouldBe expectedEvent.auditType
-        capturedEvent.detail    shouldBe expectedEvent.detail
+        capturedEvent.auditType shouldBe "MonthlyNilReturnRequest"
       }
     }
     "call AuditConnector.sendExtendedEvent for MonthlyNilReturnResponseEvent" in {
       val mockAuditConnector = mock[AuditConnector]
-      val responseData       = Json.obj("message" -> "No return required")
-      val responseModel      = AuditResponseReceivedModel("OK", responseData)
-      val expectedEvent      = MonthlyNilReturnResponseEvent(responseModel).extendedDataEvent
+      val submissionResult   = SubmissionResult(
+        status = ACCEPTED,
+        rawXml = "<xml/>",
+        meta = GovTalkMeta(
+          qualifier = "response",
+          function = "submit",
+          className = "IR-CIS-CIS300MR",
+          correlationId = "CORR-NIL-789",
+          gatewayTimestamp = Some("2025-05-09T10:30:00Z"),
+          responseEndPoint = ResponseEndPoint("http://poll.example/", 5),
+          error = None,
+          acceptedTime = Some("2025-05-09T10:30:01Z")
+        )
+      )
       when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
         .thenReturn(Future.successful(AuditResult.Success))
       val service            = new AuditService(mockAuditConnector)
-      val resultF            = service.monthlyNilReturnResponseEvent(responseModel)
+      val resultF            = service.monthlyNilReturnResponseEvent(submissionResult)
       resultF.map { result =>
         result shouldBe AuditResult.Success
         val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
         verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
         val capturedEvent = captor.getValue
-        capturedEvent.auditType shouldBe expectedEvent.auditType
-        capturedEvent.detail    shouldBe expectedEvent.detail
+        capturedEvent.auditType shouldBe "MonthlyNilReturnResponse"
       }
     }
 
     "call AuditConnector.sendExtendedEvent for MonthlyReturnRequestEvent" in {
       val mockAuditConnector = mock[AuditConnector]
-      val jsonData           = Json.obj("period" -> "2025-10", "submittedBy" -> "user123")
-      val expectedEvent      = MonthlyReturnRequestEvent(jsonData).extendedDataEvent
+      val request            = ChrisSubmissionRequest(
+        utr = "1234567890",
+        aoReference = "123/AB456",
+        monthYear = "2025-05",
+        email = None,
+        isAgent = false,
+        isResubmission = false,
+        clientTaxOfficeNumber = "123",
+        clientTaxOfficeRef = "ABC456",
+        returnType = MonthlyReturnType.Standard,
+        informationCorrect = "yes",
+        inactivity = "no",
+        standard = None
+      )
       when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
         .thenReturn(Future.successful(AuditResult.Success))
       val service            = new AuditService(mockAuditConnector)
-      val resultF            = service.monthlyReturnRequestEvent(jsonData)
+      val resultF            = service.monthlyReturnRequestEvent(request, "CORR-123", "2025-05-09T10:30:00Z")
       resultF.map { result =>
         result shouldBe AuditResult.Success
         val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
         verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
         val capturedEvent = captor.getValue
-        capturedEvent.auditType shouldBe expectedEvent.auditType
-        capturedEvent.detail    shouldBe expectedEvent.detail
+        capturedEvent.auditType shouldBe "MonthlyReturnRequest"
       }
     }
     "call AuditConnector.sendExtendedEvent for MonthlyReturnResponseEvent" in {
       val mockAuditConnector = mock[AuditConnector]
-      val responseData       = Json.obj("message" -> "Return submitted")
-      val responseModel      = AuditResponseReceivedModel("OK", responseData)
-      val expectedEvent      = MonthlyReturnResponseEvent(responseModel).extendedDataEvent
+      val submissionResult   = SubmissionResult(
+        status = ACCEPTED,
+        rawXml = "<xml/>",
+        meta = GovTalkMeta(
+          qualifier = "response",
+          function = "submit",
+          className = "IR-CIS-CIS300MR",
+          correlationId = "CORR-STD-123",
+          gatewayTimestamp = Some("2025-05-09T10:30:00Z"),
+          responseEndPoint = ResponseEndPoint("http://poll.example/", 5),
+          error = None,
+          acceptedTime = Some("2025-05-09T10:30:01Z")
+        )
+      )
       when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
         .thenReturn(Future.successful(AuditResult.Success))
       val service            = new AuditService(mockAuditConnector)
-      val resultF            = service.monthlyReturnResponseEvent(responseModel)
+      val resultF            = service.monthlyReturnResponseEvent(submissionResult)
       resultF.map { result =>
         result shouldBe AuditResult.Success
         val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
         verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
         val capturedEvent = captor.getValue
-        capturedEvent.auditType shouldBe expectedEvent.auditType
-        capturedEvent.detail    shouldBe expectedEvent.detail
+        capturedEvent.auditType shouldBe "MonthlyReturnResponse"
+      }
+    }
+
+    "call AuditConnector.sendExtendedEvent for VerificationRequestEvent" in {
+      val mockAuditConnector = mock[AuditConnector]
+      val request            = ChrisVerificationRequest(
+        instanceId = "inst-001",
+        isAgent = false,
+        clientTaxOfficeNumber = "123",
+        clientTaxOfficeRef = "AB456",
+        contractorUTR = "1234567890",
+        contractorAORef = "123/AB456",
+        verificationBatchId = "BATCH-001",
+        verificationBatchResourceRef = "ref-001",
+        emailRecipient = None,
+        subcontractors = Seq.empty,
+        verifications = Seq.empty
+      )
+      when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      val service            = new AuditService(mockAuditConnector)
+      val resultF            = service.verificationRequestEvent(request, "CORR-VER-123")
+      resultF.map { result =>
+        result shouldBe AuditResult.Success
+        val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
+        verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
+        val capturedEvent = captor.getValue
+        capturedEvent.auditType shouldBe "VerificationRequest"
+      }
+    }
+
+    "call AuditConnector.sendExtendedEvent for VerificationResponseEvent" in {
+      val mockAuditConnector = mock[AuditConnector]
+      val submissionResult   = SubmissionResult(
+        status = SUBMITTED,
+        rawXml = "<xml/>",
+        meta = GovTalkMeta(
+          qualifier = "response",
+          function = "submit",
+          className = "IR-CIS-CISV",
+          correlationId = "CORR-VER-789",
+          gatewayTimestamp = Some("2025-05-09T10:30:00Z"),
+          responseEndPoint = ResponseEndPoint("http://poll.example/", 5),
+          error = None,
+          acceptedTime = None
+        )
+      )
+      when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      val service            = new AuditService(mockAuditConnector)
+      val resultF            = service.verificationResponseEvent(submissionResult)
+      resultF.map { result =>
+        result shouldBe AuditResult.Success
+        val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
+        verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
+        val capturedEvent = captor.getValue
+        capturedEvent.auditType shouldBe "VerificationResponse"
+      }
+    }
+
+    "call AuditConnector.sendExtendedEvent for MonthlyReturnPollResponseEvent" in {
+      val mockAuditConnector = mock[AuditConnector]
+      val pollResponse       = ChrisPollResponse(
+        status = ACCEPTED,
+        correlationId = "CORR-POLL-123",
+        pollUrl = Some("http://poll.example/123"),
+        pollInterval = Some(10),
+        error = None,
+        irMarkReceived = None,
+        lastMessageDate = None,
+        acceptedTime = Some("2025-05-09T10:30:01Z")
+      )
+      when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      val service            = new AuditService(mockAuditConnector)
+      val resultF            = service.monthlyReturnPollResponseEvent(pollResponse)
+      resultF.map { result =>
+        result shouldBe AuditResult.Success
+        val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
+        verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
+        val capturedEvent = captor.getValue
+        capturedEvent.auditType shouldBe "MonthlyReturnPollResponse"
+      }
+    }
+
+    "call AuditConnector.sendExtendedEvent for VerificationPollResponseEvent" in {
+      val mockAuditConnector = mock[AuditConnector]
+      val pollResponse       = ChrisPollResponse(
+        status = ACCEPTED,
+        correlationId = "CORR-VPOLL-123",
+        pollUrl = Some("http://poll.example/ver/123"),
+        pollInterval = Some(10),
+        error = None,
+        irMarkReceived = None,
+        lastMessageDate = None,
+        acceptedTime = Some("2025-05-09T10:30:01Z")
+      )
+      when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      val service            = new AuditService(mockAuditConnector)
+      val resultF            = service.verificationPollResponseEvent(pollResponse)
+      resultF.map { result =>
+        result shouldBe AuditResult.Success
+        val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
+        verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
+        val capturedEvent = captor.getValue
+        capturedEvent.auditType shouldBe "VerificationPollResponse"
       }
     }
 

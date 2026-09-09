@@ -19,135 +19,85 @@ package models.audit
 import base.SpecBase
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.should.Matchers.{should, shouldBe}
-import play.api.libs.json.{JsSuccess, JsValue, Json}
-import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, ClientListRetrievalFailedEvent, ClientListRetrievalInProgressEvent, MonthlyNilReturnRequestEvent, MonthlyNilReturnResponseEvent, MonthlyReturnRequestEvent, MonthlyReturnResponseEvent}
-import uk.gov.hmrc.constructionindustryscheme.utils.XmlToJsonConvertor.convertXmlToJson
+import play.api.libs.json.{JsObject, JsValue, Json}
+import uk.gov.hmrc.constructionindustryscheme.models.audit.{ClientListRetrievalFailedEvent, ClientListRetrievalInProgressEvent, MonthlyNilReturnRequestEvent, MonthlyNilReturnResponseEvent, MonthlyReturnPollResponseEvent, MonthlyReturnRequestEvent, MonthlyReturnResponseEvent, MonthlyReturnSubcontractorAuditDetail, VerificationPollResponseEvent, VerificationRequestEvent, VerificationResponseEvent, VerificationSubcontractorAuditDetail}
 
 class AuditEventModelSpec extends SpecBase {
 
   "MonthlyNilReturnRequestEvent" - {
 
     "have the correct auditType and auditSource" in {
-      val jsonPayload = Json.obj("period" -> "2025-09", "submittedBy" -> "user123")
-      val event       = MonthlyNilReturnRequestEvent(jsonPayload)
-      val extended    = event.extendedDataEvent
+      val event    = MonthlyNilReturnRequestEvent(
+        correlationId = "CORR123",
+        submissionDateTime = "2025-05-09T10:30:00Z",
+        contractorUtr = "1234567890",
+        accountsOfficeReference = "123/AB456",
+        periodEndDate = "2025-05-05",
+        isAgent = false,
+        isResubmission = false,
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AB456",
+        isInformationCorrect = true,
+        isInactive = false,
+        confirmationEmail = None
+      )
+      val extended = event.extendedDataEvent
       extended.auditSource shouldBe "construction-industry-scheme"
-      extended.auditType   shouldBe "monthlyNilReturnRequest"
+      extended.auditType   shouldBe "MonthlyNilReturnRequest"
       extended.detail      shouldBe event.detailJson
     }
 
-    "serialize and deserialize correctly to/from JSON" in {
-      val jsonPayload = Json.obj("period" -> "2025-09", "submittedBy" -> "user123")
-      val event       = MonthlyNilReturnRequestEvent(jsonPayload)
-      val json        = Json.toJson(event)
-      val parsed      = json.as[MonthlyNilReturnRequestEvent]
-      parsed shouldBe event
+    "produce a flat detail JSON omitting confirmationEmail when absent" in {
+      val event = MonthlyNilReturnRequestEvent(
+        correlationId = "CORR123",
+        submissionDateTime = "2025-05-09T10:30:00Z",
+        contractorUtr = "1234567890",
+        accountsOfficeReference = "123/AB456",
+        periodEndDate = "2025-05-05",
+        isAgent = false,
+        isResubmission = false,
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AB456",
+        isInformationCorrect = true,
+        isInactive = true,
+        confirmationEmail = None
+      )
+
+      val expected = Json.obj(
+        "correlationId"           -> "CORR123",
+        "submissionDateTime"      -> "2025-05-09T10:30:00Z",
+        "contractorUtr"           -> "1234567890",
+        "accountsOfficeReference" -> "123/AB456",
+        "periodEndDate"           -> "2025-05-05",
+        "isAgent"                 -> false,
+        "isResubmission"          -> false,
+        "taxOfficeNumber"         -> "123",
+        "taxOfficeReference"      -> "AB456",
+        "returnType"              -> "Nil",
+        "isInformationCorrect"    -> true,
+        "isInactive"              -> true
+      )
+
+      event.detailJson mustBe expected
     }
 
-    val validElem      = scala.xml.XML.load(getClass.getResource("/irmark/ValidCisReturnEnvelope.xml"))
-    val submissionData = convertXmlToJson(validElem.toString)
+    "include confirmationEmail in detail JSON when present" in {
+      val event = MonthlyNilReturnRequestEvent(
+        correlationId = "CORR123",
+        submissionDateTime = "2025-05-09T10:30:00Z",
+        contractorUtr = "1234567890",
+        accountsOfficeReference = "123/AB456",
+        periodEndDate = "2025-05-05",
+        isAgent = false,
+        isResubmission = false,
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AB456",
+        isInformationCorrect = true,
+        isInactive = false,
+        confirmationEmail = Some("contractor@example.com")
+      )
 
-    val dto = MonthlyNilReturnRequestEvent(
-      payload = submissionData.json.get
-    )
-
-    val json = Json.toJson(dto)
-
-    val expected = Json.parse("""{
-        |"payload": {
-        |  "GovTalkMessage" : {
-        |    "Header" : {
-        |      "MessageDetails" : {
-        |        "Qualifier" : "request",
-        |        "Function" : "submit",
-        |        "CorrelationID" : "7DCB7535A50F4BFC9D4F5C69C0F677D3",
-        |        "Class" : "IR-CIS-CIS300MR",
-        |        "GatewayTimestamp" : "2025-10-07T08:39:42.752",
-        |        "Transformation" : "XML"
-        |      },
-        |      "SenderDetails" : { }
-        |    },
-        |    "EnvelopeVersion" : "2.0",
-        |    "Body" : {
-        |      "IRenvelope" : {
-        |        "IRheader" : {
-        |          "Keys" : {
-        |            "Key" : [ {
-        |              "Type" : "TaxOfficeNumber",
-        |              "Key" : "123"
-        |            }, {
-        |              "Type" : "TaxOfficeReference",
-        |              "Key" : "AB456"
-        |            } ]
-        |          },
-        |          "Sender" : "Company",
-        |          "PeriodEnd" : "2013-09-05",
-        |          "IRmark" : {
-        |            "Type" : "generic"
-        |          },
-        |          "Manifest" : {
-        |            "Contains" : {
-        |              "Reference" : {
-        |                "TopElementName" : "CISreturn",
-        |                "SchemaVersion" : "2005-v1.1",
-        |                "Namespace" : "http://www.govtalk.gov.uk/taxation/CISreturn"
-        |              }
-        |            }
-        |          },
-        |          "DefaultCurrency" : "GBP"
-        |        },
-        |        "CISreturn" : {
-        |          "NilReturn" : "yes",
-        |          "Contractor" : {
-        |            "UTR" : "1234567890",
-        |            "AOref" : "1234567XY"
-        |          },
-        |          "Declarations" : {
-        |            "Inactivity" : "yes",
-        |            "InformationCorrect" : "yes"
-        |          }
-        |        }
-        |      }
-        |    },
-        |    "GovTalkDetails" : {
-        |      "ChannelRouting" : {
-        |        "Channel" : {
-        |          "URI" : "0126",
-        |          "Version" : "3.4",
-        |          "Product" : "EzGov IR-CIS-CIS300MR"
-        |        }
-        |      },
-        |      "Keys" : {
-        |        "Key" : [ {
-        |          "Type" : "TaxOfficeNumber",
-        |          "Key" : "123"
-        |        }, {
-        |          "Type" : "TaxOfficeReference",
-        |          "Key" : "AB456"
-        |        } ]
-        |      },
-        |      "TargetDetails" : {
-        |        "Organisation" : "IR"
-        |      }
-        |    }
-        |  }
-        |}
-        |}""".stripMargin)
-
-    "must serialise correctly" in {
-      json mustBe expected
-    }
-
-    val model = MonthlyNilReturnRequestEvent(
-      payload = Json.toJson(dto)
-    )
-
-    "write a model to JSON" in {
-      Json.toJson(model) mustEqual Json.obj("payload" -> dto)
-    }
-
-    "read JSON into a model" in {
-      json.validate[MonthlyNilReturnRequestEvent] mustEqual JsSuccess(dto)
+      (event.detailJson \ "confirmationEmail").as[String] mustBe "contractor@example.com"
     }
 
   }
@@ -155,146 +105,495 @@ class AuditEventModelSpec extends SpecBase {
   "MonthlyNilReturnResponseEvent" - {
 
     "have the correct auditType and auditSource" in {
-      val responseModel = AuditResponseReceivedModel("SUCCESS", Json.toJson("Processed successfully"))
-      val event         = MonthlyNilReturnResponseEvent(responseModel)
-      val extended      = event.extendedDataEvent
+      val event    = MonthlyNilReturnResponseEvent(
+        status = "ACCEPTED",
+        correlationId = "CORR-789",
+        gatewayTimestamp = Some("2025-05-09T10:30:00Z"),
+        acceptedTime = Some("2025-05-09T10:30:01Z"),
+        errorNumber = None,
+        errorType = None,
+        errorText = None
+      )
+      val extended = event.extendedDataEvent
       extended.auditSource shouldBe "construction-industry-scheme"
-      extended.auditType   shouldBe "monthlyNilReturnResponse"
+      extended.auditType   shouldBe "MonthlyNilReturnResponse"
       extended.detail      shouldBe event.detailJson
     }
 
-    "serialize and deserialize correctly to/from JSON" in {
-      val responseModel = AuditResponseReceivedModel("SUCCESS", Json.toJson("Processed successfully"))
-      val event         = MonthlyNilReturnResponseEvent(responseModel)
-      val json          = Json.toJson(event)
-      val parsed        = json.as[MonthlyNilReturnResponseEvent]
-      parsed shouldBe event
+    "produce a flat detail JSON omitting optional fields when absent" in {
+      val event = MonthlyNilReturnResponseEvent(
+        status = "ACCEPTED",
+        correlationId = "CORR-789",
+        gatewayTimestamp = Some("2025-05-09T10:30:00Z"),
+        acceptedTime = Some("2025-05-09T10:30:01Z"),
+        errorNumber = None,
+        errorType = None,
+        errorText = None
+      )
+
+      val expected = Json.obj(
+        "status"           -> "ACCEPTED",
+        "correlationId"    -> "CORR-789",
+        "gatewayTimestamp" -> "2025-05-09T10:30:00Z",
+        "acceptedTime"     -> "2025-05-09T10:30:01Z"
+      )
+
+      event.detailJson mustBe expected
     }
 
-    val validNiReturnElem = scala.xml.XML.load(getClass.getResource("/ValidNilReturnSubmissionResponse.xml"))
-    val responseData      = convertXmlToJson(validNiReturnElem.toString)
+    "include error fields in detail JSON when present" in {
+      val event = MonthlyNilReturnResponseEvent(
+        status = "FATAL_ERROR",
+        correlationId = "CORR-789",
+        gatewayTimestamp = None,
+        acceptedTime = None,
+        errorNumber = Some("1046"),
+        errorType = Some("fatal"),
+        errorText = Some("submission rejected")
+      )
 
-    val dto = MonthlyNilReturnResponseEvent(
-      response = AuditResponseReceivedModel("SUCCESS", responseData.json.get)
-    )
-
-    val json = Json.toJson(dto)
-
-    val expected = Json.parse("""{
-        |"response":{
-        |   "status":"SUCCESS",
-        |   "responseData":{
-        |       "GovTalkMessage":{
-        |         "Header":{
-        |           "MessageDetails":{
-        |             "ResponseEndPoint":{},
-        |             "Qualifier":"response",
-        |             "Function":"submit",
-        |             "CorrelationID":"49654E0E5535489F97B6F504E0ACE7C7",
-        |             "Class":"IR-CIS-CIS300MR",
-        |             "GatewayTimestamp":"2025-10-16T13:25:28.720",
-        |             "Transformation":"XML"
-        |           }
-        |         },
-        |         "EnvelopeVersion":"2.0",
-        |         "Body":{
-        |           "SuccessResponse":{
-        |             "AcceptedTime":"2017-04-06T08:46:08.081",
-        |             "IRmarkReceipt":{
-        |               "Signature":{
-        |                 "SignedInfo":{
-        |                   "Reference":{
-        |                     "Transforms":{
-        |                       "Transform":[
-        |                         {
-        |                           "Algorithm":"http://www.w3.org/TR/1999/REC-xpath-19991116",
-        |                           "XPath":"(count(ancestor-or-self::node()|/gti:GovTalkMessage/gti:Body)=count(ancestor-or-self::node())) and (count(ancestor-or-self::node()|/gti:GovTalkMessage/gti:Body/*[name()='IRenvelope']/*[name()='IRheader']/*[name()='IRmark'])!=count(ancestor-or-self::node()))"
-        |                         },
-        |                         {
-        |                           "Algorithm":"http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments"
-        |                         }
-        |                       ]
-        |                     },
-        |                     "DigestValue":"mMnIokxfPI0/v44JEqDDIr1iQvU=",
-        |                     "DigestMethod":{
-        |                       "Algorithm":"http://www.w3.org/2000/09/xmldsig#sha1"
-        |                     }
-        |                   },
-        |                   "CanonicalizationMethod":{
-        |                     "Algorithm":"http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
-        |                   },
-        |                   "SignatureMethod":{
-        |                     "Algorithm":"http://www.w3.org/2000/09/xmldsig#rsa-sha1"
-        |                   }
-        |                 },
-        |                 "SignatureValue":"xjd0lzhAQrnHZsE5inNCOVsmwcQ9HTu+CFUoyqEcOhVvxj2jvYGcjkhu7sZkZJ9RBjBcEP/eQTbesMTrnUgofuMqaROt8ZyD/RJKFIwh5TtNzYzDM55Pa3GDd2ZXcmfR38mS9KPwqc5Ty+Eqv69FxqivCQk46H20F8fnWnx85H4=",
-        |                 "KeyInfo":{
-        |                   "X509Data":{
-        |                     "X509Certificate":"MIID0zCCAzygAwIBAgIBADANBgkqhkiG9w0BAQQFADCBqDELMAkGA1UEBhMCbmwxFjAUBgNVBAgTDU5vb3JkLUhvbGxhbmQxFzAVBgNVBAoTDk1vYmlsZWZpc2guY29tMRAwDgYDVQQHEwdaYWFuZGFtMRIwEAYDVQQLEwlNYXJrZXRpbmcxGzAZBgNVBAMTEnd3dy5tb2JpbGVmaXNoLmNvbTElMCMGCSqGSIb3DQEJARYWY29udGFjdEBtb2JpbGVmaXNoLmNvbTAeFw0xMTEwMTMxMDI2NTZaFw0xMjEwMTIxMDI2NTZaMIGoMQswCQYDVQQGEwJubDEWMBQGA1UECBMNTm9vcmQtSG9sbGFuZDEXMBUGA1UEChMOTW9iaWxlZmlzaC5jb20xEDAOBgNVBAcTB1phYW5kYW0xEjAQBgNVBAsTCU1hcmtldGluZzEbMBkGA1UEAxMSd3d3Lm1vYmlsZWZpc2guY29tMSUwIwYJKoZIhvcNAQkBFhZjb250YWN0QG1vYmlsZWZpc2guY29tMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQD3o83CcmMMOC/fnjVv2puirJTs36+al6RDBe2tbFLKKODd29DZbmH9/6R77VPZACvXxBdRzMls//YRVHoJyJVudy+B4siUfHP80pssg2ZXCmCtUZGS71ohmlHcGQGTVLj8wmicf/DfmMAgq19OFZJP5LUn3md/MQBOUYrFXt21dQIDAQABo4IBCTCCAQUwHQYDVR0OBBYEFAIuWYA/BMx8Gn/YOILevnJthkIZMIHVBgNVHSMEgc0wgcqAFAIuWYA/BMx8Gn/YOILevnJthkIZoYGupIGrMIGoMQswCQYDVQQGEwJubDEWMBQGA1UECBMNTm9vcmQtSG9sbGFuZDEXMBUGA1UEChMOTW9iaWxlZmlzaC5jb20xEDAOBgNVBAcTB1phYW5kYW0xEjAQBgNVBAsTCU1hcmtldGluZzEbMBkGA1UEAxMSd3d3Lm1vYmlsZWZpc2guY29tMSUwIwYJKoZIhvcNAQkBFhZjb250YWN0QG1vYmlsZWZpc2guY29tggEAMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEEBQADgYEABCb+f82DKWIWBczTeKGc6Ka5U7oys/itCY7XOYMIvXYPj+tb+5PBrmTO3jZNoZso9cYYFcDGXySbk6wSZiEPlbMqkoYE62E6dVXAmbza3ZNNIX/yEpkE3ZeBBtYzJMPQme9jrMgwgMIhgVzQNL2KPkbWOtQfoYgnThHQKLBry6Y="
-        |                   }
-        |                 }
-        |               },
-        |               "Message":{
-        |                 "code":"1\\",
-        |                 "Message":"HMRC has received the IR-CIS-CIS300MR document ref: 123/GL01 at 08.46 on 06/04/2017. The associated IRmark was: TBPJFWEAYSD4GFVRMHY7KLWEBHB5BLA5. We advise you to keep this receipt in both electronic and hardcopy versions for your records. You may wish to use them to identify your submission in the future."
-        |               }
-        |             },
-        |             "Message":{
-        |               "code":"9004",
-        |               "Message":"The Monthly Return has been processed and passed full validation"
-        |             }
-        |           }
-        |         },
-        |       "GovTalkDetails":{
-        |         "Keys":{}
-        |       }
-        |     }
-        |   }
-        |}
-        |}""".stripMargin)
-
-    "must serialise correctly" in {
-      json mustBe expected
+      (event.detailJson \ "status").as[String] mustBe "FATAL_ERROR"
+      (event.detailJson \ "errorNumber").as[String] mustBe "1046"
+      (event.detailJson \ "errorType").as[String] mustBe "fatal"
+      (event.detailJson \ "errorText").as[String] mustBe "submission rejected"
+      (event.detailJson \ "gatewayTimestamp").toOption mustBe None
     }
   }
 
   "MonthlyReturnRequestEvent" - {
 
     "have the correct auditType and auditSource" in {
-      val jsonPayload = Json.obj("period" -> "2025-09", "submittedBy" -> "user123")
-      val event       = MonthlyReturnRequestEvent(jsonPayload)
-      val extended    = event.extendedDataEvent
+      val event    = MonthlyReturnRequestEvent(
+        correlationId = "CORR123",
+        submissionDateTime = "2025-05-09T10:30:00Z",
+        contractorUtr = "1234567890",
+        accountsOfficeReference = "123/AB456",
+        periodEndDate = "2025-05-05",
+        isAgent = true,
+        isResubmission = false,
+        taxOfficeNumber = "123",
+        taxOfficeReference = "ABC456",
+        returnType = "Nil",
+        isInformationCorrect = true,
+        isInactive = false,
+        confirmationEmail = None,
+        subcontractors = Seq.empty
+      )
+      val extended = event.extendedDataEvent
       extended.auditSource shouldBe "construction-industry-scheme"
-      extended.auditType   shouldBe "monthlyReturnRequest"
+      extended.auditType   shouldBe "MonthlyReturnRequest"
       extended.detail      shouldBe event.detailJson
     }
 
-    "serialize and deserialize correctly to/from JSON" in {
-      val jsonPayload = Json.obj("period" -> "2025-09", "submittedBy" -> "user123")
-      val event       = MonthlyReturnRequestEvent(jsonPayload)
-      val json        = Json.toJson(event)
-      val parsed      = json.as[MonthlyReturnRequestEvent]
-      parsed shouldBe event
+    "produce a flat detail JSON omitting confirmationEmail when absent" in {
+      val event = MonthlyReturnRequestEvent(
+        correlationId = "CORR123",
+        submissionDateTime = "2025-05-09T10:30:00Z",
+        contractorUtr = "1234567890",
+        accountsOfficeReference = "123/AB456",
+        periodEndDate = "2025-05-05",
+        isAgent = true,
+        isResubmission = false,
+        taxOfficeNumber = "123",
+        taxOfficeReference = "ABC456",
+        returnType = "Nil",
+        isInformationCorrect = true,
+        isInactive = false,
+        confirmationEmail = None,
+        subcontractors = Seq.empty
+      )
+
+      val expected = Json.obj(
+        "correlationId"           -> "CORR123",
+        "submissionDateTime"      -> "2025-05-09T10:30:00Z",
+        "contractorUtr"           -> "1234567890",
+        "accountsOfficeReference" -> "123/AB456",
+        "periodEndDate"           -> "2025-05-05",
+        "isAgent"                 -> true,
+        "isResubmission"          -> false,
+        "taxOfficeNumber"         -> "123",
+        "taxOfficeReference"      -> "ABC456",
+        "returnType"              -> "Nil",
+        "isInformationCorrect"    -> true,
+        "isInactive"              -> false
+      )
+
+      event.detailJson mustBe expected
+    }
+
+    "include confirmationEmail in detail JSON when present" in {
+      val event = MonthlyReturnRequestEvent(
+        correlationId = "CORR123",
+        submissionDateTime = "2025-05-09T10:30:00Z",
+        contractorUtr = "1234567890",
+        accountsOfficeReference = "123/AB456",
+        periodEndDate = "2025-05-05",
+        isAgent = true,
+        isResubmission = false,
+        taxOfficeNumber = "123",
+        taxOfficeReference = "ABC456",
+        returnType = "Standard",
+        isInformationCorrect = true,
+        isInactive = false,
+        confirmationEmail = Some("contractor@example.com"),
+        subcontractors = Seq.empty
+      )
+
+      (event.detailJson \ "confirmationEmail").as[String] mustBe "contractor@example.com"
+    }
+
+    "produce a flat detail JSON with subcontractors for a standard return" in {
+      val subcontractor = MonthlyReturnSubcontractorAuditDetail(
+        subcontractorType = "company",
+        firstName = None,
+        middleName = None,
+        lastName = None,
+        tradingName = Some("Test Co Ltd"),
+        partnershipTradingName = None,
+        utr = Some("9876543210"),
+        companyRegistrationNumber = None,
+        nino = None,
+        verificationNumber = None,
+        totalPaymentsMade = Some(BigDecimal("5000.00")),
+        costOfMaterials = Some(BigDecimal("1000.00")),
+        totalAmountDeducted = Some(BigDecimal("800.00"))
+      )
+
+      val event = MonthlyReturnRequestEvent(
+        correlationId = "CORR456",
+        submissionDateTime = "2025-05-09T10:30:00Z",
+        contractorUtr = "1234567890",
+        accountsOfficeReference = "123/AB456",
+        periodEndDate = "2025-05-05",
+        isAgent = false,
+        isResubmission = false,
+        taxOfficeNumber = "123",
+        taxOfficeReference = "ABC456",
+        returnType = "Standard",
+        isInformationCorrect = true,
+        isInactive = false,
+        confirmationEmail = None,
+        subcontractors = Seq(subcontractor)
+      )
+
+      val detail = event.detailJson
+
+      (detail \ "correlationId").as[String] mustBe "CORR456"
+      (detail \ "submissionDateTime").as[String] mustBe "2025-05-09T10:30:00Z"
+      (detail \ "contractorUtr").as[String] mustBe "1234567890"
+      (detail \ "returnType").as[String] mustBe "Standard"
+      (detail \ "isAgent").as[Boolean] mustBe false
+      (detail \ "subcontractors").isDefined mustBe true
+      val subs = (detail \ "subcontractors").as[Seq[JsObject]]
+      subs must have size 1
+      (subs.head \ "subcontractorType").as[String] mustBe "company"
+      (subs.head \ "tradingName").as[String] mustBe "Test Co Ltd"
+      (subs.head \ "utr").as[String] mustBe "9876543210"
+      (subs.head \ "totalPaymentsMade").as[BigDecimal] mustBe BigDecimal("5000.00")
+      (subs.head \ "firstName").toOption mustBe None
     }
   }
 
   "MonthlyReturnResponseEvent" - {
 
     "have the correct auditType and auditSource" in {
-      val responseModel = AuditResponseReceivedModel("SUCCESS", Json.toJson("Processed successfully"))
-      val event         = MonthlyReturnResponseEvent(responseModel)
-      val extended      = event.extendedDataEvent
+      val event    = MonthlyReturnResponseEvent(
+        status = "SUBMITTED",
+        correlationId = "CORR-456",
+        gatewayTimestamp = Some("2025-05-09T10:30:00Z"),
+        acceptedTime = None,
+        errorNumber = None,
+        errorType = None,
+        errorText = None
+      )
+      val extended = event.extendedDataEvent
       extended.auditSource shouldBe "construction-industry-scheme"
-      extended.auditType   shouldBe "monthlyReturnResponse"
+      extended.auditType   shouldBe "MonthlyReturnResponse"
       extended.detail      shouldBe event.detailJson
     }
 
-    "serialize and deserialize correctly to/from JSON" in {
-      val responseModel = AuditResponseReceivedModel("SUCCESS", Json.toJson("Processed successfully"))
-      val event         = MonthlyReturnResponseEvent(responseModel)
-      val json          = Json.toJson(event)
-      val parsed        = json.as[MonthlyReturnResponseEvent]
-      parsed shouldBe event
+    "produce a flat detail JSON omitting optional fields when absent" in {
+      val event = MonthlyReturnResponseEvent(
+        status = "SUBMITTED",
+        correlationId = "CORR-456",
+        gatewayTimestamp = Some("2025-05-09T10:30:00Z"),
+        acceptedTime = None,
+        errorNumber = None,
+        errorType = None,
+        errorText = None
+      )
+
+      val expected = Json.obj(
+        "status"           -> "SUBMITTED",
+        "correlationId"    -> "CORR-456",
+        "gatewayTimestamp" -> "2025-05-09T10:30:00Z"
+      )
+
+      event.detailJson mustBe expected
+    }
+  }
+
+  "VerificationRequestEvent" - {
+
+    "have the correct auditType and auditSource" in {
+      val event    = VerificationRequestEvent(
+        correlationId = "CORR-VER-123",
+        isAgent = false,
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AB456",
+        contractorUtr = "1234567890",
+        accountsOfficeReference = "123/AB456",
+        verificationBatchId = "BATCH-001",
+        emailRecipient = None,
+        subcontractors = Seq.empty
+      )
+      val extended = event.extendedDataEvent
+      extended.auditSource shouldBe "construction-industry-scheme"
+      extended.auditType   shouldBe "VerificationRequest"
+      extended.detail      shouldBe event.detailJson
+    }
+
+    "produce a flat detail JSON omitting emailRecipient when absent" in {
+      val event = VerificationRequestEvent(
+        correlationId = "CORR-VER-123",
+        isAgent = false,
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AB456",
+        contractorUtr = "1234567890",
+        accountsOfficeReference = "123/AB456",
+        verificationBatchId = "BATCH-001",
+        emailRecipient = None,
+        subcontractors = Seq.empty
+      )
+
+      val expected = Json.obj(
+        "correlationId"           -> "CORR-VER-123",
+        "isAgent"                 -> false,
+        "taxOfficeNumber"         -> "123",
+        "taxOfficeReference"      -> "AB456",
+        "contractorUtr"           -> "1234567890",
+        "accountsOfficeReference" -> "123/AB456",
+        "verificationBatchId"     -> "BATCH-001"
+      )
+
+      event.detailJson mustBe expected
+    }
+
+    "include emailRecipient in detail JSON when present" in {
+      val event = VerificationRequestEvent(
+        correlationId = "CORR-VER-123",
+        isAgent = true,
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AB456",
+        contractorUtr = "1234567890",
+        accountsOfficeReference = "123/AB456",
+        verificationBatchId = "BATCH-001",
+        emailRecipient = Some("agent@example.com"),
+        subcontractors = Seq.empty
+      )
+
+      (event.detailJson \ "emailRecipient").as[String] mustBe "agent@example.com"
+    }
+
+    "include subcontractors in detail JSON when present" in {
+      val sub = VerificationSubcontractorAuditDetail(
+        subcontractorType = Some("individual"),
+        firstName = Some("Jane"),
+        middleName = None,
+        lastName = Some("Smith"),
+        tradingName = None,
+        partnershipTradingName = None,
+        utr = Some("9876543210"),
+        companyRegistrationNumber = None,
+        nino = Some("AB123456C")
+      )
+
+      val event = VerificationRequestEvent(
+        correlationId = "CORR-VER-456",
+        isAgent = false,
+        taxOfficeNumber = "123",
+        taxOfficeReference = "AB456",
+        contractorUtr = "1234567890",
+        accountsOfficeReference = "123/AB456",
+        verificationBatchId = "BATCH-002",
+        emailRecipient = None,
+        subcontractors = Seq(sub)
+      )
+
+      val detail = event.detailJson
+      (detail \ "subcontractors").isDefined mustBe true
+      val subs   = (detail \ "subcontractors").as[Seq[JsObject]]
+      subs must have size 1
+      (subs.head \ "subcontractorType").as[String] mustBe "individual"
+      (subs.head \ "firstName").as[String] mustBe "Jane"
+      (subs.head \ "nino").as[String] mustBe "AB123456C"
+      (subs.head \ "middleName").toOption mustBe None
+    }
+  }
+
+  "VerificationResponseEvent" - {
+
+    "have the correct auditType and auditSource" in {
+      val event    = VerificationResponseEvent(
+        status = "SUBMITTED",
+        correlationId = "CORR-VER-789",
+        gatewayTimestamp = Some("2025-10-16T13:25:28.720"),
+        acceptedTime = None,
+        errorNumber = None,
+        errorType = None,
+        errorText = None
+      )
+      val extended = event.extendedDataEvent
+      extended.auditSource shouldBe "construction-industry-scheme"
+      extended.auditType   shouldBe "VerificationResponse"
+      extended.detail      shouldBe event.detailJson
+    }
+
+    "produce a flat detail JSON omitting optional fields when absent" in {
+      val event = VerificationResponseEvent(
+        status = "SUBMITTED",
+        correlationId = "CORR-VER-789",
+        gatewayTimestamp = Some("2025-10-16T13:25:28.720"),
+        acceptedTime = None,
+        errorNumber = None,
+        errorType = None,
+        errorText = None
+      )
+
+      val expected = Json.obj(
+        "status"           -> "SUBMITTED",
+        "correlationId"    -> "CORR-VER-789",
+        "gatewayTimestamp" -> "2025-10-16T13:25:28.720"
+      )
+
+      event.detailJson mustBe expected
+    }
+
+    "include error fields in detail JSON when present" in {
+      val event = VerificationResponseEvent(
+        status = "FATAL_ERROR",
+        correlationId = "CORR-VER-789",
+        gatewayTimestamp = None,
+        acceptedTime = None,
+        errorNumber = Some("1046"),
+        errorType = Some("fatal"),
+        errorText = Some("verification rejected")
+      )
+
+      (event.detailJson \ "status").as[String] mustBe "FATAL_ERROR"
+      (event.detailJson \ "errorNumber").as[String] mustBe "1046"
+      (event.detailJson \ "errorType").as[String] mustBe "fatal"
+      (event.detailJson \ "errorText").as[String] mustBe "verification rejected"
+    }
+  }
+
+  "MonthlyReturnPollResponseEvent" - {
+
+    "have the correct auditType and auditSource" in {
+      val event    = MonthlyReturnPollResponseEvent(
+        status = "ACCEPTED",
+        correlationId = "CORR-POLL-123",
+        pollUrl = Some("http://poll.example/123"),
+        pollIntervalSeconds = Some(10),
+        acceptedTime = Some("2025-05-09T10:30:01Z"),
+        irMarkReceived = None,
+        lastMessageDate = None,
+        error = None,
+        govTalkErrorStatus = None
+      )
+      val extended = event.extendedDataEvent
+      extended.auditSource shouldBe "construction-industry-scheme"
+      extended.auditType   shouldBe "MonthlyReturnPollResponse"
+      extended.detail      shouldBe event.detailJson
+    }
+
+    "produce a flat detail JSON omitting optional fields when absent" in {
+      val event = MonthlyReturnPollResponseEvent(
+        status = "SUBMITTED",
+        correlationId = "CORR-POLL-456",
+        pollUrl = None,
+        pollIntervalSeconds = None,
+        acceptedTime = None,
+        irMarkReceived = None,
+        lastMessageDate = None,
+        error = None,
+        govTalkErrorStatus = None
+      )
+
+      val expected = Json.obj(
+        "status"        -> "SUBMITTED",
+        "correlationId" -> "CORR-POLL-456"
+      )
+
+      event.detailJson mustBe expected
+    }
+
+    "include all optional fields in detail JSON when present" in {
+      val errorJson              = Json.obj("text" -> "recoverable error")
+      val govTalkErrorStatusJson =
+        Json.obj("kind" -> "RecoverableError", "errorCode" -> "1001", "errorText" -> "recoverable error")
+
+      val event = MonthlyReturnPollResponseEvent(
+        status = "STARTED",
+        correlationId = "CORR-POLL-789",
+        pollUrl = Some("http://poll.example/789"),
+        pollIntervalSeconds = Some(5),
+        acceptedTime = Some("2025-05-09T10:30:01Z"),
+        irMarkReceived = Some("ABCDEFGHIJ"),
+        lastMessageDate = Some("2025-05-09T10:29:00Z"),
+        error = Some(errorJson),
+        govTalkErrorStatus = Some(govTalkErrorStatusJson)
+      )
+
+      (event.detailJson \ "pollUrl").as[String] mustBe "http://poll.example/789"
+      (event.detailJson \ "pollIntervalSeconds").as[Int] mustBe 5
+      (event.detailJson \ "acceptedTime").as[String] mustBe "2025-05-09T10:30:01Z"
+      (event.detailJson \ "irMarkReceived").as[String] mustBe "ABCDEFGHIJ"
+      (event.detailJson \ "lastMessageDate").as[String] mustBe "2025-05-09T10:29:00Z"
+      (event.detailJson \ "error").as[JsValue] mustBe errorJson
+      (event.detailJson \ "govTalkErrorStatus").as[JsValue] mustBe govTalkErrorStatusJson
+    }
+  }
+
+  "VerificationPollResponseEvent" - {
+
+    "have the correct auditType and auditSource" in {
+      val event    = VerificationPollResponseEvent(
+        status = "ACCEPTED",
+        correlationId = "CORR-VPOLL-123",
+        pollUrl = Some("http://poll.example/ver/123"),
+        pollIntervalSeconds = Some(10),
+        acceptedTime = Some("2025-05-09T10:30:01Z"),
+        irMarkReceived = None,
+        lastMessageDate = None,
+        error = None,
+        govTalkErrorStatus = None
+      )
+      val extended = event.extendedDataEvent
+      extended.auditSource shouldBe "construction-industry-scheme"
+      extended.auditType   shouldBe "VerificationPollResponse"
+      extended.detail      shouldBe event.detailJson
+    }
+
+    "produce a flat detail JSON omitting optional fields when absent" in {
+      val event = VerificationPollResponseEvent(
+        status = "SUBMITTED",
+        correlationId = "CORR-VPOLL-456",
+        pollUrl = None,
+        pollIntervalSeconds = None,
+        acceptedTime = None,
+        irMarkReceived = None,
+        lastMessageDate = None,
+        error = None,
+        govTalkErrorStatus = None
+      )
+
+      val expected = Json.obj(
+        "status"        -> "SUBMITTED",
+        "correlationId" -> "CORR-VPOLL-456"
+      )
+
+      event.detailJson mustBe expected
     }
   }
 
@@ -310,7 +609,7 @@ class AuditEventModelSpec extends SpecBase {
       val extended = event.extendedDataEvent
 
       extended.auditSource shouldBe "construction-industry-scheme"
-      extended.auditType   shouldBe "clientListRetrievalFailure"
+      extended.auditType   shouldBe "ClientListRetrievalFailure"
 
       val expectedDetail = Json.obj(
         "credentialId" -> "cred-123",
@@ -366,7 +665,7 @@ class AuditEventModelSpec extends SpecBase {
       val extended = event.extendedDataEvent
 
       extended.auditSource shouldBe "construction-industry-scheme"
-      extended.auditType   shouldBe "clientListRetrievalInProgress"
+      extended.auditType   shouldBe "ClientListRetrievalInProgress"
 
       val expectedDetail = Json.obj(
         "credentialId" -> "cred-456",
