@@ -300,4 +300,24 @@ class ClientListService @Inject() (
         )
       )
     )
+
+  def updateClient(taxOfficeNumber: String, taxOfficeReference: String, clientRef: String)(implicit
+    hc: HeaderCarrier
+  ): Future[Long] =
+    datacacheProxyConnector.enqueueMessage(
+      EnqueueMessageRequest(
+        message = EnqueueMessage(
+          sender = "Portal",
+          queueName = "AGTAUTH",
+          replyQueue = "",
+          correlationID = "",
+          filter = "UpdateAgentOwnReference",
+          payload = Map(
+            "PrimaryKnownFact" -> s"$taxOfficeNumber/$taxOfficeReference",
+            "Service"          -> "CIS",
+            "AgentOwnRef"      -> clientRef
+          )
+        )
+      )
+    )
 }
