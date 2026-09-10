@@ -20,21 +20,41 @@ import uk.gov.hmrc.constructionindustryscheme.models.GovTalkError
 
 object GovTalkErrorMapper {
 
+  def mapVerificationPoll(error: GovTalkError): GovTalkError =
+    if (error.errorNumber == "3001" || error.errorType == "business") {
+      GovTalkError(error.errorNumber, "departmentalError", error.errorText, error.raisedBy)
+    } else if (error.errorType == "fatal") {
+      GovTalkError(error.errorNumber, "systemError", error.errorText, error.raisedBy)
+    } else if (error.raisedBy.contains("Department")) {
+      GovTalkError(error.errorNumber, "departmentalError", error.errorText, error.raisedBy)
+    } else {
+      GovTalkError(error.errorNumber, "systemError", error.errorText, error.raisedBy)
+    }
+
   def map(error: GovTalkError): GovTalkError =
-    (error.errorNumber, error.errorType.toLowerCase) match {
-      case ("3001", "business") =>
+    (error.errorNumber, error.errorType) match {
+      case ("3001", _) =>
         GovTalkError("3001", "departmentalError", error.errorText)
 
-      case ("3000", "fatal") =>
-        GovTalkError("3001", "departmentalError", error.errorText)
+      case (_, "business") =>
+        GovTalkError(error.errorNumber, "departmentalError", error.errorText)
+
+      case (_, "fatal") =>
+        GovTalkError(error.errorNumber, "systemError", error.errorText)
+
+      case (_, _) if error.raisedBy.contains("Department") =>
+        GovTalkError(error.errorNumber, "departmentalError", error.errorText)
 
       case _ =>
         GovTalkError(error.errorNumber, "systemError", error.errorText)
     }
 
-  def fromHttpTimeout(): GovTalkError =
-    GovTalkError("500", "timeOut", "timeOut")
+  def fromHttpTimeout(status: Int = 500): GovTalkError =
+    GovTalkError(status.toString, "timeOut", "timeOut")
 
-  def fromConnectionRefused(): GovTalkError =
-    GovTalkError("500", "timeOut", "timed out")
+  def fromInitialConnectionRefused(): GovTalkError =
+    GovTalkError("xxxx", "timeOut", "timed out")
+
+  def fromPollConnectionRefused(): GovTalkError =
+    GovTalkError("xxxx", "timeOut", "timeOut")
 }

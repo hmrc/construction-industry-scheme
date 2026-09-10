@@ -247,7 +247,97 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
         res.status mustBe DEPARTMENTAL_ERROR
       }
 
-      "error number 3000 with fatal type maps to DEPARTMENTAL_ERROR (differs from monthly returns)" in {
+      "3001 with any type maps to DEPARTMENTAL_ERROR and departmentalError" in {
+        val xml =
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>error</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |      <GatewayTimestamp>$gatewayTs</GatewayTimestamp>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |        <RaisedBy>Gateway</RaisedBy>
+             |        <Number>3001</Number>
+             |        <Type>fatal</Type>
+             |        <Text>Code 3001 wins</Text>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |</GovTalkMessage>
+             |""".stripMargin
+
+        val res = parse(xml).value
+        res.status mustBe DEPARTMENTAL_ERROR
+        (res.error.get \ "errorNumber").as[String] mustBe "3001"
+        (res.error.get \ "errorType").as[String] mustBe "departmentalError"
+        (res.error.get \ "errorText").as[String] mustBe "Code 3001 wins"
+      }
+
+      "business error type maps to DEPARTMENTAL_ERROR and departmentalError for any code" in {
+        val xml =
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>error</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |      <GatewayTimestamp>$gatewayTs</GatewayTimestamp>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |        <RaisedBy>Gateway</RaisedBy>
+             |        <Number>3999</Number>
+             |        <Type>business</Type>
+             |        <Text>Business error text</Text>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |</GovTalkMessage>
+             |""".stripMargin
+
+        val res = parse(xml).value
+        res.status mustBe DEPARTMENTAL_ERROR
+        (res.error.get \ "errorNumber").as[String] mustBe "3999"
+        (res.error.get \ "errorType").as[String] mustBe "departmentalError"
+        (res.error.get \ "errorText").as[String] mustBe "Business error text"
+      }
+
+      "Department raisedBy maps to DEPARTMENTAL_ERROR and departmentalError for non-fatal errors" in {
+        val xml =
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>error</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |      <GatewayTimestamp>$gatewayTs</GatewayTimestamp>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |        <RaisedBy>Department</RaisedBy>
+             |        <Number>3998</Number>
+             |        <Type>warning</Type>
+             |        <Text>Department error text</Text>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |</GovTalkMessage>
+             |""".stripMargin
+
+        val res = parse(xml).value
+        res.status mustBe DEPARTMENTAL_ERROR
+        (res.error.get \ "errorNumber").as[String] mustBe "3998"
+        (res.error.get \ "errorType").as[String] mustBe "departmentalError"
+        (res.error.get \ "errorText").as[String] mustBe "Department error text"
+      }
+
+      "error number 3000 with fatal type maps to FATAL_ERROR" in {
         val xml =
           s"""<GovTalkMessage>
              |  <Header>
@@ -271,8 +361,10 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
              |""".stripMargin
 
         val res = parse(xml).value
-        res.status mustBe DEPARTMENTAL_ERROR
+        res.status mustBe FATAL_ERROR
         res.pollUrl mustBe Some("/fatal/3000")
+        (res.error.get \ "errorNumber").as[String] mustBe "3000"
+        (res.error.get \ "errorType").as[String] mustBe "systemError"
       }
 
       "error 2005 maps to FATAL_ERROR (not recoverable for verification)" in {
@@ -350,6 +442,38 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
         res.status mustBe FATAL_ERROR
         res.correlationId mustBe corrId
         res.pollUrl mustBe Some("/error/endpoint")
+        (res.error.get \ "errorNumber").as[String] mustBe "9001"
+        (res.error.get \ "errorType").as[String] mustBe "systemError"
+      }
+
+      "unknown error maps to FATAL_ERROR and systemError preserving text" in {
+        val xml =
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>error</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |      <GatewayTimestamp>$gatewayTs</GatewayTimestamp>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |        <RaisedBy>Gateway</RaisedBy>
+             |        <Number>1020</Number>
+             |        <Type>technical</Type>
+             |        <Text>Unknown error text</Text>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |</GovTalkMessage>
+             |""".stripMargin
+
+        val res = parse(xml).value
+        res.status mustBe FATAL_ERROR
+        (res.error.get \ "errorNumber").as[String] mustBe "1020"
+        (res.error.get \ "errorType").as[String] mustBe "systemError"
+        (res.error.get \ "errorText").as[String] mustBe "Unknown error text"
       }
 
       "IRMark mismatch error 2021 maps to DEPARTMENTAL_ERROR" in {

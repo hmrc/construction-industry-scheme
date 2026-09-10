@@ -22,7 +22,7 @@ import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.models.{ChrisPollJourney, *}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisPollXmlMapper, ChrisSubmissionXmlMapper, ChrisVerificationPollXmlMapper, GovTalkErrorStatusClassifier}
+import uk.gov.hmrc.constructionindustryscheme.services.chris.{ChrisPollXmlMapper, ChrisSubmissionXmlMapper, ChrisVerificationPollXmlMapper, GovTalkErrorMapper, GovTalkErrorStatusClassifier}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps, UpstreamErrorResponse}
@@ -93,7 +93,7 @@ class ChrisConnector @Inject() (
               correlationId,
               None,
               None,
-              None,
+              Some(play.api.libs.json.Json.toJson(GovTalkErrorMapper.fromHttpTimeout(resp.status))),
               None,
               None,
               None,
@@ -128,7 +128,7 @@ class ChrisConnector @Inject() (
           correlationId,
           None,
           None,
-          None,
+          Some(play.api.libs.json.Json.toJson(GovTalkErrorMapper.fromPollConnectionRefused())),
           None,
           None,
           None,

@@ -523,7 +523,7 @@ final class ChrisConnectorIntegrationSpec
       result.lastMessageDate mustBe None
     }
 
-    "return FATAL_ERROR when 500 error is returned" in {
+    "return ACCEPTED with timeout error details when 500 error is returned" in {
       val correlationId = "poll-cid-500"
       val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/500"
       val journey       = ChrisPollJourney.Verification
@@ -548,6 +548,9 @@ final class ChrisConnectorIntegrationSpec
       result.pollUrl mustBe None
       result.pollInterval mustBe None
       result.lastMessageDate mustBe None
+      (result.error.value \ "errorNumber").as[String] mustBe "500"
+      (result.error.value \ "errorType").as[String] mustBe "timeOut"
+      (result.error.value \ "errorText").as[String] mustBe "timeOut"
     }
 
     "return FATAL_ERROR when 404 error is returned" in {
@@ -577,7 +580,7 @@ final class ChrisConnectorIntegrationSpec
       result.lastMessageDate mustBe None
     }
 
-    "return FATAL_ERROR on connection fault" in {
+    "return ACCEPTED with timeout error details on connection fault" in {
       val correlationId = "poll-cid-conn"
       val pollUrl       = s"http://${WireMockConstants.stubHost}:${WireMockConstants.stubPort}/poll/conn"
       val journey       = ChrisPollJourney.Verification
@@ -598,6 +601,9 @@ final class ChrisConnectorIntegrationSpec
       result.pollUrl mustBe None
       result.pollInterval mustBe None
       result.lastMessageDate mustBe None
+      (result.error.value \ "errorNumber").as[String] mustBe "xxxx"
+      (result.error.value \ "errorType").as[String] mustBe "timeOut"
+      (result.error.value \ "errorText").as[String] mustBe "timeOut"
     }
 
     "handle response without pollUrl endpoint" in {
