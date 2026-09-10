@@ -32,7 +32,7 @@ import scala.concurrent.Future
 
 class AuditServiceSpec extends SpecBase {
   "AuditService" - {
-    "call AuditConnector.sendExtendedEvent for MonthlyNilReturnRequestEvent" in {
+    "call AuditConnector.sendExtendedEvent for MonthlyReturnRequestEvent with returnType Nil" in {
       val mockAuditConnector = mock[AuditConnector]
       val request            = ChrisSubmissionRequest(
         utr = "1234567890",
@@ -51,16 +51,16 @@ class AuditServiceSpec extends SpecBase {
       when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
         .thenReturn(Future.successful(AuditResult.Success))
       val service            = new AuditService(mockAuditConnector)
-      val resultF            = service.monthlyNilReturnRequestEvent(request, "CORR-456", "2025-05-09T10:30:00Z")
+      val resultF            = service.monthlyReturnRequestEvent(request, "CORR-456", "2025-05-09T10:30:00Z")
       resultF.map { result =>
         result shouldBe AuditResult.Success
         val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
         verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
         val capturedEvent = captor.getValue
-        capturedEvent.auditType shouldBe "MonthlyNilReturnRequest"
+        capturedEvent.auditType shouldBe "MonthlyReturnRequest"
       }
     }
-    "call AuditConnector.sendExtendedEvent for MonthlyNilReturnResponseEvent" in {
+    "call AuditConnector.sendExtendedEvent for MonthlyReturnResponseEvent with returnType Nil" in {
       val mockAuditConnector = mock[AuditConnector]
       val submissionResult   = SubmissionResult(
         status = ACCEPTED,
@@ -79,13 +79,13 @@ class AuditServiceSpec extends SpecBase {
       when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
         .thenReturn(Future.successful(AuditResult.Success))
       val service            = new AuditService(mockAuditConnector)
-      val resultF            = service.monthlyNilReturnResponseEvent(submissionResult)
+      val resultF            = service.monthlyReturnResponseEvent(submissionResult, "Nil")
       resultF.map { result =>
         result shouldBe AuditResult.Success
         val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
         verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
         val capturedEvent = captor.getValue
-        capturedEvent.auditType shouldBe "MonthlyNilReturnResponse"
+        capturedEvent.auditType shouldBe "MonthlyReturnResponse"
       }
     }
 
@@ -136,7 +136,7 @@ class AuditServiceSpec extends SpecBase {
       when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
         .thenReturn(Future.successful(AuditResult.Success))
       val service            = new AuditService(mockAuditConnector)
-      val resultF            = service.monthlyReturnResponseEvent(submissionResult)
+      val resultF            = service.monthlyReturnResponseEvent(submissionResult, "Standard")
       resultF.map { result =>
         result shouldBe AuditResult.Success
         val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])

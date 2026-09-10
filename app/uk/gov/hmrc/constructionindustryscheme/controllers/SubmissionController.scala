@@ -255,10 +255,11 @@ class SubmissionController @Inject() (
   private def renderSubmissionResponse(submissionId: String, payload: ChRISSubmission, returnType: MonthlyReturnType)(
     res: SubmissionResult
   )(implicit hc: HeaderCarrier): Result = {
-    returnType match {
-      case MonthlyReturnType.Nil      => auditService.monthlyNilReturnResponseEvent(res)
-      case MonthlyReturnType.Standard => auditService.monthlyReturnResponseEvent(res)
+    val returnTypeStr = returnType match {
+      case MonthlyReturnType.Nil      => "Nil"
+      case MonthlyReturnType.Standard => "Standard"
     }
+    auditService.monthlyReturnResponseEvent(res, returnTypeStr)
     renderChrisResponse(submissionId, payload.irMark, res)
   }
 
@@ -273,20 +274,11 @@ class SubmissionController @Inject() (
         submissionRequestDate = submissionRequestDate
       )
 
-    csr.returnType match {
-      case MonthlyReturnType.Nil      =>
-        auditService.monthlyNilReturnRequestEvent(
-          csr,
-          correlationId = payload.correlationId,
-          submissionDateTime = submissionRequestDate.toInstant(ZoneOffset.UTC).toString
-        )
-      case MonthlyReturnType.Standard =>
-        auditService.monthlyReturnRequestEvent(
-          csr,
-          correlationId = payload.correlationId,
-          submissionDateTime = submissionRequestDate.toInstant(ZoneOffset.UTC).toString
-        )
-    }
+    auditService.monthlyReturnRequestEvent(
+      csr,
+      correlationId = payload.correlationId,
+      submissionDateTime = submissionRequestDate.toInstant(ZoneOffset.UTC).toString
+    )
 
     xmlValidator.validate(payload.irEnvelope, appConfig.cisReturnSchema) match {
       case Failure(e) =>

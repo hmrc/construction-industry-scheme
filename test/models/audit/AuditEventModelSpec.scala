@@ -20,145 +20,9 @@ import base.SpecBase
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.should.Matchers.{should, shouldBe}
 import play.api.libs.json.{JsObject, JsValue, Json}
-import uk.gov.hmrc.constructionindustryscheme.models.audit.{ClientListRetrievalFailedEvent, ClientListRetrievalInProgressEvent, MonthlyNilReturnRequestEvent, MonthlyNilReturnResponseEvent, MonthlyReturnPollResponseEvent, MonthlyReturnRequestEvent, MonthlyReturnResponseEvent, MonthlyReturnSubcontractorAuditDetail, VerificationPollResponseEvent, VerificationRequestEvent, VerificationResponseEvent, VerificationSubcontractorAuditDetail}
+import uk.gov.hmrc.constructionindustryscheme.models.audit.{ClientListRetrievalFailedEvent, ClientListRetrievalInProgressEvent, MonthlyReturnPollResponseEvent, MonthlyReturnRequestEvent, MonthlyReturnResponseEvent, MonthlyReturnSubcontractorAuditDetail, VerificationPollResponseEvent, VerificationRequestEvent, VerificationResponseEvent, VerificationSubcontractorAuditDetail}
 
 class AuditEventModelSpec extends SpecBase {
-
-  "MonthlyNilReturnRequestEvent" - {
-
-    "have the correct auditType and auditSource" in {
-      val event    = MonthlyNilReturnRequestEvent(
-        correlationId = "CORR123",
-        submissionDateTime = "2025-05-09T10:30:00Z",
-        contractorUtr = "1234567890",
-        accountsOfficeReference = "123/AB456",
-        periodEndDate = "2025-05-05",
-        isAgent = false,
-        isResubmission = false,
-        taxOfficeNumber = "123",
-        taxOfficeReference = "AB456",
-        isInformationCorrect = true,
-        isInactive = false,
-        confirmationEmail = None
-      )
-      val extended = event.extendedDataEvent
-      extended.auditSource shouldBe "construction-industry-scheme"
-      extended.auditType   shouldBe "MonthlyNilReturnRequest"
-      extended.detail      shouldBe event.detailJson
-    }
-
-    "produce a flat detail JSON omitting confirmationEmail when absent" in {
-      val event = MonthlyNilReturnRequestEvent(
-        correlationId = "CORR123",
-        submissionDateTime = "2025-05-09T10:30:00Z",
-        contractorUtr = "1234567890",
-        accountsOfficeReference = "123/AB456",
-        periodEndDate = "2025-05-05",
-        isAgent = false,
-        isResubmission = false,
-        taxOfficeNumber = "123",
-        taxOfficeReference = "AB456",
-        isInformationCorrect = true,
-        isInactive = true,
-        confirmationEmail = None
-      )
-
-      val expected = Json.obj(
-        "correlationId"           -> "CORR123",
-        "submissionDateTime"      -> "2025-05-09T10:30:00Z",
-        "contractorUtr"           -> "1234567890",
-        "accountsOfficeReference" -> "123/AB456",
-        "periodEndDate"           -> "2025-05-05",
-        "isAgent"                 -> false,
-        "isResubmission"          -> false,
-        "taxOfficeNumber"         -> "123",
-        "taxOfficeReference"      -> "AB456",
-        "returnType"              -> "Nil",
-        "isInformationCorrect"    -> true,
-        "isInactive"              -> true
-      )
-
-      event.detailJson mustBe expected
-    }
-
-    "include confirmationEmail in detail JSON when present" in {
-      val event = MonthlyNilReturnRequestEvent(
-        correlationId = "CORR123",
-        submissionDateTime = "2025-05-09T10:30:00Z",
-        contractorUtr = "1234567890",
-        accountsOfficeReference = "123/AB456",
-        periodEndDate = "2025-05-05",
-        isAgent = false,
-        isResubmission = false,
-        taxOfficeNumber = "123",
-        taxOfficeReference = "AB456",
-        isInformationCorrect = true,
-        isInactive = false,
-        confirmationEmail = Some("contractor@example.com")
-      )
-
-      (event.detailJson \ "confirmationEmail").as[String] mustBe "contractor@example.com"
-    }
-
-  }
-
-  "MonthlyNilReturnResponseEvent" - {
-
-    "have the correct auditType and auditSource" in {
-      val event    = MonthlyNilReturnResponseEvent(
-        status = "ACCEPTED",
-        correlationId = "CORR-789",
-        gatewayTimestamp = Some("2025-05-09T10:30:00Z"),
-        acceptedTime = Some("2025-05-09T10:30:01Z"),
-        errorNumber = None,
-        errorType = None,
-        errorText = None
-      )
-      val extended = event.extendedDataEvent
-      extended.auditSource shouldBe "construction-industry-scheme"
-      extended.auditType   shouldBe "MonthlyNilReturnResponse"
-      extended.detail      shouldBe event.detailJson
-    }
-
-    "produce a flat detail JSON omitting optional fields when absent" in {
-      val event = MonthlyNilReturnResponseEvent(
-        status = "ACCEPTED",
-        correlationId = "CORR-789",
-        gatewayTimestamp = Some("2025-05-09T10:30:00Z"),
-        acceptedTime = Some("2025-05-09T10:30:01Z"),
-        errorNumber = None,
-        errorType = None,
-        errorText = None
-      )
-
-      val expected = Json.obj(
-        "status"           -> "ACCEPTED",
-        "correlationId"    -> "CORR-789",
-        "gatewayTimestamp" -> "2025-05-09T10:30:00Z",
-        "acceptedTime"     -> "2025-05-09T10:30:01Z"
-      )
-
-      event.detailJson mustBe expected
-    }
-
-    "include error fields in detail JSON when present" in {
-      val event = MonthlyNilReturnResponseEvent(
-        status = "FATAL_ERROR",
-        correlationId = "CORR-789",
-        gatewayTimestamp = None,
-        acceptedTime = None,
-        errorNumber = Some("1046"),
-        errorType = Some("fatal"),
-        errorText = Some("submission rejected")
-      )
-
-      (event.detailJson \ "status").as[String] mustBe "FATAL_ERROR"
-      (event.detailJson \ "errorNumber").as[String] mustBe "1046"
-      (event.detailJson \ "errorType").as[String] mustBe "fatal"
-      (event.detailJson \ "errorText").as[String] mustBe "submission rejected"
-      (event.detailJson \ "gatewayTimestamp").toOption mustBe None
-    }
-  }
 
   "MonthlyReturnRequestEvent" - {
 
@@ -300,6 +164,7 @@ class AuditEventModelSpec extends SpecBase {
       val event    = MonthlyReturnResponseEvent(
         status = "SUBMITTED",
         correlationId = "CORR-456",
+        returnType = "Standard",
         gatewayTimestamp = Some("2025-05-09T10:30:00Z"),
         acceptedTime = None,
         errorNumber = None,
@@ -316,6 +181,7 @@ class AuditEventModelSpec extends SpecBase {
       val event = MonthlyReturnResponseEvent(
         status = "SUBMITTED",
         correlationId = "CORR-456",
+        returnType = "Nil",
         gatewayTimestamp = Some("2025-05-09T10:30:00Z"),
         acceptedTime = None,
         errorNumber = None,
@@ -326,6 +192,7 @@ class AuditEventModelSpec extends SpecBase {
       val expected = Json.obj(
         "status"           -> "SUBMITTED",
         "correlationId"    -> "CORR-456",
+        "returnType"       -> "Nil",
         "gatewayTimestamp" -> "2025-05-09T10:30:00Z"
       )
 

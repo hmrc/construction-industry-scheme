@@ -33,41 +33,6 @@ class AuditService @Inject (
   auditConnector: AuditConnector
 )(implicit ec: ExecutionContext) {
 
-  def monthlyNilReturnRequestEvent(
-    request: ChrisSubmissionRequest,
-    correlationId: String,
-    submissionDateTime: String
-  )(implicit hc: HeaderCarrier): Future[AuditResult] = {
-    val event = MonthlyNilReturnRequestEvent(
-      correlationId = correlationId,
-      submissionDateTime = submissionDateTime,
-      contractorUtr = request.utr,
-      accountsOfficeReference = request.aoReference,
-      periodEndDate = ChRISSubmission.parsePeriodEnd(request.monthYear),
-      isAgent = request.isAgent,
-      isResubmission = request.isResubmission,
-      taxOfficeNumber = request.clientTaxOfficeNumber,
-      taxOfficeReference = request.clientTaxOfficeRef,
-      isInformationCorrect = Normalise.isYes(request.informationCorrect),
-      isInactive = Normalise.isYes(request.inactivity),
-      confirmationEmail = request.email
-    )
-    auditConnector.sendExtendedEvent(event.extendedDataEvent)
-  }
-
-  def monthlyNilReturnResponseEvent(result: SubmissionResult)(implicit hc: HeaderCarrier): Future[AuditResult] = {
-    val event = MonthlyNilReturnResponseEvent(
-      status = result.status.toString,
-      correlationId = result.meta.correlationId,
-      gatewayTimestamp = result.meta.gatewayTimestamp,
-      acceptedTime = result.meta.acceptedTime,
-      errorNumber = result.meta.error.map(_.errorNumber),
-      errorType = result.meta.error.map(_.errorType),
-      errorText = result.meta.error.map(_.errorText)
-    )
-    auditConnector.sendExtendedEvent(event.extendedDataEvent)
-  }
-
   def monthlyReturnRequestEvent(
     request: ChrisSubmissionRequest,
     correlationId: String,
@@ -113,10 +78,13 @@ class AuditService @Inject (
     auditConnector.sendExtendedEvent(event.extendedDataEvent)
   }
 
-  def monthlyReturnResponseEvent(result: SubmissionResult)(implicit hc: HeaderCarrier): Future[AuditResult] = {
+  def monthlyReturnResponseEvent(result: SubmissionResult, returnType: String)(implicit
+    hc: HeaderCarrier
+  ): Future[AuditResult] = {
     val event = MonthlyReturnResponseEvent(
       status = result.status.toString,
       correlationId = result.meta.correlationId,
+      returnType = returnType,
       gatewayTimestamp = result.meta.gatewayTimestamp,
       acceptedTime = result.meta.acceptedTime,
       errorNumber = result.meta.error.map(_.errorNumber),

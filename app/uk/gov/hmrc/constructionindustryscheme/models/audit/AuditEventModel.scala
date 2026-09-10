@@ -28,60 +28,6 @@ trait AuditEventModel {
     ExtendedDataEvent(auditSource = auditSource, auditType = auditType, detail = detailJson)
 }
 
-final case class MonthlyNilReturnRequestEvent(
-  correlationId: String,
-  submissionDateTime: String,
-  contractorUtr: String,
-  accountsOfficeReference: String,
-  periodEndDate: String,
-  isAgent: Boolean,
-  isResubmission: Boolean,
-  taxOfficeNumber: String,
-  taxOfficeReference: String,
-  isInformationCorrect: Boolean,
-  isInactive: Boolean,
-  confirmationEmail: Option[String]
-) extends AuditEventModel {
-  override val auditType: String   = "MonthlyNilReturnRequest"
-  override val detailJson: JsValue =
-    Json.obj(
-      "correlationId"           -> correlationId,
-      "submissionDateTime"      -> submissionDateTime,
-      "contractorUtr"           -> contractorUtr,
-      "accountsOfficeReference" -> accountsOfficeReference,
-      "periodEndDate"           -> periodEndDate,
-      "isAgent"                 -> isAgent,
-      "isResubmission"          -> isResubmission,
-      "taxOfficeNumber"         -> taxOfficeNumber,
-      "taxOfficeReference"      -> taxOfficeReference,
-      "returnType"              -> "Nil",
-      "isInformationCorrect"    -> isInformationCorrect,
-      "isInactive"              -> isInactive
-    ) ++ confirmationEmail.fold(Json.obj())(e => Json.obj("confirmationEmail" -> e))
-}
-
-final case class MonthlyNilReturnResponseEvent(
-  status: String,
-  correlationId: String,
-  gatewayTimestamp: Option[String],
-  acceptedTime: Option[String],
-  errorNumber: Option[String],
-  errorType: Option[String],
-  errorText: Option[String]
-) extends AuditEventModel {
-  override val auditType: String   = "MonthlyNilReturnResponse"
-  override val detailJson: JsValue =
-    Json.obj(
-      "status"        -> status,
-      "correlationId" -> correlationId
-    ) ++
-      gatewayTimestamp.fold(Json.obj())(v => Json.obj("gatewayTimestamp" -> v)) ++
-      acceptedTime.fold(Json.obj())(v => Json.obj("acceptedTime" -> v)) ++
-      errorNumber.fold(Json.obj())(v => Json.obj("errorNumber" -> v)) ++
-      errorType.fold(Json.obj())(v => Json.obj("errorType" -> v)) ++
-      errorText.fold(Json.obj())(v => Json.obj("errorText" -> v))
-}
-
 final case class MonthlyReturnSubcontractorAuditDetail(
   subcontractorType: String,
   firstName: Option[String],
@@ -153,6 +99,7 @@ final case class MonthlyReturnRequestEvent(
 final case class MonthlyReturnResponseEvent(
   status: String,
   correlationId: String,
+  returnType: String,
   gatewayTimestamp: Option[String],
   acceptedTime: Option[String],
   errorNumber: Option[String],
@@ -163,7 +110,8 @@ final case class MonthlyReturnResponseEvent(
   override val detailJson: JsValue =
     Json.obj(
       "status"        -> status,
-      "correlationId" -> correlationId
+      "correlationId" -> correlationId,
+      "returnType"    -> returnType
     ) ++
       gatewayTimestamp.fold(Json.obj())(v => Json.obj("gatewayTimestamp" -> v)) ++
       acceptedTime.fold(Json.obj())(v => Json.obj("acceptedTime" -> v)) ++
