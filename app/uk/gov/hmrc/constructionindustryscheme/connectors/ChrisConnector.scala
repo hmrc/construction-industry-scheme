@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
 import javax.inject.{Inject, Singleton}
+import play.api.libs.json.Json
 import play.api.libs.ws.DefaultBodyWritables.writeableOf_String
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.requests.ChrisPollRequest
@@ -93,7 +94,7 @@ class ChrisConnector @Inject() (
               correlationId,
               None,
               None,
-              Some(play.api.libs.json.Json.toJson(GovTalkErrorMapper.fromHttpTimeout(resp.status))),
+              Some(Json.toJson(GovTalkErrorMapper.fromHttpTimeout(resp.status))),
               None,
               None,
               None,
@@ -128,7 +129,7 @@ class ChrisConnector @Inject() (
           correlationId,
           None,
           None,
-          Some(play.api.libs.json.Json.toJson(GovTalkErrorMapper.fromPollConnectionRefused())),
+          Some(Json.toJson(GovTalkErrorMapper.fromPollConnectionRefused())),
           None,
           None,
           None,
