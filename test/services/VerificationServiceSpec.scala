@@ -335,6 +335,38 @@ final class VerificationServiceSpec extends SpecBase {
     }
   }
 
+  "VerificationService#deleteVerification" - {
+
+    val request = DeleteVerificationRequest(
+      instanceId = "abc-123",
+      verificationResourceRef = 98765L
+    )
+
+    val response = DeleteVerificationResponse(verificationsCounter = Some(1L))
+
+    "delegates to FormpProxyConnector and returns the response" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.deleteVerification(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      service.deleteVerification(request).futureValue mustBe response
+
+      verify(connector).deleteVerification(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.deleteVerification(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.deleteVerification(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
   "VerificationService#getSubmittedVerifications" - {
 
     val request = GetSubmittedVerificationsRequest(
@@ -369,6 +401,38 @@ final class VerificationServiceSpec extends SpecBase {
         .thenReturn(Future.failed(new RuntimeException("boom")))
 
       service.getSubmittedVerifications(request).failed.futureValue.getMessage must include("boom")
+    }
+  }
+
+  "VerificationService#proceedInsufficientVerification" - {
+
+    val request = ProceedInsufficientVerificationRequest(
+      instanceId = "1",
+      verificationBatchResourceRef = 9L,
+      verificationResourceRef = 10L,
+      proceed = "Y"
+    )
+
+    "delegates to FormpProxyConnector and returns response" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.proceedInsufficientVerification(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
+
+      service.proceedInsufficientVerification(request).futureValue mustBe ()
+
+      verify(connector).proceedInsufficientVerification(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new VerificationService(connector)
+
+      when(connector.proceedInsufficientVerification(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.proceedInsufficientVerification(request).failed.futureValue.getMessage must include("boom")
     }
   }
 }

@@ -22,8 +22,8 @@ import org.mockito.Mockito.{verify, when}
 import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
 import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, Subcontractor}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest}
-import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorForDeleteResponse, GetSubcontractorListResponse, GetSubcontractorResponse}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorForDeleteResponse, GetSubcontractorListResponse, GetSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -337,6 +337,67 @@ final class SubcontractorServiceSpec extends SpecBase {
       service.getSubcontractor(cisId, subbieResourceRef).failed.futureValue.getMessage must include("boom")
 
       verify(connector).getSubcontractor(eqTo(cisId), eqTo(subbieResourceRef))(any[HeaderCarrier])
+    }
+  }
+
+  "updateSubcontractor" - {
+
+    val request =
+      UpdateSubcontractorRequest(
+        cisId = "abc-123",
+        subcontractor = Json
+          .obj(
+            "subcontractorId"     -> 999L,
+            "subbieResourceRef"   -> 10L,
+            "utr"                 -> "1234567890",
+            "pageVisited"         -> 1,
+            "firstName"           -> "John",
+            "nino"                -> "AA123456A",
+            "secondName"          -> "Q",
+            "surname"             -> "Smith",
+            "tradingName"         -> "John Smith Trading",
+            "subcontractorType"   -> "soletrader",
+            "addressLine1"        -> "1 Main Street",
+            "addressLine2"        -> "Flat 2",
+            "addressLine3"        -> "London",
+            "country"             -> "United Kingdom",
+            "postcode"            -> "AA1 1AA",
+            "matched"             -> "Y",
+            "autoVerified"        -> "N",
+            "verified"            -> "Y",
+            "verificationNumber"  -> "V123456",
+            "taxTreatment"        -> "NET",
+            "updatedTaxTreatment" -> "NET",
+            "version"             -> 5
+          )
+          .as[Subcontractor]
+      )
+
+    val response =
+      UpdateSubcontractorResponse(version = 6)
+
+    "delegates to FormpProxyConnector and returns updated version" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new SubcontractorService(connector)
+
+      when(connector.updateSubcontractor(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(response))
+
+      service.updateSubcontractor(request).futureValue mustBe response
+
+      verify(connector).updateSubcontractor(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new SubcontractorService(connector)
+
+      when(connector.updateSubcontractor(eqTo(request))(any[HeaderCarrier]))
+        .thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service.updateSubcontractor(request).failed.futureValue.getMessage must include("boom")
+
+      verify(connector).updateSubcontractor(eqTo(request))(any[HeaderCarrier])
     }
   }
 

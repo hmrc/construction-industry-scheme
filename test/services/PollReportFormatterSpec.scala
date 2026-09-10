@@ -27,174 +27,242 @@ class PollReportFormatterSpec extends AnyFreeSpec with Matchers {
 
   "PollReportFormatter.format" - {
 
-    "generate an empty report using the required structure" in new Setup {
+    "generate an empty report using the required structure" in {
+      val generatedAt =
+        LocalDateTime.of(2026, 8, 18, 15, 0, 0)
 
-      val result =
-        PollReportFormatter.format(
-          reportContent = Seq.empty,
-          generatedAt = generatedAt
-        )
+      val header =
+        "| " +
+          Seq(
+            "USER".padTo(15, ' '),
+            "SUBMISSION_TYPE".padTo(18, ' '),
+            "SUBMISSION_ID".padTo(20, ' '),
+            "GOVTALK_REQUEST_STATUS".padTo(25, ' '),
+            "CURRENT_RETURN_STATUS".padTo(24, ' '),
+            "EMP REFERENCE".padTo(16, ' '),
+            "CORRELATION ID".padTo(32, ' '),
+            "AGENT ID".padTo(8, ' ')
+          ).mkString(" | ") +
+          " |"
 
-      result mustBe Seq(
-        sectionSeparator,
-        "BATCH POLLING RESULTS FOR 05-05-26 14:25:38",
-        expectedHeader,
-        underline,
-        "",
-        underline,
-        sectionSeparator
-      ).mkString(System.lineSeparator())
+      val separator =
+        "=" * header.length
+
+      val underline =
+        "-" * header.length
+
+      val expectedReport =
+        Seq(
+          separator,
+          "BATCH POLLING RESULTS FOR 18-08-26 15:00:00",
+          header,
+          underline,
+          "",
+          underline,
+          separator
+        ).mkString(System.lineSeparator())
+
+      PollReportFormatter.format(
+        Seq.empty,
+        generatedAt
+      ) mustBe expectedReport
     }
 
-    "generate a populated report with columns aligned to the headings" in new Setup {
+    "generate a populated report with columns aligned to the heading" in {
+      val generatedAt =
+        LocalDateTime.of(2026, 8, 18, 15, 0, 0)
 
-      val result =
+      val reportContent =
+        Seq(
+          PollReportContent(
+            user = "872",
+            submissionType = "VERIFICATIONS",
+            submissionId = "471524635",
+            govTalkRequestStatus = "ACCEPTED",
+            currentReturnStatus = "-",
+            employerReference = "754/EZ00047",
+            correlationId = "(not polled)",
+            agentId = "-"
+          ),
+          PollReportContent(
+            user = "14",
+            submissionType = "MONTHLY_RETURN",
+            submissionId = "471574312",
+            govTalkRequestStatus = "ACCEPTED",
+            currentReturnStatus = "ACCEPTED",
+            employerReference = "313/AO313",
+            correlationId = "70F60B9B909C4522BB2BE112EB95C220",
+            agentId = "-"
+          )
+        )
+
+      val header =
+        "| " +
+          Seq(
+            "USER".padTo(15, ' '),
+            "SUBMISSION_TYPE".padTo(18, ' '),
+            "SUBMISSION_ID".padTo(20, ' '),
+            "GOVTALK_REQUEST_STATUS".padTo(25, ' '),
+            "CURRENT_RETURN_STATUS".padTo(24, ' '),
+            "EMP REFERENCE".padTo(16, ' '),
+            "CORRELATION ID".padTo(32, ' '),
+            "AGENT ID".padTo(8, ' ')
+          ).mkString(" | ") +
+          " |"
+
+      val firstRow =
+        "| " +
+          Seq(
+            "872".padTo(15, ' '),
+            "VERIFICATIONS".padTo(18, ' '),
+            "471524635".padTo(20, ' '),
+            "ACCEPTED".padTo(25, ' '),
+            "-".padTo(24, ' '),
+            "754/EZ00047".padTo(16, ' '),
+            "(not polled)".padTo(32, ' '),
+            "-".padTo(8, ' ')
+          ).mkString(" | ") +
+          " |"
+
+      val secondRow =
+        "| " +
+          Seq(
+            "14".padTo(15, ' '),
+            "MONTHLY_RETURN".padTo(18, ' '),
+            "471574312".padTo(20, ' '),
+            "ACCEPTED".padTo(25, ' '),
+            "ACCEPTED".padTo(24, ' '),
+            "313/AO313".padTo(16, ' '),
+            "70F60B9B909C4522BB2BE112EB95C220".padTo(32, ' '),
+            "-".padTo(8, ' ')
+          ).mkString(" | ") +
+          " |"
+
+      val separator =
+        "=" * header.length
+
+      val underline =
+        "-" * header.length
+
+      val expectedReport =
+        Seq(
+          separator,
+          "BATCH POLLING RESULTS FOR 18-08-26 15:00:00",
+          header,
+          underline,
+          firstRow,
+          secondRow,
+          "",
+          underline,
+          separator
+        ).mkString(System.lineSeparator())
+
+      PollReportFormatter.format(
+        reportContent,
+        generatedAt
+      ) mustBe expectedReport
+    }
+
+    "must create underline and separator with the same length as the header row" in {
+      val report =
         PollReportFormatter.format(
-          reportContent = Seq(reportContent),
-          generatedAt = generatedAt
+          Seq.empty,
+          LocalDateTime.of(2026, 8, 18, 15, 0, 0)
         )
 
       val lines =
-        result.linesIterator.toSeq
+        report.linesIterator.toSeq
 
-      lines(2) mustBe expectedHeader
-      lines(4) mustBe expectedRow
+      val sectionSeparator =
+        lines.head
+
+      val header =
+        lines(2)
+
+      val underline =
+        lines(3)
+
+      sectionSeparator.length mustBe header.length
+      underline.length mustBe header.length
+      underline mustBe "-" * header.length
+      sectionSeparator mustBe "=" * header.length
     }
 
-    "truncate an oversized value to width minus three followed by ellipsis" in new Setup {
-
-      val oversizedContent =
-        reportContent.copy(
-          user = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        )
-
-      val result =
+    "replace C0 control characters in field values with spaces" in {
+      val report =
         PollReportFormatter.format(
-          reportContent = Seq(oversizedContent),
-          generatedAt = generatedAt
-        )
-
-      val reportRow =
-        result.linesIterator
-          .find(_.contains("CIS300MR"))
-          .getOrElse(
-            fail("Expected populated report row")
-          )
-
-      // USER width = 15: first 12 characters + "..."
-      reportRow must include(
-        "    ABCDEFGHIJKL... CIS300MR"
-      )
-
-      reportRow must not include
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    }
-
-    "not truncate a value equal to the configured width" in new Setup {
-
-      val exactWidthContent =
-        reportContent.copy(
-          user = "123456789012345"
-        )
-
-      val result =
-        PollReportFormatter.format(
-          reportContent = Seq(exactWidthContent),
-          generatedAt = generatedAt
-        )
-
-      result must include("123456789012345")
-      result must not include "123456789012..."
-    }
-
-    "truncate every column according to its configured width" in new Setup {
-
-      val oversizedContent =
-        reportContent.copy(
-          user = "1234567890123456",
-          submissionType = "1234567890123456789",
-          submissionId = "123456789012345678901",
-          govTalkRequestStatus = "12345678901234567890123456",
-          currentReturnStatus = "1234567890123456789012345",
-          employerReference = "12345678901234567",
-          correlationId = "123456789012345678901234567890123",
-          agentId = "123456789"
-        )
-
-      val result =
-        PollReportFormatter.format(
-          reportContent = Seq(oversizedContent),
-          generatedAt = generatedAt
-        )
-
-      val reportRow =
-        result.linesIterator
-          .drop(4)
-          .next()
-
-      reportRow must include("123456789012...")
-      reportRow must include("123456789012345...")
-      reportRow must include("12345678901234567...")
-      reportRow must include("1234567890123456789012...")
-      reportRow must include("123456789012345678901...")
-      reportRow must include("1234567890123...")
-      reportRow must include("12345678901234567890123456789...")
-      reportRow must include("12345...")
-    }
-
-    "generate a row for each supplied report-content item" in new Setup {
-
-      val secondRow =
-        reportContent.copy(
-          submissionId = "90003",
-          submissionType = "CISVERIFY"
-        )
-
-      val result =
-        PollReportFormatter.format(
-          reportContent = Seq(
-            reportContent,
-            secondRow
+          Seq(
+            PollReportContent(
+              user = "87\u00002",
+              submissionType = "VERIF\u001BICATIONS",
+              submissionId = "471524\u000C635",
+              govTalkRequestStatus = "ACCEPTED",
+              currentReturnStatus = "-",
+              employerReference = "754/EZ00047",
+              correlationId = "(not polled)",
+              agentId = "-"
+            )
           ),
-          generatedAt = generatedAt
+          LocalDateTime.of(2026, 8, 18, 15, 0, 0)
         )
 
-      result must include("90002")
-      result must include("90003")
-      result must include("CIS300MR")
-      result must include("CISVERIFY")
+      val row =
+        report.linesIterator.toSeq(4)
+
+      row must include("87 2")
+      row must include("VERIF ICATIONS")
+      row must include("471524 635")
+      row must not include "\u0000"
+      row must not include "\u001B"
+      row must not include "\u000C"
     }
-  }
 
-  private trait Setup {
+    "truncate values longer than the allowed column width" in {
+      val generatedAt =
+        LocalDateTime.of(2026, 8, 18, 15, 0, 0)
 
-    val generatedAt: LocalDateTime =
-      LocalDateTime.of(
-        2026, 5, 5, 14, 25, 38
-      )
+      val report =
+        PollReportFormatter.format(
+          Seq(
+            PollReportContent(
+              user = "1234567890123456",
+              submissionType = "MONTHLY_RETURN_VALUE_TOO_LONG",
+              submissionId = "123456789012345678901",
+              govTalkRequestStatus = "GOVTALK_REQUEST_STATUS_TOO_LONG",
+              currentReturnStatus = "CURRENT_RETURN_STATUS_TOO_LONG",
+              employerReference = "123/REFERENCE_TOO_LONG",
+              correlationId = "123456789012345678901234567890123",
+              agentId = "AGENT-ID-TOO-LONG"
+            )
+          ),
+          generatedAt
+        )
 
-    val sectionSeparator: String =
-      "=========================================================================================================================================================================="
+      val lines =
+        report.linesIterator.toSeq
 
-    val underline: String =
-      "    ----------------------------------------------------------------------------------------------------------------------------------------------------------------------"
+      val header =
+        lines(2)
 
-    val expectedHeader: String =
-      "    USER            SUBMISSION_TYPE    SUBMISSION_ID        GOVTALK_REQUEST_STATUS    CURRENT_RETURN_STATUS    EMP REFERENCE    CORRELATION ID                   AGENT ID"
+      val row =
+        lines(4)
 
-    val expectedRow: String =
-      "    ONLINE          CIS300MR           90002                SUBMITTED                 POLLING                  123/456789       correlation-id-001               A123456 "
+      val expectedRow =
+        "| " +
+          Seq(
+            "123456789012...".padTo(15, ' '),
+            "MONTHLY_RETURN_...".padTo(18, ' '),
+            "12345678901234567...".padTo(20, ' '),
+            "GOVTALK_REQUEST_STATUS...".padTo(25, ' '),
+            "CURRENT_RETURN_STATUS...".padTo(24, ' '),
+            "123/REFERENCE...".padTo(16, ' '),
+            "12345678901234567890123456789...".padTo(32, ' '),
+            "AGENT...".padTo(8, ' ')
+          ).mkString(" | ") +
+          " |"
 
-    val reportContent: PollReportContent =
-      PollReportContent(
-        user = "ONLINE",
-        submissionType = "CIS300MR",
-        submissionId = "90002",
-        govTalkRequestStatus = "SUBMITTED",
-        currentReturnStatus = "POLLING",
-        employerReference = "123/456789",
-        correlationId = "correlation-id-001",
-        agentId = "A123456"
-      )
+      row mustBe expectedRow
+      row.length mustBe header.length
+    }
   }
 }

@@ -61,14 +61,21 @@ final class PollReportStatusMapperSpec extends AnyFreeSpec with Matchers {
       }
     }
 
-    "must return DEPARTMENTAL_ERROR when the response is a departmental error" in {
-      val response =
-        pollResponse(
-          status = DEPARTMENTAL_ERROR,
-          govTalkErrorStatus = Some(GovTalkErrorStatus.DepartmentalError("Departmental error"))
-        )
+    "must return DEPARTMENTAL_ERROR for departmental error codes" in {
+      Seq("3000", "3001").foreach { errorCode =>
+        val response =
+          pollResponse(
+            status = DEPARTMENTAL_ERROR,
+            govTalkErrorStatus = Some(
+              GovTalkErrorStatus.DepartmentalError(
+                errorCode,
+                s"Departmental error $errorCode"
+              )
+            )
+          )
 
-      PollReportStatusMapper.reportStatus(response) mustBe "DEPARTMENTAL_ERROR"
+        PollReportStatusMapper.reportStatus(response) mustBe "DEPARTMENTAL_ERROR"
+      }
     }
 
     "must return FATAL_ERROR when the response is a recoverable error" in {

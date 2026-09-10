@@ -3,9 +3,9 @@ import sbt.*
 
 object AppDependencies {
 
-  private val bootstrapVersion       = "10.7.0"
+  private val bootstrapVersion       = "10.8.0"
   private val hmrcMongoVersion       = "2.13.0"
-  private val quartzSchedulerVersion = "1.2.0-pekko-1.0.x"
+  private val quartzSchedulerVersion = "1.2.2-pekko-1.0.x"
 
   val compile: Seq[ModuleID] = Seq(
     "uk.gov.hmrc"            %% "bootstrap-backend-play-30" % bootstrapVersion,
@@ -24,4 +24,13 @@ object AppDependencies {
   )
 
   val it: Seq[Nothing] = Seq.empty
+
+  val dependencyOverrides: Seq[ModuleID] = Seq(
+    "org.quartz-scheduler" % "quartz" % "2.5.2"
+  )
+
+  val exclusions: Seq[ExclusionRule] = Seq(
+    ExclusionRule("com.mchange", "c3p0"),
+    ExclusionRule("com.mchange", "mchange-commons-java")
+  )
 }

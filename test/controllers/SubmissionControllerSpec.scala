@@ -712,6 +712,63 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           eqTo(false)
         )(any[HeaderCarrier])
     }
+
+    "uses monthlyReturnRequest/Response audit events for a standard monthly return" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(mockAuditService.monthlyReturnRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+      when(mockAuditService.monthlyReturnResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+
+      when(xmlValidator.validate(any[NodeSeq], any[Schema]))
+        .thenReturn(Success(()))
+      mockProcessInitialChrisAckSuccess(submissionService)
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[ChRISSubmission])
+          val result  = mkSubmissionResult(SUBMITTED)
+          Future.successful(
+            result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
+          )
+        }
+
+      val standardReturnJson = validJson.as[JsObject] ++ Json.obj(
+        "returnType" -> "MonthlyStandardReturn",
+        "standard"   -> Json.obj(
+          "subcontractors" -> Json.arr(
+            Json.obj(
+              "subcontractorType" -> "company",
+              "tradingName"       -> "Test Co Ltd",
+              "utr"               -> "1234567890"
+            )
+          ),
+          "declarations"   -> Json.obj(
+            "employmentStatus" -> "yes",
+            "verification"     -> "yes"
+          )
+        )
+      )
+      val request            =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(standardReturnJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(request)
+
+      status(result) mustBe OK
+
+      verify(mockAuditService, times(1)).monthlyReturnRequestEvent(any())(any())
+      verify(mockAuditService, times(0)).monthlyNilReturnRequestEvent(any())(any())
+      verify(mockAuditService, times(1)).monthlyReturnResponseEvent(any())(any())
+      verify(mockAuditService, times(0)).monthlyNilReturnResponseEvent(any())(any())
+    }
   }
 
   "createSubmission" - {

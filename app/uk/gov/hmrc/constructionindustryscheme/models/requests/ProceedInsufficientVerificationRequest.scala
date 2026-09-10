@@ -14,22 +14,16 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models
+package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
 
-case class VerificationLastVerification(
-  verificationId: Long,
-  verificationBatchId: Option[Long],
-  verificationResourceRef: Option[Long],
-  matched: Option[String],
-  verificationNumber: Option[String],
-  taxTreatment: Option[String],
-  subcontractorName: Option[String],
-  subcontractorId: Option[Long],
-  actionIndicator: Option[String]
+case class ProceedInsufficientVerificationRequest(
+  instanceId: String,
+  verificationBatchResourceRef: Long,
+  verificationResourceRef: Long,
+  proceed: String
 )
-
-object VerificationLastVerification {
-  given format: OFormat[VerificationLastVerification] = Json.format[VerificationLastVerification]
+object ProceedInsufficientVerificationRequest {
+  given OFormat[ProceedInsufficientVerificationRequest] = Json.format
 }
