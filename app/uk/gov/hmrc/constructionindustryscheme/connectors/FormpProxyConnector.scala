@@ -16,9 +16,11 @@
 
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
+import play.api.Logging
 import play.api.http.Status.{INTERNAL_SERVER_ERROR, NOT_FOUND, NO_CONTENT, OK}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
+import scala.util.Failure
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
@@ -36,7 +38,8 @@ class FormpProxyConnector @Inject() (
   config: ServicesConfig,
   appConfig: AppConfig
 )(implicit ec: ExecutionContext)
-    extends HttpReadsInstances {
+    extends HttpReadsInstances
+    with Logging {
 
   private val base              = config.baseUrl("formp-proxy") + "/formp-proxy"
   private val internalAuthToken = config.getString("internal-auth.token")
@@ -556,6 +559,18 @@ class FormpProxyConnector @Inject() (
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
 
+  def updateSubcontractorForEdit(
+    request: UpdateSubcontractorRequest
+  )(implicit hc: HeaderCarrier): Future[UpdateSubcontractorResponse] =
+    http
+      .post(url"$base/cis/subcontractor/edit")
+      .setHeader("Authorization" -> internalAuthToken)
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap(
+        handleUpdateSubcontractorResponse(_, "updateSubcontractorForEdit")
+      )
+
   def updateSubcontractor(
     request: UpdateSubcontractorRequest
   )(implicit hc: HeaderCarrier): Future[UpdateSubcontractorResponse] =
@@ -564,29 +579,42 @@ class FormpProxyConnector @Inject() (
       .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap { response =>
-        response.status match {
-          case OK =>
-            Future.fromTry(
-              scala.util.Try(response.json.as[UpdateSubcontractorResponse])
-            )
+      .flatMap(
+        handleUpdateSubcontractorResponse(_, "updateSubcontractor")
+      )
 
-          case NO_CONTENT =>
-            Future.failed(
-              UpstreamErrorResponse(
-                "FormP returned 204 No Content for updateSubcontractor; expected response body with version",
-                INTERNAL_SERVER_ERROR,
-                INTERNAL_SERVER_ERROR
-              )
-            )
+  private def handleUpdateSubcontractorResponse(
+    response: HttpResponse,
+    operation: String
+  ): Future[UpdateSubcontractorResponse] =
+    response.status match {
 
-          case status =>
-            val errorStatus =
-              if (status / 100 == 2) INTERNAL_SERVER_ERROR else status
+      case OK =>
+        Future(response.json.as[UpdateSubcontractorResponse])
+          .andThen { case Failure(t) =>
+            logger.error(s"[FormpProxyConnector][$operation] Failed to parse 200 OK response from FormP.", t)
+          }
 
-            Future.failed(
-              UpstreamErrorResponse(response.body, errorStatus, errorStatus)
-            )
-        }
-      }
+      case NO_CONTENT =>
+        Future.failed(
+          UpstreamErrorResponse(
+            s"FormP returned 204 No Content for $operation; expected response body with version",
+            INTERNAL_SERVER_ERROR,
+            INTERNAL_SERVER_ERROR
+          )
+        )
+
+      case status =>
+        val errorStatus =
+          if (status / 100 == 2) INTERNAL_SERVER_ERROR
+          else status
+
+        Future.failed(
+          UpstreamErrorResponse(
+            response.body,
+            errorStatus,
+            errorStatus
+          )
+        )
+    }
 }
