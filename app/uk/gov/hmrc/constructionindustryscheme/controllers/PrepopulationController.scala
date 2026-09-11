@@ -22,6 +22,7 @@ import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.models.EmployerReference
 import uk.gov.hmrc.constructionindustryscheme.services.PrepopulationService
+import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHeaderForwarding
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -35,6 +36,7 @@ class PrepopulationController @Inject() (
   val cc: ControllerComponents
 )(implicit ec: ExecutionContext)
     extends BackendController(cc)
+    with CisEnrolmentHeaderForwarding
     with Logging {
 
   def prepopulateContractorKnownFacts(

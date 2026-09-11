@@ -21,6 +21,7 @@ import play.api.libs.json.{JsError, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.services.{SubmissionService, VerificationService}
+import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHeaderForwarding
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 
@@ -34,6 +35,7 @@ class VerificationController @Inject() (
   cc: ControllerComponents
 )(implicit ec: ExecutionContext)
     extends BackendController(cc)
+    with CisEnrolmentHeaderForwarding
     with Logging {
 
   def getNewestVerificationBatch(instanceId: String): Action[AnyContent] =
@@ -171,6 +173,26 @@ class VerificationController @Inject() (
         )
     }
 
+  def deleteVerification(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      request.body
+        .validate[DeleteVerificationRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          body =>
+            verificationService
+              .deleteVerification(body)
+              .map(res => Ok(Json.toJson(res)))
+              .recover { case ex =>
+                logger.error(
+                  s"[deleteVerification] formp-proxy delete failed (instanceId=${body.instanceId}, verificationResourceRef=${body.verificationResourceRef})",
+                  ex
+                )
+                BadGateway(Json.obj("message" -> "delete-verification-failed"))
+              }
+        )
+    }
+
   def getSubmittedVerifications(): Action[JsValue] =
     authorise(parse.json).async { implicit request =>
       request.body
@@ -191,4 +213,16 @@ class VerificationController @Inject() (
         )
     }
 
+  def proceedInsufficientVerification(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      withJsonBody { (body: ProceedInsufficientVerificationRequest) =>
+        verificationService
+          .proceedInsufficientVerification(body)
+          .map(_ => NoContent)
+          .recover { case ex =>
+            logger.error("[proceedInsufficientVerification] formp-proxy create failed", ex)
+            BadGateway(Json.obj("message" -> "proceed-insufficient-verification-failed"))
+          }
+      }
+    }
 }
