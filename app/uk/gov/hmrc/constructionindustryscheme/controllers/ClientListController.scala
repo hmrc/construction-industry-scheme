@@ -20,12 +20,13 @@ import play.api.Logging
 import play.api.libs.json.*
 import play.api.mvc.*
 import uk.gov.hmrc.constructionindustryscheme.actions.{AgentAction, AuthAction}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.RemoveAgentClientRequest
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.*
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
 import javax.inject.*
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class ClientListController @Inject() (
@@ -67,4 +68,21 @@ class ClientListController @Inject() (
           logger.error(s"[ClientListController.checkClientExists] error checking client: ${e.getMessage}", e)
           InternalServerError(Json.obj("error" -> "Failed to check client"))
         }
+    }
+
+  def removeClient(): Action[JsValue] =
+    (authorise andThen isAgent).async(parse.json) { implicit request =>
+      request.body
+        .validate[RemoveAgentClientRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          body =>
+            service
+              .removeClient(body.taxOfficeNumber, body.taxOfficeReference, request.agentId)
+              .map(_ => NoContent)
+              .recover { case t =>
+                logger.error("[removeClient] failed", t)
+                InternalServerError(Json.obj("message" -> "Unexpected error"))
+              }
+        )
     }

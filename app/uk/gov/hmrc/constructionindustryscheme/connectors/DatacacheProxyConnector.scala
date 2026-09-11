@@ -18,17 +18,19 @@ package uk.gov.hmrc.constructionindustryscheme.connectors
 
 import play.api.Logging
 import play.api.http.Status.NOT_FOUND
-
-import javax.inject.*
-import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.*
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, ClientListStatus, EmployerReference, PrePopContractorBody, PrePopContractorResponse, PrePopSubcontractor, PrePopSubcontractorsResponse, PrepopKnownFacts}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.EnqueueMessageRequest
+import uk.gov.hmrc.constructionindustryscheme.models.response.EnqueueMessageResponse
+import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
+
+import javax.inject.*
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class DatacacheProxyConnector @Inject() (
@@ -137,4 +139,12 @@ class DatacacheProxyConnector @Inject() (
         case u: UpstreamErrorResponse if u.statusCode == NOT_FOUND => Future.successful(Seq.empty)
       }
 
+  def enqueueMessage(
+    request: EnqueueMessageRequest
+  )(implicit hc: HeaderCarrier): Future[Long] =
+    http
+      .post(url"$base/cis/enqueue-message")
+      .withBody(Json.toJson(request))
+      .execute[EnqueueMessageResponse]
+      .map(_.messageIDOut)
 }

@@ -26,6 +26,7 @@ import org.apache.pekko.actor.ActorSystem
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.services.AuditService
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
+import uk.gov.hmrc.constructionindustryscheme.models.requests.EnqueueMessageRequest
 import uk.gov.hmrc.constructionindustryscheme.models.{AsynchronousProcessWaitTime, ClientListStatus}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
@@ -248,4 +249,22 @@ class ClientListService @Inject() (
         case _: ClientListDownloadFailedException     => Failed
         case _: SystemException                       => InitiateDownload
       }
+
+  def removeClient(taxOfficeNumber: String, taxOfficeReference: String, agentId: String)(implicit
+    hc: HeaderCarrier
+  ): Future[Long] =
+    datacacheProxyConnector.enqueueMessage(
+      EnqueueMessageRequest(
+        sender = "Portal",
+        queueName = "AGTAUTH",
+        replyQueue = "",
+        correlationID = "",
+        filter = "RemoveClient",
+        payload = Map(
+          "IRAgentID"    -> agentId,
+          "Service"      -> "CIS",
+          "TaxReference" -> s"$taxOfficeNumber/$taxOfficeReference"
+        )
+      )
+    )
 }
