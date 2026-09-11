@@ -303,7 +303,13 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
             correlationId = "corr-123",
             pollUrl = None,
             pollInterval = None,
-            error = None,
+            error = Some(
+              play.api.libs.json.Json.obj(
+                "errorNumber" -> "3001",
+                "errorType"   -> "departmentalError",
+                "errorText"   -> "Business validation failed"
+              )
+            ),
             irMarkReceived = None,
             lastMessageDate = None,
             acceptedTime = None
@@ -311,8 +317,22 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
         )
         .futureValue mustBe ()
 
-      verify(formpProxyConnector).updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(
+      val requestCaptor =
+        org.mockito.ArgumentCaptor.forClass(classOf[UpdateVerificationSubmissionRequest])
+
+      verify(formpProxyConnector).updateVerificationSubmission(requestCaptor.capture())(
         any[HeaderCarrier]
+      )
+
+      requestCaptor.getValue mustBe UpdateVerificationSubmissionRequest(
+        instanceId = "instance-123",
+        verificationBatchResourceRef = 5L,
+        submittableStatus = DEPARTMENTAL_ERROR.toString,
+        submissionRequestDate = Some(LocalDateTime.parse("2026-06-19T10:00:00")),
+        hmrcMarkGenerated = Some("hmrc-mark"),
+        govtalkErrorCode = Some("3001"),
+        govtalkErrorType = Some("departmentalError"),
+        govtalkErrorMessage = Some("Business validation failed")
       )
     }
 

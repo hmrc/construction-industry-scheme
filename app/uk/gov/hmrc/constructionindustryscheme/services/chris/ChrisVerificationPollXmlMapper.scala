@@ -25,6 +25,16 @@ object ChrisVerificationPollXmlMapper extends ChrisXmlMapper {
 
   def parse(xml: String, hmrcMarkGenerated: String, now: Instant = Instant.now()): Either[String, ChrisPollResponse] =
     parsePoll(xml, hmrcMarkGenerated: String, now)(derivePollStatus)
+      .map(response =>
+        response.copy(
+          error = response.error.map(json =>
+            json
+              .validate[GovTalkError]
+              .map(error => play.api.libs.json.Json.toJson(GovTalkErrorMapper.mapVerificationPoll(error)))
+              .getOrElse(json)
+          )
+        )
+      )
 
   /** Verification poll status mapping per F18. */
   private def derivePollStatus(
@@ -37,10 +47,13 @@ object ChrisVerificationPollXmlMapper extends ChrisXmlMapper {
       case "response"        => if (irMarkMatch) SUBMITTED else SUBMITTED_NO_RECEIPT
       case "error"           =>
         errOpt match {
-          case Some(err) if err.errorNumber == "3001" && err.errorType.equalsIgnoreCase("business") =>
+          case Some(err) if err.errorNumber == "3001" || err.errorType == "business" =>
             DEPARTMENTAL_ERROR
 
-          case Some(err) if err.errorNumber == "3000" && err.errorType.equalsIgnoreCase("fatal") =>
+          case Some(err) if err.errorType == "fatal" =>
+            FATAL_ERROR
+
+          case Some(err) if err.raisedBy.contains("Department") =>
             DEPARTMENTAL_ERROR
 
           case _ => FATAL_ERROR

@@ -23,7 +23,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisSubmissionPhase.{Initial, Polling}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
-import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository, StoredMonthlyReturnContext}
+import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository, StoredMonthlyReturnContext, StoredVerificationContext}
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService.SyncedVerificationSession
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -248,10 +248,32 @@ class SubmissionService @Inject() (
     employerReference: EmployerReference,
     submissionId: String,
     correlationId: String,
-    gatewayURL: String
+    gatewayURL: String,
+    journey: ChrisPollJourney = ChrisPollJourney.MonthlyReturn,
+    verificationContext: Option[StoredVerificationContext] = None,
+    error: Option[GovTalkError] = None,
+    submissionStatus: SubmissionStatus = STARTED
   )(implicit hc: HeaderCarrier): Future[Unit] =
     for {
       instanceId <- initialiseGovTalkStatus(employerReference, submissionId, correlationId, gatewayURL)
+      _          <- (journey, verificationContext) match {
+                      case (ChrisPollJourney.Verification, Some(ctx)) =>
+                        formpProxyConnector.updateVerificationSubmission(
+                          UpdateVerificationSubmissionRequest(
+                            instanceId = instanceId,
+                            verificationBatchResourceRef = ctx.verificationBatchResourceRef,
+                            submittableStatus = submissionStatus.toString,
+                            submissionRequestDate = Some(ctx.submissionRequestDate),
+                            hmrcMarkGenerated = Some(ctx.hmrcMarkGenerated),
+                            govtalkErrorCode = error.map(_.errorNumber),
+                            govtalkErrorType = error.map(_.errorType),
+                            govtalkErrorMessage = error.map(_.errorText)
+                          )
+                        )
+
+                      case _ =>
+                        Future.unit
+                    }
       _          <- updateGovTalkStatus(UpdateGovTalkStatusRequest(instanceId, submissionId, None, "dataRequest"))
     } yield ()
 

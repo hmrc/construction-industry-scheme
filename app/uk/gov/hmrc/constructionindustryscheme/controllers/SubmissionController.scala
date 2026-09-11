@@ -25,9 +25,9 @@ import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.ChrisPollJourney.*
 import uk.gov.hmrc.constructionindustryscheme.models.audit.{AuditResponseReceivedModel, XmlConversionResult}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
-import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, ChrisPollJourney, ChrisSubmissionContext, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkErrorStatus, MonthlyReturnSubmissionContext, MonthlyReturnType, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult, VerificationSubmissionContextBuilder}
+import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus, ChRISSubmission, ChrisPollJourney, ChrisSubmissionContext, CisVerificationSubmission, DEPARTMENTAL_ERROR as DepartmentalErrorStatus, EmployerReference, FATAL_ERROR as FatalErrorStatus, GovTalkError, GovTalkErrorStatus, MonthlyReturnSubmissionContext, MonthlyReturnType, STARTED as StartedStatus, SUBMITTED as SubmittedStatus, SUBMITTED_NO_RECEIPT as SubmittedNoReceiptStatus, SubmissionResult, SubmissionStatus, VerificationSubmissionContext, VerificationSubmissionContextBuilder}
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
-import uk.gov.hmrc.constructionindustryscheme.services.chris.GovTalkErrorStatusClassifier
+import uk.gov.hmrc.constructionindustryscheme.services.chris.{GovTalkErrorMapper, GovTalkErrorStatusClassifier}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 import uk.gov.hmrc.constructionindustryscheme.utils.{CisEnrolmentHeaderForwarding, UriHelper, XmlToJsonConvertor, XmlValidator}
 import uk.gov.hmrc.http.HeaderCarrier
@@ -367,7 +367,9 @@ class SubmissionController @Inject() (
     ex: Throwable,
     errorLabel: String,
     startedErrorText: String,
-    journey: ChrisPollJourney
+    journey: ChrisPollJourney,
+    verificationContext: Option[VerificationSubmissionContext] = None,
+    failureStatus: SubmissionStatus = StartedStatus
   )(implicit hc: HeaderCarrier): Future[Result] = {
     logger.error(
       s"Received 5xx/Exception from ChRIS$errorLabel, treating as RESUBMIT for submissionId=$submissionId",
@@ -375,18 +377,35 @@ class SubmissionController @Inject() (
     )
 
     val classified: GovTalkErrorStatus = classifyChrisFailure(ex)
+    val govTalkError                   = initialFailureGovTalkError(ex)
+    val processFailure                 =
+      verificationContext match {
+        case Some(ctx) if journey == Verification =>
+          submissionService.processInitialChrisFailure(
+            employerRef,
+            submissionId,
+            correlationId,
+            journey.gatewayUrl(appConfig),
+            journey = journey,
+            verificationContext = ctx.verificationContext,
+            error = Some(govTalkError),
+            submissionStatus = failureStatus
+          )
 
-    submissionService
-      .processInitialChrisFailure(
-        employerRef,
-        submissionId,
-        correlationId,
-        journey.gatewayUrl(appConfig)
-      )
+        case _ =>
+          submissionService.processInitialChrisFailure(
+            employerRef,
+            submissionId,
+            correlationId,
+            journey.gatewayUrl(appConfig)
+          )
+      }
+
+    processFailure
       .map { _ =>
         Ok(
           withError(
-            baseSubmissionResponseJson(submissionId, irMark, correlationId, "STARTED", Some(classified)),
+            baseSubmissionResponseJson(submissionId, irMark, correlationId, failureStatus.toString, Some(classified)),
             startedErrorText
           )
         )
@@ -407,6 +426,13 @@ class SubmissionController @Inject() (
       GovTalkErrorStatusClassifier.fromHttpStatus(err.statusCode)
     case _                                                                           =>
       GovTalkErrorStatusClassifier.noResponse
+  }
+
+  private def initialFailureGovTalkError(ex: Throwable): GovTalkError = ex match {
+    case err: UpstreamErrorResponse if err.statusCode >= 500 && err.statusCode < 600 =>
+      GovTalkErrorMapper.fromHttpTimeout(err.statusCode)
+    case _                                                                           =>
+      GovTalkErrorMapper.fromInitialConnectionRefused()
   }
 
   private def baseSubmissionResponseJson(
@@ -501,7 +527,9 @@ class SubmissionController @Inject() (
               ex,
               errorLabel = " verification",
               startedErrorText = "Chris verification failure",
-              journey = Verification
+              journey = Verification,
+              verificationContext = Some(verificationContext),
+              failureStatus = FatalErrorStatus
             )
           }
     }

@@ -1012,6 +1012,70 @@ final class SubmissionServiceSpec extends SpecBase {
 
       service.processInitialChrisFailure(employerRef, submissionId, correlationId, gatewayUrl).futureValue mustBe ()
     }
+
+    "updates verification submission to fatal error for initial ChRIS verification failure" in {
+      val s = setup
+      import s._
+
+      val employerRef   = EmployerReference("123", "AB456")
+      val submissionId  = "sub-123"
+      val correlationId = "corr-123"
+      val gatewayUrl    = "/gateway"
+      val taxpayer      = mkTaxpayer("instance-123")
+      val error         = GovTalkError("500", "timeOut", "timeOut")
+
+      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(taxpayer))
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest("instance-123", submissionId)),
+          eqTo(Initial)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(None))
+
+      when(
+        formpProxyConnector.createGovTalkStatusRecord(
+          eqTo(CreateGovTalkStatusRecordRequest("instance-123", submissionId, correlationId, gatewayUrl))
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      val expectedUpdateSubmission = UpdateVerificationSubmissionRequest(
+        instanceId = "instance-123",
+        verificationBatchResourceRef = 1L,
+        submittableStatus = FATAL_ERROR.toString,
+        submissionRequestDate = Some(LocalDateTime.of(2025, 1, 1, 0, 0)),
+        hmrcMarkGenerated = Some("verification-hmrc-mark"),
+        govtalkErrorCode = Some("500"),
+        govtalkErrorType = Some("timeOut"),
+        govtalkErrorMessage = Some("timeOut")
+      )
+
+      when(
+        formpProxyConnector.updateVerificationSubmission(eqTo(expectedUpdateSubmission))(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatus(
+          eqTo(UpdateGovTalkStatusRequest("instance-123", submissionId, None, "dataRequest"))
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      service
+        .processInitialChrisFailure(
+          employerRef,
+          submissionId,
+          correlationId,
+          gatewayUrl,
+          journey = ChrisPollJourney.Verification,
+          verificationContext = Some(pollVerificationContext),
+          error = Some(error),
+          submissionStatus = FATAL_ERROR
+        )
+        .futureValue mustBe ()
+
+      verify(formpProxyConnector).updateVerificationSubmission(eqTo(expectedUpdateSubmission))(any[HeaderCarrier])
+    }
   }
 
   "initialiseGovTalkStatus" - {

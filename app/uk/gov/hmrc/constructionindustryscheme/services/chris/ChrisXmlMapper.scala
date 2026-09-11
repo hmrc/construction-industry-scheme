@@ -45,12 +45,20 @@ trait ChrisXmlMapper {
 
   protected def parseError(qualifier: String, doc: Elem): Either[String, Option[GovTalkError]] =
     if (qualifier.equalsIgnoreCase("error")) {
-      val e = doc \\ "GovTalkErrors" \\ "Error"
+      val e           = doc \\ "GovTalkErrors" \\ "Error"
+      val raisedByOpt = textOptional(e, "RaisedBy")
       for {
         errorNumber <- textRequired(e, "Number", "GovTalkErrors/Error/Number")
         errorType   <- textRequired(e, "Type", "GovTalkErrors/Error/Type")
         errorText   <- textRequired(e, "Text", "GovTalkErrors/Error/Text").map(normalizeErrorText)
-      } yield Some(GovTalkError(errorNumber = errorNumber, errorType = errorType, errorText = errorText))
+      } yield Some(
+        GovTalkError(
+          errorNumber = errorNumber,
+          errorType = errorType,
+          errorText = errorText,
+          raisedBy = raisedByOpt
+        )
+      )
     } else Right(None)
 
   protected def directTextOptional(scope: NodeSeq, tagName: String): Option[String] =
