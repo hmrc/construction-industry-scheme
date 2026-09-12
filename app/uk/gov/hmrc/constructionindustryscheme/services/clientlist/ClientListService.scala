@@ -26,7 +26,7 @@ import org.apache.pekko.actor.ActorSystem
 import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.services.AuditService
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{EnqueueMessageRequest, EnqueueClobRequest, EnqueueMessageHeaderRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.EnqueueMessageRequest
 import uk.gov.hmrc.constructionindustryscheme.models.{AsynchronousProcessWaitTime, ClientListStatus, EnqueueMessage, EnqueueNumber, EnqueueTracking}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
