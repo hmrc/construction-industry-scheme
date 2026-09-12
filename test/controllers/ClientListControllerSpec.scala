@@ -383,7 +383,7 @@ class ClientListControllerSpec extends SpecBase {
     "return 200 OK when client removed successfully" in {
       val mockService = mock[ClientListService]
 
-      when(mockService.removeClient(any[String], any[String], any[String])(using any[HeaderCarrier]))
+      when(mockService.removeClient(any[String], any[String], any[String], any[String])(using any[HeaderCarrier]))
         .thenReturn(Future.successful(1L))
 
       val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
@@ -395,7 +395,9 @@ class ClientListControllerSpec extends SpecBase {
 
       status(result) mustBe NO_CONTENT
 
-      verify(mockService, times(1)).removeClient(any[String], any[String], any[String])(using any[HeaderCarrier])
+      verify(mockService, times(1)).removeClient(any[String], any[String], any[String], any[String])(using
+        any[HeaderCarrier]
+      )
     }
 
     "returns 400 BadRequest when JSON is invalid" in {
@@ -416,7 +418,7 @@ class ClientListControllerSpec extends SpecBase {
     "return 500 InternalServerError when service fails" in {
       val mockService = mock[ClientListService]
 
-      when(mockService.removeClient(any[String], any[String], any[String])(using any[HeaderCarrier]))
+      when(mockService.removeClient(any[String], any[String], any[String], any[String])(using any[HeaderCarrier]))
         .thenReturn(Future.failed(UpstreamErrorResponse("Service error", 500, 500)))
 
       val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)

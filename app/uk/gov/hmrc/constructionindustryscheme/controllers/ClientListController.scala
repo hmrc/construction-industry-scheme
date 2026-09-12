@@ -78,7 +78,7 @@ class ClientListController @Inject() (
           errs => Future.successful(BadRequest(JsError.toJson(errs))),
           body =>
             service
-              .removeClient(body.taxOfficeNumber, body.taxOfficeReference, request.agentId)
+              .removeClient(body.taxOfficeNumber, body.taxOfficeReference, request.agentId, request.credentialId)
               .map(_ => NoContent)
               .recover { case t =>
                 logger.error("[removeClient] failed", t)
