@@ -44,7 +44,7 @@ GET        /subcontractors/:cisId                                        uk.gov.
 GET        /subcontractor/:cisId/:subbieResourceRef/delete-status        uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractorDeleteStatus(cisId: String, subbieResourceRef: Long)
 GET        /subcontractor/:cisId/:subbieResourceRef                      uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.getSubcontractor(cisId: String, subbieResourceRef: Long)
 POST       /subcontractor/delete                                         uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.deleteSubcontractor()
-POST       /subcontractor/update                                        uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.updateSubcontractor()
+POST       /subcontractor/update                                         uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController.updateSubcontractor()
 
 POST       /amend-monthly-return/create                                  uk.gov.hmrc.constructionindustryscheme.controllers.AmendMonthlyReturnController.createAmendedMonthlyReturn()
 
@@ -74,3 +74,11 @@ POST          /journey-handoffs/:journeyType                             uk.gov.
 DELETE        /journey-handoffs/:journeyType/:id                         uk.gov.hmrc.constructionindustryscheme.controllers.JourneyHandoffController.delete(journeyType: String, id: String)
 
 POST          /contractor-details/update                                 uk.gov.hmrc.constructionindustryscheme.controllers.ContractorDetailsController.updateContractorDetails()
+
+# Final Validation draft
+
+POST          /final-validation/drafts                                   uk.gov.hmrc.constructionindustryscheme.controllers.FinalValidationDraftController.create()
+GET           /final-validation/drafts/:instanceId/:draftId              uk.gov.hmrc.constructionindustryscheme.controllers.FinalValidationDraftController.get(instanceId: String, draftId: String)
+PUT           /final-validation/drafts/:instanceId/:draftId/correction   uk.gov.hmrc.constructionindustryscheme.controllers.FinalValidationDraftController.updateCorrection(instanceId: String, draftId: String)
+PUT           /final-validation/drafts/:instanceId/:draftId/readiness    uk.gov.hmrc.constructionindustryscheme.controllers.FinalValidationDraftController.updateReadiness(instanceId: String, draftId: String)
+POST          /final-validation/drafts/:instanceId/:draftId/commit       uk.gov.hmrc.constructionindustryscheme.controllers.FinalValidationDraftController.commit(instanceId: String, draftId: String)
