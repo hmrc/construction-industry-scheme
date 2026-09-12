@@ -46,6 +46,33 @@ object MonthlyNilReturnResponseEvent {
   implicit val formats: Format[MonthlyNilReturnResponseEvent] = Json.format[MonthlyNilReturnResponseEvent]
 }
 
+case class MonthlyReturnPollResponseEvent(response: JsValue) extends AuditEventModel {
+  override val auditType: String   = "monthlyReturnPollResponse"
+  override val detailJson: JsValue = Json.toJson(this)
+}
+
+object MonthlyReturnPollResponseEvent {
+  implicit val formats: Format[MonthlyReturnPollResponseEvent] = Json.format[MonthlyReturnPollResponseEvent]
+}
+
+case class VerificationPollResponseEvent(response: JsValue) extends AuditEventModel {
+  override val auditType: String   = "verificationPollResponse"
+  override val detailJson: JsValue = Json.toJson(this)
+}
+
+object VerificationPollResponseEvent {
+  implicit val formats: Format[VerificationPollResponseEvent] = Json.format[VerificationPollResponseEvent]
+}
+
+case class VerificationRequestEvent(payload: JsValue) extends AuditEventModel {
+  override val auditType: String   = "verificationRequest"
+  override val detailJson: JsValue = Json.toJson(this)
+}
+
+object VerificationRequestEvent {
+  implicit val formats: Format[VerificationRequestEvent] = Json.format[VerificationRequestEvent]
+}
+
 case class MonthlyReturnRequestEvent(payload: JsValue) extends AuditEventModel {
   override val auditType: String   = "monthlyReturnRequest"
   override val detailJson: JsValue = Json.toJson(this)
@@ -62,6 +89,15 @@ object MonthlyReturnRequestEvent {
 
 object MonthlyReturnResponseEvent {
   implicit val formats: Format[MonthlyReturnResponseEvent] = Json.format[MonthlyReturnResponseEvent]
+}
+
+case class VerificationResponseEvent(response: AuditResponseReceivedModel) extends AuditEventModel {
+  override val auditType: String   = "verificationResponse"
+  override val detailJson: JsValue = Json.toJson(this)
+}
+
+object VerificationResponseEvent {
+  implicit val formats: Format[VerificationResponseEvent] = Json.format[VerificationResponseEvent]
 }
 
 final case class ClientListRetrievalFailedEvent(

@@ -1062,6 +1062,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         val pollUrl         = "http://chris.test/poll"
         val overridePollUrl = "https://override.chris.test/poll"
 
+        when(mockAuditService.monthlyReturnPollResponseEvent(any())(any()))
+          .thenReturn(Future.successful(AuditResult.Success))
+
         when(
           submissionService.pollSubmissionAndUpdateGovTalkStatus(
             eqTo(submissionId),
@@ -1099,6 +1102,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
             eqTo(overridePollUrl),
             eqTo(ChrisPollJourney.MonthlyReturn)
           )(any[HeaderCarrier])
+
+        verify(mockAuditService).monthlyReturnPollResponseEvent(any())(any())
       }
     }
 
@@ -1117,6 +1122,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       )
 
       val pollUrl = "http://chris.test/poll"
+
+      when(mockAuditService.monthlyReturnPollResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
 
       when(
         submissionService.pollSubmissionAndUpdateGovTalkStatus(
@@ -1148,6 +1156,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "status").as[String] mustBe "SUBMITTED"
       (js \ "pollUrl").asOpt[String] mustBe None
       (js \ "intervalSeconds").asOpt[Int] mustBe None
+
+      verify(mockAuditService).monthlyReturnPollResponseEvent(any())(any())
     }
 
     "returns 400 when pollUrl host is not allowed" in {
@@ -1823,6 +1833,84 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           eqTo(false)
         )(any[HeaderCarrier])
     }
+
+    "fires verificationResponseEvent audit event when initial ChRIS response is received" in {
+      val submissionService  = mock[SubmissionService]
+      val xmlValidator       = mock[XmlValidator]
+      val verificationSchema = mock[Schema]
+
+      when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(xmlValidator.validate(any[NodeSeq], eqTo(verificationSchema)))
+        .thenReturn(Success(()))
+
+      when(mockAuditService.verificationResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+
+      mockProcessInitialChrisAckSuccess(submissionService)
+
+      when(submissionService.submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[CisVerificationSubmission])
+          val result  = mkSubmissionResult(SUBMITTED)
+          Future.successful(result.copy(meta = result.meta.copy(correlationId = payload.correlationId)))
+        }
+
+      val request =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-verification-to-chris")
+          .withBody(validVerificationJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitVerificationToChris(submissionId)(request)
+
+      status(result) mustBe OK
+
+      verify(mockAuditService, times(1)).verificationResponseEvent(any())(any())
+    }
+
+    "fires verificationRequestEvent audit event when submitting to ChRIS" in {
+      val submissionService  = mock[SubmissionService]
+      val xmlValidator       = mock[XmlValidator]
+      val verificationSchema = mock[Schema]
+
+      when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(xmlValidator.validate(any[NodeSeq], eqTo(verificationSchema)))
+        .thenReturn(Success(()))
+
+      when(mockAuditService.verificationRequestEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+
+      mockProcessInitialChrisAckSuccess(submissionService)
+
+      when(submissionService.submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier]))
+        .thenAnswer { invocation =>
+          val payload = invocation.getArgument(0, classOf[CisVerificationSubmission])
+          val result  = mkSubmissionResult(SUBMITTED)
+          Future.successful(result.copy(meta = result.meta.copy(correlationId = payload.correlationId)))
+        }
+
+      val request =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-verification-to-chris")
+          .withBody(validVerificationJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitVerificationToChris(submissionId)(request)
+
+      status(result) mustBe OK
+
+      verify(mockAuditService).verificationRequestEvent(any())(any())
+    }
   }
 
   "pollVerificationSubmission" - {
@@ -1986,6 +2074,56 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       status(result) mustBe UNAUTHORIZED
       verifyNoInteractions(submissionService)
+    }
+
+    "fires verificationPollResponseEvent audit event on successful poll" in {
+      val submissionService = mock[SubmissionService]
+      val config            = mock[AppConfig]
+      val xmlValidator      = mock[XmlValidator]
+
+      when(config.chrisHost).thenReturn(Seq("chris.test"))
+      when(config.useOverridePollResponseEndPoint).thenReturn(false)
+
+      val controller = mkController(
+        submissionService = submissionService,
+        appConfig = config,
+        xmlValidator = xmlValidator
+      )
+
+      val pollUrl = "http://chris.test/poll"
+
+      when(mockAuditService.verificationPollResponseEvent(any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+
+      when(
+        submissionService.pollSubmissionAndUpdateGovTalkStatus(
+          eqTo(submissionId),
+          eqTo(pollUrl),
+          eqTo(ChrisPollJourney.Verification)
+        )(any[HeaderCarrier])
+      ).thenReturn(
+        Future.successful(
+          ChrisPollResponse(
+            status = ACCEPTED,
+            correlationId = "corr-123",
+            pollUrl = Some(pollUrl),
+            pollInterval = Some(10),
+            error = None,
+            irMarkReceived = None,
+            lastMessageDate = None,
+            acceptedTime = None
+          )
+        )
+      )
+
+      val req =
+        FakeRequest(GET, s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=$pollUrl")
+
+      val result = controller.pollVerificationSubmission(RedirectUrl(pollUrl), submissionId)(req)
+
+      status(result) mustBe OK
+
+      verify(mockAuditService).verificationPollResponseEvent(any())(any())
     }
   }
 
