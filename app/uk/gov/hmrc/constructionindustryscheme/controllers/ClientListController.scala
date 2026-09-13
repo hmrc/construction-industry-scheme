@@ -20,7 +20,7 @@ import play.api.Logging
 import play.api.libs.json.*
 import play.api.mvc.*
 import uk.gov.hmrc.constructionindustryscheme.actions.{AgentAction, AuthAction}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.RemoveAgentClientRequest
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{RemoveAgentClientRequest, UpdateAgentClientRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.*
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
@@ -82,6 +82,23 @@ class ClientListController @Inject() (
               .map(_ => NoContent)
               .recover { case t =>
                 logger.error("[removeClient] failed", t)
+                InternalServerError(Json.obj("message" -> "Unexpected error"))
+              }
+        )
+    }
+
+  def updateClient(): Action[JsValue] =
+    (authorise andThen isAgent).async(parse.json) { implicit request =>
+      request.body
+        .validate[UpdateAgentClientRequest]
+        .fold(
+          errs => Future.successful(BadRequest(JsError.toJson(errs))),
+          body =>
+            service
+              .updateClient(body.taxOfficeNumber, body.taxOfficeReference, body.clientRef)
+              .map(_ => NoContent)
+              .recover { case t =>
+                logger.error("[updateClient] failed", t)
                 InternalServerError(Json.obj("message" -> "Unexpected error"))
               }
         )

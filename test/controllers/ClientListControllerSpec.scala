@@ -27,7 +27,7 @@ import play.api.test.Helpers.*
 import uk.gov.hmrc.constructionindustryscheme.controllers.ClientListController
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.{Failed, InProgress, InitiateDownload, Succeeded}
 import uk.gov.hmrc.constructionindustryscheme.models.CisTaxpayerSearchResult
-import uk.gov.hmrc.constructionindustryscheme.models.requests.RemoveAgentClientRequest
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{RemoveAgentClientRequest, UpdateAgentClientRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.*
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
@@ -427,6 +427,70 @@ class ClientListControllerSpec extends SpecBase {
       val req = FakeRequest(POST, url).withBody(validJson).withHeaders(CONTENT_TYPE -> JSON)
 
       val result = controller.removeClient()(req)
+
+      status(result) mustBe INTERNAL_SERVER_ERROR
+      contentAsJson(result) mustBe Json.obj("message" -> "Unexpected error")
+    }
+  }
+
+  "ClientListController.updateClient" - {
+
+    val url = "/agent/update-client"
+
+    val clientRef = "SA123456"
+    val irAgentId = "SA123456"
+    val credId    = "cred-123"
+    val request   = UpdateAgentClientRequest(taxOfficeNumber = "123", taxOfficeReference = "AB456", clientRef)
+
+    val validJson: JsValue = Json.toJson(request)
+
+    "return 200 OK when client updated successfully" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.updateClient(any[String], any[String], any[String])(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(1L))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, agentAction, mockService, cc)
+
+      val req = FakeRequest(POST, url).withBody(validJson).withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.updateClient()(req)
+
+      status(result) mustBe NO_CONTENT
+
+      verify(mockService, times(1)).updateClient(any[String], any[String], any[String])(using
+        any[HeaderCarrier]
+      )
+    }
+
+    "returns 400 BadRequest when JSON is invalid" in {
+
+      val mockService = mock[ClientListService]
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, agentAction, mockService, cc)
+
+      val req = FakeRequest(POST, url).withBody(Json.obj("invalid" -> "payload")).withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.updateClient()(req)
+
+      status(result) mustBe BAD_REQUEST
+      verifyNoInteractions(mockService)
+    }
+
+    "return 500 InternalServerError when service fails" in {
+      val mockService = mock[ClientListService]
+
+      when(mockService.updateClient(any[String], any[String], any[String])(using any[HeaderCarrier]))
+        .thenReturn(Future.failed(UpstreamErrorResponse("Service error", 500, 500)))
+
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val controller = new ClientListController(authAction, agentAction, mockService, cc)
+
+      val req = FakeRequest(POST, url).withBody(validJson).withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.updateClient()(req)
 
       status(result) mustBe INTERNAL_SERVER_ERROR
       contentAsJson(result) mustBe Json.obj("message" -> "Unexpected error")
