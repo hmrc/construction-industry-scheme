@@ -128,14 +128,21 @@ class ClientListService @Inject() (
 
   private def processWithWaitPlan(
     credentialId: String,
+    agentId: String,
     waitPlan: AsynchronousProcessWaitTime
   )(implicit hc: HeaderCarrier): Future[Unit] =
-    val business = waitPlan.businessIntervalsMs
+    val business    = waitPlan.businessIntervalsMs
+    val someAgentId = Some(agentId)
     logWaitPlan(business, waitPlan.browserIntervalMs)
 
     // BUSINESS PHASE
     if business.isEmpty then
-      audit.clientListRetrievalFailed(credentialId, phase = "business", reason = Some("no-business-intervals"))
+      audit.clientListRetrievalFailed(
+        credentialId,
+        phase = "business",
+        reason = Some("no-business-intervals"),
+        agentId = someAgentId
+      )
       clearWaitTime(credentialId)
       Future.failed(NoBusinessIntervalsException("No business intervals"))
     else
@@ -152,7 +159,11 @@ class ClientListService @Inject() (
                           Future.successful(true)
 
                         case Failed =>
-                          audit.clientListRetrievalFailed(credentialId, phase = s"business#$index")
+                          audit.clientListRetrievalFailed(
+                            credentialId,
+                            phase = s"business#$index",
+                            agentId = someAgentId
+                          )
                           clearWaitTime(credentialId)
                           Future.failed(ClientListDownloadFailedException("Failed"))
 
@@ -165,7 +176,8 @@ class ClientListService @Inject() (
                             audit.clientListRetrievalFailed(
                               credentialId,
                               phase = s"business#$index",
-                              reason = Some("initiate-on-final-business-interval")
+                              reason = Some("initiate-on-final-business-interval"),
+                              agentId = someAgentId
                             )
                             clearWaitTime(credentialId)
                             Future.failed(SystemException("Initiate on final business interval"))
@@ -187,7 +199,7 @@ class ClientListService @Inject() (
                                  Future.unit
 
                                case Failed =>
-                                 audit.clientListRetrievalFailed(credentialId, phase = "browser")
+                                 audit.clientListRetrievalFailed(credentialId, phase = "browser", agentId = someAgentId)
                                  clearWaitTime(credentialId)
                                  Future.failed(ClientListDownloadFailedException("Failed after browser interval"))
 
@@ -195,13 +207,18 @@ class ClientListService @Inject() (
                                  audit.clientListRetrievalFailed(
                                    credentialId,
                                    phase = "browser",
-                                   reason = Some("initiate-after-browser")
+                                   reason = Some("initiate-after-browser"),
+                                   agentId = someAgentId
                                  )
                                  clearWaitTime(credentialId)
                                  Future.failed(SystemException("Initiate after browser interval"))
 
                                case InProgress =>
-                                 audit.clientListRetrievalInProgress(credentialId, phase = "browser")
+                                 audit.clientListRetrievalInProgress(
+                                   credentialId,
+                                   phase = "browser",
+                                   agentId = someAgentId
+                                 )
                                  clearWaitTime(credentialId)
                                  Future.failed(ClientListDownloadInProgressException("Still in progress"))
             yield finalResult
@@ -221,15 +238,15 @@ class ClientListService @Inject() (
 
         case Failed =>
           logStatus("initial", None, Failed)
-          audit.clientListRetrievalFailed(credentialId, phase = "initial")
+          audit.clientListRetrievalFailed(credentialId, phase = "initial", agentId = Some(agentId))
           clearWaitTime(credentialId)
           Future.failed(ClientListDownloadFailedException("Failed"))
 
         case InProgress =>
           logStatus("initial", None, InProgress)
-          audit.clientListRetrievalInProgress(credentialId, phase = "initial")
+          audit.clientListRetrievalInProgress(credentialId, phase = "initial", agentId = Some(agentId))
           val waitPlan = getCachedWaitTime(credentialId).getOrElse(defaultWaitPlan)
-          processWithWaitPlan(credentialId, waitPlan)
+          processWithWaitPlan(credentialId, agentId, waitPlan)
 
         case InitiateDownload =>
           logStatus("initial", None, InitiateDownload)
@@ -237,7 +254,7 @@ class ClientListService @Inject() (
           for
             waitPlan <- clientExchangeProxyConnector.initiate(serviceName, credentialId, agentId)
             _         = cacheWaitTime(credentialId, waitPlan)
-            outcome  <- processWithWaitPlan(credentialId, waitPlan)
+            outcome  <- processWithWaitPlan(credentialId, agentId, waitPlan)
           yield outcome
       }
 

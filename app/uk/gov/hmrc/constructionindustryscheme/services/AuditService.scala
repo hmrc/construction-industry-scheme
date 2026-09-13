@@ -167,18 +167,21 @@ class AuditService @Inject (
     auditConnector.sendExtendedEvent(event.extendedDataEvent)
   }
 
-  def clientListRetrievalFailed(credentialId: String, phase: String, reason: Option[String] = None)(implicit
-    hc: HeaderCarrier
-  ): Future[AuditResult] =
+  def clientListRetrievalFailed(
+    credentialId: String,
+    phase: String,
+    reason: Option[String] = None,
+    agentId: Option[String] = None
+  )(implicit hc: HeaderCarrier): Future[AuditResult] =
     auditConnector.sendExtendedEvent(
-      ClientListRetrievalFailedEvent(credentialId, phase, reason).extendedDataEvent
+      ClientListRetrievalFailedEvent(credentialId, phase, reason, agentId).extendedDataEvent
     )
 
-  def clientListRetrievalInProgress(credentialId: String, phase: String)(implicit
+  def clientListRetrievalInProgress(credentialId: String, phase: String, agentId: Option[String] = None)(implicit
     hc: HeaderCarrier
   ): Future[AuditResult] =
     auditConnector.sendExtendedEvent(
-      ClientListRetrievalInProgressEvent(credentialId, phase).extendedDataEvent
+      ClientListRetrievalInProgressEvent(credentialId, phase, agentId).extendedDataEvent
     )
 
 }

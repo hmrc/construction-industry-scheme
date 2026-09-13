@@ -466,11 +466,12 @@ class AuditEventModelSpec extends SpecBase {
 
   "ClientListRetrievalFailedEvent" - {
 
-    "have the correct auditType, auditSource and detail with reason" in {
+    "have the correct auditType, auditSource and detail with reason and agentId" in {
       val event = ClientListRetrievalFailedEvent(
         credentialId = "cred-123",
         phase = "business#1",
-        reason = Some("no-business-intervals")
+        reason = Some("no-business-intervals"),
+        agentId = Some("agent-001")
       )
 
       val extended = event.extendedDataEvent
@@ -483,14 +484,15 @@ class AuditEventModelSpec extends SpecBase {
         "phase"        -> "business#1",
         "outcome"      -> "failed",
         "code"         -> "3046",
-        "reason"       -> "no-business-intervals"
+        "reason"       -> "no-business-intervals",
+        "agentId"      -> "agent-001"
       )
 
       extended.detail shouldBe expectedDetail
       extended.detail shouldBe event.detailJson
     }
 
-    "have the correct detail JSON when no reason is provided" in {
+    "have the correct detail JSON when no reason or agentId is provided" in {
       val event = ClientListRetrievalFailedEvent(
         credentialId = "cred-999",
         phase = "browser",
@@ -507,11 +509,22 @@ class AuditEventModelSpec extends SpecBase {
       event.detailJson shouldBe expectedDetail
     }
 
+    "omit agentId from detail JSON when not provided" in {
+      val event = ClientListRetrievalFailedEvent(
+        credentialId = "cred-999",
+        phase = "browser",
+        reason = Some("initiate-after-browser")
+      )
+
+      event.detailJson.as[JsObject].keys should not contain "agentId"
+    }
+
     "serialize and deserialize correctly to/from JSON" in {
       val event = ClientListRetrievalFailedEvent(
         credentialId = "cred-123",
         phase = "business#1",
-        reason = Some("initiate-on-final-business-interval")
+        reason = Some("initiate-on-final-business-interval"),
+        agentId = Some("agent-001")
       )
 
       val json   = Json.toJson(event)
@@ -523,10 +536,11 @@ class AuditEventModelSpec extends SpecBase {
 
   "ClientListRetrievalInProgressEvent" - {
 
-    "have the correct auditType, auditSource and detail" in {
+    "have the correct auditType, auditSource and detail with agentId" in {
       val event = ClientListRetrievalInProgressEvent(
         credentialId = "cred-456",
-        phase = "browser"
+        phase = "browser",
+        agentId = Some("agent-001")
       )
 
       val extended = event.extendedDataEvent
@@ -538,17 +552,28 @@ class AuditEventModelSpec extends SpecBase {
         "credentialId" -> "cred-456",
         "phase"        -> "browser",
         "outcome"      -> "in-progress",
-        "code"         -> "3008"
+        "code"         -> "3008",
+        "agentId"      -> "agent-001"
       )
 
       extended.detail shouldBe expectedDetail
       extended.detail shouldBe event.detailJson
     }
 
+    "omit agentId from detail JSON when not provided" in {
+      val event = ClientListRetrievalInProgressEvent(
+        credentialId = "cred-456",
+        phase = "browser"
+      )
+
+      event.detailJson.as[JsObject].keys should not contain "agentId"
+    }
+
     "serialize and deserialize correctly to/from JSON" in {
       val event = ClientListRetrievalInProgressEvent(
         credentialId = "cred-456",
-        phase = "business"
+        phase = "business",
+        agentId = Some("agent-001")
       )
 
       val json   = Json.toJson(event)

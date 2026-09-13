@@ -248,6 +248,7 @@ final case class ClientListRetrievalFailedEvent(
   credentialId: String,
   phase: String,
   reason: Option[String] = None,
+  agentId: Option[String] = None,
   code: String = "3046"
 ) extends AuditEventModel:
   override val auditType: String   = "ClientListRetrievalFailure"
@@ -257,11 +258,13 @@ final case class ClientListRetrievalFailedEvent(
       "phase"        -> phase,
       "outcome"      -> "failed",
       "code"         -> code
-    ) ++ reason.fold(Json.obj())(r => Json.obj("reason" -> r))
+    ) ++ reason.fold(Json.obj())(r => Json.obj("reason" -> r)) ++
+      agentId.fold(Json.obj())(a => Json.obj("agentId" -> a))
 
 final case class ClientListRetrievalInProgressEvent(
   credentialId: String,
   phase: String,
+  agentId: Option[String] = None,
   code: String = "3008"
 ) extends AuditEventModel:
   override val auditType: String   = "ClientListRetrievalInProgress"
@@ -271,7 +274,7 @@ final case class ClientListRetrievalInProgressEvent(
       "phase"        -> phase,
       "outcome"      -> "in-progress",
       "code"         -> code
-    )
+    ) ++ agentId.fold(Json.obj())(a => Json.obj("agentId" -> a))
 
 object ClientListRetrievalFailedEvent:
   given Format[ClientListRetrievalFailedEvent] = Json.format[ClientListRetrievalFailedEvent]

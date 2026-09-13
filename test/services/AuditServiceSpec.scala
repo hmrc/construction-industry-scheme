@@ -259,15 +259,16 @@ class AuditServiceSpec extends SpecBase {
       val credentialId = "cred-123"
       val phase        = "business#1"
       val reason       = Some("no-business-intervals")
+      val agentId      = Some("agent-001")
 
       val expectedEvent =
-        ClientListRetrievalFailedEvent(credentialId, phase, reason).extendedDataEvent
+        ClientListRetrievalFailedEvent(credentialId, phase, reason, agentId).extendedDataEvent
 
       when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
       val service = new AuditService(mockAuditConnector)
-      val resultF = service.clientListRetrievalFailed(credentialId, phase, reason)
+      val resultF = service.clientListRetrievalFailed(credentialId, phase, reason, agentId)
 
       resultF.map { result =>
         result shouldBe AuditResult.Success
@@ -286,15 +287,16 @@ class AuditServiceSpec extends SpecBase {
 
       val credentialId = "cred-456"
       val phase        = "browser"
+      val agentId      = Some("agent-001")
 
       val expectedEvent =
-        ClientListRetrievalInProgressEvent(credentialId, phase).extendedDataEvent
+        ClientListRetrievalInProgressEvent(credentialId, phase, agentId).extendedDataEvent
 
       when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
       val service = new AuditService(mockAuditConnector)
-      val resultF = service.clientListRetrievalInProgress(credentialId, phase)
+      val resultF = service.clientListRetrievalInProgress(credentialId, phase, agentId)
 
       resultF.map { result =>
         result shouldBe AuditResult.Success
