@@ -264,7 +264,7 @@ class AuditEventModelSpec extends SpecBase {
 
     "include subcontractors in detail JSON when present" in {
       val sub = VerificationSubcontractorAuditDetail(
-        subcontractorType = Some("individual"),
+        subcontractorType = Some("soletrader"),
         firstName = Some("Jane"),
         middleName = None,
         lastName = Some("Smith"),
@@ -291,7 +291,7 @@ class AuditEventModelSpec extends SpecBase {
       (detail \ "subcontractors").isDefined mustBe true
       val subs   = (detail \ "subcontractors").as[Seq[JsObject]]
       subs must have size 1
-      (subs.head \ "subcontractorType").as[String] mustBe "individual"
+      (subs.head \ "subcontractorType").as[String] mustBe "soletrader"
       (subs.head \ "firstName").as[String] mustBe "Jane"
       (subs.head \ "nino").as[String] mustBe "AB123456C"
       (subs.head \ "middleName").toOption mustBe None
