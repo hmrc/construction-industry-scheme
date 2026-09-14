@@ -21,7 +21,6 @@ import org.scalatest.OptionValues.convertOptionToValuable
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
-import play.api.http.HeaderNames.AUTHORIZATION
 import play.api.http.Status.{BAD_GATEWAY, INTERNAL_SERVER_ERROR, NO_CONTENT, OK}
 import play.api.libs.json.{JsObject, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
@@ -3280,6 +3279,60 @@ class FormpProxyConnectorIntegrationSpec
       ex mustBe a[UpstreamErrorResponse]
       ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe INTERNAL_SERVER_ERROR
       ex.asInstanceOf[UpstreamErrorResponse].message mustBe "accepted without version"
+    }
+  }
+
+  "FormpProxyConnector updateSubcontractorForFinalValidation" should {
+
+    "POST request and return Unit for 204" in {
+      val request = FinalValidationUpdateSubcontractorRequest(
+        instanceId = "1",
+        subcontractorId = 10903L,
+        subbieResourceRef = 7L,
+        changeTargets = Set("utr", "tradingName"),
+        patch = FinalValidationSubcontractorPatch(
+          utr = Some("1234567890"),
+          tradingName = Some("ACME")
+        )
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/final-validation/update"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
+          .withHeader("Content-Type", equalTo("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
+          .willReturn(aResponse().withStatus(NO_CONTENT))
+      )
+
+      connector.updateSubcontractorForFinalValidation(request).futureValue mustBe ((): Unit)
+    }
+
+    "fail the future for non-204 response" in {
+      val request = FinalValidationUpdateSubcontractorRequest(
+        instanceId = "1",
+        subcontractorId = 10903L,
+        subbieResourceRef = 7L,
+        changeTargets = Set("utr"),
+        patch = FinalValidationSubcontractorPatch(
+          utr = Some("1234567890")
+        )
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/cis/subcontractor/final-validation/update"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
+          .withRequestBody(equalToJson(Json.toJson(request).as[JsObject].toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(INTERNAL_SERVER_ERROR)
+              .withBody("""{ "message": "boom" }""")
+          )
+      )
+
+      val ex = connector.updateSubcontractorForFinalValidation(request).failed.futureValue
+
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe INTERNAL_SERVER_ERROR
     }
   }
 }
