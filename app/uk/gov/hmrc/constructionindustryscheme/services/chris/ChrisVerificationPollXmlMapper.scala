@@ -50,11 +50,11 @@ object ChrisVerificationPollXmlMapper extends ChrisXmlMapper {
           case Some(err) if err.errorNumber == "3001" || err.errorType == "business" =>
             DEPARTMENTAL_ERROR
 
-          case Some(err) if err.errorType == "fatal" =>
-            FATAL_ERROR
-
           case Some(err) if err.raisedBy.contains("Department") =>
             DEPARTMENTAL_ERROR
+
+          case Some(err) if err.errorType == "fatal" =>
+            FATAL_ERROR
 
           case _ => FATAL_ERROR
         }

@@ -84,6 +84,51 @@ final class GovTalkErrorMapperSpec extends AnyFreeSpec with Matchers {
       }
     }
 
+    "mapVerificationPoll" - {
+
+      "maps 3001 with any type to departmentalError" in {
+        val error  = GovTalkError("3001", "fatal", "code 3001 wins", Some("Gateway"))
+        val result = GovTalkErrorMapper.mapVerificationPoll(error)
+
+        result mustBe GovTalkError("3001", "departmentalError", "code 3001 wins", Some("Gateway"))
+      }
+
+      "maps business type to departmentalError for any code" in {
+        val error  = GovTalkError("3999", "business", "Business error", Some("Gateway"))
+        val result = GovTalkErrorMapper.mapVerificationPoll(error)
+
+        result mustBe GovTalkError("3999", "departmentalError", "Business error", Some("Gateway"))
+      }
+
+      "maps Department raisedBy to departmentalError for any error type including fatal" in {
+        val error  = GovTalkError("9999", "fatal", "Department fatal error", Some("Department"))
+        val result = GovTalkErrorMapper.mapVerificationPoll(error)
+
+        result mustBe GovTalkError("9999", "departmentalError", "Department fatal error", Some("Department"))
+      }
+
+      "maps Department raisedBy to departmentalError for non-fatal error type" in {
+        val error  = GovTalkError("3998", "warning", "Department warning error", Some("Department"))
+        val result = GovTalkErrorMapper.mapVerificationPoll(error)
+
+        result mustBe GovTalkError("3998", "departmentalError", "Department warning error", Some("Department"))
+      }
+
+      "maps fatal type to systemError when raisedBy is not Department" in {
+        val error  = GovTalkError("1020", "fatal", "Fatal gateway error", Some("Gateway"))
+        val result = GovTalkErrorMapper.mapVerificationPoll(error)
+
+        result mustBe GovTalkError("1020", "systemError", "Fatal gateway error", Some("Gateway"))
+      }
+
+      "maps unknown type to systemError" in {
+        val error  = GovTalkError("5001", "technical", "Unknown error", Some("Gateway"))
+        val result = GovTalkErrorMapper.mapVerificationPoll(error)
+
+        result mustBe GovTalkError("5001", "systemError", "Unknown error", Some("Gateway"))
+      }
+    }
+
     "fromHttpTimeout" - {
       "returns code 500, type timeOut, message timeOut" in {
         val result = GovTalkErrorMapper.fromHttpTimeout()

@@ -307,7 +307,7 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
         (res.error.get \ "errorText").as[String] mustBe "Business error text"
       }
 
-      "Department raisedBy maps to DEPARTMENTAL_ERROR and departmentalError for non-fatal errors" in {
+      "Department raisedBy maps to DEPARTMENTAL_ERROR and departmentalError for any error type" in {
         val xml =
           s"""<GovTalkMessage>
              |  <Header>
@@ -335,6 +335,36 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
         (res.error.get \ "errorNumber").as[String] mustBe "3998"
         (res.error.get \ "errorType").as[String] mustBe "departmentalError"
         (res.error.get \ "errorText").as[String] mustBe "Department error text"
+      }
+
+      "Department raisedBy with fatal error type still maps to DEPARTMENTAL_ERROR" in {
+        val xml =
+          s"""<GovTalkMessage>
+             |  <Header>
+             |    <MessageDetails>
+             |      <Qualifier>error</Qualifier>
+             |      <CorrelationID>$corrId</CorrelationID>
+             |      <GatewayTimestamp>$gatewayTs</GatewayTimestamp>
+             |    </MessageDetails>
+             |  </Header>
+             |  <GovTalkDetails>
+             |    <GovTalkErrors>
+             |      <Error>
+             |        <RaisedBy>Department</RaisedBy>
+             |        <Number>9999</Number>
+             |        <Type>fatal</Type>
+             |        <Text>Department fatal error text</Text>
+             |      </Error>
+             |    </GovTalkErrors>
+             |  </GovTalkDetails>
+             |</GovTalkMessage>
+             |""".stripMargin
+
+        val res = parse(xml).value
+        res.status mustBe DEPARTMENTAL_ERROR
+        (res.error.get \ "errorNumber").as[String] mustBe "9999"
+        (res.error.get \ "errorType").as[String] mustBe "departmentalError"
+        (res.error.get \ "errorText").as[String] mustBe "Department fatal error text"
       }
 
       "error number 3000 with fatal type maps to FATAL_ERROR" in {

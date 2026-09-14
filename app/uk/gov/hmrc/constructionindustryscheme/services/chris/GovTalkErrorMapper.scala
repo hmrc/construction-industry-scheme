@@ -23,10 +23,10 @@ object GovTalkErrorMapper {
   def mapVerificationPoll(error: GovTalkError): GovTalkError =
     if (error.errorNumber == "3001" || error.errorType == "business") {
       GovTalkError(error.errorNumber, "departmentalError", error.errorText, error.raisedBy)
-    } else if (error.errorType == "fatal") {
-      GovTalkError(error.errorNumber, "systemError", error.errorText, error.raisedBy)
     } else if (error.raisedBy.contains("Department")) {
       GovTalkError(error.errorNumber, "departmentalError", error.errorText, error.raisedBy)
+    } else if (error.errorType == "fatal") {
+      GovTalkError(error.errorNumber, "systemError", error.errorText, error.raisedBy)
     } else {
       GovTalkError(error.errorNumber, "systemError", error.errorText, error.raisedBy)
     }
