@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.constructionindustryscheme.models.requests
+package uk.gov.hmrc.constructionindustryscheme.models
 
-import play.api.libs.json.{Json, OFormat}
+import play.api.libs.json.*
 
-case class ProceedInsufficientVerificationRequest(
-  instanceId: String,
-  verificationBatchResourceRef: Long,
-  verificationResourceRef: Long,
-  proceed: String
+final case class EnqueueTracking(
+  message: EnqueueMessage,
+  number: EnqueueNumber
 )
-object ProceedInsufficientVerificationRequest {
-  given OFormat[ProceedInsufficientVerificationRequest] = Json.format
+
+object EnqueueTracking {
+  given OFormat[EnqueueTracking] = Json.format[EnqueueTracking]
 }

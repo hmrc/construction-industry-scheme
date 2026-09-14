@@ -20,9 +20,12 @@ import com.github.tomakehurst.wiremock.client.WireMock.*
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
+import play.api.http.Status.{INTERNAL_SERVER_ERROR, OK}
 import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.itutil.ApplicationWithWiremock
-import uk.gov.hmrc.constructionindustryscheme.models.{ClientListStatus, EmployerReference, PrepopKnownFacts}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.EnqueueMessageRequest
+import uk.gov.hmrc.constructionindustryscheme.models.response.EnqueueMessageResponse
+import uk.gov.hmrc.constructionindustryscheme.models.{ClientListStatus, EmployerReference, EnqueueMessage, EnqueueNumber, EnqueueTracking, PrepopKnownFacts}
 import uk.gov.hmrc.http.UpstreamErrorResponse
 
 class DatacacheProxyConnectorIntegrationSpec
@@ -579,6 +582,80 @@ class DatacacheProxyConnectorIntegrationSpec
 
       val out = connector.getSubcontractorsPrepopByKnownFacts(knownFacts).futureValue
       out mustBe empty
+    }
+  }
+
+  "DatacacheProxyConnector enqueueMessage" should {
+
+    val req = EnqueueMessageRequest(
+      message = EnqueueMessage(
+        sender = "Portal",
+        queueName = "AGTAUTH",
+        replyQueue = "",
+        correlationID = "",
+        filter = "RemoveClient",
+        payload = Map(
+          "IRAgentID"    -> "123456789",
+          "Service"      -> "CIS",
+          "TaxReference" -> "123/ABC123"
+        )
+      ),
+      tracking = Some(
+        EnqueueTracking(
+          message = EnqueueMessage(
+            sender = "Portal",
+            queueName = "Tracking",
+            replyQueue = "",
+            correlationID = "",
+            filter = "AGENTAUTH",
+            payload = Map(
+              "GGIS_DTSTAMP"    -> "20260827 154512747",
+              "MESSAGE_TYPE"    -> "AGENT_AUTH_PORTAL",
+              "ADDITIONAL_INFO" -> "Request client removal",
+              "GW_AGENT_ID"     -> "AGENT123",
+              "IR_CLIENT_REF"   -> "123/ABC123",
+              "USER_ID"         -> "user123",
+              "Service"         -> "CIS"
+            )
+          ),
+          number = EnqueueNumber(
+            dataType = 1,
+            payload = Map(
+              "EVENT_TYPE" -> 1010L
+            )
+          )
+        )
+      )
+    )
+
+    "POST /rds-datacache-proxy/cis/enqueue-message and return messageIDOut (200)" in {
+
+      val response = EnqueueMessageResponse(messageIDOut = 1L)
+      stubFor(
+        post(urlPathEqualTo("/rds-datacache-proxy/cis/enqueue-message"))
+          .withHeader("Content-Type", containing("application/json"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(aResponse().withStatus(OK).withBody(Json.toJson(response).toString()))
+      )
+
+      connector.enqueueMessage(req).futureValue mustBe response.messageIDOut
+    }
+
+    "fail the future when upstream returns a non-200 (e.g. 500)" in {
+
+      stubFor(
+        post(urlPathEqualTo("/rds-datacache-proxy/cis/enqueue-message"))
+          .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
+          .willReturn(
+            aResponse()
+              .withStatus(INTERNAL_SERVER_ERROR)
+              .withBody("""{"message":"boom"}""")
+          )
+      )
+
+      val ex = connector.enqueueMessage(req).failed.futureValue
+      ex mustBe a[UpstreamErrorResponse]
+      ex.asInstanceOf[UpstreamErrorResponse].statusCode mustBe INTERNAL_SERVER_ERROR
     }
   }
 }
