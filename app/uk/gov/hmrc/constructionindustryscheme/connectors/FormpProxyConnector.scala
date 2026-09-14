@@ -604,41 +604,6 @@ class FormpProxyConnector @Inject() (
           )
         )
     }
-}
-
-  def updateSubcontractor(
-    request: UpdateSubcontractorRequest
-  )(implicit hc: HeaderCarrier): Future[UpdateSubcontractorResponse] =
-    http
-      .post(url"$base/cis/subcontractor/update")
-      .setHeader("Authorization" -> internalAuthToken)
-      .withBody(Json.toJson(request))
-      .execute[HttpResponse]
-      .flatMap { response =>
-        response.status match {
-          case OK =>
-            Future.fromTry(
-              scala.util.Try(response.json.as[UpdateSubcontractorResponse])
-            )
-
-          case NO_CONTENT =>
-            Future.failed(
-              UpstreamErrorResponse(
-                "FormP returned 204 No Content for updateSubcontractor; expected response body with version",
-                INTERNAL_SERVER_ERROR,
-                INTERNAL_SERVER_ERROR
-              )
-            )
-
-          case status =>
-            val errorStatus =
-              if (status / 100 == 2) INTERNAL_SERVER_ERROR else status
-
-            Future.failed(
-              UpstreamErrorResponse(response.body, errorStatus, errorStatus)
-            )
-        }
-      }
 
   def proceedVerification(
     request: ProceedVerificationProxyRequest
