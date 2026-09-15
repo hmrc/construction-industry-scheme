@@ -96,7 +96,7 @@ class ClientListServiceSpec extends SpecBase {
       .thenReturn(Future.successful(ClientListStatus.Succeeded))
 
     whenReady(service.process("cred-1", "agent-001")) { _ =>
-      verify(audit, never()).clientListRetrievalFailed(any, any, any)(any)
+      verify(audit, never()).clientListRetrievalFailed(any, any, any, any)(any)
     }
   }
 
@@ -109,7 +109,8 @@ class ClientListServiceSpec extends SpecBase {
     val status = service.process("cred-1", "agent-001").futureValue
 
     status shouldBe ClientListStatus.Failed
-    verify(audit).clientListRetrievalFailed(eqTo("cred-1"), eqTo("initial"), any[Option[String]])(any)
+    verify(audit)
+      .clientListRetrievalFailed(eqTo("cred-1"), eqTo("initial"), any[Option[String]], eqTo(Some("agent-001")))(any)
   }
 
   "AC3 - InitiateDownload should call client-exchange-proxy to fetch wait plan" in {
@@ -155,7 +156,8 @@ class ClientListServiceSpec extends SpecBase {
     verify(audit).clientListRetrievalFailed(
       eqTo("cred-1"),
       eqTo("business"),
-      eqTo(Some("no-business-intervals"))
+      eqTo(Some("no-business-intervals")),
+      eqTo(Some("agent-001"))
     )(any)
   }
 
@@ -203,7 +205,7 @@ class ClientListServiceSpec extends SpecBase {
       )
 
     whenReady(service.process("cred-1", "agent-001")) { _ =>
-      verify(audit, never()).clientListRetrievalFailed(any, any, any)(any)
+      verify(audit, never()).clientListRetrievalFailed(any, any, any, any)(any)
     }
   }
 
@@ -252,7 +254,8 @@ class ClientListServiceSpec extends SpecBase {
     verify(audit).clientListRetrievalFailed(
       eqTo("cred-1"),
       eqTo("business#1"),
-      eqTo(Some("initiate-on-final-business-interval"))
+      eqTo(Some("initiate-on-final-business-interval")),
+      eqTo(Some("agent-001"))
     )(any)
   }
 
@@ -280,7 +283,8 @@ class ClientListServiceSpec extends SpecBase {
 
     verify(audit).clientListRetrievalInProgress(
       eqTo("cred-1"),
-      eqTo("browser")
+      eqTo("browser"),
+      eqTo(Some("agent-001"))
     )(any)
   }
 
@@ -309,7 +313,8 @@ class ClientListServiceSpec extends SpecBase {
     verify(audit).clientListRetrievalFailed(
       eqTo("cred-1"),
       eqTo("browser"),
-      eqTo(Some("initiate-after-browser"))
+      eqTo(Some("initiate-after-browser")),
+      eqTo(Some("agent-001"))
     )(any)
   }
 
@@ -381,7 +386,7 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.InProgress)
       )
 
-    when(audit.clientListRetrievalInProgress(any, any)(any))
+    when(audit.clientListRetrievalInProgress(any, any, any)(any))
       .thenReturn(Future.successful(AuditResult.Success))
 
     val status = service.process("cred-1", "agent-001").futureValue
@@ -391,7 +396,8 @@ class ClientListServiceSpec extends SpecBase {
 
     verify(audit).clientListRetrievalInProgress(
       eqTo("cred-1"),
-      eqTo("browser")
+      eqTo("browser"),
+      eqTo(Some("agent-001"))
     )(any[HeaderCarrier])
 
     service.lastWaitPlan shouldBe Some(defaultPlan)

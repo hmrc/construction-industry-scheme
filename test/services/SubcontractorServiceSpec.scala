@@ -401,6 +401,75 @@ final class SubcontractorServiceSpec extends SpecBase {
     }
   }
 
+  "updateSubcontractorForEdit" - {
+
+    val request =
+      UpdateSubcontractorRequest(
+        cisId = "abc-123",
+        subcontractor = Json
+          .obj(
+            "subcontractorId"     -> 999L,
+            "subbieResourceRef"   -> 10L,
+            "utr"                 -> "1234567890",
+            "pageVisited"         -> 1,
+            "firstName"           -> "John",
+            "nino"                -> "AA123456A",
+            "secondName"          -> "Q",
+            "surname"             -> "Smith",
+            "tradingName"         -> "John Smith Trading",
+            "subcontractorType"   -> "soletrader",
+            "addressLine1"        -> "1 Main Street",
+            "addressLine2"        -> "Flat 2",
+            "addressLine3"        -> "London",
+            "country"             -> "United Kingdom",
+            "postcode"            -> "AA1 1AA",
+            "matched"             -> "Y",
+            "autoVerified"        -> "N",
+            "verified"            -> "Y",
+            "verificationNumber"  -> "V123456",
+            "taxTreatment"        -> "NET",
+            "updatedTaxTreatment" -> "NET",
+            "version"             -> 5
+          )
+          .as[Subcontractor]
+      )
+
+    val response =
+      UpdateSubcontractorResponse(version = 6)
+
+    "delegates to FormpProxyConnector and returns updated version" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new SubcontractorService(connector)
+
+      when(
+        connector.updateSubcontractorForEdit(eqTo(request))(any[HeaderCarrier])
+      ).thenReturn(Future.successful(response))
+
+      service.updateSubcontractorForEdit(request).futureValue mustBe response
+
+      verify(connector)
+        .updateSubcontractorForEdit(eqTo(request))(any[HeaderCarrier])
+    }
+
+    "propagates failures from FormpProxyConnector" in {
+      val connector: FormpProxyConnector = mock[FormpProxyConnector]
+      val service                        = new SubcontractorService(connector)
+
+      when(
+        connector.updateSubcontractorForEdit(eqTo(request))(any[HeaderCarrier])
+      ).thenReturn(Future.failed(new RuntimeException("boom")))
+
+      service
+        .updateSubcontractorForEdit(request)
+        .failed
+        .futureValue
+        .getMessage must include("boom")
+
+      verify(connector)
+        .updateSubcontractorForEdit(eqTo(request))(any[HeaderCarrier])
+    }
+  }
+
   "deleteSubcontractor" - {
 
     val request = DeleteSubcontractorRequest(
