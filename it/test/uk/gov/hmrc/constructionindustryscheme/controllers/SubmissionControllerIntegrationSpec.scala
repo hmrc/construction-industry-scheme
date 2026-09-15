@@ -662,7 +662,7 @@ class SubmissionControllerIntegrationSpec
           chrisResponse = aResponse()
             .withStatus(200)
             .withHeader("Content-Type", "application/xml")
-            .withBody(verificationGovTalkErrorXml(s"corr-$id", "Department", code, "fatal", errorText)),
+            .withBody(verificationGovTalkErrorXml(s"corr-$id", "Gateway", code, "fatal", errorText)),
           expectedStatus = "FATAL_ERROR",
           expectedCode = code,
           expectedType = "systemError",
