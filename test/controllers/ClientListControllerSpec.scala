@@ -19,7 +19,7 @@ package controllers
 import actions.{FakeAgentAction, FakeAuthAction}
 import base.SpecBase
 import org.mockito.Mockito.*
-import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.PlayBodyParsers
 import play.api.test.FakeRequest
@@ -373,20 +373,34 @@ class ClientListControllerSpec extends SpecBase {
 
     val url = "/agent/remove-client"
 
-    val irAgentId = "SA123456"
-    val credId    = "cred-123"
+    val taxOfficeNumber    = "123"
+    val taxOfficeReference = "AB456"
 
-    val request = RemoveAgentClientRequest(taxOfficeNumber = "123", taxOfficeReference = "AB456")
+    val irAgentId = "agent-001"
+    val credId    = "cred-123"
+    val agentCode = Some("agent-code-123")
+
+    val request = RemoveAgentClientRequest(taxOfficeNumber = taxOfficeNumber, taxOfficeReference = taxOfficeReference)
 
     val validJson: JsValue = Json.toJson(request)
 
     "return 200 OK when client removed successfully" in {
       val mockService = mock[ClientListService]
 
-      when(mockService.removeClient(any[String], any[String], any[String], any[String])(using any[HeaderCarrier]))
+      when(
+        mockService.removeClient(
+          eqTo(taxOfficeNumber),
+          eqTo(taxOfficeReference),
+          eqTo(irAgentId),
+          eqTo(credId),
+          eqTo(agentCode)
+        )(using
+          any[HeaderCarrier]
+        )
+      )
         .thenReturn(Future.successful(1L))
 
-      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId, agentCode)
       val controller = new ClientListController(authAction, agentAction, mockService, cc)
 
       val req = FakeRequest(POST, url).withBody(validJson).withHeaders(CONTENT_TYPE -> JSON)
@@ -395,9 +409,10 @@ class ClientListControllerSpec extends SpecBase {
 
       status(result) mustBe NO_CONTENT
 
-      verify(mockService, times(1)).removeClient(any[String], any[String], any[String], any[String])(using
-        any[HeaderCarrier]
-      )
+      verify(mockService, times(1))
+        .removeClient(any[String], any[String], any[String], any[String], any[Option[String]])(using
+          any[HeaderCarrier]
+        )
     }
 
     "returns 400 BadRequest when JSON is invalid" in {
@@ -418,10 +433,20 @@ class ClientListControllerSpec extends SpecBase {
     "return 500 InternalServerError when service fails" in {
       val mockService = mock[ClientListService]
 
-      when(mockService.removeClient(any[String], any[String], any[String], any[String])(using any[HeaderCarrier]))
+      when(
+        mockService.removeClient(
+          eqTo(taxOfficeNumber),
+          eqTo(taxOfficeReference),
+          eqTo(irAgentId),
+          eqTo(credId),
+          eqTo(agentCode)
+        )(using
+          any[HeaderCarrier]
+        )
+      )
         .thenReturn(Future.failed(UpstreamErrorResponse("Service error", 500, 500)))
 
-      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId)
+      val authAction = FakeAuthAction.withIrPayeAgent(irAgentId, bodyParsers, credId, agentCode)
       val controller = new ClientListController(authAction, agentAction, mockService, cc)
 
       val req = FakeRequest(POST, url).withBody(validJson).withHeaders(CONTENT_TYPE -> JSON)
