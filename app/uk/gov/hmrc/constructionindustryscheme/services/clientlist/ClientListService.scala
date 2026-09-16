@@ -279,6 +279,23 @@ class ClientListService @Inject() (
   )(implicit
     hc: HeaderCarrier
   ): Future[Long] =
+    agentCode match {
+      case Some(code) => removeClientWithCode(taxOfficeNumber, taxOfficeReference, agentId, credentialId, code)
+      case None       =>
+        Future.failed(
+          new IllegalStateException("agentCode is required to remove a client but was not present in the auth session")
+        )
+    }
+
+  private def removeClientWithCode(
+    taxOfficeNumber: String,
+    taxOfficeReference: String,
+    agentId: String,
+    credentialId: String,
+    agentCode: String
+  )(implicit
+    hc: HeaderCarrier
+  ): Future[Long] =
     datacacheProxyConnector.enqueueMessage(
       EnqueueMessageRequest(
         message = EnqueueMessage(
@@ -307,7 +324,7 @@ class ClientListService @Inject() (
                   .format(DateTimeFormatter.ofPattern("yyyyMMdd HHmmssSSS")),
                 "MESSAGE_TYPE"    -> "AGENT_AUTH_PORTAL",
                 "ADDITIONAL_INFO" -> "Request client removal",
-                "GW_AGENT_ID"     -> agentCode.getOrElse(""),
+                "GW_AGENT_ID"     -> agentCode,
                 "IR_CLIENT_REF"   -> s"$taxOfficeNumber/$taxOfficeReference",
                 "USER_ID"         -> credentialId,
                 "Service"         -> "CIS"
