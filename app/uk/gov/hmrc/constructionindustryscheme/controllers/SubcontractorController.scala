@@ -18,10 +18,10 @@ package uk.gov.hmrc.constructionindustryscheme.controllers
 
 import play.api.Logging
 import play.api.libs.json.{JsError, JsValue, Json}
-import play.api.mvc.{Action, AnyContent, ControllerComponents}
+import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.response.GetSubcontractorResponse
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHeaderForwarding
 import uk.gov.hmrc.http.UpstreamErrorResponse
@@ -150,19 +150,56 @@ class SubcontractorController @Inject() (
               )
             ),
           updateRequest =>
-            subcontractorService
-              .updateSubcontractor(updateRequest)
-              .map(response => Ok(Json.toJson(response)))
-              .recover {
-                case u: UpstreamErrorResponse =>
-                  logger.error("[updateSubcontractor] formp-proxy update failed", u)
-                  Status(u.statusCode)(Json.obj("message" -> u.message))
-
-                case NonFatal(t) =>
-                  logger.error("[updateSubcontractor] formp-proxy update failed", t)
-                  BadGateway(Json.obj("message" -> "update-subcontractor-failed"))
-              }
+            handleUpdateSubcontractor(
+              updateRequest,
+              subcontractorService.updateSubcontractor,
+              "updateSubcontractor",
+              "update-subcontractor-failed"
+            )
         )
     }
 
+  def updateSubcontractorForEdit(): Action[JsValue] =
+    authorise(parse.json).async { implicit request =>
+      withJsonBody { (updateRequest: UpdateSubcontractorRequest) =>
+        handleUpdateSubcontractor(
+          updateRequest,
+          subcontractorService.updateSubcontractorForEdit,
+          "updateSubcontractorForEdit",
+          "update-subcontractor-for-edit-failed"
+        )
+      }
+    }
+
+  private def handleUpdateSubcontractor(
+    updateRequest: UpdateSubcontractorRequest,
+    updateFn: UpdateSubcontractorRequest => Future[UpdateSubcontractorResponse],
+    operation: String,
+    genericFailureMessage: String
+  ): Future[Result] =
+    updateFn(updateRequest)
+      .map(response => Ok(Json.toJson(response)))
+      .recover {
+        case u: UpstreamErrorResponse =>
+          logger.error(
+            s"[$operation] formp-proxy update failed",
+            u
+          )
+
+          Status(u.statusCode)(
+            Json.obj("message" -> u.message)
+          )
+
+        case NonFatal(t) =>
+          logger.error(
+            s"[$operation] formp-proxy update failed",
+            t
+          )
+
+          BadGateway(
+            Json.obj(
+              "message" -> genericFailureMessage
+            )
+          )
+      }
 }

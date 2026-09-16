@@ -32,6 +32,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.audit.XmlConversionResult
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
+import uk.gov.hmrc.constructionindustryscheme.repositories.StoredVerificationContext
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.utils.XmlValidator
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
@@ -69,6 +70,14 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     Mockito.reset(
       mockAuditService
     )
+    when(mockAuditService.verificationRequestEvent(any(), any())(any()))
+      .thenReturn(Future.successful(AuditResult.Success))
+    when(mockAuditService.verificationResponseEvent(any())(any()))
+      .thenReturn(Future.successful(AuditResult.Success))
+    when(mockAuditService.monthlyReturnPollResponseEvent(any())(any()))
+      .thenReturn(Future.successful(AuditResult.Success))
+    when(mockAuditService.verificationPollResponseEvent(any())(any()))
+      .thenReturn(Future.successful(AuditResult.Success))
     super.beforeEach()
   }
 
@@ -143,9 +152,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+      when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
@@ -183,7 +192,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
@@ -221,7 +230,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
@@ -261,7 +270,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val err = GovTalkError("1234", "fatal", "boom")
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
@@ -304,10 +313,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val err = GovTalkError("1001", "recoverable", "recoverable error from ChRIS")
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
-      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+      when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
@@ -359,10 +368,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val err = GovTalkError("9999", "fatal", "fatal error from ChRIS")
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
-      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+      when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
@@ -409,7 +418,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema])).thenReturn(Success(()))
 
@@ -439,7 +448,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
@@ -450,7 +459,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[EmployerReference],
           any[String],
           any[String],
-          any[String]
+          any[String],
+          any[ChrisPollJourney],
+          any[Option[StoredVerificationContext]],
+          any[Option[GovTalkError]],
+          any[SubmissionStatus]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -483,7 +496,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any(), any()))
         .thenReturn(Success(()))
@@ -494,7 +507,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[EmployerReference],
           any[String],
           any[String],
-          any[String]
+          any[String],
+          any[ChrisPollJourney],
+          any[Option[StoredVerificationContext]],
+          any[Option[GovTalkError]],
+          any[SubmissionStatus]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -525,9 +542,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+      when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       mockProcessInitialChrisAckSuccess(submissionService)
       when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
@@ -559,7 +576,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
@@ -572,7 +589,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[EmployerReference],
           any[String],
           any[String],
-          any[String]
+          any[String],
+          any[ChrisPollJourney],
+          any[Option[StoredVerificationContext]],
+          any[Option[GovTalkError]],
+          any[SubmissionStatus]
         )(any[HeaderCarrier])
       ).thenReturn(Future.failed(new RuntimeException("govtalk failure")))
 
@@ -601,9 +622,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+      when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
@@ -651,10 +672,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyNilReturnRequestEvent(any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
-      when(mockAuditService.monthlyNilReturnResponseEvent(any())(any()))
+      when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
@@ -722,9 +743,9 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyReturnRequestEvent(any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(mockAuditService.monthlyReturnResponseEvent(any())(any()))
+      when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
@@ -764,10 +785,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       status(result) mustBe OK
 
-      verify(mockAuditService, times(1)).monthlyReturnRequestEvent(any())(any())
-      verify(mockAuditService, times(0)).monthlyNilReturnRequestEvent(any())(any())
-      verify(mockAuditService, times(1)).monthlyReturnResponseEvent(any())(any())
-      verify(mockAuditService, times(0)).monthlyNilReturnResponseEvent(any())(any())
+      verify(mockAuditService, times(1)).monthlyReturnRequestEvent(any(), any(), any())(any())
+      verify(mockAuditService, times(1)).monthlyReturnResponseEvent(any(), any())(any())
     }
   }
 
@@ -1627,7 +1646,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         )(any[HeaderCarrier])
     }
 
-    "returns 200 with STARTED when ChRIS verification submit fails but failure is recoverable" in {
+    "returns 200 with FATAL_ERROR when initial ChRIS verification submit fails" in {
       val submissionService  = mock[SubmissionService]
       val xmlValidator       = mock[XmlValidator]
       val verificationSchema = mock[Schema]
@@ -1650,7 +1669,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[EmployerReference],
           any[String],
           any[String],
-          any[String]
+          any[String],
+          eqTo(ChrisPollJourney.Verification),
+          any[Option[StoredVerificationContext]],
+          any[Option[GovTalkError]],
+          eqTo(FATAL_ERROR)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -1666,7 +1689,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       val js = contentAsJson(result)
 
       (js \ "submissionId").as[String] mustBe submissionId
-      (js \ "status").as[String] mustBe "STARTED"
+      (js \ "status").as[String] mustBe "FATAL_ERROR"
       (js \ "error" \ "text").as[String] mustBe "Chris verification failure"
 
       verify(submissionService, times(1))
@@ -1676,7 +1699,11 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           eqTo(EmployerReference("999", "XYZ123")),
           eqTo(submissionId),
           any[String],
-          eqTo("http://chris.example/verification-gateway")
+          eqTo("http://chris.example/verification-gateway"),
+          eqTo(ChrisPollJourney.Verification),
+          any[Option[StoredVerificationContext]],
+          any[Option[GovTalkError]],
+          eqTo(FATAL_ERROR)
         )(any[HeaderCarrier])
     }
 
