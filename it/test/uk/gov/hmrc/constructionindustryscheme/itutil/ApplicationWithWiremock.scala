@@ -56,6 +56,8 @@ trait ApplicationWithWiremock
       "microservice.services.email.port"                 -> WireMockConstants.stubPort,
       "microservice.services.client-exchange-proxy.host" -> WireMockConstants.stubHost,
       "microservice.services.client-exchange-proxy.port" -> WireMockConstants.stubPort,
+      "microservice.services.internal-auth.host"         -> WireMockConstants.stubHost,
+      "microservice.services.internal-auth.port"         -> WireMockConstants.stubPort,
       "schedules.batch-poller-job.enabled"               -> false
     )
 

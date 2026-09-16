@@ -16,9 +16,11 @@
 
 package uk.gov.hmrc.constructionindustryscheme.connectors
 
+import play.api.Logging
 import play.api.http.Status.{INTERNAL_SERVER_ERROR, NOT_FOUND, NO_CONTENT, OK}
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.*
+import scala.util.Failure
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
@@ -36,19 +38,23 @@ class FormpProxyConnector @Inject() (
   config: ServicesConfig,
   appConfig: AppConfig
 )(implicit ec: ExecutionContext)
-    extends HttpReadsInstances {
+    extends HttpReadsInstances
+    with Logging {
 
-  private val base = config.baseUrl("formp-proxy") + "/formp-proxy"
+  private val base              = config.baseUrl("formp-proxy") + "/formp-proxy"
+  private val internalAuthToken = config.getString("internal-auth.token")
 
   def getMonthlyReturns(instanceId: String)(implicit hc: HeaderCarrier): Future[UserMonthlyReturns] =
     http
       .post(url"$base/monthly-returns")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.obj("instanceId" -> instanceId))
       .execute[UserMonthlyReturns]
 
   def createSubmission(request: CreateSubmissionRequest)(implicit hc: HeaderCarrier): Future[String] =
     http
       .post(url"$base/submissions/create")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[CreateSubmissionResponse]
       .map(_.submissionId)
@@ -56,6 +62,7 @@ class FormpProxyConnector @Inject() (
   def updateSubmission(req: UpdateSubmissionRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/submissions/update")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
       .flatMap { resp =>
@@ -68,6 +75,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[CreateNilMonthlyReturnResponse] =
     http
       .post(url"$base/cis/monthly-return/nil/create")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(
         Json.obj(
           "instanceId"             -> req.instanceId,
@@ -84,6 +92,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/monthly-return/update")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
       .flatMap { resp =>
@@ -94,6 +103,7 @@ class FormpProxyConnector @Inject() (
   def createMonthlyReturn(req: MonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/monthly-return/standard/create")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
       .map { response =>
@@ -104,6 +114,7 @@ class FormpProxyConnector @Inject() (
   def getSchemeEmail(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[String]] =
     http
       .post(url"$base/scheme/email")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.obj("instanceId" -> instanceId))
       .execute[HttpResponse]
       .map { response =>
@@ -117,6 +128,7 @@ class FormpProxyConnector @Inject() (
   def getContractorScheme(instanceId: String)(implicit hc: HeaderCarrier): Future[Option[ContractorScheme]] =
     http
       .get(url"$base/scheme/$instanceId")
+      .setHeader("Authorization" -> internalAuthToken)
       .execute[ContractorScheme]
       .map(Some(_))
       .recoverWith {
@@ -127,6 +139,7 @@ class FormpProxyConnector @Inject() (
   def createContractorScheme(req: CreateContractorSchemeParams)(implicit hc: HeaderCarrier): Future[Int] =
     http
       .post(url"$base/scheme")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(req))
       .execute[CreateSchemeResponse]
       .map(_.schemeId)
@@ -134,6 +147,7 @@ class FormpProxyConnector @Inject() (
   def updateContractorScheme(req: UpdateContractorSchemeParams)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/scheme/update")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
       .flatMap { resp =>
@@ -154,6 +168,7 @@ class FormpProxyConnector @Inject() (
   def updateSchemeVersion(req: UpdateSchemeVersionRequest)(implicit hc: HeaderCarrier): Future[Int] =
     http
       .post(url"$base/scheme/version-update")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(req))
       .execute[JsValue]
       .map(json => (json \ "version").as[Int])
@@ -163,12 +178,14 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[UpdateContractorSchemeVersionResponse] =
     http
       .post(url"$base/scheme/version-update")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(req))
       .execute[UpdateContractorSchemeVersionResponse]
 
   def applyPrepopulation(req: ApplyPrepopulationRequest)(implicit hc: HeaderCarrier): Future[Int] =
     http
       .post(url"$base/scheme/prepopulate")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(req))
       .execute[JsValue]
       .map(json => (json \ "version").as[Int])
@@ -176,12 +193,14 @@ class FormpProxyConnector @Inject() (
   def getUnsubmittedMonthlyReturns(instanceId: String)(implicit hc: HeaderCarrier): Future[UnsubmittedMonthlyReturns] =
     http
       .post(url"$base/cis/retrieve-unsubmitted-monthly-returns")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.obj("instanceId" -> instanceId))
       .execute[UnsubmittedMonthlyReturns]
 
   def getSubmittedMonthlyReturns(instanceId: String)(implicit hc: HeaderCarrier): Future[SubmittedMonthlyReturns] =
     http
       .post(url"$base/cis/retrieve-submitted-monthly-returns")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.obj("instanceId" -> instanceId))
       .execute[SubmittedMonthlyReturns]
 
@@ -190,6 +209,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/subcontractor/create-and-update")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -209,6 +229,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[GetMonthlyReturnForEditResponse] =
     http
       .post(url"$base/cis/monthly-return-edit")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[GetMonthlyReturnForEditResponse]
 
@@ -217,6 +238,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[GetMonthlyReturnCompleteResponse] =
     http
       .post(url"$base/cis/monthly-return-complete")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[GetMonthlyReturnCompleteResponse]
 
@@ -231,12 +253,14 @@ class FormpProxyConnector @Inject() (
 
     http
       .get(url"$base/cis/subcontractors/$cisId")
+      .setHeader("Authorization" -> internalAuthToken)
       .execute[Seq[String]]
   }
 
   def syncMonthlyReturnItems(request: SyncMonthlyReturnItemsRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/monthly-return-item/sync")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -247,6 +271,7 @@ class FormpProxyConnector @Inject() (
   def deleteMonthlyReturnItem(request: DeleteMonthlyReturnItemProxyRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/monthly-return-item/delete")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -257,6 +282,7 @@ class FormpProxyConnector @Inject() (
   def updateMonthlyReturnItem(request: UpdateMonthlyReturnItemProxyRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/monthly-return-item/update")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -276,6 +302,7 @@ class FormpProxyConnector @Inject() (
 
     http
       .post(endpoint)
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[GetGovTalkStatusResponse]
       .map(Some(_))
@@ -288,6 +315,7 @@ class FormpProxyConnector @Inject() (
   def createGovTalkStatusRecord(request: CreateGovTalkStatusRecordRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/govtalkstatus/create")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -298,6 +326,7 @@ class FormpProxyConnector @Inject() (
   def updateGovTalkStatus(request: UpdateGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/govtalkstatus/update-status")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -310,6 +339,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/govtalkstatus/update-correlationID")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -322,6 +352,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/govtalkstatus/update-statistics")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -332,6 +363,7 @@ class FormpProxyConnector @Inject() (
   def resetGovTalkStatus(request: ResetGovTalkStatusRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/govtalkstatus/reset")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -344,6 +376,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[GetNewestVerificationBatchResponse] =
     http
       .get(url"$base/cis/verification-batch/newest/$instanceId")
+      .setHeader("Authorization" -> internalAuthToken)
       .execute[GetNewestVerificationBatchResponse]
 
   def getLastSubmittedVerificationBatch(
@@ -351,6 +384,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[GetLastSubmittedVerificationBatchResponse] =
     http
       .get(url"$base/cis/verification-batch/last/$instanceId")
+      .setHeader("Authorization" -> internalAuthToken)
       .execute[GetLastSubmittedVerificationBatchResponse]
 
   def getCurrentVerificationBatch(
@@ -358,6 +392,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[GetCurrentVerificationBatchResponse] =
     http
       .get(url"$base/cis/verification-batch/current/$instanceId")
+      .setHeader("Authorization" -> internalAuthToken)
       .execute[GetCurrentVerificationBatchResponse]
 
   def deleteUnsubmittedMonthlyReturn(
@@ -365,6 +400,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/monthly-returns/unsubmitted/delete")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -379,12 +415,14 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[CreateVerificationBatchAndVerificationsResponse] =
     http
       .post(url"$base/cis/verification-batch/create")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[CreateVerificationBatchAndVerificationsResponse]
 
   def createAmendedMonthlyReturn(request: CreateAmendedMonthlyReturnRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/amend-monthly-return/create")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -397,6 +435,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[GetSubmittedMonthlyReturnsDataProxyResponse] =
     http
       .post(url"$base/cis/retrieve-submitted-monthly-returns-data")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[GetSubmittedMonthlyReturnsDataProxyResponse]
 
@@ -405,6 +444,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/verification-batch/modify")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -417,6 +457,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[CreateSubmissionAndUpdateVerificationsResponse] =
     http
       .post(url"$base/cis/verification/submission/create")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[CreateSubmissionAndUpdateVerificationsResponse]
 
@@ -425,6 +466,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/verification/submission/update")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -435,6 +477,7 @@ class FormpProxyConnector @Inject() (
   def getBatchPollSubmissions()(implicit hc: HeaderCarrier): Future[GetBatchPollSubmissionsResponse] =
     http
       .get(url"$base/cis/batchpoll-submissions")
+      .setHeader("Authorization" -> internalAuthToken)
       .execute[GetBatchPollSubmissionsResponse]
 
   def processVerificationResponseFromChris(
@@ -442,6 +485,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/verification/response/process")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -455,6 +499,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[GetSubcontractorForDeleteResponse] =
     http
       .get(url"$base/cis/subcontractor/$cisId/$subbieResourceRef/delete-status")
+      .setHeader("Authorization" -> internalAuthToken)
       .execute[GetSubcontractorForDeleteResponse]
 
   def getSubcontractorList(
@@ -462,11 +507,13 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[GetSubcontractorListResponse] =
     http
       .get(url"$base/cis/subcontractors/$cisId")
+      .setHeader("Authorization" -> internalAuthToken)
       .execute[GetSubcontractorListResponse]
 
   def deleteSubcontractor(request: DeleteSubcontractorRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/cis/subcontractor/delete")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
@@ -474,11 +521,20 @@ class FormpProxyConnector @Inject() (
         else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
 
+  def deleteVerification(
+    request: DeleteVerificationRequest
+  )(implicit hc: HeaderCarrier): Future[DeleteVerificationResponse] =
+    http
+      .post(url"$base/cis/verification/delete")
+      .withBody(Json.toJson(request))
+      .execute[DeleteVerificationResponse]
+
   def getSubmittedVerifications(
     request: GetSubmittedVerificationsRequest
   )(implicit hc: HeaderCarrier): Future[GetSubmittedVerificationsResponse] =
     http
       .post(url"$base/cis/verification/submitted-verifications")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[GetSubmittedVerificationsResponse]
 
@@ -487,6 +543,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[GetSubmissionWithVerificationBatchResponse] =
     http
       .post(url"$base/cis/verification/submission-batch")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[GetSubmissionWithVerificationBatchResponse]
 
@@ -496,6 +553,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[GetSubmissionWithVerificationBatchResponse] =
     http
       .get(url"$base/cis/verification/submission-batch/$instanceId/$verificationBatchResourceRef")
+      .setHeader("Authorization" -> internalAuthToken)
       .execute[GetSubmissionWithVerificationBatchResponse]
 
   def getSubcontractor(
@@ -504,50 +562,78 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[GetSubcontractorResponse] =
     http
       .get(url"$base/cis/subcontractor/$cisId/$subbieResourceRef")
+      .setHeader("Authorization" -> internalAuthToken)
       .execute[GetSubcontractorResponse]
 
-  def proceedInsufficientVerification(
-    request: ProceedInsufficientVerificationRequest
-  )(implicit hc: HeaderCarrier): Future[Unit] =
+  def updateSubcontractorForEdit(
+    request: UpdateSubcontractorRequest
+  )(implicit hc: HeaderCarrier): Future[UpdateSubcontractorResponse] =
     http
-      .post(url"$base/cis/verification/proceed-with-insufficient-data")
+      .post(url"$base/cis/subcontractor/edit")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .flatMap { response =>
-        if (response.status == NO_CONTENT) Future.unit
-        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
-      }
+      .flatMap(
+        handleUpdateSubcontractorResponse(_, "updateSubcontractorForEdit")
+      )
 
   def updateSubcontractor(
     request: UpdateSubcontractorRequest
   )(implicit hc: HeaderCarrier): Future[UpdateSubcontractorResponse] =
     http
       .post(url"$base/cis/subcontractor/update")
+      .setHeader("Authorization" -> internalAuthToken)
+      .withBody(Json.toJson(request))
+      .execute[HttpResponse]
+      .flatMap(
+        handleUpdateSubcontractorResponse(_, "updateSubcontractor")
+      )
+
+  private def handleUpdateSubcontractorResponse(
+    response: HttpResponse,
+    operation: String
+  ): Future[UpdateSubcontractorResponse] =
+    response.status match {
+
+      case OK =>
+        Future(response.json.as[UpdateSubcontractorResponse])
+          .andThen { case Failure(t) =>
+            logger.error(s"[FormpProxyConnector][$operation] Failed to parse 200 OK response from FormP.", t)
+          }
+
+      case NO_CONTENT =>
+        Future.failed(
+          UpstreamErrorResponse(
+            s"FormP returned 204 No Content for $operation; expected response body with version",
+            INTERNAL_SERVER_ERROR,
+            INTERNAL_SERVER_ERROR
+          )
+        )
+
+      case status =>
+        val errorStatus =
+          if (status / 100 == 2) INTERNAL_SERVER_ERROR
+          else status
+
+        Future.failed(
+          UpstreamErrorResponse(
+            response.body,
+            errorStatus,
+            errorStatus
+          )
+        )
+    }
+
+  def proceedVerification(
+    request: ProceedVerificationProxyRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/cis/verification/proceed")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
       .flatMap { response =>
-        response.status match {
-          case OK =>
-            Future.fromTry(
-              scala.util.Try(response.json.as[UpdateSubcontractorResponse])
-            )
-
-          case NO_CONTENT =>
-            Future.failed(
-              UpstreamErrorResponse(
-                "FormP returned 204 No Content for updateSubcontractor; expected response body with version",
-                INTERNAL_SERVER_ERROR,
-                INTERNAL_SERVER_ERROR
-              )
-            )
-
-          case status =>
-            val errorStatus =
-              if (status / 100 == 2) INTERNAL_SERVER_ERROR else status
-
-            Future.failed(
-              UpstreamErrorResponse(response.body, errorStatus, errorStatus)
-            )
-        }
+        if (response.status == NO_CONTENT) Future.unit
+        else Future.failed(UpstreamErrorResponse(response.body, response.status, response.status))
       }
 }

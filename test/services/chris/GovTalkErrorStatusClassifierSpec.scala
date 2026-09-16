@@ -26,12 +26,18 @@ class GovTalkErrorStatusClassifierSpec extends AnyWordSpec with Matchers {
 
   "fromXmlOutcome" should {
 
-    "classify DEPARTMENTAL_ERROR as DepartmentalError" in {
-      val err = GovTalkError("3001", "business", "departmental boom")
+    "classify DEPARTMENTAL_ERROR codes as DepartmentalError" in {
+      List("3000", "3001").foreach { code =>
+        val err = GovTalkError(code, "departmental", s"departmental $code")
 
-      GovTalkErrorStatusClassifier.fromXmlOutcome(DEPARTMENTAL_ERROR, Some(err)) mustBe DepartmentalError(
-        "departmental boom"
-      )
+        GovTalkErrorStatusClassifier.fromXmlOutcome(
+          DEPARTMENTAL_ERROR,
+          Some(err)
+        ) mustBe DepartmentalError(
+          code,
+          s"departmental $code"
+        )
+      }
     }
 
     List("3000", "2005", "1000").foreach { code =>
