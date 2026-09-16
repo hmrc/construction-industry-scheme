@@ -67,13 +67,39 @@ class VerificationService @Inject() (formpProxyConnector: FormpProxyConnector) {
   )(implicit hc: HeaderCarrier): Future[Unit] =
     formpProxyConnector.processVerificationResponseFromChris(request)
 
+  def deleteVerification(
+    request: DeleteVerificationRequest
+  )(implicit hc: HeaderCarrier): Future[DeleteVerificationResponse] =
+    formpProxyConnector.deleteVerification(request)
+
   def getSubmittedVerifications(
     request: GetSubmittedVerificationsRequest
   )(implicit hc: HeaderCarrier): Future[GetSubmittedVerificationsResponse] =
     formpProxyConnector.getSubmittedVerifications(request)
 
   def proceedInsufficientVerification(
-    request: ProceedInsufficientVerificationRequest
+    request: ProceedVerificationRequest
   )(implicit hc: HeaderCarrier): Future[Unit] =
-    formpProxyConnector.proceedInsufficientVerification(request)
+    formpProxyConnector.proceedVerification(
+      ProceedVerificationProxyRequest(
+        instanceId = request.instanceId,
+        verificationBatchResourceRef = request.verificationBatchResourceRef,
+        verificationResourceRef = request.verificationResourceRef,
+        proceed = true,
+        taxTreatment = None
+      )
+    )
+
+  def proceedUnmatchedVerification(
+    request: ProceedVerificationRequest
+  )(implicit hc: HeaderCarrier): Future[Unit] =
+    formpProxyConnector.proceedVerification(
+      ProceedVerificationProxyRequest(
+        instanceId = request.instanceId,
+        verificationBatchResourceRef = request.verificationBatchResourceRef,
+        verificationResourceRef = request.verificationResourceRef,
+        proceed = true,
+        taxTreatment = Some("NotKnown")
+      )
+    )
 }

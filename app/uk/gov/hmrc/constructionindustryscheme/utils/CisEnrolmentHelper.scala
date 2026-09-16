@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.utils
 
 import uk.gov.hmrc.auth.core.Enrolments
+import uk.gov.hmrc.http.HeaderCarrier
 
 object CisEnrolmentHelper {
 
@@ -31,4 +32,16 @@ object CisEnrolmentHelper {
           tor <- e.getIdentifier("TaxOfficeReference")
         } yield (ton.value, tor.value)
       }
+
+  def withCisEnrolmentHeaders(enrolments: Enrolments)(implicit hc: HeaderCarrier): HeaderCarrier =
+    extractTaxOfficeIdentifiers(enrolments) match {
+      case Some((taxOfficeNumber, taxOfficeReference)) =>
+        hc.copy(extraHeaders =
+          hc.extraHeaders ++ Seq(
+            "X-Tax-Office-Number"    -> taxOfficeNumber,
+            "X-Tax-Office-Reference" -> taxOfficeReference
+          )
+        )
+      case None                                        => hc
+    }
 }
