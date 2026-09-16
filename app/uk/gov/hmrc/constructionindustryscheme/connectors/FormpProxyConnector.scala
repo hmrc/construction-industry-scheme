@@ -168,6 +168,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[UpdateContractorSchemeVersionResponse] =
     http
       .post(url"$base/scheme/version-update")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(req))
       .execute[UpdateContractorSchemeVersionResponse]
 
