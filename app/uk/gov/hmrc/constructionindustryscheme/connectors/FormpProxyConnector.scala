@@ -158,6 +158,7 @@ class FormpProxyConnector @Inject() (
   def updateContractorSchemeDetails(req: UpdateContractorSchemeRequest)(implicit hc: HeaderCarrier): Future[Unit] =
     http
       .post(url"$base/scheme/update")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(req))
       .execute[HttpResponse]
       .flatMap { resp =>
