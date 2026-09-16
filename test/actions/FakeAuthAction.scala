@@ -58,7 +58,7 @@ object FakeAuthAction {
     irAgentReference: String,
     parsers: PlayBodyParsers,
     credId: String = "cred-123",
-    agentCode: Option[String] = Some("agent-code-123")
+    agentCode: String = "agent-code-123"
   )(implicit
     ec: ExecutionContext
   ): FakeAuthAction = {
@@ -69,7 +69,7 @@ object FakeAuthAction {
       ),
       state = "Activated"
     )
-    new FakeAuthAction(Enrolments(Set(irPayeAgent)), parsers, credId, agentCode)
+    new FakeAuthAction(Enrolments(Set(irPayeAgent)), parsers, credId, Some(agentCode))
   }
 
   def withEnrolments(

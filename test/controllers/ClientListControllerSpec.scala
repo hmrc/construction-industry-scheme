@@ -37,7 +37,8 @@ import scala.concurrent.Future
 class ClientListControllerSpec extends SpecBase {
 
   private val parsers: PlayBodyParsers      = cc.parsers
-  private val authWithAgent: FakeAuthAction = FakeAuthAction.withIrPayeAgent("agent-001", parsers)
+  private val authWithAgent: FakeAuthAction =
+    FakeAuthAction.withIrPayeAgent("agent-001", parsers)
   private val agentAction: FakeAgentAction  = FakeAgentAction("agent-001")
 
   "ClientListController.start" - {
@@ -131,7 +132,7 @@ class ClientListControllerSpec extends SpecBase {
         .thenReturn(Future.successful(Succeeded))
 
       val controller =
-        new ClientListController(fakeAuthAction(), agentAction, mockService, cc)
+        new ClientListController(authWithAgent, agentAction, mockService, cc)
 
       val result = controller.status()(fakeRequest)
 
@@ -148,7 +149,7 @@ class ClientListControllerSpec extends SpecBase {
         .thenReturn(Future.successful(InProgress))
 
       val controller =
-        new ClientListController(fakeAuthAction(), agentAction, mockService, cc)
+        new ClientListController(authWithAgent, agentAction, mockService, cc)
 
       val result = controller.status()(fakeRequest)
 
@@ -165,7 +166,7 @@ class ClientListControllerSpec extends SpecBase {
         .thenReturn(Future.successful(Failed))
 
       val controller =
-        new ClientListController(fakeAuthAction(), agentAction, mockService, cc)
+        new ClientListController(authWithAgent, agentAction, mockService, cc)
 
       val result = controller.status()(fakeRequest)
 
@@ -182,7 +183,7 @@ class ClientListControllerSpec extends SpecBase {
         .thenReturn(Future.successful(InitiateDownload))
 
       val controller =
-        new ClientListController(fakeAuthAction(), agentAction, mockService, cc)
+        new ClientListController(authWithAgent, agentAction, mockService, cc)
 
       val result = controller.status()(fakeRequest)
 
@@ -378,7 +379,7 @@ class ClientListControllerSpec extends SpecBase {
 
     val irAgentId = "agent-001"
     val credId    = "cred-123"
-    val agentCode = Some("agent-code-123")
+    val agentCode = "agent-code-123"
 
     val request = RemoveAgentClientRequest(taxOfficeNumber = taxOfficeNumber, taxOfficeReference = taxOfficeReference)
 
@@ -410,7 +411,7 @@ class ClientListControllerSpec extends SpecBase {
       status(result) mustBe NO_CONTENT
 
       verify(mockService, times(1))
-        .removeClient(any[String], any[String], any[String], any[String], any[Option[String]])(using
+        .removeClient(any[String], any[String], any[String], any[String], any[String])(using
           any[HeaderCarrier]
         )
     }

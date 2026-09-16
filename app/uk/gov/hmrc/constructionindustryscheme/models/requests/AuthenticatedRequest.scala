@@ -37,7 +37,7 @@ case class AuthenticatedRequest[A](
       this.enrolments,
       this.credentialId,
       agentIdentifier,
-      this.agentCode
+      this.agentCode.getOrElse(throw new UnauthorizedException("Failed to retrieve Agent code from Auth"))
     )
 }
 
@@ -47,5 +47,5 @@ case class AuthenticatedAgentRequest[A](
   enrolments: Enrolments,
   credentialId: String,
   agentId: String,
-  agentCode: Option[String]
+  agentCode: String
 ) extends WrappedRequest[A](request)

@@ -275,23 +275,6 @@ class ClientListService @Inject() (
     taxOfficeReference: String,
     agentId: String,
     credentialId: String,
-    agentCode: Option[String]
-  )(implicit
-    hc: HeaderCarrier
-  ): Future[Long] =
-    agentCode match {
-      case Some(code) => removeClientWithCode(taxOfficeNumber, taxOfficeReference, agentId, credentialId, code)
-      case None       =>
-        Future.failed(
-          new IllegalStateException("agentCode is required to remove a client but was not present in the auth session")
-        )
-    }
-
-  private def removeClientWithCode(
-    taxOfficeNumber: String,
-    taxOfficeReference: String,
-    agentId: String,
-    credentialId: String,
     agentCode: String
   )(implicit
     hc: HeaderCarrier

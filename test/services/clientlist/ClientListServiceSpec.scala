@@ -637,7 +637,7 @@ class ClientListServiceSpec extends SpecBase {
     val taxOfficeReference = "AB456"
     val agentId            = "SA123456"
     val credId             = "cred-123"
-    val agentCode          = Some("agent-code-123")
+    val agentCode          = "agent-code-123"
 
     "return messageIDOut when removeClient from connector returns messageIDOut" in {
       val (service, datacache, _, _, cache) = setupService()
@@ -652,18 +652,6 @@ class ClientListServiceSpec extends SpecBase {
 
       result shouldBe 1
       verify(datacache, times(1)).enqueueMessage(any)(any)
-    }
-
-    "fails when agentCode is NONE" in {
-      val (service, _, _, _, cache) = setupService()
-
-      val result = service
-        .removeClient(taxOfficeNumber, taxOfficeReference, agentId, credId, None)(using mock[HeaderCarrier])
-        .failed
-        .futureValue
-
-      result mustBe a[IllegalStateException]
-      result.getMessage mustBe "agentCode is required to remove a client but was not present in the auth session"
     }
 
     "propagate connector errors" in {
