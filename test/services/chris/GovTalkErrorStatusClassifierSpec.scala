@@ -26,8 +26,8 @@ class GovTalkErrorStatusClassifierSpec extends AnyWordSpec with Matchers {
 
   "fromXmlOutcome" should {
 
-    "classify DEPARTMENTAL_ERROR codes as DepartmentalError" in {
-      List("3000", "3001").foreach { code =>
+    "classify any DEPARTMENTAL_ERROR code as DepartmentalError" in {
+      List("3000", "3001", "3999").foreach { code =>
         val err = GovTalkError(code, "departmental", s"departmental $code")
 
         GovTalkErrorStatusClassifier.fromXmlOutcome(
@@ -50,12 +50,12 @@ class GovTalkErrorStatusClassifierSpec extends AnyWordSpec with Matchers {
         )
       }
 
-      s"classify FATAL_ERROR + recoverable code $code as RecoverableError" in {
-        val err = GovTalkError(code, "fatal", s"recoverable $code")
+      s"classify FATAL_ERROR + recoverable code $code as FatalError" in {
+        val err = GovTalkError(code, "fatal", s"fatal $code")
 
-        GovTalkErrorStatusClassifier.fromXmlOutcome(FATAL_ERROR, Some(err)) mustBe RecoverableError(
+        GovTalkErrorStatusClassifier.fromXmlOutcome(FATAL_ERROR, Some(err)) mustBe FatalError(
           code,
-          s"recoverable $code"
+          s"fatal $code"
         )
       }
     }
