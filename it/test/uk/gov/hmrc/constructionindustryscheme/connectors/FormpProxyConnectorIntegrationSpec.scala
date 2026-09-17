@@ -500,15 +500,16 @@ class FormpProxyConnectorIntegrationSpec
       val req = UpdateContractorSchemeRequest(
         schemeId = 999,
         instanceId = instanceId,
+        accountsOfficeReference = "123PA00123456",
         taxOfficeNumber = "163",
         taxOfficeReference = "AB0063",
-        accountsOfficeReference = "123PA00123456",
-        prePopCount = 1,
-        prePopSuccessful = "Y",
-        uniqueTaxReference = "1234567890",
-        name = "ABC Construction Ltd",
-        emailAddress = "test@example.com",
-        version = 3
+        utr = Some("1234567890"),
+        name = Some("ABC Construction Ltd"),
+        emailAddress = Some("test@example.com"),
+        displayWelcomePage = Some("Y"),
+        prePopCount = Some(1),
+        prePopSuccessful = Some("Y"),
+        version = Some(3)
       )
 
       stubFor(
@@ -525,15 +526,16 @@ class FormpProxyConnectorIntegrationSpec
       val req = UpdateContractorSchemeRequest(
         schemeId = 999,
         instanceId = instanceId,
+        accountsOfficeReference = "123PA00123456",
         taxOfficeNumber = "163",
         taxOfficeReference = "AB0063",
-        accountsOfficeReference = "123PA00123456",
-        prePopCount = 1,
-        prePopSuccessful = "Y",
-        uniqueTaxReference = "1234567890",
-        name = "ABC Construction Ltd",
-        emailAddress = "test@example.com",
-        version = 3
+        utr = Some("1234567890"),
+        name = Some("ABC Construction Ltd"),
+        emailAddress = Some("test@example.com"),
+        displayWelcomePage = Some("Y"),
+        prePopCount = Some(1),
+        prePopSuccessful = Some("Y"),
+        version = Some(3)
       )
 
       stubFor(

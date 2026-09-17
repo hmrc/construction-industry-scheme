@@ -21,15 +21,16 @@ import play.api.libs.json.{Json, OFormat}
 final case class UpdateContractorSchemeRequest(
   schemeId: Int,
   instanceId: String,
+  accountsOfficeReference: String,
   taxOfficeNumber: String,
   taxOfficeReference: String,
-  accountsOfficeReference: String,
-  prePopCount: Int,
-  prePopSuccessful: String,
-  uniqueTaxReference: String,
-  name: String,
-  emailAddress: String,
-  version: Int
+  utr: Option[String] = None,
+  name: Option[String] = None,
+  emailAddress: Option[String] = None,
+  displayWelcomePage: Option[String] = None,
+  prePopCount: Option[Int] = None,
+  prePopSuccessful: Option[String] = None,
+  version: Option[Int] = None
 )
 
 object UpdateContractorSchemeRequest {

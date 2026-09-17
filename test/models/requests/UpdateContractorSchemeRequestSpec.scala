@@ -30,14 +30,15 @@ class UpdateContractorSchemeRequestSpec extends SpecBase {
       Json.toJson(request) mustBe Json.obj(
         "schemeId"                -> 123,
         "instanceId"              -> "abc-123",
+        "accountsOfficeReference" -> "123PA00123456",
         "taxOfficeNumber"         -> "163",
         "taxOfficeReference"      -> "AB0063",
-        "accountsOfficeReference" -> "123PA00123456",
-        "prePopCount"             -> 1,
-        "prePopSuccessful"        -> "Y",
-        "uniqueTaxReference"      -> "1234567890",
+        "utr"                     -> "1234567890",
         "name"                    -> "ABC Construction Ltd",
         "emailAddress"            -> "test@example.com",
+        "displayWelcomePage"      -> "Y",
+        "prePopCount"             -> 1,
+        "prePopSuccessful"        -> "Y",
         "version"                 -> 2
       )
     }
@@ -46,14 +47,15 @@ class UpdateContractorSchemeRequestSpec extends SpecBase {
       val json = Json.obj(
         "schemeId"                -> 123,
         "instanceId"              -> "abc-123",
+        "accountsOfficeReference" -> "123PA00123456",
         "taxOfficeNumber"         -> "163",
         "taxOfficeReference"      -> "AB0063",
-        "accountsOfficeReference" -> "123PA00123456",
-        "prePopCount"             -> 1,
-        "prePopSuccessful"        -> "Y",
-        "uniqueTaxReference"      -> "1234567890",
+        "utr"                     -> "1234567890",
         "name"                    -> "ABC Construction Ltd",
         "emailAddress"            -> "test@example.com",
+        "displayWelcomePage"      -> "Y",
+        "prePopCount"             -> 1,
+        "prePopSuccessful"        -> "Y",
         "version"                 -> 2
       )
 
@@ -65,14 +67,15 @@ class UpdateContractorSchemeRequestSpec extends SpecBase {
     UpdateContractorSchemeRequest(
       schemeId = 123,
       instanceId = "abc-123",
+      accountsOfficeReference = "123PA00123456",
       taxOfficeNumber = "163",
       taxOfficeReference = "AB0063",
-      accountsOfficeReference = "123PA00123456",
-      prePopCount = 1,
-      prePopSuccessful = "Y",
-      uniqueTaxReference = "1234567890",
-      name = "ABC Construction Ltd",
-      emailAddress = "test@example.com",
-      version = 2
+      utr = Some("1234567890"),
+      name = Some("ABC Construction Ltd"),
+      emailAddress = Some("test@example.com"),
+      displayWelcomePage = Some("Y"),
+      prePopCount = Some(1),
+      prePopSuccessful = Some("Y"),
+      version = Some(2)
     )
 }
