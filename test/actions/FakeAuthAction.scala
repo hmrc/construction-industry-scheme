@@ -25,8 +25,8 @@ import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.{ExecutionContext, Future}
 
-final class FakeAuthAction(enrols: Enrolments, parsers: PlayBodyParsers, credId: String)(implicit
-  ec: ExecutionContext
+final class FakeAuthAction(enrols: Enrolments, parsers: PlayBodyParsers, credId: String, agentCode: Option[String])(
+  implicit ec: ExecutionContext
 ) extends AuthAction {
   given hc: HeaderCarrier = HeaderCarrier(sessionId = Some(SessionId("sessionId")))
 
@@ -34,7 +34,7 @@ final class FakeAuthAction(enrols: Enrolments, parsers: PlayBodyParsers, credId:
   override protected def executionContext: ExecutionContext = ec
 
   override def invokeBlock[A](request: Request[A], block: AuthenticatedRequest[A] => Future[Result]): Future[Result] = {
-    val testRequest: AuthenticatedRequest[A] = AuthenticatedRequest(request, enrols, credId)
+    val testRequest: AuthenticatedRequest[A] = AuthenticatedRequest(request, enrols, credId, agentCode)
     block(testRequest)
   }
 }
@@ -51,10 +51,15 @@ object FakeAuthAction {
       ),
       state = "Activated"
     )
-    new FakeAuthAction(Enrolments(Set(cis)), parsers, "cred-123")
+    new FakeAuthAction(Enrolments(Set(cis)), parsers, "cred-123", None)
   }
 
-  def withIrPayeAgent(irAgentReference: String, parsers: PlayBodyParsers, credId: String = "cred-123")(implicit
+  def withIrPayeAgent(
+    irAgentReference: String,
+    parsers: PlayBodyParsers,
+    credId: String = "cred-123",
+    agentCode: String = "agent-code-123"
+  )(implicit
     ec: ExecutionContext
   ): FakeAuthAction = {
     val irPayeAgent = Enrolment(
@@ -64,16 +69,21 @@ object FakeAuthAction {
       ),
       state = "Activated"
     )
-    new FakeAuthAction(Enrolments(Set(irPayeAgent)), parsers, credId)
+    new FakeAuthAction(Enrolments(Set(irPayeAgent)), parsers, credId, Some(agentCode))
   }
 
-  def withEnrolments(enrolments: Set[Enrolment], parsers: PlayBodyParsers, credId: String = "cred-123")(implicit
+  def withEnrolments(
+    enrolments: Set[Enrolment],
+    parsers: PlayBodyParsers,
+    credId: String = "cred-123",
+    agentCode: Option[String] = Some("agent-code-123")
+  )(implicit
     ec: ExecutionContext
   ): FakeAuthAction =
-    new FakeAuthAction(Enrolments(enrolments), parsers, credId)
+    new FakeAuthAction(Enrolments(enrolments), parsers, credId, agentCode)
 
   def empty(parsers: PlayBodyParsers)(implicit ec: ExecutionContext): FakeAuthAction =
-    new FakeAuthAction(Enrolments(Set.empty), parsers, "")
+    new FakeAuthAction(Enrolments(Set.empty), parsers, "", None)
 }
 
 final class FakeAgentAction(agentId: String)(implicit ec: ExecutionContext) extends AgentAction {

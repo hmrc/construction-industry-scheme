@@ -23,7 +23,8 @@ import uk.gov.hmrc.http.{HeaderCarrier, SessionId, UnauthorizedException}
 case class AuthenticatedRequest[A](
   private val request: Request[A],
   enrolments: Enrolments,
-  credentialId: String
+  credentialId: String,
+  agentCode: Option[String]
 )(implicit hc: HeaderCarrier)
     extends WrappedRequest[A](request) {
   val sessionId: SessionId =
@@ -35,7 +36,8 @@ case class AuthenticatedRequest[A](
       this.sessionId,
       this.enrolments,
       this.credentialId,
-      agentIdentifier
+      agentIdentifier,
+      this.agentCode.getOrElse(throw new UnauthorizedException("Failed to retrieve Agent code from Auth"))
     )
 }
 
@@ -44,5 +46,6 @@ case class AuthenticatedAgentRequest[A](
   sessionId: SessionId,
   enrolments: Enrolments,
   credentialId: String,
-  agentId: String
+  agentId: String,
+  agentCode: String
 ) extends WrappedRequest[A](request)

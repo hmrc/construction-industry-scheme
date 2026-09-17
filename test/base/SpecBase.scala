@@ -125,11 +125,13 @@ trait SpecBase
     request: FakeRequest[_] = fakeRequest,
     credId: String = "credId-123",
     session: SessionId = SessionId("session-123"),
-    enrols: Enrolments = Enrolments(Set(cisEnrolment()))
+    enrols: Enrolments = Enrolments(Set(cisEnrolment())),
+    agentCode: Option[String] = Some("agent-code-123")
   ): AuthenticatedRequest[_] =
     AuthenticatedRequest(
       request = request,
       enrolments = enrols,
-      credentialId = credId
+      credentialId = credId,
+      agentCode = agentCode
     )(HeaderCarrier(sessionId = Some(SessionId("sessionId"))))
 }

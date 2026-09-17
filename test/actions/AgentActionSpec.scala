@@ -67,6 +67,7 @@ class AgentActionSpec extends SpecBase {
         agentReq.agentId mustBe "AGENT-123"
         agentReq.credentialId mustBe "credId-123"
         agentReq.sessionId mustBe uk.gov.hmrc.http.SessionId("sessionId")
+        agentReq.agentCode mustBe "agent-code-123"
       }
     }
 
@@ -106,6 +107,31 @@ class AgentActionSpec extends SpecBase {
       whenReady(exF) { (ex: UnauthorizedException) =>
         ex.getMessage must include("Unable to retrieve internal ID from auth")
       }
+    }
+
+    "should fail with UnauthorizedException when agentCode is missing" in {
+      val enrols = Enrolments(
+        Set(
+          Enrolment(
+            key = "IR-PAYE-AGENT",
+            identifiers = Seq(EnrolmentIdentifier("IRAgentReference", "AGENT-123")),
+            state = "Activated"
+          )
+        )
+      )
+
+      val req =
+        createAuthReq(
+          request = fakeRequest,
+          enrols = enrols,
+          agentCode = None
+        )
+
+      val ex = intercept[UnauthorizedException] {
+        action.transformPublic(req)
+      }
+
+      ex.getMessage must include("Failed to retrieve Agent code from Auth")
     }
   }
 }

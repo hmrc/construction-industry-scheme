@@ -270,7 +270,13 @@ class ClientListService @Inject() (
         case _: SystemException                       => InitiateDownload
       }
 
-  def removeClient(taxOfficeNumber: String, taxOfficeReference: String, agentId: String, credentialId: String)(implicit
+  def removeClient(
+    taxOfficeNumber: String,
+    taxOfficeReference: String,
+    agentId: String,
+    credentialId: String,
+    agentCode: String
+  )(implicit
     hc: HeaderCarrier
   ): Future[Long] =
     datacacheProxyConnector.enqueueMessage(
@@ -301,7 +307,7 @@ class ClientListService @Inject() (
                   .format(DateTimeFormatter.ofPattern("yyyyMMdd HHmmssSSS")),
                 "MESSAGE_TYPE"    -> "AGENT_AUTH_PORTAL",
                 "ADDITIONAL_INFO" -> "Request client removal",
-                "GW_AGENT_ID"     -> agentId,
+                "GW_AGENT_ID"     -> agentCode,
                 "IR_CLIENT_REF"   -> s"$taxOfficeNumber/$taxOfficeReference",
                 "USER_ID"         -> credentialId,
                 "Service"         -> "CIS"
