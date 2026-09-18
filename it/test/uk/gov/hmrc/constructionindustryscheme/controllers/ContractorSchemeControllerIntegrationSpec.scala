@@ -20,7 +20,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.*
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.matchers.must.Matchers.mustBe
-import play.api.http.Status.{BAD_GATEWAY, NO_CONTENT}
+import play.api.http.Status.{BAD_GATEWAY, NO_CONTENT, OK}
 import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, AuthStub}
 
@@ -31,6 +31,7 @@ class ContractorSchemeControllerIntegrationSpec
     with IntegrationPatience {
 
   private val updateSchemeUrl = s"$base/scheme/update"
+  private val updateSchemeVersionUrl = s"$base/scheme/version-update"
 
   "POST /cis/scheme/update" should {
 
@@ -77,6 +78,44 @@ class ContractorSchemeControllerIntegrationSpec
 
       resp.status mustBe BAD_GATEWAY
       (resp.json \ "message").as[String] mustBe "FormP error"
+    }
+  }
+
+  "POST /cis/scheme/version-update" should {
+
+    "return newVersion when authorised and formp proxy succeeds" in {
+      AuthStub.authorisedWithCisEnrolment()
+
+      val payload = Json.obj(
+        "currentVersion" -> 1,
+        "instanceId"     -> "abc-123"
+      )
+
+      val formpPayload = Json.obj(
+        "instanceId" -> "abc-123",
+        "version"    -> 1
+      )
+
+      stubFor(
+        post(urlPathEqualTo("/formp-proxy/scheme/version-update"))
+          .withRequestBody(equalToJson(formpPayload.toString(), true, true))
+          .willReturn(aResponse().withStatus(OK).withBody(Json.obj("version" -> 2).toString()))
+      )
+
+      val resp = postJson(
+        updateSchemeVersionUrl,
+        payload,
+        "X-Session-Id"  -> "Session-123",
+        "Authorization" -> "Bearer it-token"
+      )
+
+      resp.status mustBe OK
+      resp.json mustBe Json.obj("newVersion" -> 2)
+
+      verify(
+        postRequestedFor(urlPathEqualTo("/formp-proxy/scheme/version-update"))
+          .withRequestBody(equalToJson(formpPayload.toString(), true, true))
+      )
     }
   }
 
