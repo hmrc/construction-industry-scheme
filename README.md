@@ -28,6 +28,18 @@ sbt run
 
 The service runs on port **6994** by default.
 
+### Upstream dependencies
+
+| Service                   | Port |
+|---------------------------|------|
+| `auth`                    | 8500 |
+| `internal-auth`           | 8470 |
+| `formp-proxy`             | 6995 |
+| `rds-datacache-proxy`     | 6992 |
+| `chris`                   | 6997 |
+| `client-exchange-proxy`   | 6997 |
+| `email`                   | 8300 |
+
 ## Running the service against the real CIS filing database
 
 To run without external stubs (pointing at the real `cis-filing-db`):
