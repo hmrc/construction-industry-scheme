@@ -352,6 +352,14 @@ class FinalValidationDraftService @Inject() (
           partnershipTradingName = patch.partnershipTradingName
         )
 
+      case "names" =>
+        existing.copy(
+          firstName = patch.firstName,
+          secondName = patch.secondName,
+          surname = patch.surname,
+          tradingName = patch.tradingName
+        )
+
       case "utrYesNo" | "utr" =>
         existing.copy(
           utr = patch.utr
