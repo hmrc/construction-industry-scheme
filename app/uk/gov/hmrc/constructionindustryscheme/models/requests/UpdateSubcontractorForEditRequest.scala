@@ -19,12 +19,13 @@ package uk.gov.hmrc.constructionindustryscheme.models.requests
 import play.api.libs.json.{Json, OFormat}
 import uk.gov.hmrc.constructionindustryscheme.models.Subcontractor
 
-final case class UpdateSubcontractorRequest(
+final case class UpdateSubcontractorForEditRequest(
   cisId: String,
-  subcontractor: Subcontractor
+  subcontractor: Subcontractor,
+  verificationForEdit: Option[UpdateVerificationForEditRequest] = None
 )
 
-object UpdateSubcontractorRequest {
-  given format: OFormat[UpdateSubcontractorRequest] =
-    Json.format[UpdateSubcontractorRequest]
+object UpdateSubcontractorForEditRequest {
+  given format: OFormat[UpdateSubcontractorForEditRequest] =
+    Json.format[UpdateSubcontractorForEditRequest]
 }

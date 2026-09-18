@@ -22,7 +22,7 @@ import org.mockito.Mockito.{verify, when}
 import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
 import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, Subcontractor}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorForEditRequest, UpdateSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorForDeleteResponse, GetSubcontractorListResponse, GetSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.HeaderCarrier
@@ -404,7 +404,7 @@ final class SubcontractorServiceSpec extends SpecBase {
   "updateSubcontractorForEdit" - {
 
     val request =
-      UpdateSubcontractorRequest(
+      UpdateSubcontractorForEditRequest(
         cisId = "abc-123",
         subcontractor = Json
           .obj(

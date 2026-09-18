@@ -28,7 +28,7 @@ import play.api.test.Helpers.{CONTENT_TYPE, GET, JSON, POST, contentAsJson, stat
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
 import uk.gov.hmrc.constructionindustryscheme.controllers.SubcontractorController
 import uk.gov.hmrc.constructionindustryscheme.models.{ContractorScheme, Subcontractor}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorForEditRequest, UpdateSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorForDeleteResponse, GetSubcontractorListResponse, GetSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
@@ -384,7 +384,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
       )
 
     val updateRequest =
-      validJson.as[UpdateSubcontractorRequest]
+      validJson.as[UpdateSubcontractorForEditRequest]
 
     "returns 200 with updated version when service succeeds" in {
       val service    = mock[SubcontractorService]

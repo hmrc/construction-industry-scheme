@@ -3285,7 +3285,7 @@ class FormpProxyConnectorIntegrationSpec
     val editUrl = "/formp-proxy/cis/subcontractor/edit"
 
     val request =
-      UpdateSubcontractorRequest(
+      UpdateSubcontractorForEditRequest(
         cisId = "abc-123",
         subcontractor = Json
           .obj(

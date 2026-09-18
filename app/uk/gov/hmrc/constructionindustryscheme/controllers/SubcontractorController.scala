@@ -20,7 +20,7 @@ import play.api.Logging
 import play.api.libs.json.{JsError, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
 import uk.gov.hmrc.constructionindustryscheme.actions.AuthAction
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.{CreateAndUpdateSubcontractorRequest, DeleteSubcontractorRequest, UpdateSubcontractorForEditRequest, UpdateSubcontractorRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.{GetSubcontractorResponse, UpdateSubcontractorResponse}
 import uk.gov.hmrc.constructionindustryscheme.services.SubcontractorService
 import uk.gov.hmrc.constructionindustryscheme.utils.CisEnrolmentHeaderForwarding
@@ -161,7 +161,7 @@ class SubcontractorController @Inject() (
 
   def updateSubcontractorForEdit(): Action[JsValue] =
     authorise(parse.json).async { implicit request =>
-      withJsonBody { (updateRequest: UpdateSubcontractorRequest) =>
+      withJsonBody { (updateRequest: UpdateSubcontractorForEditRequest) =>
         handleUpdateSubcontractor(
           updateRequest,
           subcontractorService.updateSubcontractorForEdit,
@@ -171,9 +171,9 @@ class SubcontractorController @Inject() (
       }
     }
 
-  private def handleUpdateSubcontractor(
-    updateRequest: UpdateSubcontractorRequest,
-    updateFn: UpdateSubcontractorRequest => Future[UpdateSubcontractorResponse],
+  private def handleUpdateSubcontractor[T](
+    updateRequest: T,
+    updateFn: T => Future[UpdateSubcontractorResponse],
     operation: String,
     genericFailureMessage: String
   ): Future[Result] =
@@ -187,7 +187,9 @@ class SubcontractorController @Inject() (
           )
 
           Status(u.statusCode)(
-            Json.obj("message" -> u.message)
+            Json.obj(
+              "message" -> u.message
+            )
           )
 
         case NonFatal(t) =>

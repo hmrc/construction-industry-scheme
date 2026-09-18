@@ -547,7 +547,7 @@ class FormpProxyConnector @Inject() (
       .execute[GetSubcontractorResponse]
 
   def updateSubcontractorForEdit(
-    request: UpdateSubcontractorRequest
+    request: UpdateSubcontractorForEditRequest
   )(implicit hc: HeaderCarrier): Future[UpdateSubcontractorResponse] =
     http
       .post(url"$base/cis/subcontractor/edit")
