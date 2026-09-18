@@ -16,16 +16,40 @@
 
 package uk.gov.hmrc.constructionindustryscheme.repositories
 
-import play.api.libs.json.{Format, Json}
+import play.api.libs.functional.syntax._
+import play.api.libs.json._
+import uk.gov.hmrc.crypto.Sensitive.SensitiveString
+import uk.gov.hmrc.crypto.json.JsonEncryption
+import uk.gov.hmrc.crypto.{Decrypter, Encrypter}
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 
 import java.time.Instant
 
-case class AgentClientData(id: String, data: String, lastUpdated: Instant)
+case class AgentClientData(id: String, data: JsValue, lastUpdated: Instant)
 
-object AgentClientDataFormats {
-  given dateFormat: Format[Instant]     = MongoJavatimeFormats.instantFormat
-  given format: Format[AgentClientData] = Json.format[AgentClientData]
+object AgentClientData {
+  given dateFormat: Format[Instant] = MongoJavatimeFormats.instantFormat
+
+  given plainFormat: OFormat[AgentClientData] = Json.format[AgentClientData]
+
+  def encryptedFormat(implicit crypto: Encrypter with Decrypter): OFormat[AgentClientData] = {
+    implicit val sensitiveFormat: Format[SensitiveString] =
+      JsonEncryption.sensitiveEncrypterDecrypter(SensitiveString.apply)
+
+    val reads: Reads[AgentClientData] = (
+      (__ \ "id").read[String] and
+        (__ \ "data").read[SensitiveString] and
+        (__ \ "lastUpdated").read[Instant]
+    )((id, data, lastUpdated) => AgentClientData(id, Json.parse(data.decryptedValue), lastUpdated))
+
+    val writes: OWrites[AgentClientData] = (
+      (__ \ "id").write[String] and
+        (__ \ "data").write[SensitiveString] and
+        (__ \ "lastUpdated").write[Instant]
+    )(ua => (ua.id, SensitiveString(Json.stringify(ua.data)), ua.lastUpdated))
+
+    OFormat(reads, writes)
+  }
 }
 
 object AgentClientDataKeys {
