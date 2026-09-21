@@ -21,9 +21,9 @@ import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnecto
 import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.models.*
+import uk.gov.hmrc.constructionindustryscheme.utils.AcceptedTimeParser
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 
-import java.time.{LocalDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -90,7 +90,7 @@ class MonthlyReturnService @Inject() (
             hmrcMarkGenerated = s.hmrcMarkGenerated,
             hmrcMarkGgis = s.hmrcMarkGgis,
             emailRecipient = s.emailRecipient,
-            acceptedTime = s.acceptedTime.map(x => LocalDateTime.parse(x).toInstant(ZoneOffset.UTC))
+            acceptedTime = s.acceptedTime.flatMap(AcceptedTimeParser.parse)
           )
         )
       )
