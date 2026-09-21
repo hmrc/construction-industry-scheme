@@ -60,7 +60,7 @@ class SubcontractorService @Inject() (formpProxyConnector: FormpProxyConnector) 
     formpProxyConnector.updateSubcontractor(request)
 
   def updateSubcontractorForEdit(
-    request: UpdateSubcontractorRequest
+    request: UpdateSubcontractorForEditRequest
   )(implicit hc: HeaderCarrier): Future[UpdateSubcontractorResponse] =
     formpProxyConnector.updateSubcontractorForEdit(request)
 }

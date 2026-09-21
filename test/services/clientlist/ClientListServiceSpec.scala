@@ -637,6 +637,7 @@ class ClientListServiceSpec extends SpecBase {
     val taxOfficeReference = "AB456"
     val agentId            = "SA123456"
     val credId             = "cred-123"
+    val agentCode          = "agent-code-123"
 
     "return messageIDOut when removeClient from connector returns messageIDOut" in {
       val (service, datacache, _, _, cache) = setupService()
@@ -646,7 +647,7 @@ class ClientListServiceSpec extends SpecBase {
 
       val result =
         service
-          .removeClient(taxOfficeNumber, taxOfficeReference, agentId, credId)(using mock[HeaderCarrier])
+          .removeClient(taxOfficeNumber, taxOfficeReference, agentId, credId, agentCode)(using mock[HeaderCarrier])
           .futureValue
 
       result shouldBe 1
@@ -661,7 +662,7 @@ class ClientListServiceSpec extends SpecBase {
 
       val ex =
         service
-          .removeClient(taxOfficeNumber, taxOfficeReference, agentId, credId)(using mock[HeaderCarrier])
+          .removeClient(taxOfficeNumber, taxOfficeReference, agentId, credId, agentCode)(using mock[HeaderCarrier])
           .failed
           .futureValue
 

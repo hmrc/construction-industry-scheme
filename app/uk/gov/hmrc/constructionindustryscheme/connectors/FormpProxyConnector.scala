@@ -155,6 +155,17 @@ class FormpProxyConnector @Inject() (
         else Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
       }
 
+  def updateContractorSchemeDetails(req: UpdateContractorSchemeRequest)(implicit hc: HeaderCarrier): Future[Unit] =
+    http
+      .post(url"$base/scheme/update")
+      .setHeader("Authorization" -> internalAuthToken)
+      .withBody(Json.toJson(req))
+      .execute[HttpResponse]
+      .flatMap { resp =>
+        if (resp.status / 100 == 2) Future.unit
+        else Future.failed(UpstreamErrorResponse(resp.body, resp.status, resp.status))
+      }
+
   def updateSchemeVersion(req: UpdateSchemeVersionRequest)(implicit hc: HeaderCarrier): Future[Int] =
     http
       .post(url"$base/scheme/version-update")
@@ -162,6 +173,15 @@ class FormpProxyConnector @Inject() (
       .withBody(Json.toJson(req))
       .execute[JsValue]
       .map(json => (json \ "version").as[Int])
+
+  def updateContractorSchemeVersion(
+    req: UpdateContractorSchemeVersionRequest
+  )(implicit hc: HeaderCarrier): Future[UpdateContractorSchemeVersionResponse] =
+    http
+      .post(url"$base/scheme/version-update")
+      .setHeader("Authorization" -> internalAuthToken)
+      .withBody(Json.toJson(req))
+      .execute[UpdateContractorSchemeVersionResponse]
 
   def applyPrepopulation(req: ApplyPrepopulationRequest)(implicit hc: HeaderCarrier): Future[Int] =
     http
@@ -547,7 +567,7 @@ class FormpProxyConnector @Inject() (
       .execute[GetSubcontractorResponse]
 
   def updateSubcontractorForEdit(
-    request: UpdateSubcontractorRequest
+    request: UpdateSubcontractorForEditRequest
   )(implicit hc: HeaderCarrier): Future[UpdateSubcontractorResponse] =
     http
       .post(url"$base/cis/subcontractor/edit")

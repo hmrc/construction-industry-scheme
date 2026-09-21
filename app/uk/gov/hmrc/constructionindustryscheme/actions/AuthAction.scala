@@ -19,7 +19,7 @@ package uk.gov.hmrc.constructionindustryscheme.actions
 import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.*
-import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals.{allEnrolments, credentials}
+import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals.{agentCode, allEnrolments, credentials}
 import uk.gov.hmrc.auth.core.retrieve.~
 import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisationException, AuthorisedFunctions, NoActiveSession}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.AuthenticatedRequest
@@ -41,11 +41,11 @@ class DefaultAuthAction @Inject() (
     given hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
 
     authorised()
-      .retrieve(allEnrolments and credentials) {
-        case enrols ~ Some(creds) =>
+      .retrieve(allEnrolments and credentials and agentCode) {
+        case enrols ~ Some(creds) ~ agentCodeOpt =>
           val credId = creds.providerId
-          block(AuthenticatedRequest(request, enrols, credId))
-        case _                    =>
+          block(AuthenticatedRequest(request, enrols, credId, agentCodeOpt))
+        case _                                   =>
           Future.failed(new UnauthorizedException("Unable to retrieve internal ID from auth"))
       }
       .recover {
