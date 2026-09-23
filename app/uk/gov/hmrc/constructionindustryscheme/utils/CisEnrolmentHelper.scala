@@ -33,15 +33,32 @@ object CisEnrolmentHelper {
         } yield (ton.value, tor.value)
       }
 
+  def extractIRAgentReferenceIdentifiers(
+    enrolments: Enrolments
+  ): Option[String] =
+    enrolments
+      .getEnrolment("IR-PAYE-AGENT")
+      .flatMap { e =>
+        for {
+          agentRef <- e.getIdentifier("IRAgentReference")
+        } yield agentRef.value
+      }
+
   def withCisEnrolmentHeaders(enrolments: Enrolments)(implicit hc: HeaderCarrier): HeaderCarrier =
-    extractTaxOfficeIdentifiers(enrolments) match {
-      case Some((taxOfficeNumber, taxOfficeReference)) =>
+    (extractTaxOfficeIdentifiers(enrolments), extractIRAgentReferenceIdentifiers(enrolments)) match {
+      case (Some((taxOfficeNumber, taxOfficeReference)), None) =>
         hc.copy(extraHeaders =
           hc.extraHeaders ++ Seq(
             "X-Tax-Office-Number"    -> taxOfficeNumber,
             "X-Tax-Office-Reference" -> taxOfficeReference
           )
         )
-      case None                                        => hc
+      case (None, Some(agentRef))                              =>
+        hc.copy(extraHeaders =
+          hc.extraHeaders ++ Seq(
+            "X-IR-Agent-Reference" -> agentRef
+          )
+        )
+      case _                                                   => hc
     }
 }

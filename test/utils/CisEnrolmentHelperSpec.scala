@@ -46,6 +46,48 @@ class CisEnrolmentHelperSpec extends AnyWordSpec with Matchers {
     )
   }
 
+  private def agentEnrolmentsWith(
+                                   agentRef: Option[String]
+                            ): Enrolments = {
+
+    val identifiers =
+      Seq(
+        agentRef.map(v => EnrolmentIdentifier("IRAgentReference", v))
+      ).flatten
+
+    Enrolments(
+      Set(
+        Enrolment(
+          key = "IR-PAYE-AGENT",
+          identifiers = identifiers,
+          state = "Activated",
+          delegatedAuthRule = None
+        )
+      )
+    )
+  }
+
+  "CisEnrolmentHelper.extractIRAgentReferenceIdentifiers" should {
+
+    "return Some when both identifiers are present" in {
+      val enrolments = agentEnrolmentsWith(Some("123456"))
+
+      val result =
+        CisEnrolmentHelper.extractIRAgentReferenceIdentifiers(enrolments)
+
+      result mustBe Some("123456")
+    }
+
+    "return None when enrolment is missing" in {
+      val enrolments = Enrolments(Set.empty)
+
+      val result =
+        CisEnrolmentHelper.extractIRAgentReferenceIdentifiers(enrolments)
+
+      result mustBe None
+    }
+  }
+
   "CisEnrolmentHelper.extractTaxOfficeIdentifiers" should {
 
     "return Some when both identifiers are present" in {
