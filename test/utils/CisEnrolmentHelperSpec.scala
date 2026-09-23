@@ -47,8 +47,8 @@ class CisEnrolmentHelperSpec extends AnyWordSpec with Matchers {
   }
 
   private def agentEnrolmentsWith(
-                                   agentRef: Option[String]
-                            ): Enrolments = {
+    agentRef: Option[String]
+  ): Enrolments = {
 
     val identifiers =
       Seq(
