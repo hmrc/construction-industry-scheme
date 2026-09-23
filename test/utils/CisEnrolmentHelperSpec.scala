@@ -69,7 +69,7 @@ class CisEnrolmentHelperSpec extends AnyWordSpec with Matchers {
 
   "CisEnrolmentHelper.extractIRAgentReferenceIdentifiers" should {
 
-    "return Some when both identifiers are present" in {
+    "return Some when identifier are present" in {
       val enrolments = agentEnrolmentsWith(Some("123456"))
 
       val result =
@@ -80,6 +80,15 @@ class CisEnrolmentHelperSpec extends AnyWordSpec with Matchers {
 
     "return None when enrolment is missing" in {
       val enrolments = Enrolments(Set.empty)
+
+      val result =
+        CisEnrolmentHelper.extractIRAgentReferenceIdentifiers(enrolments)
+
+      result mustBe None
+    }
+
+    "return None when agent reference is missing" in {
+      val enrolments = agentEnrolmentsWith(None)
 
       val result =
         CisEnrolmentHelper.extractIRAgentReferenceIdentifiers(enrolments)
