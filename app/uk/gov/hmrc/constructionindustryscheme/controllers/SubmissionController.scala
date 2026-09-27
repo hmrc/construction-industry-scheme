@@ -150,10 +150,15 @@ class SubmissionController @Inject() (
           submissionService
             .pollSubmissionAndUpdateGovTalkStatus(submissionId, overridePollUrl, journey)
             .map { resp =>
-              if (journey == MonthlyReturn) {
-                auditService.monthlyReturnPollResponseEvent(resp)
-              } else if (journey == Verification) {
-                auditService.verificationPollResponseEvent(resp)
+              val isTerminalStatus =
+                Set(SubmittedStatus, SubmittedNoReceiptStatus, DepartmentalErrorStatus, FatalErrorStatus)
+                  .contains(resp.status)
+              if (isTerminalStatus) {
+                if (journey == MonthlyReturn) {
+                  auditService.monthlyReturnPollResponseEvent(resp)
+                } else if (journey == Verification) {
+                  auditService.verificationPollResponseEvent(resp)
+                }
               }
               Ok(
                 Json.obj(

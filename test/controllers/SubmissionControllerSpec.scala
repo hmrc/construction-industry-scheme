@@ -1169,6 +1169,81 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "intervalSeconds").asOpt[Int] mustBe None
     }
 
+    "audit event" - {
+
+      def mkPollController(status: SubmissionStatus) = {
+        val submissionService = mock[SubmissionService]
+        val config            = mock[AppConfig]
+        val xmlValidator      = mock[XmlValidator]
+
+        when(config.chrisHost).thenReturn(Seq("chris.test"))
+        when(config.useOverridePollResponseEndPoint).thenReturn(false)
+
+        val controller = mkController(
+          submissionService = submissionService,
+          appConfig = config,
+          xmlValidator = xmlValidator
+        )
+
+        val pollUrl = "http://chris.test/poll"
+
+        when(
+          submissionService.pollSubmissionAndUpdateGovTalkStatus(
+            eqTo(submissionId),
+            eqTo(pollUrl),
+            eqTo(ChrisPollJourney.MonthlyReturn)
+          )(any[HeaderCarrier])
+        ).thenReturn(
+          Future.successful(
+            ChrisPollResponse(
+              status = status,
+              correlationId = "corr-123",
+              pollUrl = None,
+              pollInterval = None,
+              error = None,
+              irMarkReceived = None,
+              lastMessageDate = None,
+              acceptedTime = None
+            )
+          )
+        )
+
+        (controller, pollUrl)
+      }
+
+      Seq(SUBMITTED, SUBMITTED_NO_RECEIPT, DEPARTMENTAL_ERROR, FATAL_ERROR).foreach { terminalStatus =>
+        s"sends MonthlyReturnPollResponse audit event for terminal status $terminalStatus" in {
+          val (controller, pollUrl) = mkPollController(terminalStatus)
+
+          val req    = FakeRequest(GET, s"/cis/submissions/$submissionId/poll?pollUrl=$pollUrl")
+          val result = controller.pollSubmission(RedirectUrl(pollUrl), submissionId)(req)
+
+          status(result) mustBe OK
+          verify(mockAuditService).monthlyReturnPollResponseEvent(any())(any())
+        }
+      }
+
+      "does not send MonthlyReturnPollResponse audit event for non-terminal status ACCEPTED" in {
+        val (controller, pollUrl) = mkPollController(ACCEPTED)
+
+        val req    = FakeRequest(GET, s"/cis/submissions/$submissionId/poll?pollUrl=$pollUrl")
+        val result = controller.pollSubmission(RedirectUrl(pollUrl), submissionId)(req)
+
+        status(result) mustBe OK
+        verify(mockAuditService, never()).monthlyReturnPollResponseEvent(any())(any())
+      }
+
+      "does not send MonthlyReturnPollResponse audit event for non-terminal status STARTED" in {
+        val (controller, pollUrl) = mkPollController(STARTED)
+
+        val req    = FakeRequest(GET, s"/cis/submissions/$submissionId/poll?pollUrl=$pollUrl")
+        val result = controller.pollSubmission(RedirectUrl(pollUrl), submissionId)(req)
+
+        status(result) mustBe OK
+        verify(mockAuditService, never()).monthlyReturnPollResponseEvent(any())(any())
+      }
+    }
+
     "returns 400 when pollUrl host is not allowed" in {
       val submissionService = mock[SubmissionService]
       val config            = mock[AppConfig]
@@ -1968,6 +2043,84 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       (js \ "irMarkReceived").as[String] mustBe "ir-mark-receipt"
       (js \ "lastMessageDate").as[String] mustBe "2026-04-02T10:15:30Z"
       (js \ "acceptedTime").as[String] mustBe "2026-04-02T10:16:30Z"
+    }
+
+    "audit event" - {
+
+      def mkVerificationPollController(pollStatus: SubmissionStatus) = {
+        val submissionService = mock[SubmissionService]
+        val config            = mock[AppConfig]
+        val xmlValidator      = mock[XmlValidator]
+
+        when(config.chrisHost).thenReturn(Seq("chris.test"))
+        when(config.useOverridePollResponseEndPoint).thenReturn(false)
+
+        val controller = mkController(
+          submissionService = submissionService,
+          appConfig = config,
+          xmlValidator = xmlValidator
+        )
+
+        val pollUrl = "http://chris.test/poll"
+
+        when(
+          submissionService.pollSubmissionAndUpdateGovTalkStatus(
+            eqTo(submissionId),
+            eqTo(pollUrl),
+            eqTo(ChrisPollJourney.Verification)
+          )(any[HeaderCarrier])
+        ).thenReturn(
+          Future.successful(
+            ChrisPollResponse(
+              status = pollStatus,
+              correlationId = "corr-123",
+              pollUrl = None,
+              pollInterval = None,
+              error = None,
+              irMarkReceived = None,
+              lastMessageDate = None,
+              acceptedTime = None
+            )
+          )
+        )
+
+        (controller, pollUrl)
+      }
+
+      Seq(SUBMITTED, SUBMITTED_NO_RECEIPT, DEPARTMENTAL_ERROR, FATAL_ERROR).foreach { terminalStatus =>
+        s"sends VerificationPollResponse audit event for terminal status $terminalStatus" in {
+          val (controller, pollUrl) = mkVerificationPollController(terminalStatus)
+
+          val req    =
+            FakeRequest(GET, s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=$pollUrl")
+          val result = controller.pollVerificationSubmission(RedirectUrl(pollUrl), submissionId)(req)
+
+          status(result) mustBe OK
+          verify(mockAuditService).verificationPollResponseEvent(any())(any())
+        }
+      }
+
+      "does not send VerificationPollResponse audit event for non-terminal status ACCEPTED" in {
+        val (controller, pollUrl) = mkVerificationPollController(ACCEPTED)
+
+        val req    =
+          FakeRequest(GET, s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=$pollUrl")
+        val result = controller.pollVerificationSubmission(RedirectUrl(pollUrl), submissionId)(req)
+
+        status(result) mustBe OK
+        verify(mockAuditService, never()).verificationPollResponseEvent(any())(any())
+      }
+
+      "does not send VerificationPollResponse audit event for non-terminal status STARTED" in {
+        val (controller, pollUrl) = mkVerificationPollController(STARTED)
+
+        val req    =
+          FakeRequest(GET, s"/cis/submissions/verification/poll?submissionId=$submissionId&pollUrl=$pollUrl")
+        val result = controller.pollVerificationSubmission(RedirectUrl(pollUrl), submissionId)(req)
+
+        status(result) mustBe OK
+        verify(mockAuditService, never()).verificationPollResponseEvent(any())(any())
+      }
     }
 
     "returns 400 when pollUrl host is not allowed" in {
