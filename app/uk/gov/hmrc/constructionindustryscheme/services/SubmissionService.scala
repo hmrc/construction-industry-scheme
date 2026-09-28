@@ -252,10 +252,20 @@ class SubmissionService @Inject() (
     journey: ChrisPollJourney = ChrisPollJourney.MonthlyReturn,
     verificationContext: Option[StoredVerificationContext] = None,
     error: Option[GovTalkError] = None,
-    submissionStatus: SubmissionStatus = STARTED
+    submissionStatus: SubmissionStatus = STARTED,
+    isResubmission: Boolean = false
   )(implicit hc: HeaderCarrier): Future[Unit] =
     for {
-      instanceId <- initialiseGovTalkStatus(employerReference, submissionId, correlationId, gatewayURL)
+      instanceId <- initialiseGovTalkStatus(employerReference, submissionId, correlationId, gatewayURL, isResubmission)
+      _          <- updateGovTalkStatusCorrelationId(
+                      UpdateGovTalkStatusCorrelationIdRequest(
+                        userIdentifier = instanceId,
+                        formResultID = submissionId,
+                        correlationID = correlationId,
+                        pollInterval = 0,
+                        gatewayURL = gatewayURL
+                      )
+                    )
       _          <- (journey, verificationContext) match {
                       case (ChrisPollJourney.Verification, Some(ctx)) =>
                         formpProxyConnector.updateVerificationSubmission(
