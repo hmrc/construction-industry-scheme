@@ -121,6 +121,52 @@ class VerificationResultMapperSpec extends SpecBase {
       )
     }
 
+    "map ChRIS result with missing verification number and match is matched" in {
+      val mapper = new VerificationResultMapper()
+
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val chrisResult = cisResponseSubcontractor(
+        utr = Some("1234567890"),
+        foreName = Some("John"),
+        middleName = Some("A"),
+        surname = Some("Smith"),
+        matched = Some("matched"),
+        taxTreatment = Some("net"),
+        verificationNumber = None
+      )
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            subbieResourceRef = Some(13L),
+            foreName = Some("John"),
+            middleName = Some("A"),
+            surname = Some("Smith"),
+            utr = Some("1234567890"),
+            subcontractorType = Some("soletrader")
+          )
+        )
+      )
+
+      mapper
+        .mapAll(
+          chrisResults = Seq(chrisResult),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue mustBe Seq(
+        VerificationResult(
+          resourceRef = 13L,
+          matched = None,
+          verified = None,
+          verificationNumber = None,
+          taxTreatment = "net",
+          verifiedDate = None
+        )
+      )
+    }
+
     "trim verification number before mapping and set verified date when matched" in {
       val mapper = new VerificationResultMapper()
 
