@@ -88,7 +88,7 @@ class VerificationResultMapper @Inject() () {
             same(requested.tradingName, chris.tradingName)
 
           case Some("partnership") =>
-            same(requested.partnershipUtr, chris.partnershipUtr) &&
+            same(requested.utr, chris.partnershipUtr) &&
             same(requested.tradingName, chris.tradingName)
 
           case other =>
