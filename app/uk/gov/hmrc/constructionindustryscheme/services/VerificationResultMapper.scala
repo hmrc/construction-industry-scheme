@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.services
 
+import play.api.Logging
 import uk.gov.hmrc.constructionindustryscheme.models.CisResponseSubcontractor
 import uk.gov.hmrc.constructionindustryscheme.repositories.{StoredRequestedVerification, StoredVerificationContext}
 import uk.gov.hmrc.constructionindustryscheme.models.VerificationResult
@@ -25,7 +26,7 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.Future
 
 @Singleton
-class VerificationResultMapper @Inject() () {
+class VerificationResultMapper @Inject() () extends Logging {
 
   def mapAll(
     chrisResults: Seq[CisResponseSubcontractor],
@@ -49,12 +50,9 @@ class VerificationResultMapper @Inject() () {
   ): Either[String, VerificationResult] =
     for {
       requested    <- findRequestedVerification(chris, context)
-      resourceRef  <-
-        requested.subbieResourceRef.toRight(
-          s"Missing subbieResourceRef for matched verificationResourceRef: ${requested.verificationResourceRef}"
-        )
       taxTreatment <- required(chris.taxTreatment, "taxTreatment")
     } yield {
+      val resourceRef        = requested.verificationResourceRef
       val verificationNumber = chris.verificationNumber.map(_.trim).filter(_.nonEmpty)
       val verified           = deriveVerified(chris.matched, Some(requested.actionIndicator), verificationNumber)
       val matched            = verificationNumber.flatMap(_ => normalise(chris.matched).collect { case "MATCHED" => "Y" })
@@ -98,7 +96,9 @@ class VerificationResultMapper @Inject() () {
 
     matches.toList match {
       case List(one) => Right(one)
-      case Nil       => Left(s"No matching requested verification found for subcontractor: $chris")
+      case Nil       =>
+        logger.warn(s"No matching requested verification found for subcontractor: $chris")
+        Right(context.requestedVerifications.head)
       case _         => Left(s"Multiple matching requested verifications found for subcontractor: $chris")
     }
   }

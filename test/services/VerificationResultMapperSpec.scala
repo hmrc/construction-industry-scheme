@@ -45,7 +45,7 @@ class VerificationResultMapperSpec extends SpecBase {
       val context = storedVerificationContext(
         requestedVerifications = Seq(
           storedRequestedVerification(
-            subbieResourceRef = Some(13L),
+            verificationResourceRef = 14L,
             actionIndicator = "verify",
             foreName = Some("John"),
             middleName = Some("A"),
@@ -64,7 +64,7 @@ class VerificationResultMapperSpec extends SpecBase {
         )
         .futureValue mustBe Seq(
         VerificationResult(
-          resourceRef = 13L,
+          resourceRef = 14L,
           matched = None,
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
@@ -93,7 +93,7 @@ class VerificationResultMapperSpec extends SpecBase {
       val context = storedVerificationContext(
         requestedVerifications = Seq(
           storedRequestedVerification(
-            subbieResourceRef = Some(13L),
+            verificationResourceRef = 14L,
             tradingName = Some("John A"),
             foreName = Some("John"),
             middleName = Some("A"),
@@ -112,7 +112,7 @@ class VerificationResultMapperSpec extends SpecBase {
         )
         .futureValue mustBe Seq(
         VerificationResult(
-          resourceRef = 13L,
+          resourceRef = 14L,
           matched = None,
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
@@ -140,7 +140,7 @@ class VerificationResultMapperSpec extends SpecBase {
       val context = storedVerificationContext(
         requestedVerifications = Seq(
           storedRequestedVerification(
-            subbieResourceRef = Some(13L),
+            verificationResourceRef = 14L,
             actionIndicator = "verify",
             foreName = Some("John"),
             middleName = Some("A"),
@@ -159,7 +159,7 @@ class VerificationResultMapperSpec extends SpecBase {
         )
         .futureValue mustBe Seq(
         VerificationResult(
-          resourceRef = 13L,
+          resourceRef = 14L,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -187,7 +187,7 @@ class VerificationResultMapperSpec extends SpecBase {
       val context = storedVerificationContext(
         requestedVerifications = Seq(
           storedRequestedVerification(
-            subbieResourceRef = Some(13L),
+            verificationResourceRef = 14L,
             foreName = Some("John"),
             middleName = Some("A"),
             surname = Some("Smith"),
@@ -205,7 +205,7 @@ class VerificationResultMapperSpec extends SpecBase {
         )
         .futureValue mustBe Seq(
         VerificationResult(
-          resourceRef = 13L,
+          resourceRef = 14L,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -233,7 +233,7 @@ class VerificationResultMapperSpec extends SpecBase {
       val context = storedVerificationContext(
         requestedVerifications = Seq(
           storedRequestedVerification(
-            subbieResourceRef = Some(13L),
+            verificationResourceRef = 14L,
             actionIndicator = "verify",
             foreName = Some("John"),
             middleName = Some("A"),
@@ -252,7 +252,7 @@ class VerificationResultMapperSpec extends SpecBase {
         )
         .futureValue mustBe Seq(
         VerificationResult(
-          resourceRef = 13L,
+          resourceRef = 14L,
           matched = Some("Y"),
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
@@ -280,7 +280,7 @@ class VerificationResultMapperSpec extends SpecBase {
       val context = storedVerificationContext(
         requestedVerifications = Seq(
           storedRequestedVerification(
-            subbieResourceRef = Some(13L),
+            verificationResourceRef = 14L,
             actionIndicator = "verify",
             foreName = Some("John"),
             middleName = Some("A"),
@@ -299,7 +299,7 @@ class VerificationResultMapperSpec extends SpecBase {
         )
         .futureValue mustBe Seq(
         VerificationResult(
-          resourceRef = 13L,
+          resourceRef = 14L,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -309,21 +309,91 @@ class VerificationResultMapperSpec extends SpecBase {
       )
     }
 
-    "fail when no requested verification matches" in {
+    "map ChRIS result to verification result for partnership when verify action has verification number but no subcontractors" in {
       val mapper = new VerificationResultMapper()
 
       val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
 
       val chrisResult = cisResponseSubcontractor(
-        utr = Some("9999999999"),
-        foreName = Some("Jane"),
-        surname = Some("Bloggs"),
-        matched = Some("matched"),
-        taxTreatment = None,
-        verificationNumber = None
+        partnershipUtr = Some("1234567890"),
+        foreName = Some("John"),
+        middleName = Some("A"),
+        surname = Some("Smith"),
+        matched = Some("unmatched"),
+        taxTreatment = Some("net"),
+        verificationNumber = Some("V1000000007")
       )
 
-      val context = storedVerificationContext(requestedVerifications = Seq.empty)
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 14L,
+            foreName = Some("John"),
+            middleName = Some("A"),
+            tradingName = Some("Not matching"),
+            surname = Some("Smith"),
+            utr = Some("1234567890"),
+            subcontractorType = Some("partnership")
+          )
+        )
+      )
+
+      mapper
+        .mapAll(
+          chrisResults = Seq(chrisResult),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue mustBe Seq(
+        VerificationResult(
+          resourceRef = 14L,
+          matched = None,
+          verified = Some("Y"),
+          verificationNumber = Some("V1000000007"),
+          taxTreatment = "net",
+          verifiedDate = None
+        )
+      )
+    }
+
+    "fail when multiple requested verification matches" in {
+      val mapper = new VerificationResultMapper()
+
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val chrisResult = cisResponseSubcontractor(
+        partnershipUtr = Some("1234567890"),
+        tradingName = Some("John A"),
+        foreName = Some("John"),
+        middleName = Some("A"),
+        surname = Some("Smith"),
+        matched = Some("unmatched"),
+        taxTreatment = Some("net"),
+        verificationNumber = Some("V1000000007")
+      )
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 14L,
+            tradingName = Some("John A"),
+            foreName = Some("John"),
+            middleName = Some("A"),
+            surname = Some("Smith"),
+            utr = Some("1234567890"),
+            subcontractorType = Some("partnership")
+          ),
+          storedRequestedVerification(
+            verificationResourceRef = 14L,
+            tradingName = Some("John A"),
+            foreName = Some("John"),
+            middleName = Some("A"),
+            surname = Some("Smith"),
+            utr = Some("1234567890"),
+            subcontractorType = Some("partnership")
+          )
+        )
+      )
 
       val ex = mapper
         .mapAll(
@@ -334,7 +404,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .failed
         .futureValue
 
-      ex.getMessage must include("No matching requested verification found")
+      ex.getMessage must include("Multiple matching requested verifications found for subcontractor")
     }
   }
 
