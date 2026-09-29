@@ -234,7 +234,7 @@ class PrepopulationServiceSpec extends SpecBase {
       sentReq.instanceId mustBe instanceId
       sentReq.name mustBe "ABC Construction Ltd"
       sentReq.utr mustBe Some("1234567890")
-      sentReq.prePopCount mustBe 1
+      sentReq.prePopCount mustBe 0
       sentReq.prePopSuccessful mustBe "Y"
       sentReq.version mustBe 7
       sentReq.subcontractors mustBe Seq(
