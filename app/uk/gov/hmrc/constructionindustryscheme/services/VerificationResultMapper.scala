@@ -50,10 +50,10 @@ class VerificationResultMapper @Inject() () extends Logging {
   ): Either[String, VerificationResult] =
     for {
       requestedResult <- findRequestedVerification(chris, context)
-      taxTreatment    <- required(chris.taxTreatment, "taxTreatment")
     } yield {
       val (requested, requestedVerificationFound) = requestedResult
 
+      val taxTreatment       = chris.taxTreatment.map(_.trim).filter(_.nonEmpty)
       val resourceRef        = requested.verificationResourceRef
       val verificationNumber = chris.verificationNumber.map(_.trim).filter(_.nonEmpty)
       val verified           = deriveVerified(chris.matched, Some(requested.actionIndicator), verificationNumber)
@@ -64,7 +64,7 @@ class VerificationResultMapper @Inject() () extends Logging {
         matched = if (requestedVerificationFound) matched else None,
         verified = if (requestedVerificationFound) verified else None,
         verificationNumber = if (requestedVerificationFound) verificationNumber else None,
-        taxTreatment = taxTreatment,
+        taxTreatment = if (requestedVerificationFound) taxTreatment else None,
         verifiedDate = if (requestedVerificationFound) {
           verifiedDateFor(
             matched = matched,
@@ -144,9 +144,6 @@ class VerificationResultMapper @Inject() () extends Logging {
 
   private def hasValue(value: Option[String]): Boolean =
     normalise(value).isDefined
-
-  private def required(value: Option[String], fieldName: String): Either[String, String] =
-    value.map(_.trim).filter(_.nonEmpty).toRight(s"Missing required field: $fieldName")
 
   private def same(left: Option[String], right: Option[String]): Boolean =
     normalise(left) == normalise(right)

@@ -68,7 +68,7 @@ class VerificationResultMapperSpec extends SpecBase {
           matched = None,
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
-          taxTreatment = "net",
+          taxTreatment = Some("net"),
           verifiedDate = None
         )
       )
@@ -116,7 +116,7 @@ class VerificationResultMapperSpec extends SpecBase {
           matched = None,
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
-          taxTreatment = "net",
+          taxTreatment = Some("net"),
           verifiedDate = None
         )
       )
@@ -163,7 +163,7 @@ class VerificationResultMapperSpec extends SpecBase {
           matched = None,
           verified = None,
           verificationNumber = None,
-          taxTreatment = "net",
+          taxTreatment = Some("net"),
           verifiedDate = None
         )
       )
@@ -209,7 +209,7 @@ class VerificationResultMapperSpec extends SpecBase {
           matched = None,
           verified = None,
           verificationNumber = None,
-          taxTreatment = "net",
+          taxTreatment = Some("net"),
           verifiedDate = None
         )
       )
@@ -256,7 +256,7 @@ class VerificationResultMapperSpec extends SpecBase {
           matched = Some("Y"),
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
-          taxTreatment = "net",
+          taxTreatment = Some("net"),
           verifiedDate = Some(verifiedDate)
         )
       )
@@ -303,7 +303,7 @@ class VerificationResultMapperSpec extends SpecBase {
           matched = None,
           verified = None,
           verificationNumber = None,
-          taxTreatment = "net",
+          taxTreatment = Some("net"),
           verifiedDate = None
         )
       )
@@ -350,7 +350,7 @@ class VerificationResultMapperSpec extends SpecBase {
           matched = None,
           verified = None,
           verificationNumber = None,
-          taxTreatment = "net",
+          taxTreatment = None,
           verifiedDate = None
         )
       )
