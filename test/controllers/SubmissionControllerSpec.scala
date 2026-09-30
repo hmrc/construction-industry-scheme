@@ -463,7 +463,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[ChrisPollJourney],
           any[Option[StoredVerificationContext]],
           any[Option[GovTalkError]],
-          any[SubmissionStatus]
+          any[SubmissionStatus],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -511,7 +512,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[ChrisPollJourney],
           any[Option[StoredVerificationContext]],
           any[Option[GovTalkError]],
-          any[SubmissionStatus]
+          any[SubmissionStatus],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -593,7 +595,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           any[ChrisPollJourney],
           any[Option[StoredVerificationContext]],
           any[Option[GovTalkError]],
-          any[SubmissionStatus]
+          any[SubmissionStatus],
+          any[Boolean]
         )(any[HeaderCarrier])
       ).thenReturn(Future.failed(new RuntimeException("govtalk failure")))
 
@@ -787,6 +790,75 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       verify(mockAuditService, times(1)).monthlyReturnRequestEvent(any(), any(), any())(any())
       verify(mockAuditService, times(1)).monthlyReturnResponseEvent(any(), any())(any())
+    }
+
+    "passes isResubmission true when ChRIS submit fails during a resubmission" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+
+      when(appConfig.chrisGatewayUrl).thenReturn("http://chris.example/gateway")
+
+      val controller = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+        .thenReturn(Future.successful(AuditResult.Success))
+
+      when(xmlValidator.validate(any[NodeSeq], any[Schema]))
+        .thenReturn(Success(()))
+
+      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(UpstreamErrorResponse("ChRIS unavailable", 503, 503)))
+
+      when(
+        submissionService.processInitialChrisFailure(
+          any[EmployerReference],
+          any[String],
+          any[String],
+          any[String],
+          any[ChrisPollJourney],
+          any[Option[StoredVerificationContext]],
+          any[Option[GovTalkError]],
+          any[SubmissionStatus],
+          any[Boolean]
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(()))
+
+      val resubmissionJson =
+        validJson.as[JsObject] ++ Json.obj(
+          "isResubmission" -> true
+        )
+
+      val req =
+        FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
+          .withBody(resubmissionJson)
+          .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.submitToChris(submissionId)(req)
+
+      status(result) mustBe OK
+
+      val js = contentAsJson(result)
+
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "status").as[String] mustBe "STARTED"
+      (js \ "govTalkErrorStatus" \ "kind").as[String] mustBe "ServerError"
+      (js \ "govTalkErrorStatus" \ "httpStatus").as[Int] mustBe 503
+
+      verify(submissionService, times(1))
+        .processInitialChrisFailure(
+          eqTo(EmployerReference("123", "ABC456")),
+          eqTo(submissionId),
+          any[String],
+          eqTo("http://chris.example/gateway"),
+          eqTo(ChrisPollJourney.MonthlyReturn),
+          eqTo(None),
+          eqTo(None),
+          eqTo(STARTED),
+          eqTo(true)
+        )(any[HeaderCarrier])
     }
   }
 
@@ -1748,7 +1820,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           eqTo(ChrisPollJourney.Verification),
           any[Option[StoredVerificationContext]],
           any[Option[GovTalkError]],
-          eqTo(FATAL_ERROR)
+          eqTo(FATAL_ERROR),
+          eqTo(false)
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(()))
 
@@ -1778,7 +1851,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
           eqTo(ChrisPollJourney.Verification),
           any[Option[StoredVerificationContext]],
           any[Option[GovTalkError]],
-          eqTo(FATAL_ERROR)
+          eqTo(FATAL_ERROR),
+          eqTo(false)
         )(any[HeaderCarrier])
     }
 

@@ -19,7 +19,7 @@ package models.requests
 import org.scalatestplus.play.PlaySpec
 import play.api.libs.json.{JsSuccess, Json}
 import uk.gov.hmrc.constructionindustryscheme.models.Subcontractor
-import uk.gov.hmrc.constructionindustryscheme.models.requests.{UpdateSubcontractorRequest, UpdateVerificationForEditRequest}
+import uk.gov.hmrc.constructionindustryscheme.models.requests.UpdateSubcontractorRequest
 
 import java.time.LocalDateTime
 

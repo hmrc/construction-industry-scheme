@@ -1010,6 +1010,20 @@ final class SubmissionServiceSpec extends SpecBase {
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
+      when(
+        formpProxyConnector.updateGovTalkStatusCorrelationId(
+          eqTo(
+            UpdateGovTalkStatusCorrelationIdRequest(
+              userIdentifier = "instance-123",
+              formResultID = submissionId,
+              correlationID = correlationId,
+              pollInterval = 0,
+              gatewayURL = gatewayUrl
+            )
+          )
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
       service.processInitialChrisFailure(employerRef, submissionId, correlationId, gatewayUrl).futureValue mustBe ()
     }
 
@@ -1061,6 +1075,20 @@ final class SubmissionServiceSpec extends SpecBase {
         )(any[HeaderCarrier])
       ).thenReturn(Future.unit)
 
+      when(
+        formpProxyConnector.updateGovTalkStatusCorrelationId(
+          eqTo(
+            UpdateGovTalkStatusCorrelationIdRequest(
+              userIdentifier = "instance-123",
+              formResultID = submissionId,
+              correlationID = correlationId,
+              pollInterval = 0,
+              gatewayURL = gatewayUrl
+            )
+          )
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
       service
         .processInitialChrisFailure(
           employerRef,
@@ -1075,6 +1103,133 @@ final class SubmissionServiceSpec extends SpecBase {
         .futureValue mustBe ()
 
       verify(formpProxyConnector).updateVerificationSubmission(eqTo(expectedUpdateSubmission))(any[HeaderCarrier])
+    }
+
+    "resets existing govtalk and updates correlationId for a resubmission" in {
+      val s = setup
+      import s._
+
+      val employerRef      = EmployerReference("123", "AB456")
+      val submissionId     = "sub-123"
+      val oldCorrelationId = "old-corr"
+      val newCorrelationId = "new-corr"
+      val gatewayUrl       = "/gateway"
+      val taxpayer         = mkTaxpayer("instance-123")
+
+      val existingStatus =
+        existingGovTalkStatus(
+          userIdentifier = "instance-123",
+          formResultID = submissionId
+        ).copy(
+          correlationID = oldCorrelationId,
+          protocolStatus = "dataRequest"
+        )
+
+      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(taxpayer))
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest("instance-123", submissionId)),
+          eqTo(Initial)
+        )(any[HeaderCarrier])
+      ).thenReturn(
+        Future.successful(
+          Some(
+            GetGovTalkStatusResponse(
+              govtalk_status = Seq(existingStatus)
+            )
+          )
+        )
+      )
+
+      when(
+        formpProxyConnector.resetGovTalkStatus(
+          eqTo(
+            ResetGovTalkStatusRequest(
+              userIdentifier = "instance-123",
+              formResultID = submissionId,
+              oldProtocolStatus = "dataRequest",
+              gatewayURL = chrisGatewayUrl
+            )
+          )
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusCorrelationId(
+          eqTo(
+            UpdateGovTalkStatusCorrelationIdRequest(
+              userIdentifier = "instance-123",
+              formResultID = submissionId,
+              correlationID = newCorrelationId,
+              pollInterval = 0,
+              gatewayURL = gatewayUrl
+            )
+          )
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatus(
+          eqTo(
+            UpdateGovTalkStatusRequest(
+              "instance-123",
+              submissionId,
+              None,
+              "dataRequest"
+            )
+          )
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.unit)
+
+      service
+        .processInitialChrisFailure(
+          employerReference = employerRef,
+          submissionId = submissionId,
+          correlationId = newCorrelationId,
+          gatewayURL = gatewayUrl,
+          isResubmission = true
+        )
+        .futureValue mustBe ()
+
+      verify(formpProxyConnector).resetGovTalkStatus(
+        eqTo(
+          ResetGovTalkStatusRequest(
+            userIdentifier = "instance-123",
+            formResultID = submissionId,
+            oldProtocolStatus = "dataRequest",
+            gatewayURL = chrisGatewayUrl
+          )
+        )
+      )(any[HeaderCarrier])
+
+      verify(formpProxyConnector).updateGovTalkStatusCorrelationId(
+        eqTo(
+          UpdateGovTalkStatusCorrelationIdRequest(
+            userIdentifier = "instance-123",
+            formResultID = submissionId,
+            correlationID = newCorrelationId,
+            pollInterval = 0,
+            gatewayURL = gatewayUrl
+          )
+        )
+      )(any[HeaderCarrier])
+
+      verify(formpProxyConnector).updateGovTalkStatus(
+        eqTo(
+          UpdateGovTalkStatusRequest(
+            "instance-123",
+            submissionId,
+            None,
+            "dataRequest"
+          )
+        )
+      )(any[HeaderCarrier])
+
+      verify(formpProxyConnector, never()).createGovTalkStatusRecord(
+        any[CreateGovTalkStatusRecordRequest]
+      )(any[HeaderCarrier])
     }
   }
 

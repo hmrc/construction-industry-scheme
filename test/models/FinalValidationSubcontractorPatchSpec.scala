@@ -18,7 +18,6 @@ package models
 
 import base.SpecBase
 import play.api.libs.json.*
-import uk.gov.hmrc.constructionindustryscheme.models.finalvalidation.FinalValidationDraftIssue
 import uk.gov.hmrc.constructionindustryscheme.models.FinalValidationSubcontractorPatch
 
 class FinalValidationSubcontractorPatchSpec extends SpecBase {

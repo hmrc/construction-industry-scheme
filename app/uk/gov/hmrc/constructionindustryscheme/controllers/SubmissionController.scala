@@ -325,7 +325,8 @@ class SubmissionController @Inject() (
           ex,
           errorLabel = "",
           startedErrorText = "Chris failure",
-          journey = MonthlyReturn
+          journey = MonthlyReturn,
+          isResubmission = csr.isResubmission
         )
       }
   }
@@ -378,7 +379,8 @@ class SubmissionController @Inject() (
     startedErrorText: String,
     journey: ChrisPollJourney,
     verificationContext: Option[VerificationSubmissionContext] = None,
-    failureStatus: SubmissionStatus = StartedStatus
+    failureStatus: SubmissionStatus = StartedStatus,
+    isResubmission: Boolean = false
   )(implicit hc: HeaderCarrier): Future[Result] = {
     logger.error(
       s"Received 5xx/Exception from ChRIS$errorLabel, treating as RESUBMIT for submissionId=$submissionId",
@@ -398,15 +400,21 @@ class SubmissionController @Inject() (
             journey = journey,
             verificationContext = ctx.verificationContext,
             error = Some(govTalkError),
-            submissionStatus = failureStatus
+            submissionStatus = failureStatus,
+            isResubmission = isResubmission
           )
 
         case _ =>
           submissionService.processInitialChrisFailure(
-            employerRef,
-            submissionId,
-            correlationId,
-            journey.gatewayUrl(appConfig)
+            employerReference = employerRef,
+            submissionId = submissionId,
+            correlationId = correlationId,
+            gatewayURL = journey.gatewayUrl(appConfig),
+            journey = journey,
+            verificationContext = None,
+            error = None,
+            submissionStatus = failureStatus,
+            isResubmission = isResubmission
           )
       }
 
