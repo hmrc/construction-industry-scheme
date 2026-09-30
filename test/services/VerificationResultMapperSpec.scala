@@ -348,8 +348,8 @@ class VerificationResultMapperSpec extends SpecBase {
         VerificationResult(
           resourceRef = 14L,
           matched = None,
-          verified = Some("Y"),
-          verificationNumber = Some("V1000000007"),
+          verified = None,
+          verificationNumber = None,
           taxTreatment = "net",
           verifiedDate = None
         )

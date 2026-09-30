@@ -49,9 +49,11 @@ class VerificationResultMapper @Inject() () extends Logging {
     verifiedDate: LocalDateTime
   ): Either[String, VerificationResult] =
     for {
-      requested    <- findRequestedVerification(chris, context)
-      taxTreatment <- required(chris.taxTreatment, "taxTreatment")
+      requestedResult <- findRequestedVerification(chris, context)
+      taxTreatment    <- required(chris.taxTreatment, "taxTreatment")
     } yield {
+      val (requested, requestedVerificationFound) = requestedResult
+
       val resourceRef        = requested.verificationResourceRef
       val verificationNumber = chris.verificationNumber.map(_.trim).filter(_.nonEmpty)
       val verified           = deriveVerified(chris.matched, Some(requested.actionIndicator), verificationNumber)
@@ -59,22 +61,26 @@ class VerificationResultMapper @Inject() () extends Logging {
 
       VerificationResult(
         resourceRef = resourceRef,
-        matched = matched,
-        verified = verified,
-        verificationNumber = verificationNumber,
+        matched = if (requestedVerificationFound) matched else None,
+        verified = if (requestedVerificationFound) verified else None,
+        verificationNumber = if (requestedVerificationFound) verificationNumber else None,
         taxTreatment = taxTreatment,
-        verifiedDate = verifiedDateFor(
-          matched = matched,
-          verificationNumber = verificationNumber,
-          verifiedDate = verifiedDate
-        )
+        verifiedDate = if (requestedVerificationFound) {
+          verifiedDateFor(
+            matched = matched,
+            verificationNumber = verificationNumber,
+            verifiedDate = verifiedDate
+          )
+        } else {
+          None
+        }
       )
     }
 
   private def findRequestedVerification(
     chris: CisResponseSubcontractor,
     context: StoredVerificationContext
-  ): Either[String, StoredRequestedVerification] = {
+  ): Either[String, (StoredRequestedVerification, Boolean)] = {
     val matches =
       context.requestedVerifications.filter { requested =>
         requested.subcontractorType.map(_.trim.toLowerCase) match {
@@ -95,10 +101,10 @@ class VerificationResultMapper @Inject() () extends Logging {
       }
 
     matches.toList match {
-      case List(one) => Right(one)
+      case List(one) => Right((one, true))
       case Nil       =>
         logger.warn(s"No matching requested verification found for subcontractor: $chris")
-        Right(context.requestedVerifications.head)
+        Right((context.requestedVerifications.head, false))
       case _         => Left(s"Multiple matching requested verifications found for subcontractor: $chris")
     }
   }
