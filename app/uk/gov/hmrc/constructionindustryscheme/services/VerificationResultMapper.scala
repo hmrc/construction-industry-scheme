@@ -92,7 +92,7 @@ class VerificationResultMapper @Inject() () extends Logging {
             same(requested.tradingName, chris.tradingName)
 
           case Some("partnership") =>
-            same(requested.utr, chris.partnershipUtr) ||
+            same(requested.partnershipUtr, chris.utr) ||
             same(requested.tradingName, chris.tradingName)
 
           case other =>
