@@ -88,11 +88,11 @@ class VerificationResultMapper @Inject() () extends Logging {
             soleTraderMatches(requested, chris)
 
           case Some("company") | Some("trust") =>
-            same(requested.utr, chris.utr) &&
+            same(requested.utr, chris.utr) ||
             same(requested.tradingName, chris.tradingName)
 
           case Some("partnership") =>
-            same(requested.utr, chris.partnershipUtr) &&
+            same(requested.utr, chris.partnershipUtr) ||
             same(requested.tradingName, chris.tradingName)
 
           case other =>
@@ -122,7 +122,7 @@ class VerificationResultMapper @Inject() () extends Logging {
 
     val tradingNameMatches = same(requested.tradingName, chris.tradingName)
 
-    same(requested.utr, chris.utr) &&
+    same(requested.utr, chris.utr) ||
     ((hasPersonalName, hasTradingName) match {
       case (true, true)   => personalNameMatches && tradingNameMatches
       case (true, false)  => personalNameMatches

@@ -315,7 +315,7 @@ class VerificationResultMapperSpec extends SpecBase {
       val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
 
       val chrisResult = cisResponseSubcontractor(
-        partnershipUtr = Some("1234567890"),
+        partnershipUtr = Some("12345678909"),
         foreName = Some("John"),
         middleName = Some("A"),
         surname = Some("Smith"),
