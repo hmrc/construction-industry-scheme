@@ -112,5 +112,65 @@ class GetSubmittedMonthlyReturnsDataResponseSpec extends AnyWordSpec with Matche
 
       result mustBe expectedResult
     }
+
+    ".fromProxyResponse parse acceptedTime without fractional seconds" in {
+      val result = GetSubmittedMonthlyReturnsDataResponse.fromProxyResponse(
+        proxyResponseWithAcceptedTime(Some("2026-04-06T09:50:08"))
+      )
+
+      result.submission.acceptedTime mustBe Some(Instant.parse("2026-04-06T09:50:08Z"))
+    }
+
+    ".fromProxyResponse parse acceptedTime with a Z suffix" in {
+      val result = GetSubmittedMonthlyReturnsDataResponse.fromProxyResponse(
+        proxyResponseWithAcceptedTime(Some("2017-04-06T08:46:08.081Z"))
+      )
+
+      result.submission.acceptedTime mustBe Some(Instant.parse("2017-04-06T08:46:08.081Z"))
+    }
+
+    ".fromProxyResponse treat invalid acceptedTime as missing" in {
+      val result = GetSubmittedMonthlyReturnsDataResponse.fromProxyResponse(
+        proxyResponseWithAcceptedTime(Some("not-a-datetime"))
+      )
+
+      result.submission.acceptedTime mustBe None
+    }
   }
+
+  private def proxyResponseWithAcceptedTime(acceptedTime: Option[String]): GetSubmittedMonthlyReturnsDataProxyResponse =
+    GetSubmittedMonthlyReturnsDataProxyResponse(
+      scheme = ContractorScheme(
+        schemeId = 100,
+        instanceId = "1",
+        accountsOfficeReference = "accountsOfficeReference",
+        taxOfficeNumber = "163",
+        taxOfficeReference = "AB0063",
+        name = Some("Scheme Name")
+      ),
+      monthlyReturn =
+        Seq(MonthlyReturn(monthlyReturnId = 3000L, taxYear = 2025, taxMonth = 1, nilReturnIndicator = Some("Y"))),
+      monthlyReturnItems = Seq.empty,
+      submission = Seq(
+        Submission(
+          submissionId = 1000L,
+          submissionType = "Monthly Return",
+          activeObjectId = None,
+          status = None,
+          hmrcMarkGenerated = None,
+          hmrcMarkGgis = None,
+          emailRecipient = None,
+          acceptedTime = acceptedTime,
+          createDate = None,
+          lastUpdate = None,
+          schemeId = 100,
+          agentId = None,
+          l_Migrated = None,
+          submissionRequestDate = None,
+          govTalkErrorCode = None,
+          govTalkErrorType = None,
+          govTalkErrorMessage = None
+        )
+      )
+    )
 }

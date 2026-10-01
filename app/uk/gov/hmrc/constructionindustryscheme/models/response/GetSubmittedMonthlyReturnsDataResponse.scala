@@ -18,8 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.models.response
 
 import play.api.libs.json.{Json, OFormat}
 import uk.gov.hmrc.constructionindustryscheme.models.*
-
-import java.time.{LocalDateTime, ZoneOffset}
+import uk.gov.hmrc.constructionindustryscheme.utils.AcceptedTimeParser
 
 case class GetSubmittedMonthlyReturnsDataResponse(
   scheme: SchemeData,
@@ -58,7 +57,7 @@ object GetSubmittedMonthlyReturnsDataResponse {
             hmrcMarkGenerated = submission.hmrcMarkGenerated,
             hmrcMarkGgis = submission.hmrcMarkGgis,
             emailRecipient = submission.emailRecipient,
-            acceptedTime = submission.acceptedTime.map(x => LocalDateTime.parse(x).toInstant(ZoneOffset.UTC))
+            acceptedTime = submission.acceptedTime.flatMap(AcceptedTimeParser.parse)
           )
         )
 
