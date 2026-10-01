@@ -402,7 +402,11 @@ class SubmissionService @Inject() (
 
     val nextLastMessageDate =
       result.lastMessageDate
-        .flatMap(ts => Try(Instant.parse(ts)).toOption)
+        .flatMap { ts =>
+          Try(Instant.parse(ts))
+            .orElse(Try(LocalDateTime.parse(ts).toInstant(ZoneOffset.UTC)))
+            .toOption
+        }
         .getOrElse(session.lastMessageDate)
 
     val nextPollUrl =
