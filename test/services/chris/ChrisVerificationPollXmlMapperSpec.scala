@@ -27,7 +27,7 @@ import java.time.Instant
 final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValues {
 
   private val corrId            = "CORR-123"
-  private val gatewayTs = "2025-01-01T00:00:00Z"
+  private val gatewayTs         = "2025-01-01T00:00:00Z"
   private val hmrcMarkGenerated = "test-hmrc-mark"
 
   private def parse(xml: String) =
