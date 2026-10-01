@@ -20,7 +20,7 @@ import play.api.libs.json.Json
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 
-import java.time.{Instant, LocalDateTime, ZoneId}
+import java.time.{Instant, LocalDateTime, OffsetDateTime}
 import scala.util.Try
 import scala.xml.*
 
@@ -70,7 +70,7 @@ trait ChrisXmlMapper {
   /** Shared parsing for stage-1 (submit) GovTalk responses. Callers supply the qualifier => status mapping appropriate
     * to their flow.
     */
-  protected def parseSubmission(xml: String)(
+  protected def parseSubmission(xml: String, now: Instant)(
     deriveStatus: (String, Option[GovTalkError]) => SubmissionStatus
   ): Either[String, SubmissionResult] = {
     val doc            = XML.loadString(xml)
@@ -81,7 +81,7 @@ trait ChrisXmlMapper {
       function                      <- textRequired(messageDetails, "Function", "Function")
       className                     <- textRequired(messageDetails, "Class", "Class")
       correlationId                 <- textRequired(messageDetails, "CorrelationID", "CorrelationID")
-      gatewayTimestampOpt            = textOptional(messageDetails, "GatewayTimestamp")
+      gatewayTimestampOpt           <- gatewayTimeStampOrNow(messageDetails, now)
       acceptedTime                   = textOptional(doc \\ "Body" \ "SuccessResponse", "AcceptedTime")
       pollIntervalOpt: Option[Int]   = intAttrOptional(messageDetails, "ResponseEndPoint", "PollInterval")
       endpointUrlOpt: Option[String] = textOptional(messageDetails, "ResponseEndPoint")
@@ -184,18 +184,45 @@ trait ChrisXmlMapper {
     }
   }
 
-  private val UkZone = ZoneId.of("Europe/London")
-
-  private def gatewayTimeStampOrNow(messageDetails: NodeSeq, now: Instant): Either[String, Option[String]] =
+  private def gatewayTimeStampOrNow(
+    messageDetails: NodeSeq,
+    now: Instant
+  ): Either[String, Option[String]] =
     textOptional(messageDetails, "GatewayTimestamp") match {
-      case Some(raw) => normaliseGatewayTimestamp(raw).map(ts => Some(ts): Option[String])
-      case None      => Right(Some(now.toString): Option[String])
+      case Some(raw) =>
+        normaliseGatewayTimestamp(raw, now)
+          .map(ts => Some(ts): Option[String])
+
+      case None =>
+        Right(Some(now.toString))
     }
 
-  private def normaliseGatewayTimestamp(raw: String): Either[String, String] =
-    Try(LocalDateTime.parse(raw).atZone(UkZone).toInstant).toEither match {
-      case Right(value) => Right(value.toString)
-      case Left(err)    => Left(s"Failed to parse GatewayTimestamp '$raw': ${err.getMessage}")
+  private def normaliseGatewayTimestamp(
+    raw: String,
+    now: Instant
+  ): Either[String, String] = {
+
+    val timestampWithZone =
+      Try(Instant.parse(raw))
+        .orElse(Try(OffsetDateTime.parse(raw).toInstant))
+
+    timestampWithZone.toOption match {
+      case Some(value) =>
+        Right(value.toString)
+
+      case None =>
+        // If it is a valid LocalDateTime, it has no timezone information.
+        // We deliberately don't guess the timezone; use the BE's current UTC Instant.
+        Try(LocalDateTime.parse(raw)).toEither match {
+          case Right(_) =>
+            Right(now.toString)
+
+          case Left(err) =>
+            Left(
+              s"Failed to parse GatewayTimestamp '$raw': ${err.getMessage}"
+            )
+        }
     }
+  }
 
 }

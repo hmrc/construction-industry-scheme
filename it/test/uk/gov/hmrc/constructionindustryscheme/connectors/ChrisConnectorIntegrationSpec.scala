@@ -130,7 +130,7 @@ final class ChrisConnectorIntegrationSpec
            |      <Qualifier>acknowledgement</Qualifier>
            |      <Function>submit</Function>
            |      <CorrelationID>$correlationId</CorrelationID>
-           |      <GatewayTimestamp>2025-01-01T00:00:00</GatewayTimestamp>
+           |      <GatewayTimestamp>2025-01-01T00:00:00Z</GatewayTimestamp>
            |      <ResponseEndPoint PollInterval="15">/submission/ChRIS/poll/IR-CIS-VERIFY/1</ResponseEndPoint>
            |    </MessageDetails>
            |  </Header>
@@ -253,7 +253,7 @@ final class ChrisConnectorIntegrationSpec
            |    <MessageDetails>
            |      <Qualifier>acknowledgement</Qualifier>
            |      <CorrelationID>$correlationId</CorrelationID>
-           |      <GatewayTimestamp>2025-01-06T00:00:00</GatewayTimestamp>
+           |      <GatewayTimestamp>2025-01-06T00:00:00Z</GatewayTimestamp>
            |      <ResponseEndPoint PollInterval="10">/poll/verification-next</ResponseEndPoint>
            |    </MessageDetails>
            |  </Header>
@@ -306,7 +306,7 @@ final class ChrisConnectorIntegrationSpec
            |    <MessageDetails>
            |      <Qualifier>acknowledgement</Qualifier>
            |      <CorrelationID>$correlationId</CorrelationID>
-           |      <GatewayTimestamp>2025-01-01T00:00:00</GatewayTimestamp>
+           |      <GatewayTimestamp>2025-01-01T00:00:00Z</GatewayTimestamp>
            |      <ResponseEndPoint PollInterval="10">/poll/next-endpoint</ResponseEndPoint>
            |    </MessageDetails>
            |  </Header>
@@ -357,7 +357,7 @@ final class ChrisConnectorIntegrationSpec
            |    <MessageDetails>
            |      <Qualifier>response</Qualifier>
            |      <CorrelationID>$correlationId</CorrelationID>
-           |      <GatewayTimestamp>2025-01-02T00:00:00</GatewayTimestamp>
+           |      <GatewayTimestamp>2025-01-02T00:00:00Z</GatewayTimestamp>
            |      <ResponseEndPoint>/final/response</ResponseEndPoint>
            |    </MessageDetails>
            |  </Header>
@@ -409,7 +409,7 @@ final class ChrisConnectorIntegrationSpec
            |    <MessageDetails>
            |      <Qualifier>error</Qualifier>
            |      <CorrelationID>$correlationId</CorrelationID>
-           |      <GatewayTimestamp>2025-01-03T00:00:00</GatewayTimestamp>
+           |      <GatewayTimestamp>2025-01-03T00:00:00Z</GatewayTimestamp>
            |      <ResponseEndPoint>/error/endpoint</ResponseEndPoint>
            |    </MessageDetails>
            |  </Header>
@@ -457,7 +457,7 @@ final class ChrisConnectorIntegrationSpec
            |    <MessageDetails>
            |      <Qualifier>error</Qualifier>
            |      <CorrelationID>$correlationId</CorrelationID>
-           |      <GatewayTimestamp>2025-01-04T00:00:00</GatewayTimestamp>
+           |      <GatewayTimestamp>2025-01-04T00:00:00Z</GatewayTimestamp>
            |      <ResponseEndPoint>/business/error</ResponseEndPoint>
            |    </MessageDetails>
            |  </Header>
@@ -616,7 +616,7 @@ final class ChrisConnectorIntegrationSpec
            |    <MessageDetails>
            |      <Qualifier>response</Qualifier>
            |      <CorrelationID>$correlationId</CorrelationID>
-           |      <GatewayTimestamp>2025-01-05T00:00:00</GatewayTimestamp>
+           |      <GatewayTimestamp>2025-01-05T00:00:00Z</GatewayTimestamp>
            |      <ResponseEndPoint></ResponseEndPoint>
            |    </MessageDetails>
            |  </Header>
@@ -669,7 +669,7 @@ final class ChrisConnectorIntegrationSpec
              |    <MessageDetails>
              |      <Qualifier>acknowledgement</Qualifier>
              |      <CorrelationID>$correlationId</CorrelationID>
-             |      <GatewayTimestamp>2025-02-01T00:00:00</GatewayTimestamp>
+             |      <GatewayTimestamp>2025-02-01T00:00:00Z</GatewayTimestamp>
              |      <ResponseEndPoint PollInterval="10">/mr/poll/next</ResponseEndPoint>
              |    </MessageDetails>
              |  </Header>
@@ -713,7 +713,7 @@ final class ChrisConnectorIntegrationSpec
              |    <MessageDetails>
              |      <Qualifier>error</Qualifier>
              |      <CorrelationID>$correlationId</CorrelationID>
-             |      <GatewayTimestamp>2025-02-02T00:00:00</GatewayTimestamp>
+             |      <GatewayTimestamp>2025-02-02T00:00:00Z</GatewayTimestamp>
              |      <ResponseEndPoint PollInterval="30">/mr/poll/retry</ResponseEndPoint>
              |    </MessageDetails>
              |  </Header>
@@ -764,7 +764,7 @@ final class ChrisConnectorIntegrationSpec
              |    <MessageDetails>
              |      <Qualifier>error</Qualifier>
              |      <CorrelationID>$correlationId</CorrelationID>
-             |      <GatewayTimestamp>2025-02-03T00:00:00</GatewayTimestamp>
+             |      <GatewayTimestamp>2025-02-03T00:00:00Z</GatewayTimestamp>
              |      <ResponseEndPoint PollInterval="30">/mr/poll/retry</ResponseEndPoint>
              |    </MessageDetails>
              |  </Header>
