@@ -23,6 +23,8 @@ import org.scalatest.OptionValues.convertOptionToValuable
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.services.chris.ChrisVerificationSubmissionXmlMapper
 
+import java.time.Instant
+
 final class ChrisVerificationSubmissionXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValues {
 
   private def headerXml(
@@ -59,6 +61,8 @@ final class ChrisVerificationSubmissionXmlMapperSpec extends AnyFreeSpec with Ma
   "ChrisVerificationSubmissionXmlMapper parse" - {
 
     "maps an acknowledgement to ACCEPTED, with poll interval and endpoint" in {
+      val fixedNow = Instant.parse("2026-03-23T12:00:00Z")
+
       val xml = envelope(
         headerXml(
           qualifier = "acknowledgement",
@@ -67,13 +71,15 @@ final class ChrisVerificationSubmissionXmlMapperSpec extends AnyFreeSpec with Ma
         )
       )
 
-      val res = ChrisVerificationSubmissionXmlMapper.parse(xml).value
+      val res =
+        ChrisVerificationSubmissionXmlMapper.parse(xml, fixedNow).value
+
       res.status mustBe ACCEPTED
       res.meta.qualifier mustBe "acknowledgement"
       res.meta.function mustBe "submit"
       res.meta.className mustBe "IR-CIS-VERIFY"
       res.meta.correlationId mustBe "ABCDEF123456"
-      res.meta.gatewayTimestamp mustBe None
+      res.meta.gatewayTimestamp mustBe Some("2026-03-23T12:00:00Z")
       res.meta.responseEndPoint mustBe ResponseEndPoint("/poll", 15)
       res.meta.error mustBe None
       res.rawXml.trim must include("<GovTalkMessage>")

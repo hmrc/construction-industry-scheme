@@ -414,9 +414,7 @@ class SubmissionService @Inject() (
 
     val parsedLastMessageDate =
       result.lastMessageDate.flatMap { ts =>
-        Try(Instant.parse(ts))
-          .orElse(Try(LocalDateTime.parse(ts).toInstant(ZoneOffset.UTC)))
-          .toOption
+        Try(Instant.parse(ts)).toOption
       }
 
     val nextLastMessageDate =

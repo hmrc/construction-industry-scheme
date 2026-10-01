@@ -28,7 +28,7 @@ import java.time.Instant
 final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValues {
 
   private val corrId            = "CORR-123"
-  private val gatewayTs         = "2025-01-01T00:00:00"
+  private val gatewayTs = "2025-01-01T00:00:00Z"
   private val hmrcMarkGenerated = "test-hmrc-mark"
 
   private def parse(xml: String): Either[String, ChrisPollResponse] =
@@ -716,7 +716,9 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
       res.lastMessageDate mustBe Some("2026-03-23T12:00:00Z")
     }
 
-    "normalises GatewayTimestamp when it is a valid LocalDateTime without zone" in {
+    "uses current time when GatewayTimestamp is a valid LocalDateTime without zone" in {
+      val fixedNow = Instant.parse("2026-03-23T12:00:00Z")
+
       val xml = envelope(
         headerXml(
           qualifier = "response",
@@ -725,11 +727,45 @@ final class ChrisPollXmlMapperSpec extends AnyFreeSpec with Matchers with Either
         )
       )
 
-      val res = parse(xml).value
+      val res = parse(xml, fixedNow).value
 
       res.status mustBe SUBMITTED
       res.correlationId mustBe corrId
       res.pollUrl mustBe Some("/poll")
+      res.lastMessageDate mustBe Some("2026-03-23T12:00:00Z")
+    }
+
+    "uses GatewayTimestamp when it contains a UTC zone" in {
+      val fixedNow = Instant.parse("2026-03-23T12:00:00Z")
+
+      val xml = envelope(
+        headerXml(
+          qualifier = "response",
+          gatewayTimestamp = Some("2025-01-01T00:00:00Z"),
+          endpointUrl = Some("/poll")
+        )
+      )
+
+      val res = parse(xml, fixedNow).value
+
+      res.status mustBe SUBMITTED
+      res.lastMessageDate mustBe Some("2025-01-01T00:00:00Z")
+    }
+
+    "normalises GatewayTimestamp when it contains an explicit offset" in {
+      val fixedNow = Instant.parse("2026-03-23T12:00:00Z")
+
+      val xml = envelope(
+        headerXml(
+          qualifier = "response",
+          gatewayTimestamp = Some("2025-01-01T01:00:00+01:00"),
+          endpointUrl = Some("/poll")
+        )
+      )
+
+      val res = parse(xml, fixedNow).value
+
+      res.status mustBe SUBMITTED
       res.lastMessageDate mustBe Some("2025-01-01T00:00:00Z")
     }
 

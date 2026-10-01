@@ -18,10 +18,12 @@ package uk.gov.hmrc.constructionindustryscheme.services.chris
 
 import uk.gov.hmrc.constructionindustryscheme.models.*
 
+import java.time.Instant
+
 object ChrisSubmissionXmlMapper extends ChrisXmlMapper {
 
-  def parse(xml: String): Either[String, SubmissionResult] =
-    parseSubmission(xml)(deriveInitialStatus)
+  def parse(xml: String, now: Instant = Instant.now()): Either[String, SubmissionResult] =
+    parseSubmission(xml, now)(deriveInitialStatus)
 
   /** Stage 1 (initial submit) status mapping – ACK or FATAL only. */
   private def deriveInitialStatus(qualifier: String, errOpt: Option[GovTalkError]): SubmissionStatus =
