@@ -147,8 +147,8 @@ class PrepopulationService @Inject() (
                                 val name = prepopBody.schemeName
                                 val utr  = Option(prepopBody.utr).filter(_.nonEmpty)
 
-                                val currentVersion  = existing.version.getOrElse(0)
-                                val nextPrePopCount = existing.prePopCount.getOrElse(0) + 1
+                                val currentVersion = existing.version.getOrElse(0)
+                                val prePopCount    = existing.prePopCount.getOrElse(0)
 
                                 val req = ApplyPrepopulationRequest(
                                   schemeId = existing.schemeId,
@@ -160,7 +160,7 @@ class PrepopulationService @Inject() (
                                   name = name,
                                   emailAddress = existing.emailAddress,
                                   displayWelcomePage = existing.displayWelcomePage,
-                                  prePopCount = nextPrePopCount,
+                                  prePopCount = prePopCount,
                                   prePopSuccessful = "Y",
                                   version = currentVersion,
                                   subcontractors = subcontractors.map(toPrepopulationSubcontractor)
