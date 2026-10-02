@@ -30,7 +30,7 @@ class ProcessVerificationResponseFromChrisRequestSpec extends SpecBase {
         matched = Some("Y"),
         verified = Some("N"),
         verificationNumber = Some("V1000000007"),
-        taxTreatment = "net",
+        taxTreatment = Some("net"),
         verifiedDate = Some(LocalDateTime.parse("2017-04-06T08:46:08.081"))
       )
 

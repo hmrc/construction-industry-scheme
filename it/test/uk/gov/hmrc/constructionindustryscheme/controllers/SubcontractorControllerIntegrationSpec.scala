@@ -24,10 +24,6 @@ import org.scalatest.wordspec.AnyWordSpec
 import play.api.http.Status.*
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.constructionindustryscheme.itutil.{ApplicationWithWiremock, AuthStub}
-import uk.gov.hmrc.constructionindustryscheme.models.requests.UpdateSubcontractorRequest
-import uk.gov.hmrc.constructionindustryscheme.models.response.UpdateSubcontractorResponse
-import uk.gov.hmrc.constructionindustryscheme.models.Subcontractor
-import uk.gov.hmrc.http.UpstreamErrorResponse
 
 class SubcontractorControllerIntegrationSpec
     extends ApplicationWithWiremock

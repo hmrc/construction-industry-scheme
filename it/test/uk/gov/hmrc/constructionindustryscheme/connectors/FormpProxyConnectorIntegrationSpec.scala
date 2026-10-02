@@ -2395,7 +2395,7 @@ class FormpProxyConnectorIntegrationSpec
             matched = Some("Y"),
             verified = Some("N"),
             verificationNumber = Some("V1000000007"),
-            taxTreatment = "net",
+            taxTreatment = Some("net"),
             verifiedDate = Some(LocalDateTime.parse("2017-04-06T08:46:08.081"))
           )
         )
@@ -2632,7 +2632,7 @@ class FormpProxyConnectorIntegrationSpec
             matched = Some("Y"),
             verified = Some("Y"),
             verificationNumber = Some("V123456"),
-            taxTreatment = "NET",
+            taxTreatment = Some("NET"),
             verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
           )
         )
@@ -2662,7 +2662,7 @@ class FormpProxyConnectorIntegrationSpec
             matched = Some("N"),
             verified = Some("N"),
             verificationNumber = Some("V123456"),
-            taxTreatment = "GROSS",
+            taxTreatment = Some("GROSS"),
             verifiedDate = Some(LocalDateTime.of(2026, 6, 15, 10, 5, 0))
           )
         )

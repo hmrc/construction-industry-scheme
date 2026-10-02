@@ -71,7 +71,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
         matched = Some("Y"),
         verified = Some("N"),
         verificationNumber = Some("V1000000007"),
-        taxTreatment = "net",
+        taxTreatment = Some("net"),
         verifiedDate = verifiedDate
       )
 
@@ -144,7 +144,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
         matched = Some("Y"),
         verified = Some("N"),
         verificationNumber = Some("V1000000007"),
-        taxTreatment = "net",
+        taxTreatment = Some("net"),
         verifiedDate = verifiedDate
       )
 
@@ -223,7 +223,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
           matched = Some("Y"),
           verified = Some("N"),
           verificationNumber = Some("V1000000007"),
-          taxTreatment = "net",
+          taxTreatment = Some("net"),
           verifiedDate = Some(LocalDateTime.parse("2026-06-19T10:02:00"))
         )
 
