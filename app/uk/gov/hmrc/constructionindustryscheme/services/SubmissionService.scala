@@ -27,7 +27,7 @@ import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessi
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService.SyncedVerificationSession
 import uk.gov.hmrc.http.HeaderCarrier
 
-import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
+import java.time.{Clock, Duration, Instant, LocalDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -228,7 +228,19 @@ class SubmissionService @Inject() (
                           monthlyReturnContext = context.monthlyReturnContext,
                           verificationContext = context.verificationContext
                         )
+          _           = logger.info(
+                          s"[ChrisSession] CREATE submissionId=$submissionId " +
+                            s"lastMessageDate=${sessionData.lastMessageDate} " +
+                            s"ageSeconds=${Duration.between(sessionData.lastMessageDate, Instant.now()).getSeconds} " +
+                            s"numPolls=${sessionData.numPolls} " +
+                            s"pollUrl=${sessionData.pollUrl}"
+                        )
           _          <- chrisSubmissionSessionRepository.upsert(sessionData)
+          _           = logger.info(
+                          s"[ChrisSession] UPSERT SUCCESS submissionId=$submissionId " +
+                            s"lastMessageDate=${sessionData.lastMessageDate} " +
+                            s"numPolls=${sessionData.numPolls}"
+                        )
           _          <- formPSubmissionUpdateProcessorRegistry
                           .processorFor(journey)
                           .handleInitialAccepted(sessionData, response)
@@ -252,10 +264,20 @@ class SubmissionService @Inject() (
     journey: ChrisPollJourney = ChrisPollJourney.MonthlyReturn,
     verificationContext: Option[StoredVerificationContext] = None,
     error: Option[GovTalkError] = None,
-    submissionStatus: SubmissionStatus = STARTED
+    submissionStatus: SubmissionStatus = STARTED,
+    isResubmission: Boolean = false
   )(implicit hc: HeaderCarrier): Future[Unit] =
     for {
-      instanceId <- initialiseGovTalkStatus(employerReference, submissionId, correlationId, gatewayURL)
+      instanceId <- initialiseGovTalkStatus(employerReference, submissionId, correlationId, gatewayURL, isResubmission)
+      _          <- updateGovTalkStatusCorrelationId(
+                      UpdateGovTalkStatusCorrelationIdRequest(
+                        userIdentifier = instanceId,
+                        formResultID = submissionId,
+                        correlationID = correlationId,
+                        pollInterval = 0,
+                        gatewayURL = gatewayURL
+                      )
+                    )
       _          <- (journey, verificationContext) match {
                       case (ChrisPollJourney.Verification, Some(ctx)) =>
                         formpProxyConnector.updateVerificationSubmission(
@@ -390,10 +412,22 @@ class SubmissionService @Inject() (
     val result =
       pollResult.response
 
+    val parsedLastMessageDate =
+      result.lastMessageDate.flatMap { ts =>
+        Try(Instant.parse(ts)).toOption
+      }
+
     val nextLastMessageDate =
-      result.lastMessageDate
-        .flatMap(ts => Try(Instant.parse(ts)).toOption)
-        .getOrElse(session.lastMessageDate)
+      parsedLastMessageDate.getOrElse(session.lastMessageDate)
+
+    logger.info(
+      s"[ChrisSession] POLL TIMESTAMP submissionId=$submissionId " +
+        s"rawLastMessageDate=${result.lastMessageDate} " +
+        s"parsedLastMessageDate=$parsedLastMessageDate " +
+        s"existingLastMessageDate=${session.lastMessageDate} " +
+        s"nextLastMessageDate=$nextLastMessageDate " +
+        s"ageSeconds=${Duration.between(nextLastMessageDate, Instant.now()).getSeconds}"
+    )
 
     val nextPollUrl =
       result.pollUrl.getOrElse(session.pollUrl)
@@ -662,15 +696,34 @@ class SubmissionService @Inject() (
     pollUrl: String
   ): Future[Unit] =
     getChrisSubmissionSession(submissionId).flatMap { existing =>
-      chrisSubmissionSessionRepository.upsert(
-        existing.copy(
-          correlationId = correlationId,
-          lastMessageDate = lastMessageDate,
-          numPolls = existing.numPolls + 1,
-          pollInterval = pollInterval,
-          pollUrl = pollUrl
-        )
+
+      logger.info(
+        s"[ChrisSession] UPSERT submissionId=$submissionId " +
+          s"oldLastMessageDate=${existing.lastMessageDate} " +
+          s"newLastMessageDate=$lastMessageDate " +
+          s"ageSeconds=${Duration.between(lastMessageDate, Instant.now()).getSeconds} " +
+          s"oldNumPolls=${existing.numPolls} " +
+          s"newNumPolls=${existing.numPolls + 1} " +
+          s"pollUrl=$pollUrl"
       )
+
+      chrisSubmissionSessionRepository
+        .upsert(
+          existing.copy(
+            correlationId = correlationId,
+            lastMessageDate = lastMessageDate,
+            numPolls = existing.numPolls + 1,
+            pollInterval = pollInterval,
+            pollUrl = pollUrl
+          )
+        )
+        .map { _ =>
+          logger.info(
+            s"[ChrisSession] UPSERT SUCCESS submissionId=$submissionId " +
+              s"lastMessageDate=$lastMessageDate " +
+              s"numPolls=${existing.numPolls + 1}"
+          )
+        }
     }
 
   private def saveGovTalkStatusToSession(
@@ -750,8 +803,21 @@ class SubmissionService @Inject() (
 
   private def getChrisSubmissionSession(submissionId: String): Future[ChrisSubmissionSessionData] =
     chrisSubmissionSessionRepository.get(submissionId).map {
-      case Some(session) => session
-      case None          => throw new RuntimeException(s"No session found for submissionId: $submissionId")
+      case Some(session) =>
+        logger.info(
+          s"[ChrisSession] GET submissionId=$submissionId " +
+            s"lastMessageDate=${session.lastMessageDate} " +
+            s"ageSeconds=${Duration.between(session.lastMessageDate, Instant.now()).getSeconds} " +
+            s"numPolls=${session.numPolls} " +
+            s"pollUrl=${session.pollUrl}"
+        )
+        session
+
+      case None =>
+        logger.error(
+          s"[ChrisSession] GET submissionId=$submissionId NOT FOUND now=${Instant.now()}"
+        )
+        throw new RuntimeException(s"No session found for submissionId: $submissionId")
     }
 
   private def toLocalDateTime(i: Instant): LocalDateTime =

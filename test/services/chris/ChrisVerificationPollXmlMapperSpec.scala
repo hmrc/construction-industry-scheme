@@ -27,7 +27,7 @@ import java.time.Instant
 final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers with EitherValues {
 
   private val corrId            = "CORR-123"
-  private val gatewayTs         = "2025-01-01T00:00:00"
+  private val gatewayTs         = "2025-01-01T00:00:00Z"
   private val hmrcMarkGenerated = "test-hmrc-mark"
 
   private def parse(xml: String) =
@@ -666,7 +666,9 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
       res.lastMessageDate mustBe Some("2026-03-23T12:00:00Z")
     }
 
-    "normalises GatewayTimestamp when it is a valid LocalDateTime without zone" in {
+    "uses current time when GatewayTimestamp is a valid LocalDateTime without zone" in {
+      val fixedNow = Instant.parse("2026-03-23T12:00:00Z")
+
       val xml = envelope(
         headerXml(
           qualifier = "response",
@@ -675,9 +677,10 @@ final class ChrisVerificationPollXmlMapperSpec extends AnyFreeSpec with Matchers
         )
       )
 
-      val res = parse(xml).value
+      val res = parse(xml, fixedNow).value
+
       res.status mustBe SUBMITTED
-      res.lastMessageDate mustBe Some("2025-01-01T00:00:00Z")
+      res.lastMessageDate mustBe Some("2026-03-23T12:00:00Z")
     }
 
     "returns Left when GatewayTimestamp cannot be parsed" in {
