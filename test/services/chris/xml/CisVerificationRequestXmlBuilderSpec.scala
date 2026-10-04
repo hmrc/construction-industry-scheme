@@ -162,7 +162,8 @@ class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
       val subNode = subcontractorNode(xml)
 
       (subNode \\ "Name").nonEmpty mustBe true
-      (subNode \\ "Name" \\ "Fore").text.trim mustBe "John"
+      (subNode \\ "Name" \\ "Fore").head.text.trim mustBe "John"
+      (subNode \\ "Name" \\ "Fore").tail.head.text.trim mustBe "Q"
       (subNode \\ "Name" \\ "Sur").text.trim mustBe "Smith"
       (subNode \\ "TradingName").isEmpty mustBe true
     }
