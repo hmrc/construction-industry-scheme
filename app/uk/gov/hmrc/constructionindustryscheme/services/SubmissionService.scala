@@ -861,8 +861,6 @@ class SubmissionService @Inject() (
   ): Either[String, String] =
     pollUrl
       .getEither(redirectUrlPolicy)
-      .left
-      .map(_.toString)
       .map { safeUrl =>
         (
           if (appConfig.useOverridePollResponseEndPoint) {
