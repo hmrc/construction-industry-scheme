@@ -23,7 +23,7 @@ import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
 import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, StoredVerificationContext}
 import uk.gov.hmrc.http.HeaderCarrier
 
-import java.time.{LocalDateTime, ZoneId}
+import java.time.{Clock, LocalDateTime, ZoneId}
 import java.time.format.DateTimeFormatter
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -32,7 +32,8 @@ import scala.util.{Failure, Success, Try}
 @Singleton
 class VerificationFormPUpdateProcessor @Inject() (
   formpProxyConnector: FormpProxyConnector,
-  verificationResultMapper: VerificationResultMapper
+  verificationResultMapper: VerificationResultMapper,
+  clock: Clock
 )(implicit ex: ExecutionContext)
     extends FormPSubmissionUpdateProcessor {
 
@@ -150,7 +151,7 @@ class VerificationFormPUpdateProcessor @Inject() (
       case Some(value) => Success(value)
       case None        =>
         val gatewayTimestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
-        Success(LocalDateTime.now(ZoneId.of("Europe/London")).format(gatewayTimestampFormatter))
+        Success(LocalDateTime.now(clock.withZone(ZoneId.of("Europe/London"))).format(gatewayTimestampFormatter))
     }
 
   private def parseDateTime(

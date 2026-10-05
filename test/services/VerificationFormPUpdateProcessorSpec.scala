@@ -18,7 +18,7 @@ package services
 
 import base.SpecBase
 import org.mockito.Mockito.*
-import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ProcessVerificationResponseFromChrisRequest, UpdateVerificationSubmissionRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
@@ -27,17 +27,22 @@ import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessi
 import uk.gov.hmrc.constructionindustryscheme.services.{VerificationFormPUpdateProcessor, VerificationResultMapper}
 import uk.gov.hmrc.http.HeaderCarrier
 
-import java.time.{Instant, LocalDateTime}
+import java.time.{Clock, Instant, LocalDateTime, ZoneId}
 import scala.concurrent.Future
 
 class VerificationFormPUpdateProcessorSpec extends SpecBase {
+
+  private val ukZone: ZoneId = ZoneId.of("Europe/London")
+  private val fixedTime      = LocalDateTime.of(2026, 10, 5, 12, 30, 45)
+  private val clock          = Clock.fixed(fixedTime.atZone(ukZone).toInstant, ukZone)
 
   "VerificationFormPUpdateProcessor" - {
 
     "return Verification journey" in {
       val processor = new VerificationFormPUpdateProcessor(
         mock[FormpProxyConnector],
-        mock[VerificationResultMapper]
+        mock[VerificationResultMapper],
+        clock
       )
 
       processor.journey mustBe ChrisPollJourney.Verification
@@ -46,7 +51,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
     "update verification submission on initial accepted" in {
       val formpProxyConnector      = mock[FormpProxyConnector]
       val verificationResultMapper = mock[VerificationResultMapper]
-      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
+      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper, clock)
 
       when(
         formpProxyConnector.updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(any[HeaderCarrier])
@@ -62,7 +67,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
     "process verification response from ChRIS on successful poll response" in {
       val formpProxyConnector      = mock[FormpProxyConnector]
       val verificationResultMapper = mock[VerificationResultMapper]
-      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
+      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper, clock)
 
       val verifiedDate = Some(LocalDateTime.parse("2026-06-19T10:02:00"))
 
@@ -135,9 +140,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
     "process verification response from ChRIS on successful poll response when acceptedTime time is missing" in {
       val formpProxyConnector      = mock[FormpProxyConnector]
       val verificationResultMapper = mock[VerificationResultMapper]
-      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
-
-      val verifiedDate = Some(LocalDateTime.parse("2026-06-19T10:02:00"))
+      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper, clock)
 
       val mappedResult = VerificationResult(
         resourceRef = 13L,
@@ -145,14 +148,14 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
         verified = Some("N"),
         verificationNumber = Some("V1000000007"),
         taxTreatment = Some("net"),
-        verifiedDate = verifiedDate
+        verifiedDate = Some(fixedTime)
       )
 
       when(
         verificationResultMapper.mapAll(
           any[Seq[CisResponseSubcontractor]],
           any[StoredVerificationContext],
-          any[LocalDateTime]
+          eqTo(fixedTime)
         )
       ).thenReturn(Future.successful(Seq(mappedResult)))
 
@@ -195,7 +198,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       verify(verificationResultMapper).mapAll(
         any[Seq[CisResponseSubcontractor]],
         any[StoredVerificationContext],
-        any[LocalDateTime]
+        eqTo(fixedTime)
       )
 
       verify(formpProxyConnector).processVerificationResponseFromChris(
@@ -208,7 +211,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
     "process verification response from ChRIS with expected request body" in {
       val formpProxyConnector      = mock[FormpProxyConnector]
       val verificationResultMapper = mock[VerificationResultMapper]
-      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
+      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper, clock)
 
       val verifiedDate = Some(LocalDateTime.parse("2026-06-19T10:02:00"))
 
@@ -287,7 +290,8 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       val verificationResultMapper = mock[VerificationResultMapper]
       val processor                = new VerificationFormPUpdateProcessor(
         formpProxyConnector,
-        verificationResultMapper
+        verificationResultMapper,
+        clock
       )
 
       val mappedResult =
@@ -362,7 +366,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
     "update verification submission on non-success poll response" in {
       val formpProxyConnector      = mock[FormpProxyConnector]
       val verificationResultMapper = mock[VerificationResultMapper]
-      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
+      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper, clock)
 
       when(
         formpProxyConnector.updateVerificationSubmission(any[UpdateVerificationSubmissionRequest])(any[HeaderCarrier])
@@ -412,7 +416,8 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
     "fail when verification context is missing" in {
       val processor = new VerificationFormPUpdateProcessor(
         mock[FormpProxyConnector],
-        mock[VerificationResultMapper]
+        mock[VerificationResultMapper],
+        clock
       )
 
       val ex = intercept[IllegalStateException] {
