@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
+import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.*
@@ -25,7 +26,9 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository, StoredMonthlyReturnContext, StoredVerificationContext}
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService.SyncedVerificationSession
+import uk.gov.hmrc.constructionindustryscheme.utils.UriHelper
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
 
 import java.time.{Clock, Duration, Instant, LocalDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
@@ -329,32 +332,50 @@ class SubmissionService @Inject() (
     pollUrl: String,
     journey: ChrisPollJourney
   )(implicit hc: HeaderCarrier): Future[BatchChRISPollResult] =
-    pollAndValidate(
-      submissionId,
-      pollUrl,
-      journey
-    ).flatMap { pollResult =>
-      runPostPollSteps(
-        submissionId = submissionId,
-        pollUrl = pollUrl,
-        journey = journey,
-        pollResult = pollResult
-      ).map { _ =>
-        BatchChRISPollResult.Completed(
-          pollResult.response
-        )
-      }.recover { case NonFatal(exception) =>
-        logger.error(
-          s"[SubmissionService][pollSubmissionAndUpdateGovTalkStatusForBatch] " +
-            s"Post-poll processing failed for submissionId=$submissionId",
-          exception
+    resolveBatchPollUrl(RedirectUrl(pollUrl)) match {
+      case Left(reason) =>
+        logger.warn(
+          s"[SubmissionService] Could not poll because pollUrl host is not recognised. " +
+            s"submissionId=$submissionId, journey=$journey, reason=$reason"
         )
 
-        BatchChRISPollResult.PostProcessingFailed(
-          response = pollResult.response,
-          exception = exception
+        Future.failed(new IllegalArgumentException(s"Invalid ChRIS batch poll URL: $reason"))
+
+      case Right(resolvedPollUrl) =>
+        logger.info(
+          s"[SubmissionService] " +
+            s"submissionId=$submissionId, journey=$journey, " +
+            s"useOverridePollResponseEndPoint=${appConfig.useOverridePollResponseEndPoint}, " +
+            s"originalPollUrl=$pollUrl, resolvedPollUrl=$resolvedPollUrl"
         )
-      }
+
+        pollAndValidate(
+          submissionId,
+          resolvedPollUrl,
+          journey
+        ).flatMap { pollResult =>
+          runPostPollSteps(
+            submissionId = submissionId,
+            pollUrl = resolvedPollUrl,
+            journey = journey,
+            pollResult = pollResult
+          ).map { _ =>
+            BatchChRISPollResult.Completed(
+              pollResult.response
+            )
+          }.recover { case NonFatal(exception) =>
+            logger.error(
+              s"[SubmissionService][pollSubmissionAndUpdateGovTalkStatusForBatch] " +
+                s"Post-poll processing failed for submissionId=$submissionId",
+              exception
+            )
+
+            BatchChRISPollResult.PostProcessingFailed(
+              response = pollResult.response,
+              exception = exception
+            )
+          }
+        }
     }
 
   private def pollAndValidate(
@@ -832,6 +853,26 @@ class SubmissionService @Inject() (
     hc: HeaderCarrier
   ): Future[Option[GetGovTalkStatusResponse]] =
     formpProxyConnector.getGovTalkStatus(request, Polling)
+
+  private lazy val redirectUrlPolicy = AbsoluteWithHostnameFromAllowlist(appConfig.chrisHost.toSet)
+
+  private def resolveBatchPollUrl(
+    pollUrl: RedirectUrl
+  ): Either[String, String] =
+    pollUrl
+      .getEither(redirectUrlPolicy)
+      .left
+      .map(_.toString)
+      .map { safeUrl =>
+        (
+          if (appConfig.useOverridePollResponseEndPoint) {
+            UriHelper.replaceHostIgnoringUserInfoAndPort(
+              safeUrl.url,
+              appConfig.overridePollResponseEndPoint
+            )
+          } else None
+        ).getOrElse(safeUrl.url)
+      }
 }
 
 object SubmissionService {
