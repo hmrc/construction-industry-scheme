@@ -132,6 +132,79 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       )
     }
 
+    "process verification response from ChRIS on successful poll response when acceptedTime time is missing" in {
+      val formpProxyConnector      = mock[FormpProxyConnector]
+      val verificationResultMapper = mock[VerificationResultMapper]
+      val processor                = new VerificationFormPUpdateProcessor(formpProxyConnector, verificationResultMapper)
+
+      val verifiedDate = Some(LocalDateTime.parse("2026-06-19T10:02:00"))
+
+      val mappedResult = VerificationResult(
+        resourceRef = 13L,
+        matched = Some("Y"),
+        verified = Some("N"),
+        verificationNumber = Some("V1000000007"),
+        taxTreatment = Some("net"),
+        verifiedDate = verifiedDate
+      )
+
+      when(
+        verificationResultMapper.mapAll(
+          any[Seq[CisResponseSubcontractor]],
+          any[StoredVerificationContext],
+          any[LocalDateTime]
+        )
+      ).thenReturn(Future.successful(Seq(mappedResult)))
+
+      when(
+        formpProxyConnector.processVerificationResponseFromChris(any[ProcessVerificationResponseFromChrisRequest])(
+          any[HeaderCarrier]
+        )
+      ).thenReturn(Future.unit)
+
+      processor
+        .handlePollResponse(
+          sessionData(),
+          ChrisPollResponse(
+            status = SUBMITTED,
+            correlationId = "corr-123",
+            pollUrl = None,
+            pollInterval = None,
+            error = None,
+            irMarkReceived = Some("ir-mark"),
+            lastMessageDate = None,
+            acceptedTime = None,
+            cisResponseSubcontractors = Seq(
+              CisResponseSubcontractor(
+                utr = Some("1234567890"),
+                partnershipUtr = None,
+                tradingName = Some("Test Trading"),
+                foreName = Some("John"),
+                middleName = None,
+                surname = Some("Smith"),
+                nino = Some("AB123456C"),
+                matched = Some("Y"),
+                taxTreatment = Some("net"),
+                verificationNumber = Some("V1000000007")
+              )
+            )
+          )
+        )
+        .futureValue mustBe ()
+
+      verify(verificationResultMapper).mapAll(
+        any[Seq[CisResponseSubcontractor]],
+        any[StoredVerificationContext],
+        any[LocalDateTime]
+      )
+
+      verify(formpProxyConnector).processVerificationResponseFromChris(
+        any[ProcessVerificationResponseFromChrisRequest]
+      )(
+        any[HeaderCarrier]
+      )
+    }
+
     "process verification response from ChRIS with expected request body" in {
       val formpProxyConnector      = mock[FormpProxyConnector]
       val verificationResultMapper = mock[VerificationResultMapper]
