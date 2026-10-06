@@ -18,9 +18,8 @@ package services
 
 import base.SpecBase
 import org.apache.pekko.Done
-import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.{any, argThat, eq as eqTo}
 import org.mockito.Mockito.*
-import org.mockito.ArgumentMatchers.eq as eqTo
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
@@ -61,13 +60,18 @@ final class SubmissionServiceSpec extends SpecBase {
   private def stubBatchPollScenario(
     s: Setup,
     originalPollUrl: String,
-    expectedPollUrl: String
+    expectedPollUrl: String,
+    returnedPollUrl: Option[String] = None,
+    expectedNextPollUrl: Option[String] = None
   ): ChrisPollResponse = {
     import s._
 
     val submissionId = "sub-123"
     val instanceId   = "instance-123"
     val correlation  = "corr-123"
+
+    val nextPollUrl =
+      expectedNextPollUrl.getOrElse(expectedPollUrl)
 
     val session =
       ChrisSubmissionSessionData(
@@ -89,7 +93,7 @@ final class SubmissionServiceSpec extends SpecBase {
       ChrisPollResponse(
         status = ACCEPTED,
         correlationId = correlation,
-        pollUrl = Some(expectedPollUrl),
+        pollUrl = returnedPollUrl,
         pollInterval = Some(20),
         error = None,
         irMarkReceived = None,
@@ -102,7 +106,7 @@ final class SubmissionServiceSpec extends SpecBase {
         lastMessageDate = Instant.parse("2025-01-02T00:00:00Z"),
         numPolls = 1,
         pollInterval = 20,
-        pollUrl = expectedPollUrl
+        pollUrl = nextPollUrl
       )
 
     when(chrisSubmissionSessionRepository.get(eqTo(submissionId)))
@@ -783,6 +787,168 @@ final class SubmissionServiceSpec extends SpecBase {
       exception.getMessage must include("Invalid ChRIS batch poll URL")
 
       verifyNoInteractions(chrisConnector)
+    }
+
+    "must persist the normalised poll URL when Chris returns a recognised legacy host" in {
+      val s = setup
+      import s._
+
+      val originalPollUrl =
+        "http://sa.chris.hmrc.gov.uk:9102/ChRIS/CISR/Filing/action/CISR"
+
+      val expectedPollUrl =
+        "https://chris.ws.ibt.hmrc.gov.uk/ChRIS/CISR/Filing/action/CISR"
+
+      when(appConfig.chrisHost)
+        .thenReturn(
+          Seq(
+            "chris.ws.ibt.hmrc.gov.uk",
+            "sa.chris.hmrc.gov.uk"
+          )
+        )
+
+      when(appConfig.useOverridePollResponseEndPoint)
+        .thenReturn(true)
+
+      when(appConfig.overridePollResponseEndPoint)
+        .thenReturn("chris.ws.ibt.hmrc.gov.uk")
+
+      stubBatchPollScenario(
+        s = s,
+        originalPollUrl = originalPollUrl,
+        expectedPollUrl = expectedPollUrl,
+        returnedPollUrl = Some(originalPollUrl),
+        expectedNextPollUrl = Some(expectedPollUrl)
+      )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatusForBatch(
+          "sub-123",
+          originalPollUrl,
+          ChrisPollJourney.MonthlyReturn
+        )
+        .futureValue
+
+      verify(formpProxyConnector).updateGovTalkStatusCorrelationId(
+        argThat[UpdateGovTalkStatusCorrelationIdRequest](
+          _.gatewayURL == expectedPollUrl
+        )
+      )(any[HeaderCarrier])
+
+      verify(formpProxyConnector).updateGovTalkStatusStatistics(
+        argThat[UpdateGovTalkStatusStatisticsRequest](
+          _.gatewayURL == expectedPollUrl
+        )
+      )(any[HeaderCarrier])
+    }
+
+    "must persist the effective poll URL when Chris returns an unrecognised host" in {
+      val s = setup
+      import s._
+
+      val originalPollUrl =
+        "http://sa.chris.hmrc.gov.uk:9102/ChRIS/CISR/Filing/action/CISR"
+
+      val expectedPollUrl =
+        "https://chris.ws.ibt.hmrc.gov.uk/ChRIS/CISR/Filing/action/CISR"
+
+      val returnedPollUrl =
+        "https://not-recognised.example.com/ChRIS/CISR/Filing/action/CISR"
+
+      when(appConfig.chrisHost)
+        .thenReturn(
+          Seq(
+            "chris.ws.ibt.hmrc.gov.uk",
+            "sa.chris.hmrc.gov.uk"
+          )
+        )
+
+      when(appConfig.useOverridePollResponseEndPoint)
+        .thenReturn(true)
+
+      when(appConfig.overridePollResponseEndPoint)
+        .thenReturn("chris.ws.ibt.hmrc.gov.uk")
+
+      stubBatchPollScenario(
+        s = s,
+        originalPollUrl = originalPollUrl,
+        expectedPollUrl = expectedPollUrl,
+        returnedPollUrl = Some(returnedPollUrl),
+        expectedNextPollUrl = Some(expectedPollUrl)
+      )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatusForBatch(
+          "sub-123",
+          originalPollUrl,
+          ChrisPollJourney.MonthlyReturn
+        )
+        .futureValue
+
+      verify(formpProxyConnector).updateGovTalkStatusCorrelationId(
+        argThat[UpdateGovTalkStatusCorrelationIdRequest](
+          _.gatewayURL == expectedPollUrl
+        )
+      )(any[HeaderCarrier])
+
+      verify(formpProxyConnector).updateGovTalkStatusStatistics(
+        argThat[UpdateGovTalkStatusStatisticsRequest](
+          _.gatewayURL == expectedPollUrl
+        )
+      )(any[HeaderCarrier])
+    }
+
+    "must persist the effective poll URL when Chris does not return a poll URL" in {
+      val s = setup
+      import s._
+
+      val originalPollUrl =
+        "http://sa.chris.hmrc.gov.uk:9102/ChRIS/CISR/Filing/action/CISR"
+
+      val expectedPollUrl =
+        "https://chris.ws.ibt.hmrc.gov.uk/ChRIS/CISR/Filing/action/CISR"
+
+      when(appConfig.chrisHost)
+        .thenReturn(
+          Seq(
+            "chris.ws.ibt.hmrc.gov.uk",
+            "sa.chris.hmrc.gov.uk"
+          )
+        )
+
+      when(appConfig.useOverridePollResponseEndPoint)
+        .thenReturn(true)
+
+      when(appConfig.overridePollResponseEndPoint)
+        .thenReturn("chris.ws.ibt.hmrc.gov.uk")
+
+      stubBatchPollScenario(
+        s = s,
+        originalPollUrl = originalPollUrl,
+        expectedPollUrl = expectedPollUrl,
+        returnedPollUrl = None,
+        expectedNextPollUrl = Some(expectedPollUrl)
+      )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatusForBatch(
+          "sub-123",
+          originalPollUrl,
+          ChrisPollJourney.MonthlyReturn
+        )
+        .futureValue
+
+      verify(formpProxyConnector).updateGovTalkStatusCorrelationId(
+        argThat[UpdateGovTalkStatusCorrelationIdRequest](
+          _.gatewayURL == expectedPollUrl
+        )
+      )(any[HeaderCarrier])
+
+      verify(formpProxyConnector).updateGovTalkStatusStatistics(
+        argThat[UpdateGovTalkStatusStatisticsRequest](
+          _.gatewayURL == expectedPollUrl
+        )
+      )(any[HeaderCarrier])
     }
   }
 

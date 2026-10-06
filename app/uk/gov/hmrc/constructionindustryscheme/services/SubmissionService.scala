@@ -321,7 +321,7 @@ class SubmissionService @Inject() (
 
       _ <- runPostPollSteps(
              submissionId = submissionId,
-             pollUrl = pollUrl,
+             effectivePollUrl = pollUrl,
              journey = journey,
              pollResult = pollResult
            )
@@ -332,7 +332,7 @@ class SubmissionService @Inject() (
     pollUrl: String,
     journey: ChrisPollJourney
   )(implicit hc: HeaderCarrier): Future[BatchChRISPollResult] =
-    resolveBatchPollUrl(RedirectUrl(pollUrl)) match {
+    validateAndNormalisePollUrl(RedirectUrl(pollUrl)) match {
       case Left(reason) =>
         logger.warn(
           s"[SubmissionService] Could not poll because pollUrl host is not recognised. " +
@@ -341,22 +341,22 @@ class SubmissionService @Inject() (
 
         Future.failed(new IllegalArgumentException(s"Invalid ChRIS batch poll URL: $reason"))
 
-      case Right(resolvedPollUrl) =>
+      case Right(effectivePollUrl) =>
         logger.info(
           s"[SubmissionService] " +
             s"submissionId=$submissionId, journey=$journey, " +
             s"useOverridePollResponseEndPoint=${appConfig.useOverridePollResponseEndPoint}, " +
-            s"originalPollUrl=$pollUrl, resolvedPollUrl=$resolvedPollUrl"
+            s"originalPollUrl=$pollUrl, effectivePollUrl=$effectivePollUrl"
         )
 
         pollAndValidate(
           submissionId,
-          resolvedPollUrl,
+          effectivePollUrl,
           journey
         ).flatMap { pollResult =>
           runPostPollSteps(
             submissionId = submissionId,
-            pollUrl = resolvedPollUrl,
+            effectivePollUrl = effectivePollUrl,
             journey = journey,
             pollResult = pollResult
           ).map { _ =>
@@ -423,7 +423,7 @@ class SubmissionService @Inject() (
 
   private def runPostPollSteps(
     submissionId: String,
-    pollUrl: String,
+    effectivePollUrl: String,
     journey: ChrisPollJourney,
     pollResult: PollAndValidateResult
   )(implicit hc: HeaderCarrier): Future[Unit] = {
@@ -451,7 +451,11 @@ class SubmissionService @Inject() (
     )
 
     val nextPollUrl =
-      result.pollUrl.getOrElse(session.pollUrl)
+      determineNextPollUrl(
+        returnedPollUrl = result.pollUrl,
+        effectivePollUrl = effectivePollUrl,
+        submissionId = submissionId
+      )
 
     val nextPollInterval =
       result.pollInterval.getOrElse(session.pollInterval)
@@ -474,7 +478,7 @@ class SubmissionService @Inject() (
       deleteOutcome <- deleteChrisResourcesIfNeeded(
                          result.status,
                          session.correlationId,
-                         pollUrl,
+                         effectivePollUrl,
                          journey
                        )
 
@@ -856,7 +860,7 @@ class SubmissionService @Inject() (
 
   private lazy val redirectUrlPolicy = AbsoluteWithHostnameFromAllowlist(appConfig.chrisHost.toSet)
 
-  private def resolveBatchPollUrl(
+  private def validateAndNormalisePollUrl(
     pollUrl: RedirectUrl
   ): Either[String, String] =
     pollUrl
@@ -871,6 +875,34 @@ class SubmissionService @Inject() (
           } else None
         ).getOrElse(safeUrl.url)
       }
+
+  private def determineNextPollUrl(
+    returnedPollUrl: Option[String],
+    effectivePollUrl: String,
+    submissionId: String
+  ): String =
+    returnedPollUrl match {
+
+      case Some(url) =>
+        validateAndNormalisePollUrl(RedirectUrl(url)) match {
+
+          case Right(normalisedPollUrl) =>
+            normalisedPollUrl
+
+          case Left(reason) =>
+            logger.warn(
+              s"[SubmissionService][determineNextPollUrl] " +
+                s"ChRIS returned a poll URL that could not be validated. " +
+                s"Falling back to the current effective poll URL. " +
+                s"submissionId=$submissionId, reason=$reason"
+            )
+
+            effectivePollUrl
+        }
+
+      case None =>
+        effectivePollUrl
+    }
 }
 
 object SubmissionService {
