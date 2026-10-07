@@ -85,8 +85,8 @@ class VerificationResultMapperSpec extends SpecBase {
         foreName = Some("John"),
         middleName = Some("A"),
         surname = Some("Smith"),
-        matched = Some("unmatched"),
-        taxTreatment = Some("net"),
+        matched = Some("matched"),
+        taxTreatment = None,
         verificationNumber = Some("V1000000007")
       )
 
@@ -113,10 +113,10 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
-          matched = None,
+          matched = Some("Y"),
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
-          taxTreatment = Some("net"),
+          taxTreatment = None,
           verifiedDate = None
         )
       )

@@ -69,7 +69,8 @@ class VerificationResultMapper @Inject() () extends Logging {
           verifiedDateFor(
             matched = matched,
             verificationNumber = verificationNumber,
-            verifiedDate = verifiedDate
+            verifiedDate = verifiedDate,
+            taxTreatment = taxTreatment
           )
         } else {
           None
@@ -134,9 +135,10 @@ class VerificationResultMapper @Inject() () extends Logging {
   private def verifiedDateFor(
     matched: Option[String],
     verificationNumber: Option[String],
-    verifiedDate: LocalDateTime
+    verifiedDate: LocalDateTime,
+    taxTreatment: Option[String]
   ): Option[LocalDateTime] =
-    if (normalise(matched).contains("Y") && verificationNumber.isDefined) {
+    if (normalise(matched).contains("Y") && verificationNumber.isDefined && taxTreatment.isDefined) {
       Some(verifiedDate)
     } else {
       None
