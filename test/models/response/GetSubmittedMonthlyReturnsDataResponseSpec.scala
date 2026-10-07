@@ -36,16 +36,33 @@ class GetSubmittedMonthlyReturnsDataResponseSpec extends AnyWordSpec with Matche
         taxMonth = 1,
         nilReturnIndicator = "Y",
         monthlyReturnItems = Seq.empty,
-        submission = SubmissionData(
-          submissionId = 1000L,
-          submissionType = Some("Monthly Return"),
-          activeObjectId = None,
-          status = None,
-          hmrcMarkGenerated = None,
-          hmrcMarkGgis = None,
-          emailRecipient = None,
-          acceptedTime = Some(Instant.now())
+        submission = Some(
+          SubmissionData(
+            submissionId = 1000L,
+            submissionType = Some("Monthly Return"),
+            activeObjectId = None,
+            status = None,
+            hmrcMarkGenerated = None,
+            hmrcMarkGgis = None,
+            emailRecipient = None,
+            acceptedTime = Some(Instant.now())
+          )
         )
+      )
+
+      val json = Json.toJson(model)
+      json.as[GetSubmittedMonthlyReturnsDataResponse] mustBe model
+    }
+
+    "serialize and deserialize correctly without a submission" in {
+      val model = GetSubmittedMonthlyReturnsDataResponse(
+        scheme = SchemeData("Scheme Name", "163", "AB0063"),
+        monthlyReturnId = 3000L,
+        taxYear = 2025,
+        taxMonth = 1,
+        nilReturnIndicator = "Y",
+        monthlyReturnItems = Seq.empty,
+        submission = None
       )
 
       val json = Json.toJson(model)
@@ -95,15 +112,17 @@ class GetSubmittedMonthlyReturnsDataResponseSpec extends AnyWordSpec with Matche
         taxMonth = 1,
         nilReturnIndicator = "Y",
         monthlyReturnItems = Seq.empty,
-        submission = SubmissionData(
-          submissionId = 1000L,
-          submissionType = Some("Monthly Return"),
-          activeObjectId = None,
-          status = None,
-          hmrcMarkGenerated = None,
-          hmrcMarkGgis = None,
-          emailRecipient = None,
-          acceptedTime = Some(ZonedDateTime.of(2026, 4, 6, 9, 50, 8, 0, ZoneOffset.UTC).toInstant)
+        submission = Some(
+          SubmissionData(
+            submissionId = 1000L,
+            submissionType = Some("Monthly Return"),
+            activeObjectId = None,
+            status = None,
+            hmrcMarkGenerated = None,
+            hmrcMarkGgis = None,
+            emailRecipient = None,
+            acceptedTime = Some(ZonedDateTime.of(2026, 4, 6, 9, 50, 8, 0, ZoneOffset.UTC).toInstant)
+          )
         )
       )
 
@@ -113,12 +132,31 @@ class GetSubmittedMonthlyReturnsDataResponseSpec extends AnyWordSpec with Matche
       result mustBe expectedResult
     }
 
+    ".fromProxyResponse map a monthly return without a submission" in {
+      val result = GetSubmittedMonthlyReturnsDataResponse.fromProxyResponse(
+        proxyResponseWithSubmissions(Seq.empty)
+      )
+
+      result.monthlyReturnId mustBe 3000L
+      result.submission mustBe None
+    }
+
+    ".fromProxyResponse fail when the monthly return is missing" in {
+      val proxyResponse = proxyResponseWithSubmissions(Seq.empty).copy(monthlyReturn = Seq.empty)
+
+      val ex = intercept[RuntimeException] {
+        GetSubmittedMonthlyReturnsDataResponse.fromProxyResponse(proxyResponse)
+      }
+
+      ex.getMessage mustBe "Missing monthlyReturn data"
+    }
+
     ".fromProxyResponse parse acceptedTime without fractional seconds" in {
       val result = GetSubmittedMonthlyReturnsDataResponse.fromProxyResponse(
         proxyResponseWithAcceptedTime(Some("2026-04-06T09:50:08"))
       )
 
-      result.submission.acceptedTime mustBe Some(Instant.parse("2026-04-06T09:50:08Z"))
+      result.submission.flatMap(_.acceptedTime) mustBe Some(Instant.parse("2026-04-06T09:50:08Z"))
     }
 
     ".fromProxyResponse parse acceptedTime with a Z suffix" in {
@@ -126,7 +164,7 @@ class GetSubmittedMonthlyReturnsDataResponseSpec extends AnyWordSpec with Matche
         proxyResponseWithAcceptedTime(Some("2017-04-06T08:46:08.081Z"))
       )
 
-      result.submission.acceptedTime mustBe Some(Instant.parse("2017-04-06T08:46:08.081Z"))
+      result.submission.flatMap(_.acceptedTime) mustBe Some(Instant.parse("2017-04-06T08:46:08.081Z"))
     }
 
     ".fromProxyResponse treat invalid acceptedTime as missing" in {
@@ -134,24 +172,13 @@ class GetSubmittedMonthlyReturnsDataResponseSpec extends AnyWordSpec with Matche
         proxyResponseWithAcceptedTime(Some("not-a-datetime"))
       )
 
-      result.submission.acceptedTime mustBe None
+      result.submission.flatMap(_.acceptedTime) mustBe None
     }
   }
 
   private def proxyResponseWithAcceptedTime(acceptedTime: Option[String]): GetSubmittedMonthlyReturnsDataProxyResponse =
-    GetSubmittedMonthlyReturnsDataProxyResponse(
-      scheme = ContractorScheme(
-        schemeId = 100,
-        instanceId = "1",
-        accountsOfficeReference = "accountsOfficeReference",
-        taxOfficeNumber = "163",
-        taxOfficeReference = "AB0063",
-        name = Some("Scheme Name")
-      ),
-      monthlyReturn =
-        Seq(MonthlyReturn(monthlyReturnId = 3000L, taxYear = 2025, taxMonth = 1, nilReturnIndicator = Some("Y"))),
-      monthlyReturnItems = Seq.empty,
-      submission = Seq(
+    proxyResponseWithSubmissions(
+      Seq(
         Submission(
           submissionId = 1000L,
           submissionType = "Monthly Return",
@@ -172,5 +199,21 @@ class GetSubmittedMonthlyReturnsDataResponseSpec extends AnyWordSpec with Matche
           govTalkErrorMessage = None
         )
       )
+    )
+
+  private def proxyResponseWithSubmissions(submissions: Seq[Submission]): GetSubmittedMonthlyReturnsDataProxyResponse =
+    GetSubmittedMonthlyReturnsDataProxyResponse(
+      scheme = ContractorScheme(
+        schemeId = 100,
+        instanceId = "1",
+        accountsOfficeReference = "accountsOfficeReference",
+        taxOfficeNumber = "163",
+        taxOfficeReference = "AB0063",
+        name = Some("Scheme Name")
+      ),
+      monthlyReturn =
+        Seq(MonthlyReturn(monthlyReturnId = 3000L, taxYear = 2025, taxMonth = 1, nilReturnIndicator = Some("Y"))),
+      monthlyReturnItems = Seq.empty,
+      submission = submissions
     )
 }

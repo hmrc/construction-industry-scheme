@@ -1422,15 +1422,17 @@ class MonthlyReturnServiceSpec extends SpecBase {
         taxMonth = 1,
         nilReturnIndicator = "Y",
         monthlyReturnItems = Seq.empty,
-        submission = SubmissionData(
-          submissionId = 1000L,
-          submissionType = Some("Monthly Return"),
-          activeObjectId = None,
-          status = None,
-          hmrcMarkGenerated = None,
-          hmrcMarkGgis = None,
-          emailRecipient = None,
-          acceptedTime = Some(ZonedDateTime.of(2026, 4, 6, 9, 50, 8, 0, ZoneOffset.UTC).toInstant)
+        submission = Some(
+          SubmissionData(
+            submissionId = 1000L,
+            submissionType = Some("Monthly Return"),
+            activeObjectId = None,
+            status = None,
+            hmrcMarkGenerated = None,
+            hmrcMarkGgis = None,
+            emailRecipient = None,
+            acceptedTime = Some(ZonedDateTime.of(2026, 4, 6, 9, 50, 8, 0, ZoneOffset.UTC).toInstant)
+          )
         )
       )
       when(formpProxy.getSubmittedMonthlyReturnsData(eqTo(request))(any[HeaderCarrier]))
@@ -1492,13 +1494,13 @@ class MonthlyReturnServiceSpec extends SpecBase {
         service.getSubmittedMonthlyReturnsData(request)
       }.futureValue
 
-      ex.getMessage mustBe "Missing monthlyReturn or submission data"
+      ex.getMessage mustBe "Missing monthlyReturn data"
 
       verify(formpProxy).getSubmittedMonthlyReturnsData(eqTo(request))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
     }
 
-    "returns error when submissions missing from formp response" in new Setup {
+    "returns the monthly return without a submission when submissions missing from formp response" in new Setup {
       val request = GetSubmittedMonthlyReturnsDataRequest(
         instanceId = cisInstanceId,
         taxYear = 2025,
@@ -1524,11 +1526,10 @@ class MonthlyReturnServiceSpec extends SpecBase {
       when(formpProxy.getSubmittedMonthlyReturnsData(eqTo(request))(any[HeaderCarrier]))
         .thenReturn(Future.successful(mockFormPResponse))
 
-      val ex: RuntimeException = recoverToExceptionIf[RuntimeException] {
-        service.getSubmittedMonthlyReturnsData(request)
-      }.futureValue
+      val out: GetSubmittedMonthlyReturnsDataResponse = service.getSubmittedMonthlyReturnsData(request).futureValue
 
-      ex.getMessage mustBe "Missing monthlyReturn or submission data"
+      out.monthlyReturnId mustBe 3000L
+      out.submission mustBe None
 
       verify(formpProxy).getSubmittedMonthlyReturnsData(eqTo(request))(any[HeaderCarrier])
       verifyNoInteractions(datacacheProxy)
