@@ -180,4 +180,36 @@ class FinalValidationDraftController @Inject() (
         }
     }
 
+  def resetSubcontractor(
+    instanceId: String,
+    draftId: String,
+    subcontractorId: Long
+  ): Action[AnyContent] =
+    authorise.async { implicit request =>
+      finalValidationDraftService
+        .resetSubcontractor(
+          draftId,
+          request.credentialId,
+          instanceId,
+          subcontractorId
+        )
+        .map { updated =>
+          Ok(Json.toJson(updated))
+        }
+        .recover {
+          case _: NoSuchElementException =>
+            NotFound(
+              Json.obj("error" -> "Final Validation draft or subcontractor not found")
+            )
+
+          case NonFatal(error) =>
+            logger.error(
+              s"[FinalValidationDraftController.resetSubcontractor] failed to reset subcontractor $subcontractorId in draft $draftId",
+              error
+            )
+            InternalServerError(
+              Json.obj("error" -> "Failed to reset Final Validation subcontractor")
+            )
+        }
+    }
 }
