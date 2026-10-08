@@ -30,7 +30,7 @@ import uk.gov.hmrc.constructionindustryscheme.utils.UriHelper
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
 
-import java.time.{Clock, Duration, Instant, LocalDateTime, ZoneOffset}
+import java.time.{Clock, Duration, Instant, LocalDateTime}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -680,7 +680,7 @@ class SubmissionService @Inject() (
           submissionId = submissionId,
           instanceId = submission.instanceId,
           correlationId = statusRecord.correlationID,
-          lastMessageDate = statusRecord.lastMessageDate.toInstant(ZoneOffset.UTC),
+          lastMessageDate = toInstant(statusRecord.lastMessageDate),
           numPolls = statusRecord.numPolls,
           pollInterval = statusRecord.pollInterval,
           pollUrl = statusRecord.gatewayURL,
@@ -846,7 +846,10 @@ class SubmissionService @Inject() (
     }
 
   private def toLocalDateTime(i: Instant): LocalDateTime =
-    LocalDateTime.ofInstant(i, ZoneOffset.UTC)
+    LocalDateTime.ofInstant(i, clock.getZone)
+
+  private def toInstant(localDateTime: LocalDateTime): Instant =
+    localDateTime.atZone(clock.getZone).toInstant
 
   private def getInitialGovTalkStatus(request: GetGovTalkStatusRequest)(implicit
     hc: HeaderCarrier
