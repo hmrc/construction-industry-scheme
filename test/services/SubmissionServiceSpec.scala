@@ -2187,6 +2187,47 @@ final class SubmissionServiceSpec extends SpecBase {
       result.sessionData.lastMessageDate mustBe Instant.parse("2025-07-01T11:30:00Z")
     }
 
+    "must interpret an ambiguous FormP lastMessageDate as GMT when the clocks go back" in new Setup {
+      val statusRecord =
+        GovTalkStatusRecord(
+          userIdentifier = instanceId,
+          formResultID = submissionIdString,
+          correlationID = "corr-123",
+          formLock = "N",
+          createDate = Some(LocalDateTime.of(2025, 10, 26, 1, 0)),
+          endStateDate = None,
+          lastMessageDate = LocalDateTime.of(2025, 10, 26, 1, 30),
+          numPolls = 2,
+          pollInterval = 5,
+          protocolStatus = "dataPoll",
+          gatewayURL = "/poll/123"
+        )
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(GetGovTalkStatusResponse(govtalk_status = Seq(statusRecord)))))
+
+      when(
+        formpProxyConnector.getSubmissionWithVerificationBatch(
+          eqTo(instanceId),
+          eqTo(verificationBatchResourceRef)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(snapshotResponse))
+
+      when(chrisSubmissionSessionRepository.upsert(any[ChrisSubmissionSessionData]))
+        .thenReturn(Future.unit)
+
+      val result =
+        service
+          .syncVerificationSessionForPolling(submissionToPoll)
+          .futureValue
+
+      result.sessionData.lastMessageDate mustBe Instant.parse("2025-10-26T01:30:00Z")
+    }
+
     "must fail when no polling GovTalk status is found" in new Setup {
       when(
         formpProxyConnector.getGovTalkStatus(

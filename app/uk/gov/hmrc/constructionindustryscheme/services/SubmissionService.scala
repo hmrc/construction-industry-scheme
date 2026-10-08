@@ -849,7 +849,7 @@ class SubmissionService @Inject() (
     LocalDateTime.ofInstant(i, clock.getZone)
 
   private def toInstant(localDateTime: LocalDateTime): Instant =
-    localDateTime.atZone(clock.getZone).toInstant
+    localDateTime.atZone(clock.getZone).withLaterOffsetAtOverlap().toInstant
 
   private def getInitialGovTalkStatus(request: GetGovTalkStatusRequest)(implicit
     hc: HeaderCarrier
