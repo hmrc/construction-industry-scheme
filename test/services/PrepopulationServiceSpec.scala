@@ -22,7 +22,7 @@ import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.connectors.{DatacacheProxyConnector, FormpProxyConnector}
-import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, Company, ContractorScheme, CreateContractorSchemeParams, EmployerReference, Partnership, PrePopContractorBody, PrePopSubcontractor, PrepopKnownFacts, SoleTrader, UpdateContractorSchemeParams}
+import uk.gov.hmrc.constructionindustryscheme.models.{CisTaxpayer, Company, ContractorScheme, CreateContractorSchemeParams, EmployerReference, Partnership, PrePopContractorBody, PrePopSubcontractor, PrepopKnownFacts, SoleTrader, SubcontractorType, Trust, UpdateContractorSchemeParams}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ApplyPrepopulationRequest, PrepopulationSubcontractor, UpdateSchemeVersionRequest}
 import uk.gov.hmrc.constructionindustryscheme.services.{MonthlyReturnService, PrepopulationService}
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
@@ -280,6 +280,60 @@ class PrepopulationServiceSpec extends SpecBase {
       verify(formpProxy, never).updateSchemeVersion(any())(any[HeaderCarrier])
     }
 
+    "sets verified and auto verified to Y only when a verification number is present" in new Setup {
+      val cis      = mkCis()
+      val existing = mkExistingScheme("123AB456789", cis.taxOfficeNumber, cis.taxOfficeRef).copy(
+        prePopCount = Some(0),
+        version = Some(7)
+      )
+
+      val expectedKnownFacts = PrepopKnownFacts(
+        taxOfficeNumber = cis.taxOfficeNumber,
+        taxOfficeReference = cis.taxOfficeRef,
+        accountOfficeReference = "123AB456789"
+      )
+
+      val contractorPrepop = PrePopContractorBody(
+        schemeName = "ABC Construction Ltd",
+        utr = "1234567890",
+        response = 1
+      )
+
+      val subs = Seq(
+        PrePopSubcontractor("P", "3333333333", "V3", "", "", "", "", "", Some("Partners Trading")),
+        PrePopSubcontractor("C", "2222222222", "V2", "", "", "", "", "", Some("Acme Ltd")),
+        PrePopSubcontractor("T", "4444444444", "V4", "", "", "", "", "", Some("Trust Name")),
+        PrePopSubcontractor("P", "5555555555", "", "", "", "", "", "", Some("No Number Partners")),
+        PrePopSubcontractor("C", "6666666666", "   ", "", "", "", "", "", Some("No Number Company")),
+        PrePopSubcontractor("T", "7777777777", "", "", "", "", "", "", Some("No Number Trust"))
+      )
+
+      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(cis))
+      when(formpProxy.getContractorScheme(eqTo(instanceId))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Some(existing)))
+      when(datacacheProxy.getSchemePrepopByKnownFacts(eqTo(expectedKnownFacts))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Some(contractorPrepop)))
+      when(datacacheProxy.getSubcontractorsPrepopByKnownFacts(eqTo(expectedKnownFacts))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(subs))
+      when(formpProxy.applyPrepopulation(any())(any[HeaderCarrier]))
+        .thenReturn(Future.successful(8))
+
+      service.prepopulateContractorAndSubcontractors(instanceId, employerRef).futureValue
+
+      val reqCaptor = ArgumentCaptor.forClass(classOf[ApplyPrepopulationRequest])
+      verify(formpProxy).applyPrepopulation(reqCaptor.capture())(any[HeaderCarrier])
+
+      reqCaptor.getValue.subcontractors mustBe Seq(
+        prepopSub(Partnership, "3333333333", Some("V3"), partnershipTradingName = Some("Partners Trading")),
+        prepopSub(Company, "2222222222", Some("V2"), tradingName = Some("Acme Ltd")),
+        prepopSub(Trust, "4444444444", Some("V4"), tradingName = Some("Trust Name")),
+        prepopSub(Partnership, "5555555555", None, partnershipTradingName = Some("No Number Partners")),
+        prepopSub(Company, "6666666666", None, tradingName = Some("No Number Company")),
+        prepopSub(Trust, "7777777777", None, tradingName = Some("No Number Trust"))
+      )
+    }
+
     "throws IllegalArgumentException when subcontractor type is unknown" in new Setup {
       val cis      = mkCis()
       val existing = mkExistingScheme("123AB456789", cis.taxOfficeNumber, cis.taxOfficeRef).copy(
@@ -362,6 +416,28 @@ class PrepopulationServiceSpec extends SpecBase {
       verify(formpProxy).getContractorScheme(eqTo(instanceId))(any[HeaderCarrier])
       verifyNoMoreInteractions(formpProxy)
     }
+  }
+
+  private def prepopSub(
+    subcontractorType: SubcontractorType,
+    utr: String,
+    verificationNumber: Option[String],
+    tradingName: Option[String] = None,
+    partnershipTradingName: Option[String] = None
+  ): PrepopulationSubcontractor = {
+    val verifiedFlag = verificationNumber.map(_ => "Y")
+    PrepopulationSubcontractor(
+      subcontractorType = subcontractorType,
+      utr = utr,
+      verificationNumber = verificationNumber,
+      firstName = None,
+      secondName = None,
+      surname = None,
+      tradingName = tradingName,
+      partnershipTradingName = partnershipTradingName,
+      verified = verifiedFlag,
+      autoVerified = verifiedFlag
+    )
   }
 
   trait Setup {
