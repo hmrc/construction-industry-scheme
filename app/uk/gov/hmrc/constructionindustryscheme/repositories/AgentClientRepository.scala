@@ -17,14 +17,12 @@
 package uk.gov.hmrc.constructionindustryscheme.repositories
 
 import com.google.inject.Inject
-import com.mongodb.client.model.FindOneAndUpdateOptions
 import org.mongodb.scala.model.*
 import play.api.Logging
 import play.api.libs.json.*
-import uk.gov.hmrc.crypto.*
-import uk.gov.hmrc.crypto.json.JsonEncryption
+import uk.gov.hmrc.crypto.SymmetricCryptoFactory
 import uk.gov.hmrc.mongo.MongoComponent
-import uk.gov.hmrc.mongo.play.json.{Codecs, PlayMongoRepository}
+import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.repositories.AgentClientDataKeys.*
 
@@ -42,10 +40,10 @@ class AgentClientRepository @Inject() (
 ) extends PlayMongoRepository[AgentClientData](
       collectionName = "agent-client-records",
       mongoComponent = mongoComponent,
-      domainFormat = AgentClientDataFormats.format,
-      extraCodecs = Seq(
-        Codecs.playFormatCodec(JsonDataEntry.format)
-      ),
+      domainFormat =
+        if config.cryptoToggle then
+          AgentClientData.encryptedFormat(SymmetricCryptoFactory.aesGcmCrypto(config.agentClientCryptoKey))
+        else AgentClientData.plainFormat,
       indexes = Seq(
         IndexModel(
           Indexes.ascending(lastUpdatedKey),
@@ -62,53 +60,18 @@ class AgentClientRepository @Inject() (
     )
     with Logging {
 
-  private def updatedAt: Instant = Instant.now
-
-  private lazy val crypto: Encrypter with Decrypter = SymmetricCryptoFactory.aesGcmCrypto(config.agentClientCryptoKey)
-  private val cryptoToggle: Boolean                 = config.cryptoToggle
-
   def upsert(id: String, data: JsValue)(using ec: ExecutionContext): Future[Unit] =
-    if cryptoToggle then
-      val encryptedRecord           = AgentClientData(id, data.toString(), updatedAt)
-      val encrypter: Writes[String] = JsonEncryption.stringEncrypter(crypto)
-      val encryptedData: String     = encrypter.writes(data.toString()).as[String]
-      val encryptedUpdate           = Updates.combine(
-        Updates.set(idField, encryptedRecord.id),
-        Updates.set(dataKey, Codecs.toBson(encryptedData)),
-        Updates.set(lastUpdatedKey, Codecs.toBson(encryptedRecord.lastUpdated)(using AgentClientDataFormats.dateFormat))
+    collection
+      .replaceOne(
+        Filters.equal(idField, id),
+        AgentClientData(id, data, Instant.now),
+        ReplaceOptions().upsert(true)
       )
-
-      collection
-        .withDocumentClass[AgentClientData]()
-        .findOneAndUpdate(Filters.eq(idField, id), update = encryptedUpdate, new FindOneAndUpdateOptions().upsert(true))
-        .toFuture()
-        .map(_ => ())
-    else
-      val nonEncryptedRecord = JsonDataEntry(id, data, updatedAt)
-      val update             = Updates.combine(
-        Updates.set(idField, nonEncryptedRecord.id),
-        Updates.set(dataKey, Codecs.toBson(nonEncryptedRecord.data)),
-        Updates.set(lastUpdatedKey, Codecs.toBson(nonEncryptedRecord.lastUpdated)(using JsonDataEntry.dateFormat))
-      )
-
-      collection
-        .withDocumentClass[JsonDataEntry]()
-        .findOneAndUpdate(filter = Filters.eq(idField, id), update = update, new FindOneAndUpdateOptions().upsert(true))
-        .toFuture()
-        .map(_ => ())
+      .toFuture()
+      .map(_ => ())
 
   def get(id: String)(using ec: ExecutionContext): Future[Option[JsValue]] =
-    if cryptoToggle then {
-      collection.find[AgentClientData](Filters.equal(idField, id)).headOption().map {
-        _.map { dataEntry =>
-          Json.parse(crypto.decrypt(Crypted(dataEntry.data)).value)
-        }
-      }
-    } else {
-      collection.find[JsonDataEntry](Filters.equal(idField, id)).headOption().map {
-        _.map(_.data)
-      }
-    }
+    collection.find(Filters.equal(idField, id)).headOption().map(_.map(_.data))
 
   def remove(id: String)(using ec: ExecutionContext): Future[Boolean] =
     collection.deleteOne(Filters.equal(idField, id)).toFuture().map { result =>

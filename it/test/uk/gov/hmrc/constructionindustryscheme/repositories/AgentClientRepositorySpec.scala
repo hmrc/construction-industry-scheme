@@ -21,7 +21,6 @@ import org.mongodb.scala.bson.BsonDocument
 import org.scalatest.OptionValues
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers.mustBe
-import org.scalatest.matchers.should.Matchers.should
 import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsValue, Json}
@@ -59,7 +58,7 @@ class AgentClientRepositorySpec
   private val userAnswersCache         =
     AgentClientData(
       "id",
-      userAnswersJson.toString(),
+      userAnswersJson,
       Instant.now()
     )
 
@@ -83,8 +82,8 @@ class AgentClientRepositorySpec
           .headOption()
           .futureValue
           .value
-        val decrypted = crypto.decrypt(Crypted(raw.get("data").asString.getValue)).value
-        Json.parse(decrypted) mustBe userAnswersJson
+        val decryptedJson = crypto.decrypt(Crypted(raw.get("data").asString.getValue)).value
+        Json.parse(Json.parse(decryptedJson).as[String]) mustBe userAnswersJson
       }
     }
 
@@ -97,7 +96,7 @@ class AgentClientRepositorySpec
 
   "without crypto" - {
     val repository       = newRepository(false)
-    val userAnswersCache = AgentClientData("id2", userAnswersJson.toString, Instant.now)
+    val userAnswersCache = AgentClientData("id2", userAnswersJson, Instant.now)
 
     "upsert" - {
       "successfully saves and retrieves unencrypted data" in {
@@ -117,7 +116,6 @@ class AgentClientRepositorySpec
         val bsonDoc = raw.get("data").asDocument()
         val jsValue = Json.parse(bsonDoc.toJson())
         jsValue mustBe userAnswersJson
-
       }
     }
 
