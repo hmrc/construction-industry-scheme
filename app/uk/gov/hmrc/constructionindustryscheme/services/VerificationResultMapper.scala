@@ -93,7 +93,7 @@ class VerificationResultMapper @Inject() () extends Logging {
             same(requested.tradingName, chris.tradingName)
 
           case Some("partnership") =>
-            same(requested.utr, chris.partnershipUtr) ||
+            same(requested.partnershipUtr, chris.partnershipUtr) ||
             same(requested.tradingName, chris.tradingName)
 
           case other =>
@@ -125,7 +125,7 @@ class VerificationResultMapper @Inject() () extends Logging {
 
     same(requested.utr, chris.utr) ||
     ((hasPersonalName, hasTradingName) match {
-      case (true, true)   => personalNameMatches && tradingNameMatches
+      case (true, true)   => personalNameMatches || tradingNameMatches
       case (true, false)  => personalNameMatches
       case (false, true)  => tradingNameMatches
       case (false, false) => false
