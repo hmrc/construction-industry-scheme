@@ -2147,6 +2147,18 @@ final class SubmissionServiceSpec extends SpecBase {
     }
 
     "must interpret the FormP lastMessageDate as UK local time when rebuilding the session during BST" in new Setup {
+      val bstClock: Clock               = Clock.fixed(Instant.parse("2025-07-01T10:00:00Z"), ukZone)
+      val bstService: SubmissionService = new SubmissionService(
+        chrisConnector,
+        formpProxyConnector,
+        emailConnector,
+        monthlyReturnService,
+        chrisSubmissionSessionRepository,
+        formPSubmissionUpdateProcessorRegistry,
+        appConfig,
+        bstClock
+      )
+
       val statusRecord =
         GovTalkStatusRecord(
           userIdentifier = instanceId,
@@ -2180,7 +2192,7 @@ final class SubmissionServiceSpec extends SpecBase {
         .thenReturn(Future.unit)
 
       val result =
-        service
+        bstService
           .syncVerificationSessionForPolling(submissionToPoll)
           .futureValue
 
