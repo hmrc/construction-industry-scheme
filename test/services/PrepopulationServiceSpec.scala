@@ -305,7 +305,8 @@ class PrepopulationServiceSpec extends SpecBase {
         PrePopSubcontractor("T", "4444444444", "V4", "", "", "", "", "", Some("Trust Name")),
         PrePopSubcontractor("P", "5555555555", "", "", "", "", "", "", Some("No Number Partners")),
         PrePopSubcontractor("C", "6666666666", "   ", "", "", "", "", "", Some("No Number Company")),
-        PrePopSubcontractor("T", "7777777777", "", "", "", "", "", "", Some("No Number Trust"))
+        PrePopSubcontractor("T", "7777777777", "", "", "", "", "", "", Some("No Number Trust")),
+        PrePopSubcontractor("T", "8888888888", "null", "", "", "", "", "", Some("Null String Trust"))
       )
 
       when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
@@ -330,7 +331,8 @@ class PrepopulationServiceSpec extends SpecBase {
         prepopSub(Trust, "4444444444", Some("V4"), tradingName = Some("Trust Name")),
         prepopSub(Partnership, "5555555555", None, partnershipTradingName = Some("No Number Partners")),
         prepopSub(Company, "6666666666", None, tradingName = Some("No Number Company")),
-        prepopSub(Trust, "7777777777", None, tradingName = Some("No Number Trust"))
+        prepopSub(Trust, "7777777777", None, tradingName = Some("No Number Trust")),
+        prepopSub(Trust, "8888888888", None, tradingName = Some("Null String Trust"))
       )
     }
 

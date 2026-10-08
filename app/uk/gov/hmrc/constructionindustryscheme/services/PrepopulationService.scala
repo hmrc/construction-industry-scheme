@@ -174,7 +174,7 @@ class PrepopulationService @Inject() (
 
   private def toPrepopulationSubcontractor(source: PrePopSubcontractor): PrepopulationSubcontractor = {
     val subcontractorType  = toSubcontractorType(source.subcontractorType)
-    val verificationNumber = nonEmpty(source.verificationNumber)
+    val verificationNumber = nonEmpty(source.verificationNumber).filterNot(_.equalsIgnoreCase("null"))
     val verifiedFlag       = verificationNumber.map(_ => "Y")
     val tradingName        = source.tradingName.flatMap(nonEmpty)
 
