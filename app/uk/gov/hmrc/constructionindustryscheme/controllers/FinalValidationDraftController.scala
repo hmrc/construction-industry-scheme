@@ -63,7 +63,8 @@ class FinalValidationDraftController @Inject() (
           )
         }
         .recover {
-          case _: NoSuchElementException =>
+          case e: NoSuchElementException =>
+            logger.error(s"[FinalValidationDraftController] draft not found draftId=$draftId", e)
             NotFound(
               Json.obj("error" -> "Final Validation draft not found")
             )
@@ -94,7 +95,8 @@ class FinalValidationDraftController @Inject() (
           )
         }
         .recover {
-          case _: NoSuchElementException =>
+          case e: NoSuchElementException =>
+            logger.error(s"[FinalValidationDraftController] draft not found draftId=$draftId", e)
             NotFound(
               Json.obj("error" -> "Final Validation draft not found")
             )
@@ -128,7 +130,8 @@ class FinalValidationDraftController @Inject() (
           )
         }
         .recover {
-          case _: NoSuchElementException =>
+          case e: NoSuchElementException =>
+            logger.error(s"[FinalValidationDraftController] draft not found draftId=$draftId", e)
             NotFound(
               Json.obj("error" -> "Final Validation draft not found")
             )
@@ -159,7 +162,8 @@ class FinalValidationDraftController @Inject() (
           NoContent
         }
         .recover {
-          case _: NoSuchElementException =>
+          case e: NoSuchElementException =>
+            logger.error(s"[FinalValidationDraftController] draft not found draftId=$draftId", e)
             NotFound(
               Json.obj("error" -> "Final Validation draft not found")
             )

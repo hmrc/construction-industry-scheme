@@ -42,7 +42,8 @@ class ClientListController @Inject() (
     service
       .process(request.credentialId, request.agentId)
       .map(status => Ok(Json.obj("result" -> status.asString)))
-      .recover { case _: NoBusinessIntervalsException =>
+      .recover { case e: NoBusinessIntervalsException =>
+        logger.error("[ClientListController][start] - no business intervals found", e)
         InternalServerError(Json.obj("result" -> "system-error"))
       }
   }
