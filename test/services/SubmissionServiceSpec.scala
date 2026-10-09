@@ -2146,6 +2146,100 @@ final class SubmissionServiceSpec extends SpecBase {
       verifyNoInteractions(emailConnector)
     }
 
+    "must interpret the FormP lastMessageDate as UK local time when rebuilding the session during BST" in new Setup {
+      val bstClock: Clock               = Clock.fixed(Instant.parse("2025-07-01T10:00:00Z"), ukZone)
+      val bstService: SubmissionService = new SubmissionService(
+        chrisConnector,
+        formpProxyConnector,
+        emailConnector,
+        monthlyReturnService,
+        chrisSubmissionSessionRepository,
+        formPSubmissionUpdateProcessorRegistry,
+        appConfig,
+        bstClock
+      )
+
+      val statusRecord =
+        GovTalkStatusRecord(
+          userIdentifier = instanceId,
+          formResultID = submissionIdString,
+          correlationID = "corr-123",
+          formLock = "N",
+          createDate = Some(LocalDateTime.of(2025, 7, 1, 10, 0)),
+          endStateDate = None,
+          lastMessageDate = LocalDateTime.of(2025, 7, 1, 12, 30),
+          numPolls = 2,
+          pollInterval = 5,
+          protocolStatus = "dataPoll",
+          gatewayURL = "/poll/123"
+        )
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(GetGovTalkStatusResponse(govtalk_status = Seq(statusRecord)))))
+
+      when(
+        formpProxyConnector.getSubmissionWithVerificationBatch(
+          eqTo(instanceId),
+          eqTo(verificationBatchResourceRef)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(snapshotResponse))
+
+      when(chrisSubmissionSessionRepository.upsert(any[ChrisSubmissionSessionData]))
+        .thenReturn(Future.unit)
+
+      val result =
+        bstService
+          .syncVerificationSessionForPolling(submissionToPoll)
+          .futureValue
+
+      result.sessionData.lastMessageDate mustBe Instant.parse("2025-07-01T11:30:00Z")
+    }
+
+    "must interpret an ambiguous FormP lastMessageDate as GMT when the clocks go back" in new Setup {
+      val statusRecord =
+        GovTalkStatusRecord(
+          userIdentifier = instanceId,
+          formResultID = submissionIdString,
+          correlationID = "corr-123",
+          formLock = "N",
+          createDate = Some(LocalDateTime.of(2025, 10, 26, 1, 0)),
+          endStateDate = None,
+          lastMessageDate = LocalDateTime.of(2025, 10, 26, 1, 30),
+          numPolls = 2,
+          pollInterval = 5,
+          protocolStatus = "dataPoll",
+          gatewayURL = "/poll/123"
+        )
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(GetGovTalkStatusResponse(govtalk_status = Seq(statusRecord)))))
+
+      when(
+        formpProxyConnector.getSubmissionWithVerificationBatch(
+          eqTo(instanceId),
+          eqTo(verificationBatchResourceRef)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(snapshotResponse))
+
+      when(chrisSubmissionSessionRepository.upsert(any[ChrisSubmissionSessionData]))
+        .thenReturn(Future.unit)
+
+      val result =
+        service
+          .syncVerificationSessionForPolling(submissionToPoll)
+          .futureValue
+
+      result.sessionData.lastMessageDate mustBe Instant.parse("2025-10-26T01:30:00Z")
+    }
+
     "must fail when no polling GovTalk status is found" in new Setup {
       when(
         formpProxyConnector.getGovTalkStatus(
@@ -2386,6 +2480,78 @@ final class SubmissionServiceSpec extends SpecBase {
       service
         .processMonthlyReturnGovTalkStatusCheck(instanceId, submissionId, monthlyReturnContext, lastMessageDate)
         .futureValue mustBe pollUrl
+    }
+
+    "writes lastMessageDate to FormP as UK local time during BST" in {
+      val s = setup
+      import s._
+
+      val instanceId      = "instance-123"
+      val submissionId    = "sub-123"
+      val lastMessageDate = Instant.parse("2025-07-01T10:00:00Z")
+      val correlationID   = "CORR-123"
+      val pollInterval    = 10
+      val pollUrl         = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+
+      val govTalkResponse = GetGovTalkStatusResponse(govtalk_status =
+        Seq(
+          GovTalkStatusRecord(
+            userIdentifier = instanceId,
+            formResultID = "123456",
+            correlationID = correlationID,
+            formLock = "N",
+            createDate = Some(LocalDateTime.of(2025, 7, 1, 11, 0)),
+            endStateDate = None,
+            lastMessageDate = LocalDateTime.of(2025, 7, 1, 11, 0),
+            numPolls = 0,
+            pollInterval = pollInterval,
+            protocolStatus = "initial",
+            gatewayURL = pollUrl
+          )
+        )
+      )
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(govTalkResponse)))
+
+      when(chrisSubmissionSessionRepository.upsert(any[ChrisSubmissionSessionData]))
+        .thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusCorrelationId(any[UpdateGovTalkStatusCorrelationIdRequest])(
+          any[HeaderCarrier]
+        )
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusStatistics(any[UpdateGovTalkStatusStatisticsRequest])(
+          any[HeaderCarrier]
+        )
+      ).thenReturn(Future.unit)
+
+      when(formpProxyConnector.updateGovTalkStatus(any[UpdateGovTalkStatusRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.unit)
+
+      service
+        .processMonthlyReturnGovTalkStatusCheck(instanceId, submissionId, monthlyReturnContext, lastMessageDate)
+        .futureValue mustBe pollUrl
+
+      verify(formpProxyConnector).updateGovTalkStatusStatistics(
+        eqTo(
+          UpdateGovTalkStatusStatisticsRequest(
+            instanceId,
+            submissionId,
+            LocalDateTime.of(2025, 7, 1, 11, 0),
+            0,
+            pollInterval,
+            pollUrl
+          )
+        )
+      )(any[HeaderCarrier])
     }
 
     "failed when govTalkStatus response is None" in {
