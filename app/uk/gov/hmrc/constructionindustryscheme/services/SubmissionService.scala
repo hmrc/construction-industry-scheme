@@ -17,6 +17,7 @@
 package uk.gov.hmrc.constructionindustryscheme.services
 
 import play.api.Logging
+import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.*
@@ -25,9 +26,11 @@ import uk.gov.hmrc.constructionindustryscheme.models.requests.*
 import uk.gov.hmrc.constructionindustryscheme.models.response.*
 import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, ChrisSubmissionSessionRepository, StoredMonthlyReturnContext, StoredVerificationContext}
 import uk.gov.hmrc.constructionindustryscheme.services.SubmissionService.SyncedVerificationSession
+import uk.gov.hmrc.constructionindustryscheme.utils.UriHelper
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.play.bootstrap.binders.{AbsoluteWithHostnameFromAllowlist, RedirectUrl}
 
-import java.time.{Clock, Duration, Instant, LocalDateTime, ZoneOffset}
+import java.time.{Clock, Duration, Instant, LocalDateTime}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -318,7 +321,7 @@ class SubmissionService @Inject() (
 
       _ <- runPostPollSteps(
              submissionId = submissionId,
-             pollUrl = pollUrl,
+             effectivePollUrl = pollUrl,
              journey = journey,
              pollResult = pollResult
            )
@@ -329,32 +332,50 @@ class SubmissionService @Inject() (
     pollUrl: String,
     journey: ChrisPollJourney
   )(implicit hc: HeaderCarrier): Future[BatchChRISPollResult] =
-    pollAndValidate(
-      submissionId,
-      pollUrl,
-      journey
-    ).flatMap { pollResult =>
-      runPostPollSteps(
-        submissionId = submissionId,
-        pollUrl = pollUrl,
-        journey = journey,
-        pollResult = pollResult
-      ).map { _ =>
-        BatchChRISPollResult.Completed(
-          pollResult.response
-        )
-      }.recover { case NonFatal(exception) =>
-        logger.error(
-          s"[SubmissionService][pollSubmissionAndUpdateGovTalkStatusForBatch] " +
-            s"Post-poll processing failed for submissionId=$submissionId",
-          exception
+    validateAndNormalisePollUrl(RedirectUrl(pollUrl)) match {
+      case Left(reason) =>
+        logger.warn(
+          s"[SubmissionService] Could not poll because pollUrl host is not recognised. " +
+            s"submissionId=$submissionId, journey=$journey, reason=$reason"
         )
 
-        BatchChRISPollResult.PostProcessingFailed(
-          response = pollResult.response,
-          exception = exception
+        Future.failed(new IllegalArgumentException(s"Invalid ChRIS batch poll URL: $reason"))
+
+      case Right(effectivePollUrl) =>
+        logger.info(
+          s"[SubmissionService] " +
+            s"submissionId=$submissionId, journey=$journey, " +
+            s"useOverridePollResponseEndPoint=${appConfig.useOverridePollResponseEndPoint}, " +
+            s"originalPollUrl=$pollUrl, effectivePollUrl=$effectivePollUrl"
         )
-      }
+
+        pollAndValidate(
+          submissionId,
+          effectivePollUrl,
+          journey
+        ).flatMap { pollResult =>
+          runPostPollSteps(
+            submissionId = submissionId,
+            effectivePollUrl = effectivePollUrl,
+            journey = journey,
+            pollResult = pollResult
+          ).map { _ =>
+            BatchChRISPollResult.Completed(
+              pollResult.response
+            )
+          }.recover { case NonFatal(exception) =>
+            logger.error(
+              s"[SubmissionService][pollSubmissionAndUpdateGovTalkStatusForBatch] " +
+                s"Post-poll processing failed for submissionId=$submissionId",
+              exception
+            )
+
+            BatchChRISPollResult.PostProcessingFailed(
+              response = pollResult.response,
+              exception = exception
+            )
+          }
+        }
     }
 
   private def pollAndValidate(
@@ -402,7 +423,7 @@ class SubmissionService @Inject() (
 
   private def runPostPollSteps(
     submissionId: String,
-    pollUrl: String,
+    effectivePollUrl: String,
     journey: ChrisPollJourney,
     pollResult: PollAndValidateResult
   )(implicit hc: HeaderCarrier): Future[Unit] = {
@@ -430,7 +451,11 @@ class SubmissionService @Inject() (
     )
 
     val nextPollUrl =
-      result.pollUrl.getOrElse(session.pollUrl)
+      determineNextPollUrl(
+        returnedPollUrl = result.pollUrl,
+        effectivePollUrl = effectivePollUrl,
+        submissionId = submissionId
+      )
 
     val nextPollInterval =
       result.pollInterval.getOrElse(session.pollInterval)
@@ -453,7 +478,7 @@ class SubmissionService @Inject() (
       deleteOutcome <- deleteChrisResourcesIfNeeded(
                          result.status,
                          session.correlationId,
-                         pollUrl,
+                         effectivePollUrl,
                          journey
                        )
 
@@ -655,7 +680,7 @@ class SubmissionService @Inject() (
           submissionId = submissionId,
           instanceId = submission.instanceId,
           correlationId = statusRecord.correlationID,
-          lastMessageDate = statusRecord.lastMessageDate.toInstant(ZoneOffset.UTC),
+          lastMessageDate = toInstant(statusRecord.lastMessageDate),
           numPolls = statusRecord.numPolls,
           pollInterval = statusRecord.pollInterval,
           pollUrl = statusRecord.gatewayURL,
@@ -821,7 +846,10 @@ class SubmissionService @Inject() (
     }
 
   private def toLocalDateTime(i: Instant): LocalDateTime =
-    LocalDateTime.ofInstant(i, ZoneOffset.UTC)
+    LocalDateTime.ofInstant(i, clock.getZone)
+
+  private def toInstant(localDateTime: LocalDateTime): Instant =
+    localDateTime.atZone(clock.getZone).withLaterOffsetAtOverlap().toInstant
 
   private def getInitialGovTalkStatus(request: GetGovTalkStatusRequest)(implicit
     hc: HeaderCarrier
@@ -832,6 +860,52 @@ class SubmissionService @Inject() (
     hc: HeaderCarrier
   ): Future[Option[GetGovTalkStatusResponse]] =
     formpProxyConnector.getGovTalkStatus(request, Polling)
+
+  private lazy val redirectUrlPolicy = AbsoluteWithHostnameFromAllowlist(appConfig.chrisHost.toSet)
+
+  private def validateAndNormalisePollUrl(
+    pollUrl: RedirectUrl
+  ): Either[String, String] =
+    pollUrl
+      .getEither(redirectUrlPolicy)
+      .map { safeUrl =>
+        (
+          if (appConfig.useOverridePollResponseEndPoint) {
+            UriHelper.replaceHostIgnoringUserInfoAndPort(
+              safeUrl.url,
+              appConfig.overridePollResponseEndPoint
+            )
+          } else None
+        ).getOrElse(safeUrl.url)
+      }
+
+  private def determineNextPollUrl(
+    returnedPollUrl: Option[String],
+    effectivePollUrl: String,
+    submissionId: String
+  ): String =
+    returnedPollUrl match {
+
+      case Some(url) =>
+        validateAndNormalisePollUrl(RedirectUrl(url)) match {
+
+          case Right(normalisedPollUrl) =>
+            normalisedPollUrl
+
+          case Left(reason) =>
+            logger.warn(
+              s"[SubmissionService][determineNextPollUrl] " +
+                s"ChRIS returned a poll URL that could not be validated. " +
+                s"Falling back to the current effective poll URL. " +
+                s"submissionId=$submissionId, reason=$reason"
+            )
+
+            effectivePollUrl
+        }
+
+      case None =>
+        effectivePollUrl
+    }
 }
 
 object SubmissionService {

@@ -18,9 +18,8 @@ package services
 
 import base.SpecBase
 import org.apache.pekko.Done
-import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.{any, argThat, eq as eqTo}
 import org.mockito.Mockito.*
-import org.mockito.ArgumentMatchers.eq as eqTo
 import org.scalatest.freespec.AnyFreeSpec
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ChrisConnector, EmailConnector, FormpProxyConnector}
@@ -57,6 +56,118 @@ final class SubmissionServiceSpec extends SpecBase {
       protocolStatus = "dataRequest",
       gatewayURL = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
     )
+
+  private def stubBatchPollScenario(
+    s: Setup,
+    originalPollUrl: String,
+    expectedPollUrl: String,
+    returnedPollUrl: Option[String] = None,
+    expectedNextPollUrl: Option[String] = None
+  ): ChrisPollResponse = {
+    import s._
+
+    val submissionId = "sub-123"
+    val instanceId   = "instance-123"
+    val correlation  = "corr-123"
+
+    val nextPollUrl =
+      expectedNextPollUrl.getOrElse(expectedPollUrl)
+
+    val session =
+      ChrisSubmissionSessionData(
+        submissionId = submissionId,
+        instanceId = instanceId,
+        correlationId = correlation,
+        lastMessageDate = Instant.parse("2025-01-01T00:00:00Z"),
+        numPolls = 0,
+        pollInterval = 10,
+        pollUrl = originalPollUrl,
+        govTalkStatus = None,
+        monthlyReturnContext = Some(pollMonthlyReturnContext)
+      )
+
+    val govTalk            = GetGovTalkStatusResponse(Seq.empty)
+    val sessionWithGovTalk = session.copy(govTalkStatus = Some(govTalk))
+
+    val pollResponse =
+      ChrisPollResponse(
+        status = ACCEPTED,
+        correlationId = correlation,
+        pollUrl = returnedPollUrl,
+        pollInterval = Some(20),
+        error = None,
+        irMarkReceived = None,
+        lastMessageDate = Some("2025-01-02T00:00:00Z"),
+        acceptedTime = Some("2025-01-02T00:00:00Z")
+      )
+
+    val updatedSession =
+      sessionWithGovTalk.copy(
+        lastMessageDate = Instant.parse("2025-01-02T00:00:00Z"),
+        numPolls = 1,
+        pollInterval = 20,
+        pollUrl = nextPollUrl
+      )
+
+    when(chrisSubmissionSessionRepository.get(eqTo(submissionId)))
+      .thenReturn(Future.successful(Some(session)))
+      .thenReturn(Future.successful(Some(session)))
+      .thenReturn(Future.successful(Some(sessionWithGovTalk)))
+      .thenReturn(Future.successful(Some(updatedSession)))
+      .thenReturn(Future.successful(Some(updatedSession)))
+
+    when(
+      formpProxyConnector.getGovTalkStatus(
+        eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+        eqTo(Polling)
+      )(any[HeaderCarrier])
+    ).thenReturn(
+      Future.successful(Some(govTalk))
+    )
+
+    when(chrisSubmissionSessionRepository.upsert(any[ChrisSubmissionSessionData])).thenReturn(Future.unit)
+
+    when(
+      chrisConnector.pollSubmission(
+        eqTo(correlation),
+        eqTo(expectedPollUrl),
+        eqTo(ChrisPollJourney.MonthlyReturn),
+        eqTo("monthly-hmrc-mark")
+      )(using any[HeaderCarrier])
+    ).thenReturn(
+      Future.successful(pollResponse)
+    )
+
+    when(formPSubmissionUpdateProcessorRegistry.processorFor(eqTo(ChrisPollJourney.MonthlyReturn)))
+      .thenReturn(formPSubmissionUpdateProcessor)
+
+    when(
+      formPSubmissionUpdateProcessor.handlePollResponse(
+        any[ChrisSubmissionSessionData],
+        any[ChrisPollResponse]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.unit)
+
+    when(
+      formpProxyConnector.updateGovTalkStatusCorrelationId(
+        any[UpdateGovTalkStatusCorrelationIdRequest]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.unit)
+
+    when(
+      formpProxyConnector.updateGovTalkStatusStatistics(
+        any[UpdateGovTalkStatusStatisticsRequest]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.unit)
+
+    when(
+      formpProxyConnector.updateGovTalkStatus(
+        any[UpdateGovTalkStatusRequest]
+      )(any[HeaderCarrier])
+    ).thenReturn(Future.unit)
+
+    pollResponse
+  }
 
   private val pollMonthlyReturnContext =
     StoredMonthlyReturnContext(
@@ -555,6 +666,289 @@ final class SubmissionServiceSpec extends SpecBase {
 
       verify(chrisSubmissionSessionRepository, never()).upsert(any[ChrisSubmissionSessionData])
       verifyNoInteractions(chrisConnector)
+    }
+  }
+
+  "pollSubmissionAndUpdateGovTalkStatusForBatch" - {
+
+    "must override the poll URL host when override polling endpoint is enabled" in {
+      val s = setup
+      import s._
+
+      val originalPollUrl =
+        "http://sa.chris.hmrc.gov.uk:9102/ChRIS/CISR/Filing/action/CISR"
+
+      val expectedPollUrl =
+        "https://chris.ws.ibt.hmrc.gov.uk/ChRIS/CISR/Filing/action/CISR"
+
+      when(appConfig.chrisHost)
+        .thenReturn(
+          Seq(
+            "chris.ws.ibt.hmrc.gov.uk",
+            "sa.chris.hmrc.gov.uk"
+          )
+        )
+
+      when(appConfig.useOverridePollResponseEndPoint)
+        .thenReturn(true)
+
+      when(appConfig.overridePollResponseEndPoint)
+        .thenReturn("chris.ws.ibt.hmrc.gov.uk")
+
+      stubBatchPollScenario(
+        s = s,
+        originalPollUrl = originalPollUrl,
+        expectedPollUrl = expectedPollUrl
+      )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatusForBatch(
+          "sub-123",
+          originalPollUrl,
+          ChrisPollJourney.MonthlyReturn
+        )
+        .futureValue
+
+      verify(chrisConnector).pollSubmission(
+        eqTo("corr-123"),
+        eqTo(expectedPollUrl),
+        eqTo(ChrisPollJourney.MonthlyReturn),
+        eqTo("monthly-hmrc-mark")
+      )(using any[HeaderCarrier])
+    }
+
+    "must use the original poll URL when override polling endpoint is disabled" in {
+      val s = setup
+      import s._
+
+      val pollUrl =
+        "https://sa.chris.hmrc.gov.uk/ChRIS/CISR/Filing/action/CISR"
+
+      when(appConfig.chrisHost)
+        .thenReturn(Seq("sa.chris.hmrc.gov.uk"))
+
+      when(appConfig.useOverridePollResponseEndPoint)
+        .thenReturn(false)
+
+      stubBatchPollScenario(
+        s = s,
+        originalPollUrl = pollUrl,
+        expectedPollUrl = pollUrl
+      )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatusForBatch(
+          "sub-123",
+          pollUrl,
+          ChrisPollJourney.MonthlyReturn
+        )
+        .futureValue
+
+      verify(chrisConnector).pollSubmission(
+        eqTo("corr-123"),
+        eqTo(pollUrl),
+        eqTo(ChrisPollJourney.MonthlyReturn),
+        eqTo("monthly-hmrc-mark")
+      )(using any[HeaderCarrier])
+    }
+
+    "must fail without polling Chris when the poll URL host is not recognised" in {
+      val s = setup
+      import s._
+
+      val pollUrl =
+        "https://not-recognised.example.com/ChRIS/CISR/Filing/action/CISR"
+
+      when(appConfig.chrisHost)
+        .thenReturn(
+          Seq(
+            "chris.ws.ibt.hmrc.gov.uk",
+            "sa.chris.hmrc.gov.uk"
+          )
+        )
+
+      when(appConfig.useOverridePollResponseEndPoint)
+        .thenReturn(true)
+
+      when(appConfig.overridePollResponseEndPoint)
+        .thenReturn("chris.ws.ibt.hmrc.gov.uk")
+
+      val exception =
+        service
+          .pollSubmissionAndUpdateGovTalkStatusForBatch(
+            "sub-123",
+            pollUrl,
+            ChrisPollJourney.MonthlyReturn
+          )
+          .failed
+          .futureValue
+
+      exception mustBe a[IllegalArgumentException]
+      exception.getMessage must include("Invalid ChRIS batch poll URL")
+
+      verifyNoInteractions(chrisConnector)
+    }
+
+    "must persist the normalised poll URL when Chris returns a recognised legacy host" in {
+      val s = setup
+      import s._
+
+      val originalPollUrl =
+        "http://sa.chris.hmrc.gov.uk:9102/ChRIS/CISR/Filing/action/CISR"
+
+      val expectedPollUrl =
+        "https://chris.ws.ibt.hmrc.gov.uk/ChRIS/CISR/Filing/action/CISR"
+
+      when(appConfig.chrisHost)
+        .thenReturn(
+          Seq(
+            "chris.ws.ibt.hmrc.gov.uk",
+            "sa.chris.hmrc.gov.uk"
+          )
+        )
+
+      when(appConfig.useOverridePollResponseEndPoint)
+        .thenReturn(true)
+
+      when(appConfig.overridePollResponseEndPoint)
+        .thenReturn("chris.ws.ibt.hmrc.gov.uk")
+
+      stubBatchPollScenario(
+        s = s,
+        originalPollUrl = originalPollUrl,
+        expectedPollUrl = expectedPollUrl,
+        returnedPollUrl = Some(originalPollUrl),
+        expectedNextPollUrl = Some(expectedPollUrl)
+      )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatusForBatch(
+          "sub-123",
+          originalPollUrl,
+          ChrisPollJourney.MonthlyReturn
+        )
+        .futureValue
+
+      verify(formpProxyConnector).updateGovTalkStatusCorrelationId(
+        argThat[UpdateGovTalkStatusCorrelationIdRequest](
+          _.gatewayURL == expectedPollUrl
+        )
+      )(any[HeaderCarrier])
+
+      verify(formpProxyConnector).updateGovTalkStatusStatistics(
+        argThat[UpdateGovTalkStatusStatisticsRequest](
+          _.gatewayURL == expectedPollUrl
+        )
+      )(any[HeaderCarrier])
+    }
+
+    "must persist the effective poll URL when Chris returns an unrecognised host" in {
+      val s = setup
+      import s._
+
+      val originalPollUrl =
+        "http://sa.chris.hmrc.gov.uk:9102/ChRIS/CISR/Filing/action/CISR"
+
+      val expectedPollUrl =
+        "https://chris.ws.ibt.hmrc.gov.uk/ChRIS/CISR/Filing/action/CISR"
+
+      val returnedPollUrl =
+        "https://not-recognised.example.com/ChRIS/CISR/Filing/action/CISR"
+
+      when(appConfig.chrisHost)
+        .thenReturn(
+          Seq(
+            "chris.ws.ibt.hmrc.gov.uk",
+            "sa.chris.hmrc.gov.uk"
+          )
+        )
+
+      when(appConfig.useOverridePollResponseEndPoint)
+        .thenReturn(true)
+
+      when(appConfig.overridePollResponseEndPoint)
+        .thenReturn("chris.ws.ibt.hmrc.gov.uk")
+
+      stubBatchPollScenario(
+        s = s,
+        originalPollUrl = originalPollUrl,
+        expectedPollUrl = expectedPollUrl,
+        returnedPollUrl = Some(returnedPollUrl),
+        expectedNextPollUrl = Some(expectedPollUrl)
+      )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatusForBatch(
+          "sub-123",
+          originalPollUrl,
+          ChrisPollJourney.MonthlyReturn
+        )
+        .futureValue
+
+      verify(formpProxyConnector).updateGovTalkStatusCorrelationId(
+        argThat[UpdateGovTalkStatusCorrelationIdRequest](
+          _.gatewayURL == expectedPollUrl
+        )
+      )(any[HeaderCarrier])
+
+      verify(formpProxyConnector).updateGovTalkStatusStatistics(
+        argThat[UpdateGovTalkStatusStatisticsRequest](
+          _.gatewayURL == expectedPollUrl
+        )
+      )(any[HeaderCarrier])
+    }
+
+    "must persist the effective poll URL when Chris does not return a poll URL" in {
+      val s = setup
+      import s._
+
+      val originalPollUrl =
+        "http://sa.chris.hmrc.gov.uk:9102/ChRIS/CISR/Filing/action/CISR"
+
+      val expectedPollUrl =
+        "https://chris.ws.ibt.hmrc.gov.uk/ChRIS/CISR/Filing/action/CISR"
+
+      when(appConfig.chrisHost)
+        .thenReturn(
+          Seq(
+            "chris.ws.ibt.hmrc.gov.uk",
+            "sa.chris.hmrc.gov.uk"
+          )
+        )
+
+      when(appConfig.useOverridePollResponseEndPoint)
+        .thenReturn(true)
+
+      when(appConfig.overridePollResponseEndPoint)
+        .thenReturn("chris.ws.ibt.hmrc.gov.uk")
+
+      stubBatchPollScenario(
+        s = s,
+        originalPollUrl = originalPollUrl,
+        expectedPollUrl = expectedPollUrl,
+        returnedPollUrl = None,
+        expectedNextPollUrl = Some(expectedPollUrl)
+      )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatusForBatch(
+          "sub-123",
+          originalPollUrl,
+          ChrisPollJourney.MonthlyReturn
+        )
+        .futureValue
+
+      verify(formpProxyConnector).updateGovTalkStatusCorrelationId(
+        argThat[UpdateGovTalkStatusCorrelationIdRequest](
+          _.gatewayURL == expectedPollUrl
+        )
+      )(any[HeaderCarrier])
+
+      verify(formpProxyConnector).updateGovTalkStatusStatistics(
+        argThat[UpdateGovTalkStatusStatisticsRequest](
+          _.gatewayURL == expectedPollUrl
+        )
+      )(any[HeaderCarrier])
     }
   }
 
@@ -1752,6 +2146,100 @@ final class SubmissionServiceSpec extends SpecBase {
       verifyNoInteractions(emailConnector)
     }
 
+    "must interpret the FormP lastMessageDate as UK local time when rebuilding the session during BST" in new Setup {
+      val bstClock: Clock               = Clock.fixed(Instant.parse("2025-07-01T10:00:00Z"), ukZone)
+      val bstService: SubmissionService = new SubmissionService(
+        chrisConnector,
+        formpProxyConnector,
+        emailConnector,
+        monthlyReturnService,
+        chrisSubmissionSessionRepository,
+        formPSubmissionUpdateProcessorRegistry,
+        appConfig,
+        bstClock
+      )
+
+      val statusRecord =
+        GovTalkStatusRecord(
+          userIdentifier = instanceId,
+          formResultID = submissionIdString,
+          correlationID = "corr-123",
+          formLock = "N",
+          createDate = Some(LocalDateTime.of(2025, 7, 1, 10, 0)),
+          endStateDate = None,
+          lastMessageDate = LocalDateTime.of(2025, 7, 1, 12, 30),
+          numPolls = 2,
+          pollInterval = 5,
+          protocolStatus = "dataPoll",
+          gatewayURL = "/poll/123"
+        )
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(GetGovTalkStatusResponse(govtalk_status = Seq(statusRecord)))))
+
+      when(
+        formpProxyConnector.getSubmissionWithVerificationBatch(
+          eqTo(instanceId),
+          eqTo(verificationBatchResourceRef)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(snapshotResponse))
+
+      when(chrisSubmissionSessionRepository.upsert(any[ChrisSubmissionSessionData]))
+        .thenReturn(Future.unit)
+
+      val result =
+        bstService
+          .syncVerificationSessionForPolling(submissionToPoll)
+          .futureValue
+
+      result.sessionData.lastMessageDate mustBe Instant.parse("2025-07-01T11:30:00Z")
+    }
+
+    "must interpret an ambiguous FormP lastMessageDate as GMT when the clocks go back" in new Setup {
+      val statusRecord =
+        GovTalkStatusRecord(
+          userIdentifier = instanceId,
+          formResultID = submissionIdString,
+          correlationID = "corr-123",
+          formLock = "N",
+          createDate = Some(LocalDateTime.of(2025, 10, 26, 1, 0)),
+          endStateDate = None,
+          lastMessageDate = LocalDateTime.of(2025, 10, 26, 1, 30),
+          numPolls = 2,
+          pollInterval = 5,
+          protocolStatus = "dataPoll",
+          gatewayURL = "/poll/123"
+        )
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionIdString)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(GetGovTalkStatusResponse(govtalk_status = Seq(statusRecord)))))
+
+      when(
+        formpProxyConnector.getSubmissionWithVerificationBatch(
+          eqTo(instanceId),
+          eqTo(verificationBatchResourceRef)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(snapshotResponse))
+
+      when(chrisSubmissionSessionRepository.upsert(any[ChrisSubmissionSessionData]))
+        .thenReturn(Future.unit)
+
+      val result =
+        service
+          .syncVerificationSessionForPolling(submissionToPoll)
+          .futureValue
+
+      result.sessionData.lastMessageDate mustBe Instant.parse("2025-10-26T01:30:00Z")
+    }
+
     "must fail when no polling GovTalk status is found" in new Setup {
       when(
         formpProxyConnector.getGovTalkStatus(
@@ -1992,6 +2480,78 @@ final class SubmissionServiceSpec extends SpecBase {
       service
         .processMonthlyReturnGovTalkStatusCheck(instanceId, submissionId, monthlyReturnContext, lastMessageDate)
         .futureValue mustBe pollUrl
+    }
+
+    "writes lastMessageDate to FormP as UK local time during BST" in {
+      val s = setup
+      import s._
+
+      val instanceId      = "instance-123"
+      val submissionId    = "sub-123"
+      val lastMessageDate = Instant.parse("2025-07-01T10:00:00Z")
+      val correlationID   = "CORR-123"
+      val pollInterval    = 10
+      val pollUrl         = "http://localhost:6997/submission/ChRIS/CISR/Filing/sync/CIS300MR"
+
+      val govTalkResponse = GetGovTalkStatusResponse(govtalk_status =
+        Seq(
+          GovTalkStatusRecord(
+            userIdentifier = instanceId,
+            formResultID = "123456",
+            correlationID = correlationID,
+            formLock = "N",
+            createDate = Some(LocalDateTime.of(2025, 7, 1, 11, 0)),
+            endStateDate = None,
+            lastMessageDate = LocalDateTime.of(2025, 7, 1, 11, 0),
+            numPolls = 0,
+            pollInterval = pollInterval,
+            protocolStatus = "initial",
+            gatewayURL = pollUrl
+          )
+        )
+      )
+
+      when(
+        formpProxyConnector.getGovTalkStatus(
+          eqTo(GetGovTalkStatusRequest(instanceId, submissionId)),
+          eqTo(Polling)
+        )(any[HeaderCarrier])
+      ).thenReturn(Future.successful(Some(govTalkResponse)))
+
+      when(chrisSubmissionSessionRepository.upsert(any[ChrisSubmissionSessionData]))
+        .thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusCorrelationId(any[UpdateGovTalkStatusCorrelationIdRequest])(
+          any[HeaderCarrier]
+        )
+      ).thenReturn(Future.unit)
+
+      when(
+        formpProxyConnector.updateGovTalkStatusStatistics(any[UpdateGovTalkStatusStatisticsRequest])(
+          any[HeaderCarrier]
+        )
+      ).thenReturn(Future.unit)
+
+      when(formpProxyConnector.updateGovTalkStatus(any[UpdateGovTalkStatusRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.unit)
+
+      service
+        .processMonthlyReturnGovTalkStatusCheck(instanceId, submissionId, monthlyReturnContext, lastMessageDate)
+        .futureValue mustBe pollUrl
+
+      verify(formpProxyConnector).updateGovTalkStatusStatistics(
+        eqTo(
+          UpdateGovTalkStatusStatisticsRequest(
+            instanceId,
+            submissionId,
+            LocalDateTime.of(2025, 7, 1, 11, 0),
+            0,
+            pollInterval,
+            pollUrl
+          )
+        )
+      )(any[HeaderCarrier])
     }
 
     "failed when govTalkStatus response is None" in {
@@ -2313,8 +2873,10 @@ final class SubmissionServiceSpec extends SpecBase {
       clock
     )
 
-    when(appConfig.chrisGatewayUrl)
-      .thenReturn(chrisGatewayUrl)
+    when(appConfig.chrisGatewayUrl).thenReturn(chrisGatewayUrl)
+    when(appConfig.chrisHost).thenReturn(Seq("localhost"))
+    when(appConfig.useOverridePollResponseEndPoint).thenReturn(false)
+    when(appConfig.overridePollResponseEndPoint).thenReturn("localhost")
 
     def mkPayload(
       corrId: String = "CID-123",
