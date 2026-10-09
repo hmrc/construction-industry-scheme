@@ -594,4 +594,101 @@ class FinalValidationDraftControllerSpec extends SpecBase {
     }
   }
 
+  "resetSubcontractor" - {
+
+    "return OK when the subcontractor is reset" in {
+
+      when(
+        finalValidationDraftService.resetSubcontractor(
+          draftId,
+          credentialId,
+          instanceId,
+          subcontractorId
+        )
+      ).thenReturn(
+        Future.successful(draft)
+      )
+
+      val result =
+        controller
+          .resetSubcontractor(
+            instanceId = instanceId,
+            draftId = draftId,
+            subcontractorId = subcontractorId
+          )(fakeRequest)
+
+      status(result) mustBe OK
+
+      contentAsJson(result) mustBe Json.toJson(draft)
+
+      verify(finalValidationDraftService)
+        .resetSubcontractor(
+          draftId,
+          credentialId,
+          instanceId,
+          subcontractorId
+        )
+    }
+
+    "return NOT_FOUND when the draft or subcontractor is not found" in {
+
+      when(
+        finalValidationDraftService.resetSubcontractor(
+          draftId,
+          credentialId,
+          instanceId,
+          subcontractorId
+        )
+      ).thenReturn(
+        Future.failed(
+          new NoSuchElementException("not found")
+        )
+      )
+
+      val result =
+        controller
+          .resetSubcontractor(
+            instanceId = instanceId,
+            draftId = draftId,
+            subcontractorId = subcontractorId
+          )(fakeRequest)
+
+      status(result) mustBe NOT_FOUND
+
+      contentAsJson(result) mustBe Json.obj(
+        "error" -> "Final Validation draft or subcontractor not found"
+      )
+    }
+
+    "return INTERNAL_SERVER_ERROR when resetting the subcontractor fails" in {
+
+      when(
+        finalValidationDraftService.resetSubcontractor(
+          draftId,
+          credentialId,
+          instanceId,
+          subcontractorId
+        )
+      ).thenReturn(
+        Future.failed(
+          new RuntimeException("boom")
+        )
+      )
+
+      val result =
+        controller
+          .resetSubcontractor(
+            instanceId = instanceId,
+            draftId = draftId,
+            subcontractorId = subcontractorId
+          )(fakeRequest)
+
+      status(result) mustBe INTERNAL_SERVER_ERROR
+
+      contentAsJson(result) mustBe Json.obj(
+        "error" -> "Failed to reset Final Validation subcontractor"
+      )
+    }
+  }
+
 }
