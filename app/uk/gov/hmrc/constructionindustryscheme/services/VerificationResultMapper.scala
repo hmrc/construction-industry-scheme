@@ -105,11 +105,9 @@ class VerificationResultMapper @Inject() () extends Logging {
     requestedVerifications: Seq[StoredRequestedVerification]
   ): Map[Int, RequestedVerificationMatch] = {
     val unmatchedRequests = scala.collection.mutable.Set.from(requestedVerifications.indices)
-    val matchedResponses  = scala.collection.mutable.Map.empty[Int, RequestedVerificationMatch]
+    val matchedResponses  = scala.collection.mutable.Map.empty[Int, RequestedVerificationMatch] // matching pairs
 
-    def matchPass(
-      matches: (StoredRequestedVerification, CisResponseSubcontractor) => Boolean
-    ): Unit =
+    def matchPass(matches: (StoredRequestedVerification, CisResponseSubcontractor) => Boolean): Unit =
       chrisResults.indices
         .filterNot(matchedResponses.contains)
         .foreach { responseIndex =>
@@ -126,7 +124,7 @@ class VerificationResultMapper @Inject() () extends Logging {
 
     // 1. UTR matching
     matchPass { (requested, chris) =>
-      requested.subcontractorType.map(_.trim.toLowerCase) match {
+      hasValue(requested.utr) && (requested.subcontractorType.map(_.trim.toLowerCase) match {
         case Some("partnership") =>
           same(requested.utr, chris.partnershipUtr)
 
@@ -135,7 +133,7 @@ class VerificationResultMapper @Inject() () extends Logging {
 
         case _ =>
           false
-      }
+      })
     }
 
     // 2. Trading name matching
