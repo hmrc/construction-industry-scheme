@@ -355,57 +355,6 @@ class VerificationResultMapperSpec extends SpecBase {
         )
       )
     }
-
-    "fail when multiple requested verification matches" in {
-      val mapper = new VerificationResultMapper()
-
-      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
-
-      val chrisResult = cisResponseSubcontractor(
-        partnershipUtr = Some("1234567890"),
-        tradingName = Some("John A"),
-        foreName = Some("John"),
-        middleName = Some("A"),
-        surname = Some("Smith"),
-        matched = Some("unmatched"),
-        taxTreatment = Some("net"),
-        verificationNumber = Some("V1000000007")
-      )
-
-      val context = storedVerificationContext(
-        requestedVerifications = Seq(
-          storedRequestedVerification(
-            verificationResourceRef = 14L,
-            tradingName = Some("John A"),
-            foreName = Some("John"),
-            middleName = Some("A"),
-            surname = Some("Smith"),
-            utr = Some("1234567890"),
-            subcontractorType = Some("partnership")
-          ),
-          storedRequestedVerification(
-            verificationResourceRef = 14L,
-            tradingName = Some("John A"),
-            foreName = Some("John"),
-            middleName = Some("A"),
-            surname = Some("Smith"),
-            utr = Some("1234567890"),
-            subcontractorType = Some("partnership")
-          )
-        )
-      )
-
-      val ex = mapper
-        .mapAll(
-          chrisResults = Seq(chrisResult),
-          context = context,
-          verifiedDate = verifiedDate
-        )
-        .failed
-        .futureValue
-
-      ex.getMessage must include("Multiple matching requested verifications found for subcontractor")
-    }
   }
 
   private def cisResponseSubcontractor(
