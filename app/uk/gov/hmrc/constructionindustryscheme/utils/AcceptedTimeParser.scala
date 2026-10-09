@@ -16,16 +16,22 @@
 
 package uk.gov.hmrc.constructionindustryscheme.utils
 
+import play.api.Logger
+
 import java.time.{Instant, LocalDateTime, OffsetDateTime, ZoneOffset}
 import scala.util.Try
 
 object AcceptedTimeParser {
 
+  private val logger = Logger(getClass)
+
   def parse(value: String): Option[Instant] =
     Option(value).map(_.trim).filter(_.nonEmpty).flatMap { trimmed =>
-      Try(LocalDateTime.parse(trimmed).toInstant(ZoneOffset.UTC))
+      val result = Try(LocalDateTime.parse(trimmed).toInstant(ZoneOffset.UTC))
         .orElse(Try(OffsetDateTime.parse(trimmed).toInstant))
         .orElse(Try(Instant.parse(trimmed)))
         .toOption
+      if (result.isEmpty) logger.warn(s"[AcceptedTimeParser] Failed to parse acceptedTime value: '$trimmed'")
+      result
     }
 }
