@@ -267,7 +267,9 @@ class ClientListService @Inject() (
       .recover {
         case _: ClientListDownloadInProgressException => InProgress
         case _: ClientListDownloadFailedException     => Failed
-        case _: SystemException                       => InitiateDownload
+        case e: SystemException                       =>
+          logger.error("[ClientListService][process] - client list download failed with system exception", e)
+          InitiateDownload
       }
 
   def removeClient(
