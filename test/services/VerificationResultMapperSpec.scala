@@ -27,6 +27,59 @@ class VerificationResultMapperSpec extends SpecBase {
 
   "VerificationResultMapper" - {
 
+    "No requested verification is available for an unmatched response subcontractor" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val chrisResult = cisResponseSubcontractor(
+        utr = Some("9999999999"),
+        tradingName = Some("Different Trading Name"),
+        foreName = Some("Different"),
+        middleName = None,
+        surname = Some("Person")
+      )
+
+      val result = mapper.mapAll(
+        chrisResults = Seq(chrisResult),
+        context = storedVerificationContext(requestedVerifications = Seq.empty),
+        verifiedDate = verifiedDate
+      )
+
+      result.failed.futureValue.getMessage mustBe
+        s"Errors occurred during mapping: No requested verification available for subcontractor: $chrisResult"
+    }
+
+    "fail with all mapping errors when no requested verifications are available" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val first = cisResponseSubcontractor(
+        utr = Some("1111111111"),
+        tradingName = Some("First Trading Name"),
+        foreName = Some("First"),
+        middleName = None,
+        surname = Some("Person")
+      )
+
+      val second = cisResponseSubcontractor(
+        utr = Some("2222222222"),
+        tradingName = Some("Second Trading Name"),
+        foreName = Some("Second"),
+        middleName = None,
+        surname = Some("Person")
+      )
+
+      val result = mapper.mapAll(
+        chrisResults = Seq(first, second),
+        context = storedVerificationContext(requestedVerifications = Seq.empty),
+        verifiedDate = verifiedDate
+      )
+
+      result.failed.futureValue.getMessage mustBe
+        s"Errors occurred during mapping: No requested verification available for subcontractor: $first; " +
+        s"No requested verification available for subcontractor: $second"
+    }
+
     "map ChRIS result to verification result for sole trader when verify action has verification number" in {
       val mapper = new VerificationResultMapper()
 
@@ -45,7 +98,7 @@ class VerificationResultMapperSpec extends SpecBase {
       val context = storedVerificationContext(
         requestedVerifications = Seq(
           storedRequestedVerification(
-            subbieResourceRef = Some(13L),
+            verificationResourceRef = 14L,
             actionIndicator = "verify",
             foreName = Some("John"),
             middleName = Some("A"),
@@ -64,11 +117,59 @@ class VerificationResultMapperSpec extends SpecBase {
         )
         .futureValue mustBe Seq(
         VerificationResult(
-          resourceRef = 13L,
+          resourceRef = 14L,
           matched = None,
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
-          taxTreatment = "net",
+          taxTreatment = Some("net"),
+          verifiedDate = None
+        )
+      )
+    }
+
+    "map ChRIS result to verification result for partnership when verify action has verification number" in {
+      val mapper = new VerificationResultMapper()
+
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val chrisResult = cisResponseSubcontractor(
+        partnershipUtr = Some("1234567890"),
+        tradingName = Some("John A"),
+        foreName = Some("John"),
+        middleName = Some("A"),
+        surname = Some("Smith"),
+        matched = Some("matched"),
+        taxTreatment = None,
+        verificationNumber = Some("V1000000007")
+      )
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 14L,
+            tradingName = Some("John A"),
+            foreName = Some("John"),
+            middleName = Some("A"),
+            surname = Some("Smith"),
+            utr = Some("1234567890"),
+            subcontractorType = Some("partnership")
+          )
+        )
+      )
+
+      mapper
+        .mapAll(
+          chrisResults = Seq(chrisResult),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue mustBe Seq(
+        VerificationResult(
+          resourceRef = 14L,
+          matched = Some("Y"),
+          verified = Some("Y"),
+          verificationNumber = Some("V1000000007"),
+          taxTreatment = None,
           verifiedDate = None
         )
       )
@@ -92,7 +193,7 @@ class VerificationResultMapperSpec extends SpecBase {
       val context = storedVerificationContext(
         requestedVerifications = Seq(
           storedRequestedVerification(
-            subbieResourceRef = Some(13L),
+            verificationResourceRef = 14L,
             actionIndicator = "verify",
             foreName = Some("John"),
             middleName = Some("A"),
@@ -111,11 +212,57 @@ class VerificationResultMapperSpec extends SpecBase {
         )
         .futureValue mustBe Seq(
         VerificationResult(
-          resourceRef = 13L,
+          resourceRef = 14L,
           matched = None,
           verified = None,
           verificationNumber = None,
-          taxTreatment = "net",
+          taxTreatment = Some("net"),
+          verifiedDate = None
+        )
+      )
+    }
+
+    "map ChRIS result with missing verification number and match is matched" in {
+      val mapper = new VerificationResultMapper()
+
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val chrisResult = cisResponseSubcontractor(
+        utr = Some("1234567890"),
+        foreName = Some("John"),
+        middleName = Some("A"),
+        surname = Some("Smith"),
+        matched = Some("matched"),
+        taxTreatment = Some("net"),
+        verificationNumber = None
+      )
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 14L,
+            foreName = Some("John"),
+            middleName = Some("A"),
+            surname = Some("Smith"),
+            utr = Some("1234567890"),
+            subcontractorType = Some("soletrader")
+          )
+        )
+      )
+
+      mapper
+        .mapAll(
+          chrisResults = Seq(chrisResult),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue mustBe Seq(
+        VerificationResult(
+          resourceRef = 14L,
+          matched = None,
+          verified = None,
+          verificationNumber = None,
+          taxTreatment = Some("net"),
           verifiedDate = None
         )
       )
@@ -139,7 +286,7 @@ class VerificationResultMapperSpec extends SpecBase {
       val context = storedVerificationContext(
         requestedVerifications = Seq(
           storedRequestedVerification(
-            subbieResourceRef = Some(13L),
+            verificationResourceRef = 14L,
             actionIndicator = "verify",
             foreName = Some("John"),
             middleName = Some("A"),
@@ -158,11 +305,11 @@ class VerificationResultMapperSpec extends SpecBase {
         )
         .futureValue mustBe Seq(
         VerificationResult(
-          resourceRef = 13L,
+          resourceRef = 14L,
           matched = Some("Y"),
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
-          taxTreatment = "net",
+          taxTreatment = Some("net"),
           verifiedDate = Some(verifiedDate)
         )
       )
@@ -186,7 +333,7 @@ class VerificationResultMapperSpec extends SpecBase {
       val context = storedVerificationContext(
         requestedVerifications = Seq(
           storedRequestedVerification(
-            subbieResourceRef = Some(13L),
+            verificationResourceRef = 14L,
             actionIndicator = "verify",
             foreName = Some("John"),
             middleName = Some("A"),
@@ -205,42 +352,238 @@ class VerificationResultMapperSpec extends SpecBase {
         )
         .futureValue mustBe Seq(
         VerificationResult(
-          resourceRef = 13L,
+          resourceRef = 14L,
           matched = None,
           verified = None,
           verificationNumber = None,
-          taxTreatment = "net",
+          taxTreatment = Some("net"),
           verifiedDate = None
         )
       )
     }
 
-    "fail when no requested verification matches" in {
+    "map ChRIS result to verification result for partnership when verify action has verification number but no subcontractors" in {
       val mapper = new VerificationResultMapper()
 
       val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
 
       val chrisResult = cisResponseSubcontractor(
-        utr = Some("9999999999"),
-        foreName = Some("Jane"),
-        surname = Some("Bloggs"),
-        matched = Some("matched"),
-        taxTreatment = None,
-        verificationNumber = None
+        partnershipUtr = Some("12345678909"),
+        foreName = Some("John"),
+        middleName = Some("A"),
+        surname = Some("Smith"),
+        matched = Some("unmatched"),
+        taxTreatment = Some("net"),
+        verificationNumber = Some("V1000000007")
       )
 
-      val context = storedVerificationContext(requestedVerifications = Seq.empty)
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 14L,
+            foreName = Some("John"),
+            middleName = Some("A"),
+            tradingName = Some("Not matching"),
+            surname = Some("Smith"),
+            utr = Some("1234567890"),
+            subcontractorType = Some("partnership")
+          )
+        )
+      )
 
-      val ex = mapper
+      mapper
         .mapAll(
           chrisResults = Seq(chrisResult),
           context = context,
           verifiedDate = verifiedDate
         )
-        .failed
-        .futureValue
+        .futureValue mustBe Seq(
+        VerificationResult(
+          resourceRef = 14L,
+          matched = None,
+          verified = None,
+          verificationNumber = None,
+          taxTreatment = None,
+          verifiedDate = None
+        )
+      )
+    }
 
-      ex.getMessage must include("No matching requested verification found")
+    "match a sole trader by names when UTR and trading name do not match" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val chrisResult = cisResponseSubcontractor(
+        utr = Some("9999999999"),
+        tradingName = Some("Response Trading Name"),
+        foreName = Some("John"),
+        middleName = Some("A"),
+        surname = Some("Smith"),
+        matched = Some("matched")
+      )
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 14L,
+            utr = Some("1234567890"),
+            tradingName = Some("Request Trading Name"),
+            foreName = Some("John"),
+            middleName = Some("A"),
+            surname = Some("Smith"),
+            subcontractorType = Some("soletrader")
+          )
+        )
+      )
+
+      mapper
+        .mapAll(
+          chrisResults = Seq(chrisResult),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue mustBe Seq(
+        VerificationResult(
+          resourceRef = 14L,
+          matched = Some("Y"),
+          verified = Some("Y"),
+          verificationNumber = Some("V1000000007"),
+          taxTreatment = Some("net"),
+          verifiedDate = Some(verifiedDate)
+        )
+      )
+    }
+
+    "not match a sole trader when one of the names differs" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val chrisResult = cisResponseSubcontractor(
+        utr = Some("9999999999"),
+        tradingName = Some("Response Trading Name"),
+        foreName = Some("John"),
+        middleName = Some("B"),
+        surname = Some("Smith")
+      )
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 14L,
+            utr = Some("1234567890"),
+            tradingName = Some("Request Trading Name"),
+            foreName = Some("John"),
+            middleName = Some("A"),
+            surname = Some("Smith"),
+            subcontractorType = Some("soletrader")
+          )
+        )
+      )
+
+      mapper
+        .mapAll(
+          chrisResults = Seq(chrisResult),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue mustBe Seq(
+        VerificationResult(
+          resourceRef = 14L,
+          matched = None,
+          verified = None,
+          verificationNumber = None,
+          taxTreatment = None,
+          verifiedDate = None
+        )
+      )
+    }
+
+    "not match a sole trader when all requested names are empty" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val chrisResult = cisResponseSubcontractor(
+        utr = Some("9999999999"),
+        tradingName = Some("Response Trading Name"),
+        foreName = None,
+        middleName = None,
+        surname = None
+      )
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 14L,
+            utr = Some("1234567890"),
+            tradingName = Some("Request Trading Name"),
+            foreName = None,
+            middleName = None,
+            surname = None,
+            subcontractorType = Some("soletrader")
+          )
+        )
+      )
+
+      mapper
+        .mapAll(
+          chrisResults = Seq(chrisResult),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue mustBe Seq(
+        VerificationResult(
+          resourceRef = 14L,
+          matched = None,
+          verified = None,
+          verificationNumber = None,
+          taxTreatment = None,
+          verifiedDate = None
+        )
+      )
+    }
+
+    "not match UTRs for an unsupported subcontractor type" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val chrisResult = cisResponseSubcontractor(
+        utr = Some("1234567890"),
+        tradingName = Some("Response Trading Name"),
+        foreName = Some("Response"),
+        middleName = None,
+        surname = Some("Person")
+      )
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 14L,
+            utr = Some("1234567890"),
+            tradingName = Some("Request Trading Name"),
+            foreName = Some("Request"),
+            middleName = None,
+            surname = Some("Person"),
+            subcontractorType = Some("other")
+          )
+        )
+      )
+
+      mapper
+        .mapAll(
+          chrisResults = Seq(chrisResult),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue mustBe Seq(
+        VerificationResult(
+          resourceRef = 14L,
+          matched = None,
+          verified = None,
+          verificationNumber = None,
+          taxTreatment = None,
+          verifiedDate = None
+        )
+      )
     }
   }
 

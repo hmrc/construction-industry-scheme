@@ -139,14 +139,15 @@ object CisVerificationRequestXmlBuilder {
   }
 
   private def buildName(sub: SubcontractorCurrentVerification): Option[Elem] = {
-    val fore = nonBlank(sub.firstName).orElse(nonBlank(sub.secondName))
+    val fore = Seq(sub.firstName, sub.secondName).map(nonBlank)
     val sur  = nonBlank(sub.surname)
 
-    if (fore.isEmpty && sur.isEmpty) None
+    if (fore.forall(_.isEmpty) && sur.isEmpty) None
     else {
       Some(
         <Name>
-          <Fore>{fore.getOrElse("")}</Fore>
+          <Fore>{fore.head.getOrElse("")}</Fore>
+          <Fore>{fore.tail.head.getOrElse("")}</Fore>
           <Sur>{sur.getOrElse("")}</Sur>
         </Name>
       )

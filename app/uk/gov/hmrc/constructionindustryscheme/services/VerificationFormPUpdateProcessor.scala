@@ -23,7 +23,8 @@ import uk.gov.hmrc.constructionindustryscheme.connectors.FormpProxyConnector
 import uk.gov.hmrc.constructionindustryscheme.repositories.{ChrisSubmissionSessionData, StoredVerificationContext}
 import uk.gov.hmrc.http.HeaderCarrier
 
-import java.time.LocalDateTime
+import java.time.{Clock, LocalDateTime, ZoneId}
+import java.time.format.DateTimeFormatter
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -31,7 +32,8 @@ import scala.util.{Failure, Success, Try}
 @Singleton
 class VerificationFormPUpdateProcessor @Inject() (
   formpProxyConnector: FormpProxyConnector,
-  verificationResultMapper: VerificationResultMapper
+  verificationResultMapper: VerificationResultMapper,
+  clock: Clock
 )(implicit ex: ExecutionContext)
     extends FormPSubmissionUpdateProcessor {
 
@@ -85,7 +87,7 @@ class VerificationFormPUpdateProcessor @Inject() (
 
     val result =
       for {
-        acceptedTime <- requiredField(response.acceptedTime, "acceptedTime")
+        acceptedTime <- acceptedTimeOrCurrentTimestamp(response.acceptedTime)
         verifiedDate <- parseDateTime(acceptedTime, "acceptedTime")
       } yield (acceptedTime, verifiedDate)
 
@@ -142,13 +144,14 @@ class VerificationFormPUpdateProcessor @Inject() (
   private def isVerificationSuccess(response: ChrisPollResponse): Boolean =
     response.status == SUBMITTED || response.status == SUBMITTED_NO_RECEIPT
 
-  private def requiredField(
-    value: Option[String],
-    fieldName: String
+  private def acceptedTimeOrCurrentTimestamp(
+    value: Option[String]
   ): Try[String] =
     value.map(_.trim).filter(_.nonEmpty) match {
       case Some(value) => Success(value)
-      case None        => Failure(new RuntimeException(s"Missing required field: $fieldName"))
+      case None        =>
+        val gatewayTimestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+        Success(LocalDateTime.now(clock.withZone(ZoneId.of("Europe/London"))).format(gatewayTimestampFormatter))
     }
 
   private def parseDateTime(

@@ -129,12 +129,6 @@ class ContractorSchemeControllerSpec extends SpecBase {
       instanceId = "abc-123"
     )
 
-    val validJson: JsValue =
-      Json.obj(
-        "currentVersion" -> 1,
-        "instanceId"     -> "abc-123"
-      )
-
     val response = UpdateContractorSchemeVersionResponse(newVersion = 2)
 
     "returns 200 OK with the new version when service succeeds" in {

@@ -80,8 +80,7 @@ class UpdateSubcontractorForEditRequestSpec extends SpecBase {
           )
         )
 
-      val json =
-        Json.toJson(request)
+      val json = Json.toJson(request)
 
       json.as[UpdateSubcontractorForEditRequest] mustBe request
     }
@@ -95,11 +94,9 @@ class UpdateSubcontractorForEditRequestSpec extends SpecBase {
           verificationForEdit = None
         )
 
-      val json =
-        Json.toJson(request)
+      val json = Json.toJson(request)
 
-      val result =
-        json.as[UpdateSubcontractorForEditRequest]
+      val result = json.as[UpdateSubcontractorForEditRequest]
 
       result mustBe request
       result.verificationForEdit mustBe None
@@ -119,11 +116,9 @@ class UpdateSubcontractorForEditRequestSpec extends SpecBase {
           )
         )
 
-      val json =
-        Json.toJson(request)
+      val json = Json.toJson(request)
 
-      val result =
-        Json.fromJson[UpdateSubcontractorForEditRequest](json)
+      val result = Json.fromJson[UpdateSubcontractorForEditRequest](json)
 
     }
 
@@ -134,9 +129,7 @@ class UpdateSubcontractorForEditRequestSpec extends SpecBase {
           "subcontractor" -> Json.toJson(subcontractor)
         )
 
-      json
-        .validate[UpdateSubcontractorForEditRequest]
-        .isError mustBe true
+      json.validate[UpdateSubcontractorForEditRequest].isError mustBe true
     }
 
     "must fail to deserialise when subcontractor is missing" in {
@@ -146,9 +139,7 @@ class UpdateSubcontractorForEditRequestSpec extends SpecBase {
           "cisId" -> "CIS-123"
         )
 
-      json
-        .validate[UpdateSubcontractorForEditRequest]
-        .isError mustBe true
+      json.validate[UpdateSubcontractorForEditRequest].isError mustBe true
     }
   }
 }
