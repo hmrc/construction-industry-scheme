@@ -28,12 +28,25 @@ import scala.concurrent.Future
 @Singleton
 class VerificationResultMapper @Inject() () extends Logging {
 
+  private case class RequestedVerificationMatch(
+    requested: StoredRequestedVerification,
+    matched: Boolean
+  )
+
   def mapAll(
     chrisResults: Seq[CisResponseSubcontractor],
     context: StoredVerificationContext,
     verifiedDate: LocalDateTime
   ): Future[Seq[VerificationResult]] = {
-    val mapped = chrisResults.map(chris => mapOne(chris, context, verifiedDate))
+    val matches = matchRequestedVerifications(chrisResults, context.requestedVerifications)
+
+    val mapped = chrisResults.zipWithIndex.map { case (chris, index) =>
+      matches.get(index) match {
+        case Some(requestMatch) => mapOne(chris, requestMatch, verifiedDate)
+        case None               => Left(s"No requested verification available for subcontractor: $chris")
+      }
+    }
+
     val errors = mapped.collect { case Left(err) => err }
 
     if (errors.nonEmpty) {
@@ -45,92 +58,118 @@ class VerificationResultMapper @Inject() () extends Logging {
 
   private def mapOne(
     chris: CisResponseSubcontractor,
-    context: StoredVerificationContext,
+    requestMatch: RequestedVerificationMatch,
     verifiedDate: LocalDateTime
-  ): Either[String, VerificationResult] =
-    for {
-      requestedResult <- findRequestedVerification(chris, context)
-    } yield {
-      val (requested, requestedVerificationFound) = requestedResult
+  ): Either[String, VerificationResult] = {
+    val requested = requestMatch.requested
 
+    if (!requestMatch.matched) {
+      logger.warn(s"No matching requested verification found for subcontractor: $chris")
+
+      Right(
+        VerificationResult(
+          resourceRef = requested.verificationResourceRef,
+          matched = None,
+          verified = None,
+          verificationNumber = None,
+          taxTreatment = None,
+          verifiedDate = None
+        )
+      )
+    } else {
       val taxTreatment       = chris.taxTreatment.map(_.trim).filter(_.nonEmpty)
-      val resourceRef        = requested.verificationResourceRef
       val verificationNumber = chris.verificationNumber.map(_.trim).filter(_.nonEmpty)
-      val verified           = deriveVerified(chris.matched, Some(requested.actionIndicator), verificationNumber)
       val matched            = verificationNumber.flatMap(_ => normalise(chris.matched).collect { case "MATCHED" => "Y" })
+      val verified           = deriveVerified(chris.matched, Some(requested.actionIndicator), verificationNumber)
 
-      VerificationResult(
-        resourceRef = resourceRef,
-        matched = if (requestedVerificationFound) matched else None,
-        verified = if (requestedVerificationFound) verified else None,
-        verificationNumber = if (requestedVerificationFound) verificationNumber else None,
-        taxTreatment = if (requestedVerificationFound) taxTreatment else None,
-        verifiedDate = if (requestedVerificationFound) {
-          verifiedDateFor(
+      Right(
+        VerificationResult(
+          resourceRef = requested.verificationResourceRef,
+          matched = matched,
+          verified = verified,
+          verificationNumber = verificationNumber,
+          taxTreatment = taxTreatment,
+          verifiedDate = verifiedDateFor(
             matched = matched,
             verificationNumber = verificationNumber,
             verifiedDate = verifiedDate,
             taxTreatment = taxTreatment
           )
-        } else {
-          None
-        }
+        )
       )
     }
+  }
 
-  private def findRequestedVerification(
-    chris: CisResponseSubcontractor,
-    context: StoredVerificationContext
-  ): Either[String, (StoredRequestedVerification, Boolean)] = {
-    val matches =
-      context.requestedVerifications.filter { requested =>
-        requested.subcontractorType.map(_.trim.toLowerCase) match {
-          case Some("soletrader") =>
-            soleTraderMatches(requested, chris)
+  private def matchRequestedVerifications(
+    chrisResults: Seq[CisResponseSubcontractor],
+    requestedVerifications: Seq[StoredRequestedVerification]
+  ): Map[Int, RequestedVerificationMatch] = {
+    val unmatchedRequests = scala.collection.mutable.Set.from(requestedVerifications.indices)
+    val matchedResponses  = scala.collection.mutable.Map.empty[Int, RequestedVerificationMatch] // matching pairs
 
-          case Some("company") | Some("trust") =>
-            same(requested.utr, chris.utr) ||
-            same(requested.tradingName, chris.tradingName)
-
-          case Some("partnership") =>
-            same(requested.utr, chris.partnershipUtr) ||
-            same(requested.tradingName, chris.tradingName)
-
-          case other =>
-            false
+    def matchPass(matches: (StoredRequestedVerification, CisResponseSubcontractor) => Boolean): Unit =
+      chrisResults.indices
+        .filterNot(matchedResponses.contains)
+        .foreach { responseIndex =>
+          unmatchedRequests
+            .find { requestIndex =>
+              matches(requestedVerifications(requestIndex), chrisResults(responseIndex))
+            }
+            .foreach { requestIndex =>
+              matchedResponses(responseIndex) =
+                RequestedVerificationMatch(requestedVerifications(requestIndex), matched = true)
+              unmatchedRequests -= requestIndex
+            }
         }
-      }
 
-    matches.toList match {
-      case List(one) => Right((one, true))
-      case Nil       =>
-        logger.warn(s"No matching requested verification found for subcontractor: $chris")
-        Right((context.requestedVerifications.head, false))
-      case _         => Left(s"Multiple matching requested verifications found for subcontractor: $chris")
+    // 1. UTR matching
+    matchPass { (requested, chris) =>
+      hasValue(requested.utr) && (requested.subcontractorType.map(_.trim.toLowerCase) match {
+        case Some("partnership") =>
+          same(requested.utr, chris.partnershipUtr)
+
+        case Some("soletrader") | Some("company") | Some("trust") =>
+          same(requested.utr, chris.utr)
+
+        case _ =>
+          false
+      })
     }
+
+    // 2. Trading name matching
+    matchPass { (requested, chris) =>
+      hasValue(requested.tradingName) &&
+      same(requested.tradingName, chris.tradingName)
+    }
+
+    // 3. Sole trader name matching
+    matchPass { (requested, chris) =>
+      requested.subcontractorType.map(_.trim.toLowerCase).contains("soletrader") &&
+      soleTraderNameMatches(requested, chris)
+    }
+
+    // Pair remaining responses and requests in their original order.
+    val unmatchedResponseIndices = chrisResults.indices.filterNot(matchedResponses.contains)
+
+    unmatchedResponseIndices.zip(unmatchedRequests.toSeq.sorted).foreach { case (responseIndex, requestIndex) =>
+      matchedResponses(responseIndex) =
+        RequestedVerificationMatch(requestedVerifications(requestIndex), matched = false)
+      unmatchedRequests -= requestIndex
+    }
+
+    matchedResponses.toMap
   }
 
-  private def soleTraderMatches(requested: StoredRequestedVerification, chris: CisResponseSubcontractor): Boolean = {
-    val hasPersonalName =
-      hasValue(requested.foreName) || hasValue(requested.middleName) || hasValue(requested.surname)
-
-    val hasTradingName = hasValue(requested.tradingName)
-
-    val personalNameMatches =
+  private def soleTraderNameMatches(
+    requested: StoredRequestedVerification,
+    chris: CisResponseSubcontractor
+  ): Boolean =
+    (hasValue(requested.foreName) ||
+      hasValue(requested.middleName) ||
+      hasValue(requested.surname)) &&
       same(requested.foreName, chris.foreName) &&
-        same(requested.middleName, chris.middleName) &&
-        same(requested.surname, chris.surname)
-
-    val tradingNameMatches = same(requested.tradingName, chris.tradingName)
-
-    same(requested.utr, chris.utr) ||
-    ((hasPersonalName, hasTradingName) match {
-      case (true, true)   => personalNameMatches || tradingNameMatches
-      case (true, false)  => personalNameMatches
-      case (false, true)  => tradingNameMatches
-      case (false, false) => false
-    })
-  }
+      same(requested.middleName, chris.middleName) &&
+      same(requested.surname, chris.surname)
 
   private def verifiedDateFor(
     matched: Option[String],
