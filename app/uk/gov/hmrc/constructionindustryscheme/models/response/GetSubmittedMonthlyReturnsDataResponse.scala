@@ -18,8 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.models.response
 
 import play.api.libs.json.{Json, OFormat}
 import uk.gov.hmrc.constructionindustryscheme.models.*
-
-import java.time.{LocalDateTime, ZoneOffset}
+import uk.gov.hmrc.constructionindustryscheme.utils.AcceptedTimeParser
 
 case class GetSubmittedMonthlyReturnsDataResponse(
   scheme: SchemeData,
@@ -28,7 +27,7 @@ case class GetSubmittedMonthlyReturnsDataResponse(
   taxMonth: Int,
   nilReturnIndicator: String,
   monthlyReturnItems: Seq[MonthlyReturnItem],
-  submission: SubmissionData
+  submission: Option[SubmissionData]
 )
 
 object GetSubmittedMonthlyReturnsDataResponse {
@@ -37,8 +36,8 @@ object GetSubmittedMonthlyReturnsDataResponse {
   def fromProxyResponse(
     response: GetSubmittedMonthlyReturnsDataProxyResponse
   ): GetSubmittedMonthlyReturnsDataResponse =
-    (response.monthlyReturn.headOption, response.submission.headOption) match {
-      case (Some(monthlyReturn), Some(submission)) =>
+    response.monthlyReturn.headOption match {
+      case Some(monthlyReturn) =>
         GetSubmittedMonthlyReturnsDataResponse(
           scheme = SchemeData(
             taxOfficeNumber = response.scheme.taxOfficeNumber,
@@ -50,19 +49,22 @@ object GetSubmittedMonthlyReturnsDataResponse {
           taxMonth = monthlyReturn.taxMonth,
           nilReturnIndicator = monthlyReturn.nilReturnIndicator.getOrElse("N"),
           monthlyReturnItems = response.monthlyReturnItems,
-          submission = SubmissionData(
-            submissionId = submission.submissionId,
-            submissionType = Some(submission.submissionType),
-            activeObjectId = submission.activeObjectId,
-            status = submission.status,
-            hmrcMarkGenerated = submission.hmrcMarkGenerated,
-            hmrcMarkGgis = submission.hmrcMarkGgis,
-            emailRecipient = submission.emailRecipient,
-            acceptedTime = submission.acceptedTime.map(x => LocalDateTime.parse(x).toInstant(ZoneOffset.UTC))
-          )
+          submission = response.submission.headOption.map(toSubmissionData)
         )
 
-      case _ =>
-        throw new RuntimeException("Missing monthlyReturn or submission data")
+      case None =>
+        throw new RuntimeException("Missing monthlyReturn data")
     }
+
+  private def toSubmissionData(submission: Submission): SubmissionData =
+    SubmissionData(
+      submissionId = submission.submissionId,
+      submissionType = Some(submission.submissionType),
+      activeObjectId = submission.activeObjectId,
+      status = submission.status,
+      hmrcMarkGenerated = submission.hmrcMarkGenerated,
+      hmrcMarkGgis = submission.hmrcMarkGgis,
+      emailRecipient = submission.emailRecipient,
+      acceptedTime = submission.acceptedTime.flatMap(AcceptedTimeParser.parse)
+    )
 }

@@ -1214,15 +1214,17 @@ class MonthlyReturnsControllerSpec extends SpecBase {
           taxMonth = 1,
           nilReturnIndicator = "Y",
           monthlyReturnItems = Seq.empty,
-          submission = SubmissionData(
-            submissionId = 12345L,
-            submissionType = None,
-            activeObjectId = None,
-            status = None,
-            hmrcMarkGenerated = None,
-            hmrcMarkGgis = None,
-            emailRecipient = None,
-            acceptedTime = None
+          submission = Some(
+            SubmissionData(
+              submissionId = 12345L,
+              submissionType = None,
+              activeObjectId = None,
+              status = None,
+              hmrcMarkGenerated = None,
+              hmrcMarkGgis = None,
+              emailRecipient = None,
+              acceptedTime = None
+            )
           )
         )
 

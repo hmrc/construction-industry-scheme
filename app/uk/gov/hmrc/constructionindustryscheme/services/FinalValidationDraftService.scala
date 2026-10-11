@@ -188,6 +188,30 @@ class FinalValidationDraftService @Inject() (
                )
     } yield ()
 
+  def resetSubcontractor(
+    draftId: String,
+    userId: String,
+    instanceId: String,
+    subcontractorId: Long
+  ): Future[FinalValidationDraft] =
+    updateDraft(
+      draftId,
+      userId,
+      instanceId
+    ) { draft =>
+      updateSubcontractor(
+        draft,
+        subcontractorId
+      ) { subcontractor =>
+        subcontractor.copy(
+          proposed = subcontractor.base,
+          changedTargets = Set.empty,
+          readiness = Incomplete,
+          commitStatus = Pending
+        )
+      }
+    }
+
   private def commitSubcontractors(
     draftId: String,
     userId: String,

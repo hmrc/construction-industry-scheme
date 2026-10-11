@@ -431,4 +431,100 @@ class FinalValidationDraftServiceSpec extends SpecBase {
       (captor.getValue \ "subcontractors" \ 0 \ "commitStatus").as[String] mustBe "Failed"
     }
   }
+
+  "resetSubcontractor" - {
+
+    "reset proposed details and state to the base values" in {
+      when(repository.get(draftId, userId, instanceId))
+        .thenReturn(
+          Future.successful(
+            Some(
+              stored(
+                draft(
+                  readiness = "Complete",
+                  changedTargets = Set("utr"),
+                  commitStatus = "Failed",
+                  proposedUtr = "2234567890"
+                )
+              )
+            )
+          )
+        )
+
+      when(repository.replace(any[FinalValidationDraftData], any[JsObject]))
+        .thenReturn(Future.successful(true))
+
+      val result =
+        service
+          .resetSubcontractor(
+            draftId,
+            userId,
+            instanceId,
+            10903L
+          )
+          .futureValue
+          .subcontractors
+          .head
+
+      result.proposed mustBe result.base
+      result.changedTargets mustBe empty
+      result.readiness mustBe FinalValidationReadiness.Incomplete
+      result.commitStatus mustBe FinalValidationCommitStatus.Pending
+      result.issues mustBe Seq(issue)
+    }
+
+    "fail when the subcontractor does not exist" in {
+      when(repository.get(draftId, userId, instanceId))
+        .thenReturn(
+          Future.successful(
+            Some(
+              stored(draft())
+            )
+          )
+        )
+
+      service
+        .resetSubcontractor(
+          draftId,
+          userId,
+          instanceId,
+          99999L
+        )
+        .failed
+        .futureValue
+        .getMessage mustBe
+        "Final Validation subcontractor 99999 not found"
+    }
+
+    "fail on version mismatch" in {
+      when(repository.get(draftId, userId, instanceId))
+        .thenReturn(
+          Future.successful(
+            Some(
+              stored(
+                draft(
+                  changedTargets = Set("utr"),
+                  proposedUtr = "2234567890"
+                )
+              )
+            )
+          )
+        )
+
+      when(repository.replace(any[FinalValidationDraftData], any[JsObject]))
+        .thenReturn(Future.successful(false))
+
+      service
+        .resetSubcontractor(
+          draftId,
+          userId,
+          instanceId,
+          10903L
+        )
+        .failed
+        .futureValue
+        .getMessage mustBe
+        s"Failed to update Final Validation draft $draftId due to version mismatch"
+    }
+  }
 }
