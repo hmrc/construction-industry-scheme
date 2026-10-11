@@ -585,6 +585,76 @@ class VerificationResultMapperSpec extends SpecBase {
         )
       )
     }
+
+    "succeed without warning when all subcontractors have the same first 11 characters in their verification numbers" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val first  = cisResponseSubcontractor(
+        utr = Some("1111111111"),
+        verificationNumber = Some("V10000000070001")
+      )
+      val second = cisResponseSubcontractor(
+        utr = Some("2222222222"),
+        verificationNumber = Some("V10000000070002")
+      )
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 13L,
+            utr = Some("1111111111"),
+            subcontractorType = Some("soletrader")
+          ),
+          storedRequestedVerification(
+            verificationResourceRef = 14L,
+            utr = Some("2222222222"),
+            subcontractorType = Some("soletrader")
+          )
+        )
+      )
+
+      val results = mapper
+        .mapAll(chrisResults = Seq(first, second), context = context, verifiedDate = verifiedDate)
+        .futureValue
+
+      results must have size 2
+    }
+
+    "succeed and log a warning when subcontractors have different first 11 characters in their verification numbers" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val first  = cisResponseSubcontractor(
+        utr = Some("1111111111"),
+        verificationNumber = Some("V10000000070001")
+      )
+      val second = cisResponseSubcontractor(
+        utr = Some("2222222222"),
+        verificationNumber = Some("V20000000070002")
+      )
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 13L,
+            utr = Some("1111111111"),
+            subcontractorType = Some("soletrader")
+          ),
+          storedRequestedVerification(
+            verificationResourceRef = 14L,
+            utr = Some("2222222222"),
+            subcontractorType = Some("soletrader")
+          )
+        )
+      )
+
+      val results = mapper
+        .mapAll(chrisResults = Seq(first, second), context = context, verifiedDate = verifiedDate)
+        .futureValue
+
+      results must have size 2
+    }
   }
 
   private def cisResponseSubcontractor(

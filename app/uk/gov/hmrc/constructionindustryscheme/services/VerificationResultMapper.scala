@@ -38,6 +38,15 @@ class VerificationResultMapper @Inject() () extends Logging {
     context: StoredVerificationContext,
     verifiedDate: LocalDateTime
   ): Future[Seq[VerificationResult]] = {
+    val verificationPrefixes = chrisResults
+      .flatMap(_.verificationNumber.map(_.trim).filter(_.nonEmpty))
+      .map(_.take(11))
+      .distinct
+
+    if (verificationPrefixes.size > 1) {
+      logger.warn("Verification numbers in batch do not match")
+    }
+
     val matches = matchRequestedVerifications(chrisResults, context.requestedVerifications)
 
     val mapped = chrisResults.zipWithIndex.map { case (chris, index) =>
