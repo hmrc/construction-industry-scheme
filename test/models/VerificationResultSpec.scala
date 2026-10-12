@@ -29,7 +29,7 @@ class VerificationResultSpec extends SpecBase {
         matched = Some("Y"),
         verified = Some("N"),
         verificationNumber = Some("V1000000007"),
-        taxTreatment = "net",
+        taxTreatment = Some("net"),
         verifiedDate = Some(LocalDateTime.parse("2017-04-06T08:46:08.081"))
       )
 
@@ -37,7 +37,7 @@ class VerificationResultSpec extends SpecBase {
       result.matched mustBe Some("Y")
       result.verified mustBe Some("N")
       result.verificationNumber mustBe Some("V1000000007")
-      result.taxTreatment mustBe "net"
+      result.taxTreatment mustBe Some("net")
     }
   }
 }

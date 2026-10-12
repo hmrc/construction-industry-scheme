@@ -25,7 +25,7 @@ case class VerificationResult(
   matched: Option[String],
   verified: Option[String],
   verificationNumber: Option[String],
-  taxTreatment: String,
+  taxTreatment: Option[String],
   verifiedDate: Option[LocalDateTime]
 )
 
