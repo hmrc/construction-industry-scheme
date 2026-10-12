@@ -127,7 +127,11 @@ object VerificationSubmissionContextBuilder {
               nino = subcontractor.nino,
               crn = subcontractor.crn,
               partnershipUtr = subcontractor.partnerUtr,
-              subcontractorType = subcontractor.subcontractorType
+              subcontractorType = subcontractor.subcontractorType,
+              matched = subcontractor.matched,
+              verified = subcontractor.verified,
+              verificationNumber = subcontractor.verificationNumber,
+              taxTreatment = subcontractor.taxTreatment
             )
         }
       }
@@ -175,7 +179,11 @@ object VerificationSubmissionContextBuilder {
           nino = subcontractor.nino,
           crn = subcontractor.crn,
           partnershipUtr = subcontractor.partnerUtr,
-          subcontractorType = subcontractor.subcontractorType
+          subcontractorType = subcontractor.subcontractorType,
+          matched = subcontractor.matched,
+          verified = subcontractor.verified,
+          verificationNumber = subcontractor.verificationNumber,
+          taxTreatment = subcontractor.taxTreatment
         )
       }
     )

@@ -708,7 +708,11 @@ class VerificationResultMapperSpec extends SpecBase {
     nino: Option[String] = Some("AB123456C"),
     crn: Option[String] = None,
     subcontractorType: Option[String] = Some("soletrader"),
-    partnershipUtr: Option[String] = None
+    partnershipUtr: Option[String] = None,
+    matched: Option[String] = None,
+    verified: Option[String] = None,
+    verificationNumber: Option[String] = None,
+    taxTreatment: Option[String] = None
   ): StoredRequestedVerification =
     StoredRequestedVerification(
       verificationResourceRef = verificationResourceRef,
@@ -725,6 +729,10 @@ class VerificationResultMapperSpec extends SpecBase {
       nino = nino,
       crn = crn,
       subcontractorType = subcontractorType,
-      partnershipUtr = partnershipUtr
+      partnershipUtr = partnershipUtr,
+      matched = matched,
+      verified = verified,
+      verificationNumber = verificationNumber,
+      taxTreatment = taxTreatment
     )
 }

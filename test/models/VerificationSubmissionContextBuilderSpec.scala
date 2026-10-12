@@ -116,7 +116,11 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
               nino = Some("AB123456C"),
               crn = None,
               partnershipUtr = None,
-              subcontractorType = Some("soletrader")
+              subcontractorType = Some("soletrader"),
+              matched = None,
+              verified = None,
+              verificationNumber = None,
+              taxTreatment = None
             )
           ),
           emailRecipient = Some("test@test.com")
@@ -260,7 +264,11 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
               nino = Some("AB123456C"),
               crn = None,
               partnershipUtr = None,
-              subcontractorType = Some("soletrader")
+              subcontractorType = Some("soletrader"),
+              matched = None,
+              verified = None,
+              verificationNumber = None,
+              taxTreatment = None
             )
           ),
           emailRecipient = None

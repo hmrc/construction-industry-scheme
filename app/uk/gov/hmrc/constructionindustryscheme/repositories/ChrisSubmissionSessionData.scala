@@ -65,7 +65,11 @@ case class StoredRequestedVerification(
   nino: Option[String],
   crn: Option[String],
   subcontractorType: Option[String],
-  partnershipUtr: Option[String]
+  partnershipUtr: Option[String],
+  matched: Option[String],
+  verified: Option[String],
+  verificationNumber: Option[String],
+  taxTreatment: Option[String]
 )
 
 object StoredMonthlyReturnContext {

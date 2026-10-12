@@ -78,10 +78,10 @@ class VerificationResultMapper @Inject() () extends Logging {
       Right(
         VerificationResult(
           resourceRef = requested.verificationResourceRef,
-          matched = None,
-          verified = None,
-          verificationNumber = None,
-          taxTreatment = None,
+          matched = requested.matched,
+          verified = requested.verified,
+          verificationNumber = requested.verificationNumber,
+          taxTreatment = requested.taxTreatment,
           verifiedDate = None
         )
       )
