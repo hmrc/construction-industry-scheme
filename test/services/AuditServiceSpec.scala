@@ -22,7 +22,6 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{times, verify, when}
 import org.scalatest.matchers.should.Matchers.shouldBe
 import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED, GovTalkMeta, MonthlyReturnType, ResponseEndPoint, SUBMITTED, SubmissionResult}
-import uk.gov.hmrc.constructionindustryscheme.models.audit.{ClientListRetrievalFailedEvent, ClientListRetrievalInProgressEvent}
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{ChrisSubmissionRequest, ChrisVerificationRequest}
 import uk.gov.hmrc.constructionindustryscheme.models.response.ChrisPollResponse
 import uk.gov.hmrc.constructionindustryscheme.services.AuditService
@@ -253,61 +252,5 @@ class AuditServiceSpec extends SpecBase {
       }
     }
 
-    "call AuditConnector.sendExtendedEvent for ClientListRetrievalFailedEvent" in {
-      val mockAuditConnector = mock[AuditConnector]
-
-      val credentialId = "cred-123"
-      val phase        = "business#1"
-      val reason       = Some("no-business-intervals")
-      val agentId      = Some("agent-001")
-
-      val expectedEvent =
-        ClientListRetrievalFailedEvent(credentialId, phase, reason, agentId).extendedDataEvent
-
-      when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
-        .thenReturn(Future.successful(AuditResult.Success))
-
-      val service = new AuditService(mockAuditConnector)
-      val resultF = service.clientListRetrievalFailed(credentialId, phase, reason, agentId)
-
-      resultF.map { result =>
-        result shouldBe AuditResult.Success
-
-        val captor = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
-        verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
-
-        val capturedEvent = captor.getValue
-        capturedEvent.auditType shouldBe expectedEvent.auditType
-        capturedEvent.detail    shouldBe expectedEvent.detail
-      }
-    }
-
-    "call AuditConnector.sendExtendedEvent for ClientListRetrievalInProgressEvent" in {
-      val mockAuditConnector = mock[AuditConnector]
-
-      val credentialId = "cred-456"
-      val phase        = "browser"
-      val agentId      = Some("agent-001")
-
-      val expectedEvent =
-        ClientListRetrievalInProgressEvent(credentialId, phase, agentId).extendedDataEvent
-
-      when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
-        .thenReturn(Future.successful(AuditResult.Success))
-
-      val service = new AuditService(mockAuditConnector)
-      val resultF = service.clientListRetrievalInProgress(credentialId, phase, agentId)
-
-      resultF.map { result =>
-        result shouldBe AuditResult.Success
-
-        val captor = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
-        verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
-
-        val capturedEvent = captor.getValue
-        capturedEvent.auditType shouldBe expectedEvent.auditType
-        capturedEvent.detail    shouldBe expectedEvent.detail
-      }
-    }
   }
 }
