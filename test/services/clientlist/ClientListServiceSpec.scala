@@ -94,7 +94,7 @@ class ClientListServiceSpec extends SpecBase {
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
       .thenReturn(Future.successful(ClientListStatus.Succeeded))
 
-    whenReady(service.process("cred-1", "agent-001")) { _ => () }
+    whenReady(service.process("cred-1", "agent-001"))(_ => ())
   }
 
   "AC2 - initial Failed should throw ClientListDownloadFailedException" in {
@@ -192,7 +192,7 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.Succeeded)
       )
 
-    whenReady(service.process("cred-1", "agent-001")) { _ => () }
+    whenReady(service.process("cred-1", "agent-001"))(_ => ())
   }
 
   "AC6b - terminal Failed during business phase should abort loop and fail" in {

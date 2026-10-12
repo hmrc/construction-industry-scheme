@@ -243,4 +243,3 @@ final case class VerificationPollResponseEvent(
       error.fold(Json.obj())(v => Json.obj("error" -> v)) ++
       govTalkErrorStatus.fold(Json.obj())(v => Json.obj("govTalkErrorStatus" -> v))
 }
-
