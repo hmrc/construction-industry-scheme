@@ -22,6 +22,7 @@ import java.time.LocalDateTime
 
 case class VerificationResult(
   resourceRef: Long,
+  matchedToRequest: Boolean,
   matched: Option[String],
   verified: Option[String],
   verificationNumber: Option[String],

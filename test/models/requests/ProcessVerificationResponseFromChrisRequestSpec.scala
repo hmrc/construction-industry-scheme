@@ -27,6 +27,7 @@ class ProcessVerificationResponseFromChrisRequestSpec extends SpecBase {
     "create an instance with the expected values" in {
       val verificationResult = VerificationResult(
         resourceRef = 13L,
+        matchedToRequest = true,
         matched = Some("Y"),
         verified = Some("N"),
         verificationNumber = Some("V1000000007"),

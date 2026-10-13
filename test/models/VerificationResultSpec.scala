@@ -26,6 +26,7 @@ class VerificationResultSpec extends SpecBase {
     "create an instance with the expected values" in {
       val result = VerificationResult(
         resourceRef = 13L,
+        matchedToRequest = true,
         matched = Some("Y"),
         verified = Some("N"),
         verificationNumber = Some("V1000000007"),
@@ -34,6 +35,7 @@ class VerificationResultSpec extends SpecBase {
       )
 
       result.resourceRef mustBe 13L
+      result.matchedToRequest mustBe true
       result.matched mustBe Some("Y")
       result.verified mustBe Some("N")
       result.verificationNumber mustBe Some("V1000000007")

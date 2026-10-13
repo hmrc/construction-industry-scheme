@@ -78,6 +78,7 @@ class VerificationResultMapper @Inject() () extends Logging {
       Right(
         VerificationResult(
           resourceRef = requested.verificationResourceRef,
+          matchedToRequest = false,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -94,6 +95,7 @@ class VerificationResultMapper @Inject() () extends Logging {
       Right(
         VerificationResult(
           resourceRef = requested.verificationResourceRef,
+          matchedToRequest = true,
           matched = matched,
           verified = verified,
           verificationNumber = verificationNumber,

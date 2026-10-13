@@ -118,6 +118,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = true,
           matched = None,
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
@@ -166,6 +167,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = true,
           matched = Some("Y"),
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
@@ -213,6 +215,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = true,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -259,6 +262,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = true,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -306,6 +310,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = true,
           matched = Some("Y"),
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
@@ -353,6 +358,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = true,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -382,7 +388,6 @@ class VerificationResultMapperSpec extends SpecBase {
           storedRequestedVerification(
             verificationResourceRef = 14L,
             foreName = Some("John"),
-            middleName = Some("A"),
             tradingName = Some("Not matching"),
             surname = Some("Smith"),
             utr = Some("1234567890"),
@@ -400,6 +405,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = false,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -445,6 +451,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = true,
           matched = Some("Y"),
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
@@ -489,6 +496,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = false,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -533,6 +541,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = false,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -577,6 +586,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = false,
           matched = None,
           verified = None,
           verificationNumber = None,

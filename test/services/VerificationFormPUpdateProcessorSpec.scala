@@ -73,6 +73,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
 
       val mappedResult = VerificationResult(
         resourceRef = 13L,
+        matchedToRequest = true,
         matched = Some("Y"),
         verified = Some("N"),
         verificationNumber = Some("V1000000007"),
@@ -144,6 +145,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
 
       val mappedResult = VerificationResult(
         resourceRef = 13L,
+        matchedToRequest = true,
         matched = Some("Y"),
         verified = Some("N"),
         verificationNumber = Some("V1000000007"),
@@ -217,6 +219,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
 
       val mappedResult = VerificationResult(
         resourceRef = 13L,
+        matchedToRequest = true,
         matched = Some("Y"),
         verified = Some("N"),
         verificationNumber = Some("V1000000007"),
@@ -297,6 +300,7 @@ class VerificationFormPUpdateProcessorSpec extends SpecBase {
       val mappedResult =
         VerificationResult(
           resourceRef = 13L,
+          matchedToRequest = true,
           matched = Some("Y"),
           verified = Some("N"),
           verificationNumber = Some("V1000000007"),

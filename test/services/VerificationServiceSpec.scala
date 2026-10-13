@@ -295,6 +295,7 @@ final class VerificationServiceSpec extends SpecBase {
       verificationResults = Seq(
         VerificationResult(
           resourceRef = 111L,
+          matchedToRequest = true,
           matched = Some("Y"),
           verified = Some("Y"),
           verificationNumber = Some("V123456"),
@@ -303,6 +304,7 @@ final class VerificationServiceSpec extends SpecBase {
         ),
         VerificationResult(
           resourceRef = 222L,
+          matchedToRequest = true,
           matched = Some("N"),
           verified = Some("N"),
           verificationNumber = Some("V654321"),
