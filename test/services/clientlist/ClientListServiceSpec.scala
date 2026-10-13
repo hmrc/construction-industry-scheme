@@ -25,7 +25,6 @@ import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.connectors.{ClientExchangeProxyConnector, DatacacheProxyConnector}
 import uk.gov.hmrc.constructionindustryscheme.models.*
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.{InProgress, InitiateDownload}
-import uk.gov.hmrc.constructionindustryscheme.services.AuditService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.{CacheService, ClientListService, NoBusinessIntervalsException}
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
@@ -43,13 +42,11 @@ class ClientListServiceSpec extends SpecBase {
   class TestClientListService(
     datacacheProxyConnector: DatacacheProxyConnector,
     clientExchangeProxyConnector: ClientExchangeProxyConnector,
-    audit: AuditService,
     cacheService: CacheService
   )(implicit ec: ExecutionContext)
       extends ClientListService(
         datacacheProxyConnector,
         clientExchangeProxyConnector,
-        audit,
         appConfig,
         cacheService,
         actorSystem
@@ -73,13 +70,12 @@ class ClientListServiceSpec extends SpecBase {
 
   private def setupService(
     datacache: DatacacheProxyConnector = mock[DatacacheProxyConnector],
-    clientExchangeProxy: ClientExchangeProxyConnector = mock[ClientExchangeProxyConnector],
-    audit: AuditService = mock[AuditService]
-  ): (TestClientListService, DatacacheProxyConnector, ClientExchangeProxyConnector, AuditService, CacheService) = {
+    clientExchangeProxy: ClientExchangeProxyConnector = mock[ClientExchangeProxyConnector]
+  ): (TestClientListService, DatacacheProxyConnector, ClientExchangeProxyConnector, CacheService) = {
     val cacheService: CacheService = new RealCacheService()
 
-    val service = new TestClientListService(datacache, clientExchangeProxy, audit, cacheService)
-    (service, datacache, clientExchangeProxy, audit, cacheService)
+    val service = new TestClientListService(datacache, clientExchangeProxy, cacheService)
+    (service, datacache, clientExchangeProxy, cacheService)
   }
 
   private def waitTimeCacheOf(service: ClientListService): TrieMap[String, AsynchronousProcessWaitTime] = {
@@ -89,7 +85,7 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "AC1 - initial Succeeded should complete successfully" in {
-    val (service, datacache, clientExchangeProxy, audit, cache) = setupService()
+    val (service, datacache, clientExchangeProxy, cache) = setupService()
 
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
       .thenReturn(Future.successful(ClientListStatus.Succeeded))
@@ -98,7 +94,7 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "AC2 - initial Failed should throw ClientListDownloadFailedException" in {
-    val (service, datacache, clientExchangeProxy, audit, cache) = setupService()
+    val (service, datacache, clientExchangeProxy, cache) = setupService()
 
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
       .thenReturn(Future.successful(ClientListStatus.Failed))
@@ -109,7 +105,7 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "AC3 - InitiateDownload should call client-exchange-proxy to fetch wait plan" in {
-    val (service, datacache, clientExchangeProxy, audit, cache) = setupService()
+    val (service, datacache, clientExchangeProxy, cache) = setupService()
 
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
       .thenReturn(
@@ -131,7 +127,7 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "AC4 - InitiateDownload with no business intervals should throw SystemException and audit 3046" in {
-    val (service, datacache, clientExchangeProxy, audit, cache) = setupService()
+    val (service, datacache, clientExchangeProxy, cache) = setupService()
 
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
       .thenReturn(Future.successful(ClientListStatus.InitiateDownload))
@@ -150,8 +146,8 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "AC5 - should call datacache after each business interval" in {
-    val (service, datacache, clientExchangeProxy, audit, cache) = setupService()
-    val businessIntervals                                       = List(10L, 20L, 30L)
+    val (service, datacache, clientExchangeProxy, cache) = setupService()
+    val businessIntervals                                = List(10L, 20L, 30L)
 
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
       .thenReturn(
@@ -176,7 +172,7 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "AC6a - terminal Succeeded during business phase should abort loop and succeed" in {
-    val (service, datacache, clientExchangeProxy, audit, cache) = setupService()
+    val (service, datacache, clientExchangeProxy, cache) = setupService()
 
     val waitPlan = AsynchronousProcessWaitTime(
       browserIntervalMs = 1000L,
@@ -196,7 +192,7 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "AC6b - terminal Failed during business phase should abort loop and fail" in {
-    val (service, datacache, clientExchangeProxy, audit, cache) = setupService()
+    val (service, datacache, clientExchangeProxy, cache) = setupService()
 
     val waitPlan = AsynchronousProcessWaitTime(
       browserIntervalMs = 1000L,
@@ -217,7 +213,7 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "AC7 - InitiateDownload after final business interval should throw SystemException and audit 3046" in {
-    val (service, datacache, clientExchangeProxy, audit, cache) = setupService()
+    val (service, datacache, clientExchangeProxy, cache) = setupService()
 
     val waitPlan = AsynchronousProcessWaitTime(
       browserIntervalMs = 1000L,
@@ -239,7 +235,7 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "AC8 & AC9 - InProgress after browser wait should throw in-progress exception and audit 3008" in {
-    val (service, datacache, clientExchangeProxy, audit, cache) = setupService()
+    val (service, datacache, clientExchangeProxy, cache) = setupService()
 
     val waitPlan = AsynchronousProcessWaitTime(
       browserIntervalMs = 1000L,
@@ -262,7 +258,7 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "AC10 - InitiateDownload after browser wait should throw SystemException and audit 3046" in {
-    val (service, datacache, clientExchangeProxy, audit, cache) = setupService()
+    val (service, datacache, clientExchangeProxy, cache) = setupService()
 
     val waitPlan = AsynchronousProcessWaitTime(
       browserIntervalMs = 1000L,
@@ -285,7 +281,7 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "AC11a - initial InProgress should use cached intervals when present" in {
-    val (service, datacache, clientExchangeProxy, audit, _) = setupService()
+    val (service, datacache, clientExchangeProxy, _) = setupService()
 
     val cachedPlan = AsynchronousProcessWaitTime(
       browserIntervalMs = 9999L,
@@ -309,7 +305,7 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "AC11b - initial InProgress should use default intervals when no cached plan exists" in {
-    val (service, datacache, clientExchangeProxy, audit, _) = setupService()
+    val (service, datacache, clientExchangeProxy, _) = setupService()
 
     val cache = waitTimeCacheOf(service)
     cache.remove("cred-2")
@@ -334,7 +330,7 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "AC12 - initial InProgress should follow business and browser phases same as InitiateDownload" in {
-    val (service, datacache, clientExchangeProxy, audit, _) = setupService()
+    val (service, datacache, clientExchangeProxy, _) = setupService()
 
     val cache = waitTimeCacheOf(service)
     cache.remove("cred-1")
@@ -362,7 +358,7 @@ class ClientListServiceSpec extends SpecBase {
   }
 
   "getStatus should delegate to datacacheProxyConnector with serviceName and grace" in {
-    val (service, datacache, _, _, _) = setupService()
+    val (service, datacache, _, _) = setupService()
 
     implicit val hc: HeaderCarrier = HeaderCarrier()
 
@@ -388,7 +384,7 @@ class ClientListServiceSpec extends SpecBase {
     val credId    = "cred-123"
 
     "should return ClientSearchResult when connector succeeds" in {
-      val (service, datacache, _, _, cache) = setupService()
+      val (service, datacache, _, cache) = setupService()
 
       val expectedResult = ClientSearchResult(
         clients = List(
@@ -428,7 +424,7 @@ class ClientListServiceSpec extends SpecBase {
     }
 
     "should return empty ClientSearchResult when no clients found" in {
-      val (service, datacache, _, _, cache) = setupService()
+      val (service, datacache, _, cache) = setupService()
 
       val emptyResult = ClientSearchResult(
         clients = List.empty,
@@ -449,7 +445,7 @@ class ClientListServiceSpec extends SpecBase {
     }
 
     "should propagate UpstreamErrorResponse when connector fails with 400" in {
-      val (service, datacache, _, _, cache) = setupService()
+      val (service, datacache, _, cache) = setupService()
 
       when(datacache.getClientList(eqTo(irAgentId), eqTo(credId))(using any[HeaderCarrier]))
         .thenReturn(Future.failed(UpstreamErrorResponse("Bad request", 400, 400)))
@@ -462,7 +458,7 @@ class ClientListServiceSpec extends SpecBase {
     }
 
     "should propagate UpstreamErrorResponse when connector fails with 500" in {
-      val (service, datacache, _, _, cache) = setupService()
+      val (service, datacache, _, cache) = setupService()
 
       when(datacache.getClientList(eqTo(irAgentId), eqTo(credId))(using any[HeaderCarrier]))
         .thenReturn(Future.failed(UpstreamErrorResponse("Internal server error", 500, 500)))
@@ -475,7 +471,7 @@ class ClientListServiceSpec extends SpecBase {
     }
 
     "should delegate to datacache connector with correct parameters" in {
-      val (service, datacache, _, _, cache) = setupService()
+      val (service, datacache, _, cache) = setupService()
 
       val testIrAgentId = "TEST123"
       val testCredId    = "test-cred"
@@ -503,7 +499,7 @@ class ClientListServiceSpec extends SpecBase {
     val credId             = "cred-123"
 
     "return true when hasClient from connector returns true" in {
-      val (service, datacache, _, _, cache) = setupService()
+      val (service, datacache, _, cache) = setupService()
 
       when(datacache.hasClient(any, any, any, any)(any))
         .thenReturn(Future.successful(true))
@@ -519,7 +515,7 @@ class ClientListServiceSpec extends SpecBase {
     }
 
     "return false when hasClient from connector returns false" in {
-      val (service, datacache, _, _, cache) = setupService()
+      val (service, datacache, _, cache) = setupService()
 
       when(datacache.hasClient(any, any, any, any)(any))
         .thenReturn(Future.successful(false))
@@ -535,7 +531,7 @@ class ClientListServiceSpec extends SpecBase {
     }
 
     "return cached result when cache hit occurs" in {
-      val (service, datacache, _, _, cache) = setupService()
+      val (service, datacache, _, cache) = setupService()
 
       // Pre-populate cache
       cache.cache[Boolean](s"hasClient:$taxOfficeNumber:$taxOfficeReference:$agentId:$credId", true, 1.hour)
@@ -552,7 +548,7 @@ class ClientListServiceSpec extends SpecBase {
     }
 
     "cache the result when cache miss occurs" in {
-      val (service, datacache, _, _, cache) = setupService()
+      val (service, datacache, _, cache) = setupService()
 
       when(datacache.hasClient(any, any, any, any)(any))
         .thenReturn(Future.successful(true))
@@ -571,7 +567,7 @@ class ClientListServiceSpec extends SpecBase {
     }
 
     "propagate connector errors" in {
-      val (service, datacache, _, _, cache) = setupService()
+      val (service, datacache, _, cache) = setupService()
 
       when(datacache.hasClient(any, any, any, any)(any))
         .thenReturn(Future.failed(UpstreamErrorResponse("Service unavailable", 503, 503)))
@@ -597,7 +593,7 @@ class ClientListServiceSpec extends SpecBase {
     val agentCode          = "agent-code-123"
 
     "return messageIDOut when removeClient from connector returns messageIDOut" in {
-      val (service, datacache, _, _, cache) = setupService()
+      val (service, datacache, _, cache) = setupService()
 
       when(datacache.enqueueMessage(any)(any))
         .thenReturn(Future.successful(1L))
@@ -612,7 +608,7 @@ class ClientListServiceSpec extends SpecBase {
     }
 
     "propagate connector errors" in {
-      val (service, datacache, _, _, cache) = setupService()
+      val (service, datacache, _, cache) = setupService()
 
       when(datacache.enqueueMessage(any)(any))
         .thenReturn(Future.failed(UpstreamErrorResponse("Boom", 500, 500)))
@@ -635,7 +631,7 @@ class ClientListServiceSpec extends SpecBase {
     val clientRef          = "SA123456"
 
     "return messageIDOut when updateClient from connector returns messageIDOut" in {
-      val (service, datacache, _, _, cache) = setupService()
+      val (service, datacache, _, cache) = setupService()
 
       when(datacache.enqueueMessage(any)(any))
         .thenReturn(Future.successful(1L))
@@ -650,7 +646,7 @@ class ClientListServiceSpec extends SpecBase {
     }
 
     "propagate connector errors" in {
-      val (service, datacache, _, _, cache) = setupService()
+      val (service, datacache, _, cache) = setupService()
 
       when(datacache.enqueueMessage(any)(any))
         .thenReturn(Future.failed(UpstreamErrorResponse("Boom", 500, 500)))
