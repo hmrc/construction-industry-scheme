@@ -24,7 +24,6 @@ import uk.gov.hmrc.constructionindustryscheme.connectors.{ClientExchangeProxyCon
 import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.*
 import org.apache.pekko.actor.ActorSystem
 import play.api.Logging
-import uk.gov.hmrc.constructionindustryscheme.services.AuditService
 import uk.gov.hmrc.constructionindustryscheme.config.AppConfig
 import uk.gov.hmrc.constructionindustryscheme.models.requests.EnqueueMessageRequest
 import uk.gov.hmrc.constructionindustryscheme.models.{AsynchronousProcessWaitTime, ClientListStatus, EnqueueMessage, EnqueueNumber, EnqueueTracking}
@@ -46,7 +45,6 @@ final case class NoBusinessIntervalsException(msg: String) extends RuntimeExcept
 class ClientListService @Inject() (
   datacacheProxyConnector: DatacacheProxyConnector,
   clientExchangeProxyConnector: ClientExchangeProxyConnector,
-  audit: AuditService,
   appConfig: AppConfig,
   cache: CacheService,
   actorSystem: ActorSystem
@@ -132,11 +130,9 @@ class ClientListService @Inject() (
 
   private def processWithWaitPlan(
     credentialId: String,
-    agentId: String,
     waitPlan: AsynchronousProcessWaitTime
   )(implicit hc: HeaderCarrier): Future[Unit] =
-    val business    = waitPlan.businessIntervalsMs
-    val someAgentId = Some(agentId)
+    val business = waitPlan.businessIntervalsMs
     logWaitPlan(business, waitPlan.browserIntervalMs)
 
     // BUSINESS PHASE
@@ -219,7 +215,7 @@ class ClientListService @Inject() (
         case InProgress =>
           logStatus("initial", None, InProgress)
           val waitPlan = getCachedWaitTime(credentialId).getOrElse(defaultWaitPlan)
-          processWithWaitPlan(credentialId, agentId, waitPlan)
+          processWithWaitPlan(credentialId, waitPlan)
 
         case InitiateDownload =>
           logStatus("initial", None, InitiateDownload)
@@ -227,7 +223,7 @@ class ClientListService @Inject() (
           for
             waitPlan <- clientExchangeProxyConnector.initiate(serviceName, credentialId, agentId)
             _         = cacheWaitTime(credentialId, waitPlan)
-            outcome  <- processWithWaitPlan(credentialId, agentId, waitPlan)
+            outcome  <- processWithWaitPlan(credentialId, waitPlan)
           yield outcome
       }
 
