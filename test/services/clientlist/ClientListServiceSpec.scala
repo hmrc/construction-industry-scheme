@@ -28,7 +28,6 @@ import uk.gov.hmrc.constructionindustryscheme.models.ClientListStatus.{InProgres
 import uk.gov.hmrc.constructionindustryscheme.services.AuditService
 import uk.gov.hmrc.constructionindustryscheme.services.clientlist.{CacheService, ClientListService, NoBusinessIntervalsException}
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
-import uk.gov.hmrc.play.audit.http.connector.AuditResult
 import uk.gov.hmrc.rdsdatacacheproxy.cis.models.ClientSearchResult
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -95,9 +94,7 @@ class ClientListServiceSpec extends SpecBase {
     when(datacache.getClientListDownloadStatus(any, any, any)(any))
       .thenReturn(Future.successful(ClientListStatus.Succeeded))
 
-    whenReady(service.process("cred-1", "agent-001")) { _ =>
-      verify(audit, never()).clientListRetrievalFailed(any, any, any, any)(any)
-    }
+    whenReady(service.process("cred-1", "agent-001"))(_ => ())
   }
 
   "AC2 - initial Failed should throw ClientListDownloadFailedException" in {
@@ -109,8 +106,6 @@ class ClientListServiceSpec extends SpecBase {
     val status = service.process("cred-1", "agent-001").futureValue
 
     status shouldBe ClientListStatus.Failed
-    verify(audit)
-      .clientListRetrievalFailed(eqTo("cred-1"), eqTo("initial"), any[Option[String]], eqTo(Some("agent-001")))(any)
   }
 
   "AC3 - InitiateDownload should call client-exchange-proxy to fetch wait plan" in {
@@ -152,13 +147,6 @@ class ClientListServiceSpec extends SpecBase {
     val ex = service.process("cred-1", "agent-001").failed.futureValue
 
     ex shouldBe a[NoBusinessIntervalsException]
-
-    verify(audit).clientListRetrievalFailed(
-      eqTo("cred-1"),
-      eqTo("business"),
-      eqTo(Some("no-business-intervals")),
-      eqTo(Some("agent-001"))
-    )(any)
   }
 
   "AC5 - should call datacache after each business interval" in {
@@ -204,9 +192,7 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.Succeeded)
       )
 
-    whenReady(service.process("cred-1", "agent-001")) { _ =>
-      verify(audit, never()).clientListRetrievalFailed(any, any, any, any)(any)
-    }
+    whenReady(service.process("cred-1", "agent-001"))(_ => ())
   }
 
   "AC6b - terminal Failed during business phase should abort loop and fail" in {
@@ -250,13 +236,6 @@ class ClientListServiceSpec extends SpecBase {
 
     val status = service.process("cred-1", "agent-001").futureValue
     status shouldBe ClientListStatus.InitiateDownload
-
-    verify(audit).clientListRetrievalFailed(
-      eqTo("cred-1"),
-      eqTo("business#1"),
-      eqTo(Some("initiate-on-final-business-interval")),
-      eqTo(Some("agent-001"))
-    )(any)
   }
 
   "AC8 & AC9 - InProgress after browser wait should throw in-progress exception and audit 3008" in {
@@ -280,12 +259,6 @@ class ClientListServiceSpec extends SpecBase {
 
     val status = service.process("cred-1", "agent-001").futureValue
     status shouldBe ClientListStatus.InProgress
-
-    verify(audit).clientListRetrievalInProgress(
-      eqTo("cred-1"),
-      eqTo("browser"),
-      eqTo(Some("agent-001"))
-    )(any)
   }
 
   "AC10 - InitiateDownload after browser wait should throw SystemException and audit 3046" in {
@@ -309,13 +282,6 @@ class ClientListServiceSpec extends SpecBase {
 
     val status = service.process("cred-1", "agent-001").futureValue
     status shouldBe InitiateDownload
-
-    verify(audit).clientListRetrievalFailed(
-      eqTo("cred-1"),
-      eqTo("browser"),
-      eqTo(Some("initiate-after-browser")),
-      eqTo(Some("agent-001"))
-    )(any)
   }
 
   "AC11a - initial InProgress should use cached intervals when present" in {
@@ -386,19 +352,10 @@ class ClientListServiceSpec extends SpecBase {
         Future.successful(ClientListStatus.InProgress)
       )
 
-    when(audit.clientListRetrievalInProgress(any, any, any)(any))
-      .thenReturn(Future.successful(AuditResult.Success))
-
     val status = service.process("cred-1", "agent-001").futureValue
 
     status shouldBe InProgress
     verify(clientExchangeProxy, never()).initiate(any, any, any)(any)
-
-    verify(audit).clientListRetrievalInProgress(
-      eqTo("cred-1"),
-      eqTo("browser"),
-      eqTo(Some("agent-001"))
-    )(any[HeaderCarrier])
 
     service.lastWaitPlan shouldBe Some(defaultPlan)
     verify(datacache, times(4)).getClientListDownloadStatus(any, any, any)(any)

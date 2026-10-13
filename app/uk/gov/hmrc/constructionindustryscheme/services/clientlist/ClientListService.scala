@@ -141,12 +141,6 @@ class ClientListService @Inject() (
 
     // BUSINESS PHASE
     if business.isEmpty then
-      audit.clientListRetrievalFailed(
-        credentialId,
-        phase = "business",
-        reason = Some("no-business-intervals"),
-        agentId = someAgentId
-      )
       clearWaitTime(credentialId)
       Future.failed(NoBusinessIntervalsException("No business intervals"))
     else
@@ -163,11 +157,6 @@ class ClientListService @Inject() (
                           Future.successful(true)
 
                         case Failed =>
-                          audit.clientListRetrievalFailed(
-                            credentialId,
-                            phase = s"business#$index",
-                            agentId = someAgentId
-                          )
                           clearWaitTime(credentialId)
                           Future.failed(ClientListDownloadFailedException("Failed"))
 
@@ -177,12 +166,6 @@ class ClientListService @Inject() (
                         case InitiateDownload =>
                           if index < business.length - 1 then loop(index + 1)
                           else
-                            audit.clientListRetrievalFailed(
-                              credentialId,
-                              phase = s"business#$index",
-                              reason = Some("initiate-on-final-business-interval"),
-                              agentId = someAgentId
-                            )
                             clearWaitTime(credentialId)
                             Future.failed(SystemException("Initiate on final business interval"))
           yield result
@@ -203,26 +186,14 @@ class ClientListService @Inject() (
                                  Future.unit
 
                                case Failed =>
-                                 audit.clientListRetrievalFailed(credentialId, phase = "browser", agentId = someAgentId)
                                  clearWaitTime(credentialId)
                                  Future.failed(ClientListDownloadFailedException("Failed after browser interval"))
 
                                case InitiateDownload =>
-                                 audit.clientListRetrievalFailed(
-                                   credentialId,
-                                   phase = "browser",
-                                   reason = Some("initiate-after-browser"),
-                                   agentId = someAgentId
-                                 )
                                  clearWaitTime(credentialId)
                                  Future.failed(SystemException("Initiate after browser interval"))
 
                                case InProgress =>
-                                 audit.clientListRetrievalInProgress(
-                                   credentialId,
-                                   phase = "browser",
-                                   agentId = someAgentId
-                                 )
                                  clearWaitTime(credentialId)
                                  Future.failed(ClientListDownloadInProgressException("Still in progress"))
             yield finalResult
@@ -242,13 +213,11 @@ class ClientListService @Inject() (
 
         case Failed =>
           logStatus("initial", None, Failed)
-          audit.clientListRetrievalFailed(credentialId, phase = "initial", agentId = Some(agentId))
           clearWaitTime(credentialId)
           Future.failed(ClientListDownloadFailedException("Failed"))
 
         case InProgress =>
           logStatus("initial", None, InProgress)
-          audit.clientListRetrievalInProgress(credentialId, phase = "initial", agentId = Some(agentId))
           val waitPlan = getCachedWaitTime(credentialId).getOrElse(defaultWaitPlan)
           processWithWaitPlan(credentialId, agentId, waitPlan)
 
