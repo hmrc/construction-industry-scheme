@@ -43,15 +43,16 @@ final case class NilMonthlyReturnOrgSuccessEmail(
 ) extends SendEmailRequest
 
 object NilMonthlyReturnOrgSuccessEmail {
-  private val TemplateId = "dtr_cis_nil_monthly_return_org_success"
+  private val TemplateIdEn = "dtr_cis_nil_monthly_return_org_success"
+  private val TemplateIdCy = "dtr_cis_nil_monthly_return_org_success_cy"
 
   implicit val format: OFormat[NilMonthlyReturnOrgSuccessEmail] =
     Json.format[NilMonthlyReturnOrgSuccessEmail]
 
-  def apply(email: String, month: String, year: String): NilMonthlyReturnOrgSuccessEmail =
+  def apply(email: String, month: String, year: String, language: String = "en"): NilMonthlyReturnOrgSuccessEmail =
     NilMonthlyReturnOrgSuccessEmail(
       to = List(email),
-      templateId = TemplateId,
+      templateId = if (language == "cy") TemplateIdCy else TemplateIdEn,
       parameters = Map(
         "month" -> month,
         "year"  -> year
@@ -66,13 +67,14 @@ final case class SubcontractorVerificationEmail(
 ) extends SendEmailRequest
 
 object SubcontractorVerificationEmail {
-  private val TemplateId = "dtr_subcontractor_verification"
+  private val TemplateIdEn = "dtr_subcontractor_verification"
+  private val TemplateIdCy = "dtr_subcontractor_verification_cy"
 
   implicit val format: OFormat[SubcontractorVerificationEmail] = Json.format[SubcontractorVerificationEmail]
 
-  def apply(email: String): SubcontractorVerificationEmail =
+  def apply(email: String, language: String): SubcontractorVerificationEmail =
     SubcontractorVerificationEmail(
       to = List(email),
-      templateId = TemplateId
+      templateId = if (language == "cy") TemplateIdCy else TemplateIdEn
     )
 }

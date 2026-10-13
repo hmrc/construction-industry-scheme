@@ -27,26 +27,29 @@ class SendSuccessEmailRequestSpec extends AnyWordSpec with Matchers {
 
     "read from valid JSON" in {
       val json = Json.obj(
-        "email" -> "test@test.com",
-        "month" -> "September",
-        "year"  -> "2025"
+        "email"    -> "test@test.com",
+        "month"    -> "September",
+        "year"     -> "2025",
+        "language" -> "en"
       )
 
       json.as[SendSuccessEmailRequest] mustBe
-        SendSuccessEmailRequest("test@test.com", "September", "2025")
+        SendSuccessEmailRequest("test@test.com", "September", "2025", "en")
     }
 
     "write to JSON" in {
       val model = SendSuccessEmailRequest(
         email = "test@test.com",
         month = "September",
-        year = "2025"
+        year = "2025",
+        language = "en"
       )
 
       Json.toJson(model) mustBe Json.obj(
-        "email" -> "test@test.com",
-        "month" -> "September",
-        "year"  -> "2025"
+        "email"    -> "test@test.com",
+        "month"    -> "September",
+        "year"     -> "2025",
+        "language" -> "en"
       )
     }
   }

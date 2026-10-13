@@ -1476,9 +1476,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       )
 
       val body = Json.obj(
-        "email" -> "test@test.com",
-        "month" -> "September",
-        "year"  -> "2025"
+        "email"    -> "test@test.com",
+        "month"    -> "September",
+        "year"     -> "2025",
+        "language" -> "en"
       )
 
       when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))
@@ -1528,9 +1529,10 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       )
 
       val body = Json.obj(
-        "email" -> "test@test.com",
-        "month" -> "September",
-        "year"  -> "2025"
+        "email"    -> "test@test.com",
+        "month"    -> "September",
+        "year"     -> "2025",
+        "language" -> "en"
       )
 
       when(submissionService.sendSuccessfulEmail(any[String], any[SendSuccessEmailRequest])(any[HeaderCarrier]))

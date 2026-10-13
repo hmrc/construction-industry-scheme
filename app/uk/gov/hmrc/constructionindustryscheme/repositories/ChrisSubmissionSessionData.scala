@@ -47,7 +47,8 @@ case class StoredVerificationContext(
   submissionRequestDate: LocalDateTime,
   actionIndicators: Seq[VerificationActionIndicator],
   requestedVerifications: Seq[StoredRequestedVerification],
-  emailRecipient: Option[String] = None
+  emailRecipient: Option[String] = None,
+  language: Option[String] = None
 )
 
 case class StoredRequestedVerification(
