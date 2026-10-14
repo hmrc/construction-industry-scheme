@@ -523,8 +523,6 @@ class SubmissionController @Inject() (
             logger.info(
               s"Chris verification XML validation successful. Sending ChRIS verification submission for correlationId=${payload.correlationId}."
             )
-            // todo: for testing purposes,  remove before marging
-            logger.info(s"full chris xml envelope:${payload.envelope}")
         }
 
         val employerRef = EmployerReference(cvr.clientTaxOfficeNumber, cvr.clientTaxOfficeRef)
