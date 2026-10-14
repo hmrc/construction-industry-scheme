@@ -28,9 +28,14 @@ import scala.concurrent.Future
 @Singleton
 class VerificationResultMapper @Inject() () extends Logging {
 
-  private case class RequestedVerificationMatch(
-    requested: StoredRequestedVerification,
-    matched: Boolean
+  private case class ChrisIdentity(
+    utr: Option[String],
+    partnershipUtr: Option[String],
+    tradingName: Option[String],
+    foreName: Option[String],
+    middleName: Option[String],
+    surname: Option[String],
+    nino: Option[String]
   )
 
   def mapAll(
@@ -47,88 +52,116 @@ class VerificationResultMapper @Inject() () extends Logging {
       logger.warn("Verification numbers in batch do not match")
     }
 
-    val matches = matchRequestedVerifications(chrisResults, context.requestedVerifications)
-
-    val mapped = chrisResults.zipWithIndex.map { case (chris, index) =>
-      matches.get(index) match {
-        case Some(requestMatch) => mapOne(chris, requestMatch, verifiedDate)
-        case None               => Left(s"No requested verification available for subcontractor: $chris")
+    if (context.requestedVerifications.isEmpty && chrisResults.nonEmpty) {
+      val errors = chrisResults.map { chris =>
+        s"No requested verification available for subcontractor: $chris"
       }
-    }
 
-    val errors = mapped.collect { case Left(err) => err }
-
-    if (errors.nonEmpty) {
       Future.failed(new RuntimeException(s"Errors occurred during mapping: ${errors.mkString("; ")}"))
     } else {
-      Future.successful(mapped.collect { case Right(result) => result })
+      val matches = matchRequestedVerifications(chrisResults, context.requestedVerifications)
+
+      val mappedFromChris = chrisResults.zipWithIndex.flatMap { case (chris, index) =>
+        matches.get(index).map { requested =>
+          mapOne(chris, requested, verifiedDate)
+        }
+      }
+
+      chrisResults.indices.filterNot(matches.contains).foreach { index =>
+        logger.warn(s"Skipping duplicate or unmatched CHRIS response at index=$index")
+      }
+
+      val matchedResourceRefs = matches.values.map(_.verificationResourceRef).toSet
+
+      val missingResults = context.requestedVerifications
+        .filterNot(requested => matchedResourceRefs.contains(requested.verificationResourceRef))
+        .map { requested =>
+          logger.warn(
+            s"No matching CHRIS response found for verification resourceRef=${requested.verificationResourceRef}"
+          )
+          unmatchedVerificationResult(requested)
+        }
+
+      Future.successful(mappedFromChris ++ missingResults)
     }
   }
 
+  private def unmatchedVerificationResult(
+    requested: StoredRequestedVerification
+  ): VerificationResult =
+    VerificationResult(
+      resourceRef = requested.verificationResourceRef,
+      matchedToRequest = false,
+      matched = None,
+      verified = None,
+      verificationNumber = None,
+      taxTreatment = None,
+      verifiedDate = None
+    )
+
   private def mapOne(
     chris: CisResponseSubcontractor,
-    requestMatch: RequestedVerificationMatch,
+    requested: StoredRequestedVerification,
     verifiedDate: LocalDateTime
-  ): Either[String, VerificationResult] = {
-    val requested = requestMatch.requested
+  ): VerificationResult = {
+    val taxTreatment       = chris.taxTreatment.map(_.trim).filter(_.nonEmpty)
+    val verificationNumber = chris.verificationNumber.map(_.trim).filter(_.nonEmpty)
+    val matched            = verificationNumber.flatMap(_ => normalise(chris.matched).collect { case "MATCHED" => "Y" })
+    val verified           = deriveVerified(chris.matched, Some(requested.actionIndicator), verificationNumber)
 
-    if (!requestMatch.matched) {
-      logger.warn(s"No matching requested verification found for subcontractor: $chris")
-
-      Right(
-        VerificationResult(
-          resourceRef = requested.verificationResourceRef,
-          matchedToRequest = false,
-          matched = None,
-          verified = None,
-          verificationNumber = None,
-          taxTreatment = None,
-          verifiedDate = None
-        )
+    VerificationResult(
+      resourceRef = requested.verificationResourceRef,
+      matchedToRequest = true,
+      matched = matched,
+      verified = verified,
+      verificationNumber = verificationNumber,
+      taxTreatment = taxTreatment,
+      verifiedDate = verifiedDateFor(
+        matched = matched,
+        verificationNumber = verificationNumber,
+        verifiedDate = verifiedDate,
+        taxTreatment = taxTreatment
       )
-    } else {
-      val taxTreatment       = chris.taxTreatment.map(_.trim).filter(_.nonEmpty)
-      val verificationNumber = chris.verificationNumber.map(_.trim).filter(_.nonEmpty)
-      val matched            = verificationNumber.flatMap(_ => normalise(chris.matched).collect { case "MATCHED" => "Y" })
-      val verified           = deriveVerified(chris.matched, Some(requested.actionIndicator), verificationNumber)
-
-      Right(
-        VerificationResult(
-          resourceRef = requested.verificationResourceRef,
-          matchedToRequest = true,
-          matched = matched,
-          verified = verified,
-          verificationNumber = verificationNumber,
-          taxTreatment = taxTreatment,
-          verifiedDate = verifiedDateFor(
-            matched = matched,
-            verificationNumber = verificationNumber,
-            verifiedDate = verifiedDate,
-            taxTreatment = taxTreatment
-          )
-        )
-      )
-    }
+    )
   }
 
   private def matchRequestedVerifications(
     chrisResults: Seq[CisResponseSubcontractor],
     requestedVerifications: Seq[StoredRequestedVerification]
-  ): Map[Int, RequestedVerificationMatch] = {
+  ): Map[Int, StoredRequestedVerification] = {
     val unmatchedRequests = scala.collection.mutable.Set.from(requestedVerifications.indices)
-    val matchedResponses  = scala.collection.mutable.Map.empty[Int, RequestedVerificationMatch] // matching pairs
+    val matchedResponses  = scala.collection.mutable.Map.empty[Int, StoredRequestedVerification]
+
+    val seenIdentities = scala.collection.mutable.Set.empty[ChrisIdentity]
+
+    val duplicateResponseIndices = chrisResults.indices.filter { index =>
+      val chris = chrisResults(index)
+
+      val identity = ChrisIdentity(
+        utr = normalise(chris.utr),
+        partnershipUtr = normalise(chris.partnershipUtr),
+        tradingName = normalise(chris.tradingName),
+        foreName = normalise(chris.foreName),
+        middleName = normalise(chris.middleName),
+        surname = normalise(chris.surname),
+        nino = normalise(chris.nino)
+      )
+
+      val hasUtr = identity.utr.isDefined || identity.partnershipUtr.isDefined
+
+      hasUtr && !seenIdentities.add(identity)
+    }.toSet
 
     def matchPass(matches: (StoredRequestedVerification, CisResponseSubcontractor) => Boolean): Unit =
       chrisResults.indices
-        .filterNot(matchedResponses.contains)
+        .filterNot(index => matchedResponses.contains(index) || duplicateResponseIndices.contains(index))
         .foreach { responseIndex =>
-          unmatchedRequests
+          unmatchedRequests.toSeq.sorted
             .find { requestIndex =>
               matches(requestedVerifications(requestIndex), chrisResults(responseIndex))
             }
             .foreach { requestIndex =>
-              matchedResponses(responseIndex) =
-                RequestedVerificationMatch(requestedVerifications(requestIndex), matched = true)
+              matchedResponses(responseIndex) = requestedVerifications(requestIndex)
               unmatchedRequests -= requestIndex
             }
         }
@@ -157,15 +190,6 @@ class VerificationResultMapper @Inject() () extends Logging {
     matchPass { (requested, chris) =>
       requested.subcontractorType.map(_.trim.toLowerCase).contains("soletrader") &&
       soleTraderNameMatches(requested, chris)
-    }
-
-    // Pair remaining responses and requests in their original order.
-    val unmatchedResponseIndices = chrisResults.indices.filterNot(matchedResponses.contains)
-
-    unmatchedResponseIndices.zip(unmatchedRequests.toSeq.sorted).foreach { case (responseIndex, requestIndex) =>
-      matchedResponses(responseIndex) =
-        RequestedVerificationMatch(requestedVerifications(requestIndex), matched = false)
-      unmatchedRequests -= requestIndex
     }
 
     matchedResponses.toMap
