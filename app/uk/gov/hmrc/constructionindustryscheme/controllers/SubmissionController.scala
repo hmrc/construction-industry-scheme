@@ -360,7 +360,7 @@ class SubmissionController @Inject() (
       )
       .map(_ => render(res))
       .recover { case ex =>
-        logger.error(s"Failed to handle initial ChRIS$errorLabel response", ex)
+        logger.error(s"Failed to handle initial ChRIS$errorLabel response corrId=$correlationId", ex)
         BadGateway(
           withError(
             baseSubmissionResponseJson(submissionId, irMark, correlationId, "FATAL_ERROR"),
@@ -383,7 +383,7 @@ class SubmissionController @Inject() (
     isResubmission: Boolean = false
   )(implicit hc: HeaderCarrier): Future[Result] = {
     logger.error(
-      s"Received 5xx/Exception from ChRIS$errorLabel, treating as RESUBMIT for submissionId=$submissionId",
+      s"Received 5xx/Exception from ChRIS$errorLabel, treating as RESUBMIT for submissionId=$submissionId corrId=$correlationId",
       ex
     )
 
@@ -428,7 +428,7 @@ class SubmissionController @Inject() (
         )
       }
       .recover { case e =>
-        logger.error(s"Failed to initialise/update GovTalk status after ChRIS$errorLabel 5xx", e)
+        logger.error(s"Failed to initialise/update GovTalk status after ChRIS$errorLabel 5xx corrId=$correlationId", e)
         InternalServerError(
           withError(
             baseSubmissionResponseJson(submissionId, irMark, correlationId, "FATAL_ERROR", Some(classified)),
