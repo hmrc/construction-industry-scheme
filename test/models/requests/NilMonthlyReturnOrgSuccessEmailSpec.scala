@@ -25,11 +25,12 @@ class NilMonthlyReturnOrgSuccessEmailSpec extends AnyWordSpec {
 
   "NilMonthlyReturnOrgSuccessEmail" should {
 
-    "build the correct request via the factory apply" in {
+    "build the correct request for English via the factory apply" in {
       val req = NilMonthlyReturnOrgSuccessEmail(
         email = "user@example.com",
         month = "October",
-        year = "2025"
+        year = "2025",
+        language = "en"
       )
 
       req.to         shouldBe List("user@example.com")
@@ -37,11 +38,35 @@ class NilMonthlyReturnOrgSuccessEmailSpec extends AnyWordSpec {
       req.parameters shouldBe Map("month" -> "October", "year" -> "2025")
     }
 
-    "write to the expected JSON structure" in {
+    "build the correct request for Welsh via the factory apply" in {
+      val req = NilMonthlyReturnOrgSuccessEmail(
+        email = "user@example.com",
+        month = "Hydref",
+        year = "2025",
+        language = "cy"
+      )
+
+      req.to         shouldBe List("user@example.com")
+      req.templateId shouldBe "dtr_cis_nil_monthly_return_org_success_cy"
+      req.parameters shouldBe Map("month" -> "Hydref", "year" -> "2025")
+    }
+
+    "default to English template when language is not specified" in {
       val req = NilMonthlyReturnOrgSuccessEmail(
         email = "user@example.com",
         month = "October",
         year = "2025"
+      )
+
+      req.templateId shouldBe "dtr_cis_nil_monthly_return_org_success"
+    }
+
+    "write to the expected JSON structure" in {
+      val req = NilMonthlyReturnOrgSuccessEmail(
+        email = "user@example.com",
+        month = "October",
+        year = "2025",
+        language = "en"
       )
 
       val json = Json.toJson(req)
@@ -68,7 +93,7 @@ class NilMonthlyReturnOrgSuccessEmailSpec extends AnyWordSpec {
 
     "expose fields correctly when upcast to SendEmailRequest" in {
       val req: SendEmailRequest =
-        NilMonthlyReturnOrgSuccessEmail("user@example.com", "October", "2025")
+        NilMonthlyReturnOrgSuccessEmail("user@example.com", "October", "2025", "en")
 
       req.to                  shouldBe List("user@example.com")
       req.templateId          shouldBe "dtr_cis_nil_monthly_return_org_success"

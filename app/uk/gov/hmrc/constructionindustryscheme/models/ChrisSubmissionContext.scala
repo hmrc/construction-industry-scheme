@@ -51,7 +51,8 @@ final case class VerificationSubmissionContext(
   verificationBatchResourceRef: Long,
   actionIndicators: Seq[VerificationActionIndicator],
   requestedVerifications: Seq[StoredRequestedVerification],
-  emailRecipient: Option[String] = None
+  emailRecipient: Option[String] = None,
+  language: Option[String] = None
 ) extends ChrisSubmissionContext {
 
   override def monthlyReturnContext: Option[StoredMonthlyReturnContext] = None
@@ -64,7 +65,8 @@ final case class VerificationSubmissionContext(
         verificationBatchResourceRef = verificationBatchResourceRef,
         actionIndicators = actionIndicators,
         requestedVerifications = requestedVerifications,
-        emailRecipient = emailRecipient
+        emailRecipient = emailRecipient,
+        language = language
       )
     )
 }

@@ -75,14 +75,14 @@ class SubmissionService @Inject() (
   def sendSuccessfulEmail(submissionId: String, request: SendSuccessEmailRequest)(implicit
     hc: HeaderCarrier
   ): Future[Unit] = {
-    val emailPayload = NilMonthlyReturnOrgSuccessEmail(request.email, request.month, request.year)
+    val emailPayload = NilMonthlyReturnOrgSuccessEmail(request.email, request.month, request.year, request.language)
     emailConnector.sendEmail(emailPayload).map(_ => ())
   }
 
   def sendEmailForVerification(
     request: SubcontractorVerificationEmailRequest
   )(implicit hc: HeaderCarrier): Future[Unit] = {
-    val emailPayload = SubcontractorVerificationEmail(request.email)
+    val emailPayload = SubcontractorVerificationEmail(request.email, request.language)
     emailConnector.sendEmail(emailPayload).map(_ => ())
   }
 
@@ -472,6 +472,7 @@ class SubmissionService @Inject() (
              journey = journey,
              status = result.status,
              emailRecipient = session.verificationContext.flatMap(_.emailRecipient),
+             language = session.verificationContext.flatMap(_.language),
              submissionId = submissionId
            )
 
@@ -518,12 +519,14 @@ class SubmissionService @Inject() (
     journey: ChrisPollJourney,
     status: SubmissionStatus,
     emailRecipient: Option[String],
+    language: Option[String],
     submissionId: String
   )(implicit hc: HeaderCarrier): Future[Unit] =
     sendVerificationEmailIfRequired(
       journey = journey,
       status = status,
       emailRecipient = emailRecipient,
+      language = language,
       submissionId = submissionId
     ).recover { case NonFatal(exception) =>
       logger.error(
@@ -537,6 +540,7 @@ class SubmissionService @Inject() (
     journey: ChrisPollJourney,
     status: SubmissionStatus,
     emailRecipient: Option[String],
+    language: Option[String],
     submissionId: String
   )(implicit hc: HeaderCarrier): Future[Unit] =
     (journey, status) match {
@@ -546,7 +550,7 @@ class SubmissionService @Inject() (
             logger.info(
               s"[SubmissionService][sendVerificationEmailIfRequired] Sending email because status is = $status"
             )
-            sendEmailForVerification(SubcontractorVerificationEmailRequest(email))
+            sendEmailForVerification(SubcontractorVerificationEmailRequest(email, language.getOrElse("en")))
           case None        =>
             logger.warn(
               s"[SubmissionService][sendVerificationEmailIfRequired] No emailRecipient for verification " +

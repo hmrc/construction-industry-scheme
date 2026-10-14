@@ -26,7 +26,8 @@ class SubcontractorVerificationEmailSpec extends SpecBase {
 
     "build the correct request via the factory apply" in {
       val req = SubcontractorVerificationEmail(
-        email = "test@test.com"
+        email = "test@test.com",
+        language = "en"
       )
 
       req.to mustBe List("test@test.com")
@@ -36,7 +37,8 @@ class SubcontractorVerificationEmailSpec extends SpecBase {
 
     "write to the expected JSON structure" in {
       val req = SubcontractorVerificationEmail(
-        email = "test@test.com"
+        email = "test@test.com",
+        language = "en"
       )
 
       val json = Json.toJson(req)
@@ -64,11 +66,20 @@ class SubcontractorVerificationEmailSpec extends SpecBase {
 
     "expose fields correctly when upcast to SendEmailRequest" in {
       val req: SendEmailRequest =
-        SubcontractorVerificationEmail("test@test.com")
+        SubcontractorVerificationEmail("test@test.com", "en")
 
       req.to mustBe List("test@test.com")
       req.templateId mustBe "dtr_subcontractor_verification"
       req.parameters mustBe Map.empty[String, String]
+    }
+
+    "select Welsh template when language is cy" in {
+      val req = SubcontractorVerificationEmail(
+        email = "test@test.com",
+        language = "cy"
+      )
+
+      req.templateId mustBe "dtr_subcontractor_verification_cy"
     }
   }
 }

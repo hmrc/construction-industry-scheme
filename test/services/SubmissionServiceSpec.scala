@@ -483,7 +483,7 @@ final class SubmissionServiceSpec extends SpecBase {
         .futureValue mustBe response
 
       verify(emailConnector).sendEmail(
-        eqTo(SubcontractorVerificationEmail("user@example.com"))
+        eqTo(SubcontractorVerificationEmail("user@example.com", "en"))
       )(any[HeaderCarrier])
     }
 
@@ -503,7 +503,7 @@ final class SubmissionServiceSpec extends SpecBase {
         .futureValue mustBe response
 
       verify(emailConnector).sendEmail(
-        eqTo(SubcontractorVerificationEmail("user@example.com"))
+        eqTo(SubcontractorVerificationEmail("user@example.com", "en"))
       )(any[HeaderCarrier])
     }
 
@@ -523,7 +523,7 @@ final class SubmissionServiceSpec extends SpecBase {
         .futureValue mustBe response
 
       verify(emailConnector).sendEmail(
-        eqTo(SubcontractorVerificationEmail("user@example.com"))
+        eqTo(SubcontractorVerificationEmail("user@example.com", "en"))
       )(any[HeaderCarrier])
     }
 
@@ -954,7 +954,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
   "sendSuccessfulEmail" - {
 
-    "builds NilMonthlyReturnOrgSuccessEmail and calls EmailConnector, returning Unit" in {
+    "builds NilMonthlyReturnOrgSuccessEmail with English template and calls EmailConnector" in {
       val s = setup
       import s._
 
@@ -962,7 +962,8 @@ final class SubmissionServiceSpec extends SpecBase {
       val req          = SendSuccessEmailRequest(
         email = "test@test.com",
         month = "September",
-        year = "2025"
+        year = "2025",
+        language = "en"
       )
 
       val expectedPayload =
@@ -981,12 +982,40 @@ final class SubmissionServiceSpec extends SpecBase {
       verifyNoMoreInteractions(emailConnector)
     }
 
+    "builds NilMonthlyReturnOrgSuccessEmail with Welsh template and calls EmailConnector" in {
+      val s = setup
+      import s._
+
+      val submissionId = "90001"
+      val req          = SendSuccessEmailRequest(
+        email = "test@test.com",
+        month = "Medi",
+        year = "2025",
+        language = "cy"
+      )
+
+      val expectedPayload =
+        NilMonthlyReturnOrgSuccessEmail(
+          to = List("test@test.com"),
+          templateId = "dtr_cis_nil_monthly_return_org_success_cy",
+          parameters = Map("month" -> "Medi", "year" -> "2025")
+        )
+
+      when(emailConnector.sendEmail(eqTo(expectedPayload))(any[HeaderCarrier]))
+        .thenReturn(Future.successful(Done))
+
+      service.sendSuccessfulEmail(submissionId, req).futureValue mustBe ()
+
+      verify(emailConnector).sendEmail(eqTo(expectedPayload))(any[HeaderCarrier])
+      verifyNoMoreInteractions(emailConnector)
+    }
+
     "propagates failures from EmailConnector" in {
       val s = setup
       import s._
 
       val submissionId = "90001"
-      val req          = SendSuccessEmailRequest("test@test.com", "September", "2025")
+      val req          = SendSuccessEmailRequest("test@test.com", "September", "2025", "en")
 
       val expectedPayload =
         NilMonthlyReturnOrgSuccessEmail(
@@ -2817,7 +2846,7 @@ final class SubmissionServiceSpec extends SpecBase {
     emailRecipient.foreach { email =>
       when(
         emailConnector.sendEmail(
-          eqTo(SubcontractorVerificationEmail(email))
+          eqTo(SubcontractorVerificationEmail(email, "en"))
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(Done))
     }
