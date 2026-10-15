@@ -18,7 +18,7 @@ package uk.gov.hmrc.constructionindustryscheme.models.requests
 
 import play.api.libs.json.{Json, OFormat}
 
-case class SubcontractorVerificationEmailRequest(email: String)
+case class SubcontractorVerificationEmailRequest(email: String, language: String = "en")
 
 object SubcontractorVerificationEmailRequest {
   given OFormat[SubcontractorVerificationEmailRequest] = Json.format[SubcontractorVerificationEmailRequest]

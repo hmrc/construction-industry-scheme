@@ -91,9 +91,6 @@ object CisVerificationSubmission extends Logging {
     val (updatedXML, irMarkBase64, irMarkBase32, irEnvelope) =
       UpdatedPayloadWithIrMark(envelopeXml.toString)
 
-    val prettyXml = prettyPrinter.format(updatedXML)
-
-    logger.debug(s"CIS Verification Envelope XML:\n$prettyXml")
     logger.debug(s"[CisVerificationSubmission] irMarkBase64: $irMarkBase64")
 
     CisVerificationSubmission(

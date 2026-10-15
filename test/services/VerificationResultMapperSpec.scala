@@ -46,7 +46,7 @@ class VerificationResultMapperSpec extends SpecBase {
       )
 
       result.failed.futureValue.getMessage mustBe
-        s"Errors occurred during mapping: No requested verification available for subcontractor: $chrisResult"
+        "Errors occurred during mapping: No requested verification available for subcontractor at index=0"
     }
 
     "fail with all mapping errors when no requested verifications are available" in {
@@ -76,8 +76,8 @@ class VerificationResultMapperSpec extends SpecBase {
       )
 
       result.failed.futureValue.getMessage mustBe
-        s"Errors occurred during mapping: No requested verification available for subcontractor: $first; " +
-        s"No requested verification available for subcontractor: $second"
+        "Errors occurred during mapping: No requested verification available for subcontractor at index=0; " +
+        "No requested verification available for subcontractor at index=1"
     }
 
     "map ChRIS result to verification result for sole trader when verify action has verification number" in {

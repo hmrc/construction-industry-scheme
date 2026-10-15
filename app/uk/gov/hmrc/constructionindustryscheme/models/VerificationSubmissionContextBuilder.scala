@@ -47,7 +47,8 @@ object VerificationSubmissionContextBuilder {
       verificationBatchResourceRef = batchResourceRef,
       actionIndicators = actionIndicators,
       requestedVerifications = requestedVerifications,
-      emailRecipient = request.emailRecipient
+      emailRecipient = request.emailRecipient,
+      language = request.language
     )
 
   def buildFromFormpSnapshot(

@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.constructionindustryscheme.models.audit
 
-import play.api.libs.json.{Format, JsArray, JsObject, JsValue, Json}
+import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import uk.gov.hmrc.play.audit.model.ExtendedDataEvent
 
 trait AuditEventModel {

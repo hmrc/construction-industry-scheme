@@ -40,7 +40,6 @@ case class ChRISSubmission(
 object ChRISSubmission extends Logging {
   private val gatewayTimestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
   private val isoDateFmt                = DateTimeFormatter.ISO_LOCAL_DATE
-  private val prettyPrinter             = new PrettyPrinter(120, 4)
 
   private def buildChrisSubmission(
     request: ChrisSubmissionRequest,
@@ -81,10 +80,6 @@ object ChRISSubmission extends Logging {
 
     val (updatedXML, irMarkBase64, irMarkBase32, irEnvelope) = UpdatedPayloadWithIrMark(envelopeXml.toString)
 
-    val prettyXmlString = prettyPrinter.format(updatedXML)
-
-    logger.debug(s"Chris Envelope XML:\n$prettyXmlString")
-    logger.debug(s"[ChrisSubmissionEnvelopeBuilder] finalEnvelope: ${updatedXML.toString}")
     logger.debug(s"[ChrisSubmissionEnvelopeBuilder] irMarkBase64: $irMarkBase64")
 
     ChRISSubmission(

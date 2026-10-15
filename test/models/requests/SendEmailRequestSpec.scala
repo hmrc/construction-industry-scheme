@@ -26,7 +26,7 @@ class SendEmailRequestSpec extends SpecBase {
 
     "write SubcontractorVerificationEmail to JSON" in {
       val req: SendEmailRequest =
-        SubcontractorVerificationEmail("test@test.com")
+        SubcontractorVerificationEmail("test@test.com", "en")
 
       val json = Json.toJson(req)
 
