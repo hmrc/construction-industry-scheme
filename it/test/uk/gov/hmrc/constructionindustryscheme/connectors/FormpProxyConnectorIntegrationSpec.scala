@@ -2392,6 +2392,7 @@ class FormpProxyConnectorIntegrationSpec
         verificationResults = Seq(
           VerificationResult(
             resourceRef = 13L,
+            matchedToRequest = true,
             matched = Some("Y"),
             verified = Some("N"),
             verificationNumber = Some("V1000000007"),
@@ -2629,6 +2630,7 @@ class FormpProxyConnectorIntegrationSpec
         verificationResults = Seq(
           VerificationResult(
             resourceRef = 111L,
+            matchedToRequest = true,
             matched = Some("Y"),
             verified = Some("Y"),
             verificationNumber = Some("V123456"),
@@ -2659,6 +2661,7 @@ class FormpProxyConnectorIntegrationSpec
         verificationResults = Seq(
           VerificationResult(
             resourceRef = 111L,
+            matchedToRequest = true,
             matched = Some("N"),
             verified = Some("N"),
             verificationNumber = Some("V123456"),

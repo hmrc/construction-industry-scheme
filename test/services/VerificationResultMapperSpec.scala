@@ -118,6 +118,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = true,
           matched = None,
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
@@ -166,6 +167,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = true,
           matched = Some("Y"),
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
@@ -213,6 +215,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = true,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -259,6 +262,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = true,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -306,6 +310,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = true,
           matched = Some("Y"),
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
@@ -353,6 +358,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = true,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -382,7 +388,6 @@ class VerificationResultMapperSpec extends SpecBase {
           storedRequestedVerification(
             verificationResourceRef = 14L,
             foreName = Some("John"),
-            middleName = Some("A"),
             tradingName = Some("Not matching"),
             surname = Some("Smith"),
             utr = Some("1234567890"),
@@ -400,6 +405,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = false,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -445,6 +451,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = true,
           matched = Some("Y"),
           verified = Some("Y"),
           verificationNumber = Some("V1000000007"),
@@ -489,6 +496,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = false,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -533,6 +541,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = false,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -577,6 +586,7 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue mustBe Seq(
         VerificationResult(
           resourceRef = 14L,
+          matchedToRequest = false,
           matched = None,
           verified = None,
           verificationNumber = None,
@@ -654,6 +664,540 @@ class VerificationResultMapperSpec extends SpecBase {
         .futureValue
 
       results must have size 2
+    }
+
+    "include missing requested subcontractors when CHRIS returns fewer responses" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val requested = Seq(
+        storedRequestedVerification(
+          verificationResourceRef = 1L,
+          utr = Some("1111111111"),
+          foreName = Some("A"),
+          middleName = None,
+          surname = Some("Person")
+        ),
+        storedRequestedVerification(
+          verificationResourceRef = 2L,
+          utr = Some("2222222222"),
+          foreName = Some("B"),
+          middleName = None,
+          surname = Some("Person")
+        ),
+        storedRequestedVerification(
+          verificationResourceRef = 3L,
+          utr = Some("3333333333"),
+          foreName = Some("C"),
+          middleName = None,
+          surname = Some("Person")
+        ),
+        storedRequestedVerification(
+          verificationResourceRef = 4L,
+          utr = Some("4444444444"),
+          foreName = Some("D"),
+          middleName = None,
+          surname = Some("Person")
+        ),
+        storedRequestedVerification(
+          verificationResourceRef = 5L,
+          utr = Some("5555555555"),
+          foreName = Some("E"),
+          middleName = None,
+          surname = Some("Person")
+        ),
+        storedRequestedVerification(
+          verificationResourceRef = 6L,
+          utr = Some("6666666666"),
+          foreName = Some("F"),
+          middleName = None,
+          surname = Some("Person")
+        )
+      )
+
+      val chrisResults = Seq(
+        cisResponseSubcontractor(
+          utr = Some("1111111111"),
+          foreName = Some("A"),
+          middleName = None,
+          surname = Some("Person"),
+          matched = Some("matched")
+        ),
+        cisResponseSubcontractor(
+          utr = Some("9999999999"),
+          foreName = Some("Unknown"),
+          middleName = None,
+          surname = Some("Person")
+        )
+      )
+
+      val results = mapper
+        .mapAll(
+          chrisResults = chrisResults,
+          context = storedVerificationContext(requestedVerifications = requested),
+          verifiedDate = verifiedDate
+        )
+        .futureValue
+
+      results.map(_.resourceRef) mustBe Seq(1L, 2L, 3L, 4L, 5L, 6L)
+
+      results.head.matchedToRequest mustBe true
+      results.head.matched mustBe Some("Y")
+      results.head.verificationNumber mustBe Some("V1000000007")
+      results.head.taxTreatment mustBe Some("net")
+
+      results.tail.foreach { result =>
+        result.matchedToRequest mustBe false
+        result.matched mustBe None
+        result.verified mustBe None
+        result.verificationNumber mustBe None
+        result.taxTreatment mustBe None
+        result.verifiedDate mustBe None
+      }
+    }
+
+    "include every requested subcontractor when CHRIS returns no results" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(verificationResourceRef = 13L, utr = Some("1111111111")),
+          storedRequestedVerification(verificationResourceRef = 14L, utr = Some("2222222222"))
+        )
+      )
+
+      val results = mapper
+        .mapAll(chrisResults = Seq.empty, context = context, verifiedDate = verifiedDate)
+        .futureValue
+
+      results.map(_.resourceRef) mustBe Seq(13L, 14L)
+
+      results.foreach { result =>
+        result.matchedToRequest mustBe false
+        result.matched mustBe None
+        result.verified mustBe None
+        result.verificationNumber mustBe None
+        result.taxTreatment mustBe None
+        result.verifiedDate mustBe None
+      }
+    }
+
+    "preserve CHRIS response order and append missing requested subcontractors" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(verificationResourceRef = 13L, utr = Some("1111111111")),
+          storedRequestedVerification(verificationResourceRef = 14L, utr = Some("2222222222")),
+          storedRequestedVerification(verificationResourceRef = 15L, utr = Some("3333333333"))
+        )
+      )
+
+      val chrisResults = Seq(
+        cisResponseSubcontractor(utr = Some("3333333333"), verificationNumber = Some("V10000000070003")),
+        cisResponseSubcontractor(utr = Some("1111111111"), verificationNumber = Some("V10000000070001"))
+      )
+
+      val results = mapper
+        .mapAll(chrisResults = chrisResults, context = context, verifiedDate = verifiedDate)
+        .futureValue
+
+      results.map(_.resourceRef) mustBe Seq(15L, 13L, 14L)
+
+      results.map(_.verificationNumber) mustBe Seq(
+        Some("V10000000070003"),
+        Some("V10000000070001"),
+        None
+      )
+
+      results.map(_.matchedToRequest) mustBe Seq(true, true, false)
+    }
+
+    "use first CHRIS response when six requested subcontractors receive seven responses including a duplicate" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(verificationResourceRef = 11L, utr = Some("1111111111")),
+          storedRequestedVerification(verificationResourceRef = 12L, utr = Some("2222222222")),
+          storedRequestedVerification(verificationResourceRef = 13L, utr = Some("3333333333")),
+          storedRequestedVerification(verificationResourceRef = 14L, utr = Some("4444444444")),
+          storedRequestedVerification(verificationResourceRef = 15L, utr = Some("5555555555")),
+          storedRequestedVerification(verificationResourceRef = 16L, utr = Some("6666666666"))
+        )
+      )
+
+      val first = cisResponseSubcontractor(
+        utr = Some("1111111111"),
+        matched = Some("matched"),
+        verificationNumber = Some("V10000000070001")
+      )
+
+      val duplicate = first.copy(
+        verificationNumber = Some("V10000000070002"),
+        taxTreatment = Some("gross"),
+        matched = Some("unmatched")
+      )
+
+      val chrisResults = Seq(
+        first,
+        duplicate,
+        cisResponseSubcontractor(utr = Some("2222222222"), verificationNumber = Some("V10000000070003")),
+        cisResponseSubcontractor(utr = Some("3333333333"), verificationNumber = Some("V10000000070004")),
+        cisResponseSubcontractor(utr = Some("4444444444"), verificationNumber = Some("V10000000070005")),
+        cisResponseSubcontractor(utr = Some("5555555555"), verificationNumber = Some("V10000000070006")),
+        cisResponseSubcontractor(utr = Some("6666666666"), verificationNumber = Some("V10000000070007"))
+      )
+
+      val results = mapper
+        .mapAll(chrisResults = chrisResults, context = context, verifiedDate = verifiedDate)
+        .futureValue
+
+      results.map(_.resourceRef) mustBe Seq(11L, 12L, 13L, 14L, 15L, 16L)
+
+      results.map(_.matchedToRequest) mustBe Seq.fill(6)(true)
+
+      results.map(_.verificationNumber) mustBe Seq(
+        Some("V10000000070001"),
+        Some("V10000000070003"),
+        Some("V10000000070004"),
+        Some("V10000000070005"),
+        Some("V10000000070006"),
+        Some("V10000000070007")
+      )
+
+      results.head.matched mustBe Some("Y")
+      results.head.taxTreatment mustBe Some("net")
+      results.head.verifiedDate mustBe Some(verifiedDate)
+    }
+
+    "ignore duplicate CHRIS response when another subcontractor shares the same trading name" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 11L,
+            utr = Some("1111111111"),
+            tradingName = Some("Alice"),
+            foreName = Some("Alice"),
+            middleName = None,
+            surname = Some("A")
+          ),
+          storedRequestedVerification(
+            verificationResourceRef = 12L,
+            utr = None,
+            tradingName = Some("Alice"),
+            foreName = Some("Bob"),
+            middleName = None,
+            surname = Some("B")
+          )
+        )
+      )
+
+      val first = cisResponseSubcontractor(
+        utr = Some("1111111111"),
+        tradingName = Some("Alice"),
+        foreName = Some("Alice"),
+        middleName = None,
+        surname = Some("A"),
+        matched = Some("matched"),
+        verificationNumber = Some("V10000000070001")
+      )
+
+      val duplicate = first.copy(
+        verificationNumber = Some("V10000000070002")
+      )
+
+      val third = cisResponseSubcontractor(
+        utr = Some("2222222222"),
+        tradingName = Some("Alice"),
+        foreName = Some("Bob"),
+        middleName = None,
+        surname = Some("B"),
+        matched = Some("matched"),
+        verificationNumber = Some("V10000000070003")
+      )
+
+      val results = mapper
+        .mapAll(
+          chrisResults = Seq(first, duplicate, third),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue
+
+      results.map(_.resourceRef) mustBe Seq(11L, 12L)
+
+      results.map(_.matchedToRequest) mustBe Seq(true, true)
+
+      results.map(_.verificationNumber) mustBe Seq(
+        Some("V10000000070001"),
+        Some("V10000000070003")
+      )
+
+      results.map(_.matched) mustBe Seq(Some("Y"), Some("Y"))
+      results.map(_.verifiedDate) mustBe Seq(Some(verifiedDate), Some(verifiedDate))
+    }
+
+    "leave subcontractor unmatched when the only remaining CHRIS response is a duplicate" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 11L,
+            utr = Some("1111111111"),
+            tradingName = Some("Alice"),
+            foreName = Some("Alice"),
+            middleName = None,
+            surname = Some("A")
+          ),
+          storedRequestedVerification(
+            verificationResourceRef = 12L,
+            utr = None,
+            tradingName = Some("Alice"),
+            foreName = Some("Bob"),
+            middleName = None,
+            surname = Some("B")
+          )
+        )
+      )
+
+      val first = cisResponseSubcontractor(
+        utr = Some("1111111111"),
+        tradingName = Some("Alice"),
+        foreName = Some("Alice"),
+        middleName = None,
+        surname = Some("A"),
+        matched = Some("matched"),
+        verificationNumber = Some("V10000000070001")
+      )
+
+      val duplicate = first.copy(
+        verificationNumber = Some("V10000000070002")
+      )
+
+      val results = mapper
+        .mapAll(
+          chrisResults = Seq(first, duplicate),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue
+
+      results.map(_.resourceRef) mustBe Seq(11L, 12L)
+
+      results.map(_.matchedToRequest) mustBe Seq(true, false)
+
+      results.head.verificationNumber mustBe Some("V10000000070001")
+
+      results(1).matched mustBe None
+      results(1).verified mustBe None
+      results(1).verificationNumber mustBe None
+      results(1).taxTreatment mustBe None
+      results(1).verifiedDate mustBe None
+    }
+
+    "use first requested subcontractor when multiple requests share the same trading name" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 11L,
+            utr = None,
+            tradingName = Some("ABC Construction"),
+            foreName = Some("Alice"),
+            middleName = None,
+            surname = Some("A")
+          ),
+          storedRequestedVerification(
+            verificationResourceRef = 12L,
+            utr = None,
+            tradingName = Some("ABC Construction"),
+            foreName = Some("Bob"),
+            middleName = None,
+            surname = Some("B")
+          )
+        )
+      )
+
+      val chrisResult = cisResponseSubcontractor(
+        utr = None,
+        tradingName = Some("ABC Construction"),
+        foreName = None,
+        middleName = None,
+        surname = None,
+        verificationNumber = Some("V10000000070001")
+      )
+
+      val results = mapper
+        .mapAll(
+          chrisResults = Seq(chrisResult),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue
+
+      results.map(_.resourceRef) mustBe Seq(11L, 12L)
+
+      results.map(_.matchedToRequest) mustBe Seq(true, false)
+
+      results.head.verificationNumber mustBe Some("V10000000070001")
+
+      results(1).matched mustBe None
+      results(1).verified mustBe None
+      results(1).verificationNumber mustBe None
+      results(1).taxTreatment mustBe None
+      results(1).verifiedDate mustBe None
+    }
+
+    "do not remove CHRIS responses with identical names when UTR is missing" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 11L,
+            utr = None,
+            tradingName = Some("ABC Construction")
+          ),
+          storedRequestedVerification(
+            verificationResourceRef = 12L,
+            utr = None,
+            tradingName = Some("ABC Construction")
+          )
+        )
+      )
+
+      val first = cisResponseSubcontractor(
+        utr = None,
+        tradingName = Some("ABC Construction"),
+        verificationNumber = Some("V10000000070001")
+      )
+
+      val second = first.copy(
+        verificationNumber = Some("V10000000070002")
+      )
+
+      val results = mapper
+        .mapAll(
+          chrisResults = Seq(first, second),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue
+
+      results.map(_.resourceRef) mustBe Seq(11L, 12L)
+      results.map(_.matchedToRequest) mustBe Seq(true, true)
+
+      results.map(_.verificationNumber) mustBe Seq(
+        Some("V10000000070001"),
+        Some("V10000000070002")
+      )
+    }
+
+    "do not treat responses with the same UTR but different identity fields as duplicates" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(
+            verificationResourceRef = 11L,
+            utr = Some("1111111111"),
+            foreName = Some("Alice"),
+            middleName = None,
+            surname = Some("A")
+          ),
+          storedRequestedVerification(
+            verificationResourceRef = 12L,
+            utr = Some("1111111111"),
+            foreName = Some("Bob"),
+            middleName = None,
+            surname = Some("B")
+          )
+        )
+      )
+
+      val first = cisResponseSubcontractor(
+        utr = Some("1111111111"),
+        foreName = Some("Alice"),
+        middleName = None,
+        surname = Some("A"),
+        verificationNumber = Some("V10000000070001")
+      )
+
+      val second = cisResponseSubcontractor(
+        utr = Some("1111111111"),
+        foreName = Some("Bob"),
+        middleName = None,
+        surname = Some("B"),
+        verificationNumber = Some("V10000000070002")
+      )
+
+      val results = mapper
+        .mapAll(
+          chrisResults = Seq(first, second),
+          context = context,
+          verifiedDate = verifiedDate
+        )
+        .futureValue
+
+      results.map(_.resourceRef) mustBe Seq(11L, 12L)
+
+      results.map(_.matchedToRequest) mustBe Seq(true, true)
+
+      results.map(_.verificationNumber) mustBe Seq(
+        Some("V10000000070001"),
+        Some("V10000000070002")
+      )
+    }
+
+    "ignore an extra CHRIS response after all requested subcontractors have matched" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val context = storedVerificationContext(
+        requestedVerifications = Seq(
+          storedRequestedVerification(verificationResourceRef = 13L, utr = Some("1111111111")),
+          storedRequestedVerification(verificationResourceRef = 14L, utr = Some("2222222222"))
+        )
+      )
+
+      val chrisResults = Seq(
+        cisResponseSubcontractor(utr = Some("1111111111")),
+        cisResponseSubcontractor(utr = Some("2222222222")),
+        cisResponseSubcontractor(utr = Some("9999999999"))
+      )
+
+      val results = mapper
+        .mapAll(chrisResults = chrisResults, context = context, verifiedDate = verifiedDate)
+        .futureValue
+
+      results.map(_.resourceRef) mustBe Seq(13L, 14L)
+      results.map(_.matchedToRequest) mustBe Seq(true, true)
+    }
+
+    "return an empty result when there are no requested verifications and no CHRIS results" in {
+      val mapper       = new VerificationResultMapper()
+      val verifiedDate = LocalDateTime.parse("2017-04-06T08:46:08.081")
+
+      val result = mapper.mapAll(
+        chrisResults = Seq.empty,
+        context = storedVerificationContext(requestedVerifications = Seq.empty),
+        verifiedDate = verifiedDate
+      )
+
+      result.futureValue mustBe Seq.empty[VerificationResult]
     }
   }
 
