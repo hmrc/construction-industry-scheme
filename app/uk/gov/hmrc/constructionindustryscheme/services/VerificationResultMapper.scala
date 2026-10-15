@@ -52,7 +52,7 @@ class VerificationResultMapper @Inject() () extends Logging {
     val mapped = chrisResults.zipWithIndex.map { case (chris, index) =>
       matches.get(index) match {
         case Some(requestMatch) => mapOne(chris, requestMatch, verifiedDate)
-        case None               => Left(s"No requested verification available for subcontractor: $chris")
+        case None               => Left(s"No requested verification available for subcontractor at index=$index")
       }
     }
 
@@ -73,7 +73,7 @@ class VerificationResultMapper @Inject() () extends Logging {
     val requested = requestMatch.requested
 
     if (!requestMatch.matched) {
-      logger.warn(s"No matching requested verification found for subcontractor: $chris")
+      logger.warn(s"No matching requested verification found for resourceRef=${requested.verificationResourceRef}")
 
       Right(
         VerificationResult(

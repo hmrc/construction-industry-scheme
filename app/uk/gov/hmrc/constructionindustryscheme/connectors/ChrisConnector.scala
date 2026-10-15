@@ -61,12 +61,12 @@ class ChrisConnector @Inject() (
       .flatMap { resp =>
         logger.info("[ChrisConnector] poll Journey:" + journey)
         logger.info("[ChrisConnector] pollSubmission request:\n" + ChrisPollRequest(correlationId, journey).payload)
-        logger.info("[ChrisConnector] pollSubmission response:\n" + resp.body)
+        logger.info(s"[ChrisConnector] pollSubmission response: corrId=$correlationId status=${resp.status}")
         if (is2xx(resp.status)) {
           parsePollResponse(journey, resp.body, hmrcMarkGenerated) match {
             case Left(err)     =>
               logger.error(
-                s"[ChrisConnector] Failed to parse 2xx polling response corrId=$correlationId url=$pollUrl status=${resp.status} body:\n${resp.body}"
+                s"[ChrisConnector] Failed to parse 2xx polling response corrId=$correlationId url=$pollUrl status=${resp.status}"
               )
               Future.successful(
                 ChrisPollResponse(
@@ -169,7 +169,7 @@ class ChrisConnector @Inject() (
       .withBody(envelope.toString)
       .execute[HttpResponse]
       .flatMap { resp =>
-        logger.info("[ChrisConnector] submit response:\n" + resp.body)
+        logger.info(s"[ChrisConnector] submit response: corrId=$correlationId status=${resp.status}")
         if (is2xx(resp.status)) {
           logger.info(s"[ChrisConnector] corrId=$correlationId status=${resp.status}")
           Future.successful(handle2xxResponse(resp, correlationId))

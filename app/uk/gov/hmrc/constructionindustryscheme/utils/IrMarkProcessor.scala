@@ -75,9 +75,7 @@ object IrMarkProcessor extends Logging {
     val baos           = new java.io.ByteArrayOutputStream
     canon.canonicalizeSubtree(domElem, baos)
     val canonicalBytes = baos.toByteArray
-    val canonicalXml   = new String(canonicalBytes, "UTF-8")
     logger.info("GenerateFullIrMark canonicalized XML (no comments):")
-    logger.info(canonicalXml) // TODO Remove this logger before deploying to production
 
     val digest = MessageDigest.getInstance("SHA-1").digest(canonicalBytes)
     val b64    = Base64.getEncoder.encodeToString(digest)
