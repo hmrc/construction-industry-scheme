@@ -53,8 +53,8 @@ class VerificationResultMapper @Inject() () extends Logging {
     }
 
     if (context.requestedVerifications.isEmpty && chrisResults.nonEmpty) {
-      val errors = chrisResults.map { chris =>
-        s"No requested verification available for subcontractor: $chris"
+      val errors = chrisResults.indices.map { index =>
+        s"No requested verification available for subcontractor at index=$index"
       }
 
       Future.failed(new RuntimeException(s"Errors occurred during mapping: ${errors.mkString("; ")}"))
