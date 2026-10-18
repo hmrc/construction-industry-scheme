@@ -66,6 +66,8 @@ final case class MonthlyReturnRequestEvent(
   accountsOfficeReference: String,
   periodEndDate: String,
   isAgent: Boolean,
+  agentReference: Option[String],
+  credentialId: String,
   isResubmission: Boolean,
   taxOfficeNumber: String,
   taxOfficeReference: String,
@@ -89,8 +91,10 @@ final case class MonthlyReturnRequestEvent(
       "taxOfficeReference"      -> taxOfficeReference,
       "returnType"              -> returnType,
       "isInformationCorrect"    -> isInformationCorrect,
-      "isInactive"              -> isInactive
-    ) ++ confirmationEmail.fold(Json.obj())(e => Json.obj("confirmationEmail" -> e))
+      "isInactive"              -> isInactive,
+      "credentialId"            -> credentialId
+    ) ++ agentReference.fold(Json.obj())(v => Json.obj("agentReference" -> v)) ++
+      confirmationEmail.fold(Json.obj())(e => Json.obj("confirmationEmail" -> e))
     if (subcontractors.isEmpty) base
     else base ++ Json.obj("subcontractors" -> JsArray(subcontractors.map(_.toJson)))
   }
@@ -146,6 +150,8 @@ final case class VerificationSubcontractorAuditDetail(
 final case class VerificationRequestEvent(
   correlationId: String,
   isAgent: Boolean,
+  agentReference: Option[String],
+  credentialId: String,
   taxOfficeNumber: String,
   taxOfficeReference: String,
   contractorUtr: String,
@@ -163,8 +169,10 @@ final case class VerificationRequestEvent(
       "taxOfficeReference"      -> taxOfficeReference,
       "contractorUtr"           -> contractorUtr,
       "accountsOfficeReference" -> accountsOfficeReference,
-      "verificationBatchId"     -> verificationBatchId
-    ) ++ emailRecipient.fold(Json.obj())(v => Json.obj("emailRecipient" -> v))
+      "verificationBatchId"     -> verificationBatchId,
+      "credentialId"            -> credentialId
+    ) ++ agentReference.fold(Json.obj())(v => Json.obj("agentReference" -> v)) ++
+      emailRecipient.fold(Json.obj())(v => Json.obj("emailRecipient" -> v))
     if (subcontractors.isEmpty) base
     else base ++ Json.obj("subcontractors" -> JsArray(subcontractors.map(_.toJson)))
   }

@@ -50,13 +50,16 @@ class AuditServiceSpec extends SpecBase {
       when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
         .thenReturn(Future.successful(AuditResult.Success))
       val service            = new AuditService(mockAuditConnector)
-      val resultF            = service.monthlyReturnRequestEvent(request, "CORR-456", "2025-05-09T10:30:00Z")
+      val resultF            =
+        service.monthlyReturnRequestEvent(request, "CORR-456", "2025-05-09T10:30:00Z", Some("ARN123"), "cred-1")
       resultF.map { result =>
         result shouldBe AuditResult.Success
         val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
         verify(mockAuditConnector, times(1)).sendExtendedEvent(captor.capture())(any(), any())
         val capturedEvent = captor.getValue
-        capturedEvent.auditType shouldBe "MonthlyReturnRequest"
+        capturedEvent.auditType                              shouldBe "MonthlyReturnRequest"
+        (capturedEvent.detail \ "agentReference").as[String] shouldBe "ARN123"
+        (capturedEvent.detail \ "credentialId").as[String]   shouldBe "cred-1"
       }
     }
     "call AuditConnector.sendExtendedEvent for MonthlyReturnResponseEvent with returnType Nil" in {
@@ -107,7 +110,8 @@ class AuditServiceSpec extends SpecBase {
       when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
         .thenReturn(Future.successful(AuditResult.Success))
       val service            = new AuditService(mockAuditConnector)
-      val resultF            = service.monthlyReturnRequestEvent(request, "CORR-123", "2025-05-09T10:30:00Z")
+      val resultF            =
+        service.monthlyReturnRequestEvent(request, "CORR-123", "2025-05-09T10:30:00Z", Some("ARN123"), "cred-1")
       resultF.map { result =>
         result shouldBe AuditResult.Success
         val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])
@@ -163,7 +167,7 @@ class AuditServiceSpec extends SpecBase {
       when(mockAuditConnector.sendExtendedEvent(any[ExtendedDataEvent])(any(), any()))
         .thenReturn(Future.successful(AuditResult.Success))
       val service            = new AuditService(mockAuditConnector)
-      val resultF            = service.verificationRequestEvent(request, "CORR-VER-123")
+      val resultF            = service.verificationRequestEvent(request, "CORR-VER-123", Some("ARN123"), "cred-1")
       resultF.map { result =>
         result shouldBe AuditResult.Success
         val captor        = ArgumentCaptor.forClass(classOf[ExtendedDataEvent])

@@ -29,7 +29,7 @@ import uk.gov.hmrc.constructionindustryscheme.models.{ACCEPTED as AcceptedStatus
 import uk.gov.hmrc.constructionindustryscheme.services.{AuditService, SubmissionService}
 import uk.gov.hmrc.constructionindustryscheme.services.chris.{GovTalkErrorMapper, GovTalkErrorStatusClassifier}
 import uk.gov.hmrc.http.UpstreamErrorResponse
-import uk.gov.hmrc.constructionindustryscheme.utils.{CisEnrolmentHeaderForwarding, UriHelper, XmlToJsonConvertor, XmlValidator}
+import uk.gov.hmrc.constructionindustryscheme.utils.{CisEnrolmentHeaderForwarding, CisEnrolmentHelper, UriHelper, XmlToJsonConvertor, XmlValidator}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.play.bootstrap.binders.RedirectUrl.*
@@ -282,7 +282,9 @@ class SubmissionController @Inject() (
     auditService.monthlyReturnRequestEvent(
       csr,
       correlationId = payload.correlationId,
-      submissionDateTime = submissionRequestDate.toInstant(ZoneOffset.UTC).toString
+      submissionDateTime = submissionRequestDate.toInstant(ZoneOffset.UTC).toString,
+      agentReference = CisEnrolmentHelper.extractIRAgentReferenceIdentifiers(req.enrolments),
+      credentialId = req.credentialId
     )
 
     xmlValidator.validate(payload.irEnvelope, appConfig.cisReturnSchema) match {
@@ -500,7 +502,12 @@ class SubmissionController @Inject() (
   )(implicit req: AuthenticatedRequest[JsValue]): Future[Result] = {
     val payload = CisVerificationSubmission.buildPayload(cvr, req.enrolments)
 
-    auditService.verificationRequestEvent(cvr, payload.correlationId)
+    auditService.verificationRequestEvent(
+      cvr,
+      payload.correlationId,
+      agentReference = CisEnrolmentHelper.extractIRAgentReferenceIdentifiers(req.enrolments),
+      credentialId = req.credentialId
+    )
 
     VerificationSubmissionContextBuilder
       .build(

@@ -36,7 +36,9 @@ class AuditService @Inject (
   def monthlyReturnRequestEvent(
     request: ChrisSubmissionRequest,
     correlationId: String,
-    submissionDateTime: String
+    submissionDateTime: String,
+    agentReference: Option[String],
+    credentialId: String
   )(implicit hc: HeaderCarrier): Future[AuditResult] = {
     val event = MonthlyReturnRequestEvent(
       correlationId = correlationId,
@@ -45,6 +47,8 @@ class AuditService @Inject (
       accountsOfficeReference = request.aoReference,
       periodEndDate = ChRISSubmission.parsePeriodEnd(request.monthYear),
       isAgent = request.isAgent,
+      agentReference = agentReference,
+      credentialId = credentialId,
       isResubmission = request.isResubmission,
       taxOfficeNumber = request.clientTaxOfficeNumber,
       taxOfficeReference = request.clientTaxOfficeRef,
@@ -96,11 +100,15 @@ class AuditService @Inject (
 
   def verificationRequestEvent(
     request: ChrisVerificationRequest,
-    correlationId: String
+    correlationId: String,
+    agentReference: Option[String],
+    credentialId: String
   )(implicit hc: HeaderCarrier): Future[AuditResult] = {
     val event = VerificationRequestEvent(
       correlationId = correlationId,
       isAgent = request.isAgent,
+      agentReference = agentReference,
+      credentialId = credentialId,
       taxOfficeNumber = request.clientTaxOfficeNumber,
       taxOfficeReference = request.clientTaxOfficeRef,
       contractorUtr = request.contractorUTR,
