@@ -267,5 +267,128 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
         )
       )
     }
+
+    "default proceedVerification to false when proceed is missing and actionIndicator is MATCH" in {
+      val result = VerificationSubmissionContextBuilder.buildFromFormpSnapshot(
+        response = snapshot(actionIndicator = Some("MATCH"), proceed = None),
+        verificationBatchResourceRef = 5L
+      )
+
+      result.map(_.requestedVerifications.map(_.proceedVerification)) mustBe Right(Seq(false))
+    }
+
+    "default proceedVerification to true when proceed is missing and actionIndicator is VERIFY" in {
+      val result = VerificationSubmissionContextBuilder.buildFromFormpSnapshot(
+        response = snapshot(actionIndicator = Some("VERIFY"), proceed = None),
+        verificationBatchResourceRef = 5L
+      )
+
+      result.map(_.requestedVerifications.map(_.proceedVerification)) mustBe Right(Seq(true))
+    }
+
+    "treat a blank proceed as missing" in {
+      val result = VerificationSubmissionContextBuilder.buildFromFormpSnapshot(
+        response = snapshot(actionIndicator = Some("MATCH"), proceed = Some("  ")),
+        verificationBatchResourceRef = 5L
+      )
+
+      result.map(_.requestedVerifications.map(_.proceedVerification)) mustBe Right(Seq(false))
+    }
+
+    "return an error when proceed is invalid" in {
+      VerificationSubmissionContextBuilder.buildFromFormpSnapshot(
+        response = snapshot(actionIndicator = Some("MATCH"), proceed = Some("X")),
+        verificationBatchResourceRef = 5L
+      ) mustBe Left("Invalid value for proceedVerification for subcontractorId: 10: 'X' (expected 'Y' or 'N')")
+    }
+
+    "return an error when proceed and actionIndicator are both missing" in {
+      VerificationSubmissionContextBuilder.buildFromFormpSnapshot(
+        response = snapshot(actionIndicator = None, proceed = None),
+        verificationBatchResourceRef = 5L
+      ) mustBe Left("Missing actionIndicator for subcontractorId: 10")
+    }
   }
+
+  private def snapshot(
+    actionIndicator: Option[String],
+    proceed: Option[String]
+  ): GetSubmissionWithVerificationBatchResponse =
+    GetSubmissionWithVerificationBatchResponse(
+      scheme = None,
+      submission = Some(
+        Submission(
+          submissionId = 100L,
+          submissionType = "VERIFICATIONS",
+          activeObjectId = Some(200L),
+          status = Some("SUBMITTED"),
+          hmrcMarkGenerated = Some("hmrc-mark"),
+          hmrcMarkGgis = None,
+          emailRecipient = None,
+          acceptedTime = None,
+          createDate = None,
+          lastUpdate = None,
+          schemeId = 300L,
+          agentId = None,
+          l_Migrated = None,
+          submissionRequestDate = Some(LocalDateTime.parse("2026-07-14T10:00:00")),
+          govTalkErrorCode = None,
+          govTalkErrorType = None,
+          govTalkErrorMessage = None
+        )
+      ),
+      verificationBatch = None,
+      verifications = Seq(
+        Verification(
+          verificationId = 1L,
+          matched = None,
+          verificationNumber = None,
+          taxTreatment = None,
+          verificationBatchId = Some(200L),
+          subcontractorId = Some(10L),
+          actionIndicator = actionIndicator,
+          proceed = proceed,
+          verificationResourceRef = Some(13L)
+        )
+      ),
+      subcontractors = Seq(
+        Subcontractor(
+          subcontractorId = 10L,
+          utr = Some("1234567890"),
+          pageVisited = None,
+          partnerUtr = None,
+          crn = None,
+          firstName = Some("John"),
+          nino = Some("AB123456C"),
+          secondName = Some("A"),
+          surname = Some("Smith"),
+          partnershipTradingName = None,
+          tradingName = Some("Test Trading"),
+          subcontractorType = Some("soletrader"),
+          addressLine1 = None,
+          addressLine2 = None,
+          addressLine3 = None,
+          addressLine4 = None,
+          country = None,
+          postcode = None,
+          emailAddress = None,
+          phoneNumber = None,
+          mobilePhoneNumber = None,
+          worksReferenceNumber = None,
+          createDate = None,
+          lastUpdate = None,
+          subbieResourceRef = Some(13L),
+          matched = None,
+          autoVerified = None,
+          verified = None,
+          verificationNumber = None,
+          taxTreatment = None,
+          verificationDate = None,
+          version = None,
+          updatedTaxTreatment = None,
+          lastMonthlyReturnDate = None,
+          pendingVerifications = None
+        )
+      )
+    )
 }
