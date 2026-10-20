@@ -268,18 +268,18 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
       )
     }
 
-    "default proceedVerification to false when proceed is missing and actionIndicator is MATCH" in {
+    "default proceedVerification to false when proceed is missing and actionIndicator is match" in {
       val result = VerificationSubmissionContextBuilder.buildFromFormpSnapshot(
-        response = snapshot(actionIndicator = Some("MATCH"), proceed = None),
+        response = snapshot(actionIndicator = Some("match"), proceed = None),
         verificationBatchResourceRef = 5L
       )
 
       result.map(_.requestedVerifications.map(_.proceedVerification)) mustBe Right(Seq(false))
     }
 
-    "default proceedVerification to true when proceed is missing and actionIndicator is VERIFY" in {
+    "default proceedVerification to true when proceed is missing and actionIndicator is verify" in {
       val result = VerificationSubmissionContextBuilder.buildFromFormpSnapshot(
-        response = snapshot(actionIndicator = Some("VERIFY"), proceed = None),
+        response = snapshot(actionIndicator = Some("verify"), proceed = None),
         verificationBatchResourceRef = 5L
       )
 
@@ -288,7 +288,7 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
 
     "treat a blank proceed as missing" in {
       val result = VerificationSubmissionContextBuilder.buildFromFormpSnapshot(
-        response = snapshot(actionIndicator = Some("MATCH"), proceed = Some("  ")),
+        response = snapshot(actionIndicator = Some("match"), proceed = Some("  ")),
         verificationBatchResourceRef = 5L
       )
 
@@ -297,7 +297,7 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
 
     "return an error when proceed is invalid" in {
       VerificationSubmissionContextBuilder.buildFromFormpSnapshot(
-        response = snapshot(actionIndicator = Some("MATCH"), proceed = Some("X")),
+        response = snapshot(actionIndicator = Some("match"), proceed = Some("X")),
         verificationBatchResourceRef = 5L
       ) mustBe Left("Invalid value for proceedVerification for subcontractorId: 10: 'X' (expected 'Y' or 'N')")
     }
