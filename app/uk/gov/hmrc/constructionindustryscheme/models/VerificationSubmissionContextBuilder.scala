@@ -155,15 +155,18 @@ object VerificationSubmissionContextBuilder {
             verification.verificationResourceRef.toRight(
               s"Missing verificationResourceRef for verificationId: ${verification.verificationId}"
             )
+          declaredProceed         <-
+            if verification.proceed.exists(_.trim.nonEmpty) then
+              parseYesNo(verification.proceed, s"proceedVerification for subcontractorId: $subcontractorId")
+                .map(Some(_))
+            else Right(None)
+          // actionIndicator and proceed can each be absent; fall back to the other, mirroring VerificationActionIndicatorBuilder
           actionIndicator         <- verification.actionIndicator
                                        .map(_.trim)
                                        .filter(_.nonEmpty)
+                                       .orElse(declaredProceed.map(p => if p then "verify" else "match"))
                                        .toRight(s"Missing actionIndicator for subcontractorId: $subcontractorId")
-          proceedVerification     <-
-            // proceed is only populated once a user explicitly proceeds; otherwise fall back to the action indicator
-            if verification.proceed.exists(_.trim.nonEmpty) then
-              parseYesNo(verification.proceed, s"proceedVerification for subcontractorId: $subcontractorId")
-            else Right(actionIndicator.equalsIgnoreCase("verify"))
+          proceedVerification      = declaredProceed.getOrElse(actionIndicator.equalsIgnoreCase("verify"))
         } yield StoredRequestedVerification(
           verificationResourceRef = verificationResourceRef,
           subcontractorId = subcontractorId,

@@ -138,19 +138,16 @@ object CisVerificationRequestXmlBuilder {
     }
   }
 
+  // NameStructure requires 1-2 non-empty Fore elements and a non-empty Sur, so absent names are omitted rather than emitted empty
   private def buildName(sub: SubcontractorCurrentVerification): Option[Elem] = {
-    val fore = Seq(sub.firstName, sub.secondName).map(nonBlank)
+    val fore = Seq(sub.firstName, sub.secondName).flatMap(nonBlank)
     val sur  = nonBlank(sub.surname)
 
-    if (fore.forall(_.isEmpty) && sur.isEmpty) None
-    else {
-      Some(
-        <Name>
-          <Fore>{fore.head.getOrElse("")}</Fore>
-          <Fore>{fore.tail.head.getOrElse("")}</Fore>
-          <Sur>{sur.getOrElse("")}</Sur>
-        </Name>
-      )
+    sur.filter(_ => fore.nonEmpty).map { surname =>
+      <Name>
+        {fore.map(f => <Fore>{f}</Fore>)}
+        <Sur>{surname}</Sur>
+      </Name>
     }
   }
 
