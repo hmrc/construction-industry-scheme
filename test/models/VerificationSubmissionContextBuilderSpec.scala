@@ -302,6 +302,26 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
       ) mustBe Left("Invalid value for proceedVerification for subcontractorId: 10: 'X' (expected 'Y' or 'N')")
     }
 
+    "default actionIndicator to verify when it is missing and proceed is Y" in {
+      val result = VerificationSubmissionContextBuilder.buildFromFormpSnapshot(
+        response = snapshot(actionIndicator = None, proceed = Some("Y")),
+        verificationBatchResourceRef = 5L
+      )
+
+      result.map(_.requestedVerifications.map(r => (r.actionIndicator, r.proceedVerification))) mustBe
+        Right(Seq(("verify", true)))
+    }
+
+    "default actionIndicator to match when it is blank and proceed is N" in {
+      val result = VerificationSubmissionContextBuilder.buildFromFormpSnapshot(
+        response = snapshot(actionIndicator = Some("  "), proceed = Some("N")),
+        verificationBatchResourceRef = 5L
+      )
+
+      result.map(_.requestedVerifications.map(r => (r.actionIndicator, r.proceedVerification))) mustBe
+        Right(Seq(("match", false)))
+    }
+
     "return an error when proceed and actionIndicator are both missing" in {
       VerificationSubmissionContextBuilder.buildFromFormpSnapshot(
         response = snapshot(actionIndicator = None, proceed = None),
