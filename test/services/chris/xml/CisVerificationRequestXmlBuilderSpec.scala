@@ -168,6 +168,56 @@ class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
       (subNode \\ "TradingName").isEmpty mustBe true
     }
 
+    "for SoleTrader with no second name, emit a single non-empty Fore" in {
+      val sub = baseSub(10).copy(
+        subcontractorType = Some("soletrader"),
+        secondName = None,
+        tradingName = None
+      )
+
+      val subNode = subcontractorNode(build(Seq(sub)))
+
+      (subNode \\ "Name" \\ "Fore").map(_.text.trim) mustBe Seq("John")
+      (subNode \\ "Name" \\ "Sur").text.trim mustBe "Smith"
+    }
+
+    "for SoleTrader with no first name, emit only the second name as Fore" in {
+      val sub = baseSub(10).copy(
+        subcontractorType = Some("soletrader"),
+        firstName = Some("  "),
+        tradingName = None
+      )
+
+      val subNode = subcontractorNode(build(Seq(sub)))
+
+      (subNode \\ "Name" \\ "Fore").map(_.text.trim) mustBe Seq("Q")
+    }
+
+    "for SoleTrader with no forenames, omit Name rather than emit empty Fore" in {
+      val sub = baseSub(10).copy(
+        subcontractorType = Some("soletrader"),
+        firstName = None,
+        secondName = None,
+        tradingName = None
+      )
+
+      val subNode = subcontractorNode(build(Seq(sub)))
+
+      (subNode \\ "Name").isEmpty mustBe true
+    }
+
+    "for SoleTrader with no surname, omit Name rather than emit empty Sur" in {
+      val sub = baseSub(10).copy(
+        subcontractorType = Some("soletrader"),
+        surname = None,
+        tradingName = None
+      )
+
+      val subNode = subcontractorNode(build(Seq(sub)))
+
+      (subNode \\ "Name").isEmpty mustBe true
+    }
+
     "for Partnership, build TradingName, CRN, NINO, Partnership block and use partnerUtr as top-level UTR" in {
       val sub = baseSub(10).copy(
         subcontractorType = Some("partnership"),
