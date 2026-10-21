@@ -299,6 +299,115 @@ class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
       (subNode \\ "Country").text.trim mustBe "UK"
     }
 
+    "omit absent address lines rather than emit empty Line elements" in {
+      val sub = baseSub(10).copy(
+        addressLine2 = Some("Line 2"),
+        addressLine3 = None,
+        addressLine4 = Some("  ")
+      )
+
+      val lines = subcontractorNode(build(Seq(sub))) \\ "Address" \\ "Line"
+
+      lines.map(_.text.trim) mustBe Seq("Line 1", "Line 2")
+    }
+
+    "omit PostCode and Country when absent rather than emit empty elements" in {
+      val sub = baseSub(10).copy(postcode = None, country = Some("  "))
+
+      val addressNode = subcontractorNode(build(Seq(sub))) \\ "Address"
+
+      (addressNode \\ "Line").nonEmpty mustBe true
+      (addressNode \\ "PostCode").isEmpty mustBe true
+      (addressNode \\ "Country").isEmpty mustBe true
+    }
+
+    "omit the subcontractor UTR when absent rather than emit an empty element" in {
+      val sub = baseSub(10).copy(subcontractorType = Some("company"), utr = None)
+
+      val subNode = subcontractorNode(build(Seq(sub)))
+
+      (subNode \\ "UTR").isEmpty mustBe true
+    }
+
+    "omit the subcontractor UTR when a Partnership has no partnerUtr" in {
+      val sub = baseSub(10).copy(subcontractorType = Some("partnership"), partnerUtr = None)
+
+      val subNode = subcontractorNode(build(Seq(sub)))
+
+      (subNode \ "UTR").isEmpty mustBe true
+      (subNode \ "Partnership" \ "UTR").text.trim mustBe "1111111111"
+    }
+
+    "for Partnership with only a partnership name, omit the empty Partnership UTR" in {
+      val sub = baseSub(10).copy(
+        subcontractorType = Some("partnership"),
+        partnershipTradingName = Some("PARTNERS LTD"),
+        utr = None
+      )
+
+      val partnership = subcontractorNode(build(Seq(sub))) \\ "Partnership"
+
+      (partnership \\ "Name").text.trim mustBe "PARTNERS LTD"
+      (partnership \\ "UTR").isEmpty mustBe true
+    }
+
+    "for Partnership with only a partnership UTR, omit the empty Partnership Name" in {
+      val sub = baseSub(10).copy(
+        subcontractorType = Some("partnership"),
+        partnershipTradingName = None,
+        utr = Some("1111111111")
+      )
+
+      val partnership = subcontractorNode(build(Seq(sub))) \\ "Partnership"
+
+      (partnership \\ "UTR").text.trim mustBe "1111111111"
+      (partnership \\ "Name").isEmpty mustBe true
+    }
+
+    "for Partnership with no tradingName, fall back to partnershipTradingName as TradingName" in {
+      val sub = baseSub(10).copy(
+        subcontractorType = Some("partnership"),
+        tradingName = None,
+        partnershipTradingName = Some("PARTNERS LTD")
+      )
+
+      val subNode = subcontractorNode(build(Seq(sub)))
+
+      (subNode \\ "TradingName").map(_.text.trim) mustBe Seq("PARTNERS LTD")
+    }
+
+    "for Partnership, prefer tradingName over partnershipTradingName for TradingName" in {
+      val sub = baseSub(10).copy(
+        subcontractorType = Some("partnership"),
+        tradingName = Some("ACME"),
+        partnershipTradingName = Some("PARTNERS LTD")
+      )
+
+      (subcontractorNode(build(Seq(sub))) \\ "TradingName").map(_.text.trim) mustBe Seq("ACME")
+    }
+
+    "not use partnershipTradingName as TradingName for a Company" in {
+      val sub = baseSub(10).copy(
+        subcontractorType = Some("company"),
+        tradingName = None,
+        partnershipTradingName = Some("PARTNERS LTD")
+      )
+
+      (subcontractorNode(build(Seq(sub))) \\ "TradingName").isEmpty mustBe true
+    }
+
+    "normalise NINO by removing whitespace and uppercasing" in {
+      val sub = baseSub(10).copy(subcontractorType = Some("soletrader"), nino = Some(" aa 12 34 56 a "))
+
+      (subcontractorNode(build(Seq(sub))) \\ "NINO").text mustBe "AA123456A"
+    }
+
+    "pad a NINO with no suffix letter to 9 characters as the schema requires" in {
+      val sub = baseSub(10).copy(subcontractorType = Some("soletrader"), nino = Some("aa123456"))
+
+      (subcontractorNode(build(Seq(sub))) \\ "NINO").text mustBe "AA123456 "
+    }
+
     "throw when address fields are present but ADDRESS_LINE_1 is missing" in {
       val invalid =
         baseSub(10).copy(

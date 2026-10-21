@@ -50,19 +50,24 @@ object CisVerificationRequestXmlBuilder {
   private def buildSubcontractor(sub: SubcontractorCurrentVerification, action: VerificationAction): Elem = {
     val st: SubcontractorType = parseSubcontractorType(sub.subcontractorType)
 
-    val worksRef: String = nonBlank(sub.worksReferenceNumber).getOrElse("")
-    val utr: String      =
+    val worksRef: String    = nonBlank(sub.worksReferenceNumber).getOrElse("")
+    val utr: Option[String] =
       st match {
         case Partnership =>
-          nonBlank(sub.partnerUtr).getOrElse("")
+          nonBlank(sub.partnerUtr)
 
         case SoleTrader | Company | Trust =>
-          nonBlank(sub.utr).getOrElse("")
+          nonBlank(sub.utr)
       }
+
+    // UTR must be exactly 10 digits when present, so an absent UTR is omitted rather than emitted empty
+    val utrNode: NodeSeq =
+      utr.map(u => <UTR>{u}</UTR>).getOrElse(NodeSeq.Empty)
 
     val actionValue = VerificationAction.toXmlValue(action)
 
-    val hasTradingName = chooseTradingName(sub).isDefined
+    val tradingName    = chooseTradingName(sub, st)
+    val hasTradingName = tradingName.isDefined
 
     val hasName =
       nonBlank(sub.firstName).isDefined ||
@@ -78,7 +83,7 @@ object CisVerificationRequestXmlBuilder {
       }
 
     val tradingNameNode: NodeSeq =
-      chooseTradingName(sub)
+      tradingName
         .map(tn => <TradingName>{tn}</TradingName>)
         .getOrElse(NodeSeq.Empty)
 
@@ -96,7 +101,7 @@ object CisVerificationRequestXmlBuilder {
       st match {
         case SoleTrader | Partnership =>
           nonBlank(sub.nino)
-            .map(nino => <NINO>{nino}</NINO>)
+            .map(nino => <NINO>{normaliseNino(nino)}</NINO>)
             .getOrElse(NodeSeq.Empty)
         case _                        =>
           NodeSeq.Empty
@@ -119,7 +124,7 @@ object CisVerificationRequestXmlBuilder {
       {tradingNameNode}
       {nameNode}
       <WorksRef>{worksRef}</WorksRef>
-      <UTR>{utr}</UTR>
+      {utrNode}
       {crnNode}
       {ninoNode}
       {partnershipNode}
@@ -151,10 +156,22 @@ object CisVerificationRequestXmlBuilder {
     }
   }
 
+  // Name or TradingName is mandatory in the schema; a Partnership without a tradingName falls back to its
+  // partnershipTradingName, as the monthly return builder does
   private def chooseTradingName(
-    sub: SubcontractorCurrentVerification
+    sub: SubcontractorCurrentVerification,
+    st: SubcontractorType
   ): Option[String] =
-    nonBlank(sub.tradingName)
+    st match {
+      case Partnership => nonBlank(sub.tradingName).orElse(nonBlank(sub.partnershipTradingName))
+      case _           => nonBlank(sub.tradingName)
+    }
+
+  // NINOtype is exactly 9 uppercase characters with the final suffix letter A-D or a space
+  private def normaliseNino(nino: String): String = {
+    val compact = nino.replaceAll("\\s", "").toUpperCase
+    if (compact.length == 8) compact + " " else compact
+  }
 
   private def buildPartnership(sub: SubcontractorCurrentVerification): Option[Elem] = {
     val nameOpt = nonBlank(sub.partnershipTradingName)
@@ -164,13 +181,14 @@ object CisVerificationRequestXmlBuilder {
     else {
       Some(
         <Partnership>
-          <Name>{nameOpt.getOrElse("")}</Name>
-          <UTR>{utrOpt.getOrElse("")}</UTR>
+          {nameOpt.map(n => <Name>{n}</Name>).getOrElse(NodeSeq.Empty)}
+          {utrOpt.map(u => <UTR>{u}</UTR>).getOrElse(NodeSeq.Empty)}
         </Partnership>
       )
     }
   }
 
+  // Line, PostCode and Country have minLength 1 in the ChRIS schema, so absent values are omitted rather than emitted empty
   private def buildAddress(sub: SubcontractorCurrentVerification): Option[Elem] = {
     val line1    = nonBlank(sub.addressLine1)
     val line2    = nonBlank(sub.addressLine2)
@@ -191,12 +209,9 @@ object CisVerificationRequestXmlBuilder {
     } else {
       Some(
         <Address>
-          <Line>{line1.get}</Line>
-          <Line>{line2.getOrElse("")}</Line>
-          <Line>{line3.getOrElse("")}</Line>
-          <Line>{line4.getOrElse("")}</Line>
-          <PostCode>{postcode.getOrElse("")}</PostCode>
-          <Country>{country.getOrElse("")}</Country>
+          {Seq(line1, line2, line3, line4).flatten.map(l => <Line>{l}</Line>)}
+          {postcode.map(pc => <PostCode>{pc}</PostCode>).getOrElse(NodeSeq.Empty)}
+          {country.map(c => <Country>{c}</Country>).getOrElse(NodeSeq.Empty)}
         </Address>
       )
     }
