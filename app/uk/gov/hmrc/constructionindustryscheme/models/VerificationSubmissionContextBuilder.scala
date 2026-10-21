@@ -160,10 +160,7 @@ object VerificationSubmissionContextBuilder {
                                        .filter(_.nonEmpty)
                                        .toRight(s"Missing actionIndicator for subcontractorId: $subcontractorId")
           proceedVerification     <-
-            // proceed is only populated once a user explicitly proceeds; otherwise fall back to the action indicator
-            if verification.proceed.exists(_.trim.nonEmpty) then
-              parseYesNo(verification.proceed, s"proceedVerification for subcontractorId: $subcontractorId")
-            else Right(actionIndicator.equalsIgnoreCase("verify"))
+            parseYesNo(verification.proceed, s"proceedVerification for subcontractorId: $subcontractorId")
         } yield StoredRequestedVerification(
           verificationResourceRef = verificationResourceRef,
           subcontractorId = subcontractorId,
