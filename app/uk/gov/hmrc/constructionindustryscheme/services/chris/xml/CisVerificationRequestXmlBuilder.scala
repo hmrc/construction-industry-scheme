@@ -167,12 +167,6 @@ object CisVerificationRequestXmlBuilder {
       case _           => nonBlank(sub.tradingName)
     }
 
-  // NINOtype is exactly 9 uppercase characters with the final suffix letter A-D or a space
-  private def normaliseNino(nino: String): String = {
-    val compact = nino.replaceAll("\\s", "").toUpperCase
-    if (compact.length == 8) compact + " " else compact
-  }
-
   private def buildPartnership(sub: SubcontractorCurrentVerification): Option[Elem] = {
     val nameOpt = nonBlank(sub.partnershipTradingName)
     val utrOpt  = nonBlank(sub.utr)
