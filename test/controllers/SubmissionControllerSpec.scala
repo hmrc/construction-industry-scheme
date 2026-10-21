@@ -70,7 +70,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     Mockito.reset(
       mockAuditService
     )
-    when(mockAuditService.verificationRequestEvent(any(), any())(any()))
+    when(mockAuditService.verificationRequestEvent(any(), any(), any(), any())(any()))
       .thenReturn(Future.successful(AuditResult.Success))
     when(mockAuditService.verificationResponseEvent(any())(any()))
       .thenReturn(Future.successful(AuditResult.Success))
@@ -152,7 +152,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
@@ -192,7 +192,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
@@ -230,7 +230,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
@@ -270,7 +270,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val err = GovTalkError("1234", "fatal", "boom")
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
@@ -313,7 +313,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val err = GovTalkError("1001", "recoverable", "recoverable error from ChRIS")
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
       when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
@@ -368,7 +368,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val err = GovTalkError("9999", "fatal", "fatal error from ChRIS")
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
       when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
@@ -418,7 +418,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema])).thenReturn(Success(()))
 
@@ -448,7 +448,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
@@ -497,7 +497,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any(), any()))
         .thenReturn(Success(()))
@@ -544,7 +544,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
@@ -578,7 +578,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
         .thenReturn(Success(()))
@@ -625,7 +625,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
@@ -675,7 +675,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
       when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
@@ -746,7 +746,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
       when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
@@ -788,7 +788,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       status(result) mustBe OK
 
-      verify(mockAuditService, times(1)).monthlyReturnRequestEvent(any(), any(), any())(any())
+      verify(mockAuditService, times(1)).monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any())
       verify(mockAuditService, times(1)).monthlyReturnResponseEvent(any(), any())(any())
     }
 
@@ -803,7 +803,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         xmlValidator = xmlValidator
       )
 
-      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
+      when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
 
       when(xmlValidator.validate(any[NodeSeq], any[Schema]))
