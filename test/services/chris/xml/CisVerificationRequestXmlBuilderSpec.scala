@@ -193,7 +193,7 @@ class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
       (subNode \\ "Name" \\ "Fore").map(_.text.trim) mustBe Seq("Q")
     }
 
-    "for SoleTrader with no forenames, omit Name rather than emit empty Fore" in {
+    "for SoleTrader with no forenames and no tradingName, throw rather than emit empty Fore" in {
       val sub = baseSub(10).copy(
         subcontractorType = Some("soletrader"),
         firstName = None,
@@ -201,21 +201,17 @@ class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
         tradingName = None
       )
 
-      val subNode = subcontractorNode(build(Seq(sub)))
-
-      (subNode \\ "Name").isEmpty mustBe true
+      intercept[IllegalArgumentException](build(Seq(sub))).getMessage must include("tradingName")
     }
 
-    "for SoleTrader with no surname, omit Name rather than emit empty Sur" in {
+    "for SoleTrader with no surname and no tradingName, throw rather than emit empty Sur" in {
       val sub = baseSub(10).copy(
         subcontractorType = Some("soletrader"),
         surname = None,
         tradingName = None
       )
 
-      val subNode = subcontractorNode(build(Seq(sub)))
-
-      (subNode \\ "Name").isEmpty mustBe true
+      intercept[IllegalArgumentException](build(Seq(sub))).getMessage must include("tradingName")
     }
 
     "for Partnership, build TradingName, CRN, NINO, Partnership block and use partnerUtr as top-level UTR" in {
@@ -364,36 +360,41 @@ class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
       (partnership \\ "Name").isEmpty mustBe true
     }
 
-    "for Partnership with no tradingName, fall back to partnershipTradingName as TradingName" in {
-      val sub = baseSub(10).copy(
-        subcontractorType = Some("partnership"),
-        tradingName = None,
-        partnershipTradingName = Some("PARTNERS LTD")
-      )
-
-      val subNode = subcontractorNode(build(Seq(sub)))
-
-      (subNode \\ "TradingName").map(_.text.trim) mustBe Seq("PARTNERS LTD")
-    }
-
-    "for Partnership, prefer tradingName over partnershipTradingName for TradingName" in {
+    "for Partnership, use tradingName for TradingName and partnershipTradingName only for Partnership/Name" in {
       val sub = baseSub(10).copy(
         subcontractorType = Some("partnership"),
         tradingName = Some("ACME"),
         partnershipTradingName = Some("PARTNERS LTD")
       )
 
-      (subcontractorNode(build(Seq(sub))) \\ "TradingName").map(_.text.trim) mustBe Seq("ACME")
+      val subNode = subcontractorNode(build(Seq(sub)))
+
+      (subNode \\ "TradingName").map(_.text.trim) mustBe Seq("ACME")
+      (subNode \\ "Partnership" \\ "Name").map(_.text.trim) mustBe Seq("PARTNERS LTD")
     }
 
-    "not use partnershipTradingName as TradingName for a Company" in {
+    "throw for a Partnership with no tradingName rather than reuse partnershipTradingName" in {
       val sub = baseSub(10).copy(
-        subcontractorType = Some("company"),
+        subcontractorType = Some("partnership"),
         tradingName = None,
         partnershipTradingName = Some("PARTNERS LTD")
       )
 
-      (subcontractorNode(build(Seq(sub))) \\ "TradingName").isEmpty mustBe true
+      intercept[IllegalArgumentException](build(Seq(sub))).getMessage must include("tradingName")
+    }
+
+    "throw for a Company with no tradingName" in {
+      val sub = baseSub(10).copy(subcontractorType = Some("company"), tradingName = None)
+
+      intercept[IllegalArgumentException](build(Seq(sub))).getMessage must include("tradingName")
+    }
+
+    "omit WorksRef when absent or blank" in {
+      Seq(None, Some("   ")).foreach { wr =>
+        val xml = build(Seq(baseSub(10).copy(worksReferenceNumber = wr)))
+
+        (subcontractorNode(xml) \\ "WorksRef").isEmpty mustBe true
+      }
     }
 
     "normalise NINO by removing whitespace and uppercasing" in {

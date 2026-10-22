@@ -83,6 +83,12 @@ object CisReturnXmlBuilder {
     val tradingNameNode: NodeSeq =
       buildTradingName(sub.subcontractorType, sub.tradingName, sub.partnershipTradingName)
 
+    // Name or TradingName is mandatory in the schema, so fail rather than send XML ChRIS will reject
+    if (nameNode.isEmpty && tradingNameNode.isEmpty)
+      throw new IllegalArgumentException(
+        s"Subcontractor of type ${sub.subcontractorType} requires a tradingName or, for a soletrader, a name"
+      )
+
     val utrOrUnmatched: NodeSeq =
       nonBlank(sub.utr)
         .map(utr => <UTR>{utr}</UTR>)

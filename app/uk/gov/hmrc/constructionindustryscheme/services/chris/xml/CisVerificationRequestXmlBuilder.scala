@@ -50,7 +50,11 @@ object CisVerificationRequestXmlBuilder {
   private def buildSubcontractor(sub: SubcontractorCurrentVerification, action: VerificationAction): Elem = {
     val st: SubcontractorType = parseSubcontractorType(sub.subcontractorType)
 
-    val worksRef: String    = nonBlank(sub.worksReferenceNumber).getOrElse("")
+    val worksRefNode: NodeSeq =
+      nonBlank(sub.worksReferenceNumber)
+        .map(w => <WorksRef>{w}</WorksRef>)
+        .getOrElse(NodeSeq.Empty)
+
     val utr: Option[String] =
       st match {
         case Partnership =>
@@ -66,7 +70,9 @@ object CisVerificationRequestXmlBuilder {
 
     val actionValue = VerificationAction.toXmlValue(action)
 
-    val tradingName    = chooseTradingName(sub, st)
+    // tradingName is the nominated partner's name (TradingName); partnershipTradingName is the firm's name and
+    // belongs only in Partnership/Name, so it is never used as a fallback for TradingName
+    val tradingName    = nonBlank(sub.tradingName)
     val hasTradingName = tradingName.isDefined
 
     val hasName =
@@ -86,6 +92,12 @@ object CisVerificationRequestXmlBuilder {
       tradingName
         .map(tn => <TradingName>{tn}</TradingName>)
         .getOrElse(NodeSeq.Empty)
+
+    // Name or TradingName is mandatory in the schema, so fail rather than send XML ChRIS will reject
+    if (nameNode.isEmpty && tradingNameNode.isEmpty)
+      throw new IllegalArgumentException(
+        s"Subcontractor of type ${st.toString} requires a tradingName or, for a soletrader, a full name"
+      )
 
     val crnNode: NodeSeq =
       st match {
@@ -123,7 +135,7 @@ object CisVerificationRequestXmlBuilder {
       <Type>{st.toString}</Type>
       {tradingNameNode}
       {nameNode}
-      <WorksRef>{worksRef}</WorksRef>
+      {worksRefNode}
       {utrNode}
       {crnNode}
       {ninoNode}
@@ -155,17 +167,6 @@ object CisVerificationRequestXmlBuilder {
       </Name>
     }
   }
-
-  // Name or TradingName is mandatory in the schema; a Partnership without a tradingName falls back to its
-  // partnershipTradingName, as the monthly return builder does
-  private def chooseTradingName(
-    sub: SubcontractorCurrentVerification,
-    st: SubcontractorType
-  ): Option[String] =
-    st match {
-      case Partnership => nonBlank(sub.tradingName).orElse(nonBlank(sub.partnershipTradingName))
-      case _           => nonBlank(sub.tradingName)
-    }
 
   private def buildPartnership(sub: SubcontractorCurrentVerification): Option[Elem] = {
     val nameOpt = nonBlank(sub.partnershipTradingName)
