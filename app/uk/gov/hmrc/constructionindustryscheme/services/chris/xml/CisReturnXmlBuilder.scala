@@ -83,21 +83,30 @@ object CisReturnXmlBuilder {
     val tradingNameNode: NodeSeq =
       buildTradingName(sub.subcontractorType, sub.tradingName, sub.partnershipTradingName)
 
+    // Name or TradingName is mandatory in the schema, so fail rather than send XML ChRIS will reject
+    if (nameNode.isEmpty && tradingNameNode.isEmpty)
+      throw new IllegalArgumentException(
+        s"Subcontractor of type ${sub.subcontractorType} requires a tradingName or, for a soletrader, a name"
+      )
+
     val utrOrUnmatched: NodeSeq =
       nonBlank(sub.utr)
         .map(utr => <UTR>{utr}</UTR>)
         .getOrElse(<UnmatchedRate>yes</UnmatchedRate>)
 
     val crnNode: NodeSeq =
-      if (sub.subcontractorType == Partnership) sub.crn.map(crn => <CRN>{crn}</CRN>).getOrElse(NodeSeq.Empty)
+      if (sub.subcontractorType == Partnership) nonBlank(sub.crn).map(crn => <CRN>{crn}</CRN>).getOrElse(NodeSeq.Empty)
       else NodeSeq.Empty
 
     val ninoNode: NodeSeq =
-      if (sub.subcontractorType == Partnership) sub.nino.map(nino => <NINO>{nino}</NINO>).getOrElse(NodeSeq.Empty)
+      if (sub.subcontractorType == Partnership)
+        nonBlank(sub.nino).map(nino => <NINO>{normaliseNino(nino)}</NINO>).getOrElse(NodeSeq.Empty)
       else NodeSeq.Empty
 
     val verificationNode: NodeSeq =
-      sub.verificationNumber.map(vn => <VerificationNumber>{vn}</VerificationNumber>).getOrElse(NodeSeq.Empty)
+      nonBlank(sub.verificationNumber)
+        .map(vn => <VerificationNumber>{normaliseCompact(vn)}</VerificationNumber>)
+        .getOrElse(NodeSeq.Empty)
 
     val totalPayments   = amountOrZero(sub.totalPayments)
     val costOfMaterials = amountOrZero(sub.costOfMaterials)
@@ -126,13 +135,15 @@ object CisReturnXmlBuilder {
     </Name>
   }
 
+  // Name or TradingName is mandatory in the schema, so a Partnership without a partnershipTradingName
+  // falls back to its tradingName
   private def buildTradingName(
     subcontractorType: SubcontractorType,
     tradingName: Option[String],
     partnershipTradingName: Option[String]
   ): NodeSeq = {
     val chosenTradingName: Option[String] = subcontractorType match {
-      case Partnership => nonBlank(partnershipTradingName)
+      case Partnership => nonBlank(partnershipTradingName).orElse(nonBlank(tradingName))
       case _           => nonBlank(tradingName)
     }
 

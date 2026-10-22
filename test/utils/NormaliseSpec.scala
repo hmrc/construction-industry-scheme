@@ -62,4 +62,41 @@ class NormaliseSpec extends AnyWordSpec with Matchers {
       Normalise.isYes(null) mustBe false
     }
   }
+
+  "Normalise.normaliseCompact" should {
+    "remove all whitespace and uppercase" in {
+      Normalise.normaliseCompact("  v12 34\t567890a ") mustBe "V1234567890A"
+    }
+
+    "leave an already compact uppercase value unchanged" in {
+      Normalise.normaliseCompact("AA123456A") mustBe "AA123456A"
+    }
+
+    "return an empty string for whitespace only" in {
+      Normalise.normaliseCompact("   ") mustBe ""
+    }
+  }
+
+  "Normalise.normaliseNino" should {
+    "remove whitespace and uppercase a 9 character NINO" in {
+      Normalise.normaliseNino(" aa 12 34 56 a ") mustBe "AA123456A"
+    }
+
+    "leave an already normalised NINO unchanged" in {
+      Normalise.normaliseNino("AA123456A") mustBe "AA123456A"
+    }
+
+    "pad an 8 character NINO with a trailing space" in {
+      Normalise.normaliseNino("aa123456") mustBe "AA123456 "
+    }
+
+    "not pad again when the trailing space was already present" in {
+      Normalise.normaliseNino("AA123456 ") mustBe "AA123456 "
+    }
+
+    "not pad a value that is not 8 characters once compacted" in {
+      Normalise.normaliseNino("AA12345") mustBe "AA12345"
+      Normalise.normaliseNino("AA1234567A") mustBe "AA1234567A"
+    }
+  }
 }

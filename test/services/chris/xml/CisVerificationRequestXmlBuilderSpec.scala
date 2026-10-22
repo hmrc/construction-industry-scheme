@@ -193,7 +193,7 @@ class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
       (subNode \\ "Name" \\ "Fore").map(_.text.trim) mustBe Seq("Q")
     }
 
-    "for SoleTrader with no forenames, omit Name rather than emit empty Fore" in {
+    "for SoleTrader with no forenames and no tradingName, throw rather than emit empty Fore" in {
       val sub = baseSub(10).copy(
         subcontractorType = Some("soletrader"),
         firstName = None,
@@ -201,21 +201,17 @@ class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
         tradingName = None
       )
 
-      val subNode = subcontractorNode(build(Seq(sub)))
-
-      (subNode \\ "Name").isEmpty mustBe true
+      intercept[IllegalArgumentException](build(Seq(sub))).getMessage must include("tradingName")
     }
 
-    "for SoleTrader with no surname, omit Name rather than emit empty Sur" in {
+    "for SoleTrader with no surname and no tradingName, throw rather than emit empty Sur" in {
       val sub = baseSub(10).copy(
         subcontractorType = Some("soletrader"),
         surname = None,
         tradingName = None
       )
 
-      val subNode = subcontractorNode(build(Seq(sub)))
-
-      (subNode \\ "Name").isEmpty mustBe true
+      intercept[IllegalArgumentException](build(Seq(sub))).getMessage must include("tradingName")
     }
 
     "for Partnership, build TradingName, CRN, NINO, Partnership block and use partnerUtr as top-level UTR" in {
@@ -297,6 +293,120 @@ class CisVerificationRequestXmlBuilderSpec extends AnyWordSpec with Matchers {
       lines.map(_.text.trim) mustBe Seq("Line 1", "Line 2", "Line 3", "Line 4")
       (subNode \\ "PostCode").text.trim mustBe "NE1 1AA"
       (subNode \\ "Country").text.trim mustBe "UK"
+    }
+
+    "omit absent address lines rather than emit empty Line elements" in {
+      val sub = baseSub(10).copy(
+        addressLine2 = Some("Line 2"),
+        addressLine3 = None,
+        addressLine4 = Some("  ")
+      )
+
+      val lines = subcontractorNode(build(Seq(sub))) \\ "Address" \\ "Line"
+
+      lines.map(_.text.trim) mustBe Seq("Line 1", "Line 2")
+    }
+
+    "omit PostCode and Country when absent rather than emit empty elements" in {
+      val sub = baseSub(10).copy(postcode = None, country = Some("  "))
+
+      val addressNode = subcontractorNode(build(Seq(sub))) \\ "Address"
+
+      (addressNode \\ "Line").nonEmpty mustBe true
+      (addressNode \\ "PostCode").isEmpty mustBe true
+      (addressNode \\ "Country").isEmpty mustBe true
+    }
+
+    "omit the subcontractor UTR when absent rather than emit an empty element" in {
+      val sub = baseSub(10).copy(subcontractorType = Some("company"), utr = None)
+
+      val subNode = subcontractorNode(build(Seq(sub)))
+
+      (subNode \\ "UTR").isEmpty mustBe true
+    }
+
+    "omit the subcontractor UTR when a Partnership has no partnerUtr" in {
+      val sub = baseSub(10).copy(subcontractorType = Some("partnership"), partnerUtr = None)
+
+      val subNode = subcontractorNode(build(Seq(sub)))
+
+      (subNode \ "UTR").isEmpty mustBe true
+      (subNode \ "Partnership" \ "UTR").text.trim mustBe "1111111111"
+    }
+
+    "for Partnership with only a partnership name, omit the empty Partnership UTR" in {
+      val sub = baseSub(10).copy(
+        subcontractorType = Some("partnership"),
+        partnershipTradingName = Some("PARTNERS LTD"),
+        utr = None
+      )
+
+      val partnership = subcontractorNode(build(Seq(sub))) \\ "Partnership"
+
+      (partnership \\ "Name").text.trim mustBe "PARTNERS LTD"
+      (partnership \\ "UTR").isEmpty mustBe true
+    }
+
+    "for Partnership with only a partnership UTR, omit the empty Partnership Name" in {
+      val sub = baseSub(10).copy(
+        subcontractorType = Some("partnership"),
+        partnershipTradingName = None,
+        utr = Some("1111111111")
+      )
+
+      val partnership = subcontractorNode(build(Seq(sub))) \\ "Partnership"
+
+      (partnership \\ "UTR").text.trim mustBe "1111111111"
+      (partnership \\ "Name").isEmpty mustBe true
+    }
+
+    "for Partnership, use tradingName for TradingName and partnershipTradingName only for Partnership/Name" in {
+      val sub = baseSub(10).copy(
+        subcontractorType = Some("partnership"),
+        tradingName = Some("ACME"),
+        partnershipTradingName = Some("PARTNERS LTD")
+      )
+
+      val subNode = subcontractorNode(build(Seq(sub)))
+
+      (subNode \\ "TradingName").map(_.text.trim) mustBe Seq("ACME")
+      (subNode \\ "Partnership" \\ "Name").map(_.text.trim) mustBe Seq("PARTNERS LTD")
+    }
+
+    "throw for a Partnership with no tradingName rather than reuse partnershipTradingName" in {
+      val sub = baseSub(10).copy(
+        subcontractorType = Some("partnership"),
+        tradingName = None,
+        partnershipTradingName = Some("PARTNERS LTD")
+      )
+
+      intercept[IllegalArgumentException](build(Seq(sub))).getMessage must include("tradingName")
+    }
+
+    "throw for a Company with no tradingName" in {
+      val sub = baseSub(10).copy(subcontractorType = Some("company"), tradingName = None)
+
+      intercept[IllegalArgumentException](build(Seq(sub))).getMessage must include("tradingName")
+    }
+
+    "omit WorksRef when absent or blank" in {
+      Seq(None, Some("   ")).foreach { wr =>
+        val xml = build(Seq(baseSub(10).copy(worksReferenceNumber = wr)))
+
+        (subcontractorNode(xml) \\ "WorksRef").isEmpty mustBe true
+      }
+    }
+
+    "normalise NINO by removing whitespace and uppercasing" in {
+      val sub = baseSub(10).copy(subcontractorType = Some("soletrader"), nino = Some(" aa 12 34 56 a "))
+
+      (subcontractorNode(build(Seq(sub))) \\ "NINO").text mustBe "AA123456A"
+    }
+
+    "pad a NINO with no suffix letter to 9 characters as the schema requires" in {
+      val sub = baseSub(10).copy(subcontractorType = Some("soletrader"), nino = Some("aa123456"))
+
+      (subcontractorNode(build(Seq(sub))) \\ "NINO").text mustBe "AA123456 "
     }
 
     "throw when address fields are present but ADDRESS_LINE_1 is missing" in {

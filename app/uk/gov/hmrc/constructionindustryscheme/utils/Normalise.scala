@@ -26,4 +26,13 @@ object Normalise {
 
   def isYes(s: String): Boolean =
     s != null && s.trim.equalsIgnoreCase("yes")
+
+  // NINOtype is exactly 9 uppercase characters with the final suffix letter A-D or a space
+  def normaliseNino(nino: String): String = {
+    val compact = nino.replaceAll("\\s", "").toUpperCase
+    if (compact.length == 8) compact + " " else compact
+  }
+
+  def normaliseCompact(value: String): String =
+    value.replaceAll("\\s", "").toUpperCase
 }

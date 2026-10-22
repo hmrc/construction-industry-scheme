@@ -168,6 +168,7 @@ class CisReturnXmlBuilderSpec extends AnyWordSpec with Matchers {
     "include CRN when subcontractorType is Partnership" in {
       val sub = baseSub.copy(
         subcontractorType = Partnership,
+        partnershipTradingName = Some("PARTNERS LTD"),
         crn = Some("CRN123")
       )
 
@@ -188,6 +189,7 @@ class CisReturnXmlBuilderSpec extends AnyWordSpec with Matchers {
     "include NINO when subcontractorType is Partnership" in {
       val sub = baseSub.copy(
         subcontractorType = Partnership,
+        partnershipTradingName = Some("PARTNERS LTD"),
         nino = Some("AA123456A")
       )
 
@@ -222,6 +224,142 @@ class CisReturnXmlBuilderSpec extends AnyWordSpec with Matchers {
       val xml = CisReturnXmlBuilder.build(req)
 
       (xml \\ "VerificationNumber").text mustBe "V123"
+    }
+
+    "omit CRN, NINO and VerificationNumber when blank rather than emit empty elements" in {
+      val sub = baseSub.copy(
+        subcontractorType = Partnership,
+        partnershipTradingName = Some("PARTNERS LTD"),
+        crn = Some(" "),
+        nino = Some(""),
+        verificationNumber = Some("  ")
+      )
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      ((xml \\ "CRN").isEmpty && (xml \\ "NINO").isEmpty && (xml \\ "VerificationNumber").isEmpty) mustBe true
+    }
+
+    "normalise partnership NINO by removing whitespace and uppercasing" in {
+      val sub = baseSub.copy(
+        subcontractorType = Partnership,
+        partnershipTradingName = Some("PARTNERS LTD"),
+        nino = Some(" aa 12 34 56 a ")
+      )
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      (xml \\ "NINO").text mustBe "AA123456A"
+    }
+
+    "pad a partnership NINO with no suffix letter to 9 characters" in {
+      val sub = baseSub.copy(
+        subcontractorType = Partnership,
+        partnershipTradingName = Some("PARTNERS LTD"),
+        nino = Some("aa123456")
+      )
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      (xml \\ "NINO").text mustBe "AA123456 "
+    }
+
+    "normalise VerificationNumber by removing whitespace and uppercasing" in {
+      val sub = baseSub.copy(verificationNumber = Some(" v1234567890a "))
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      (xml \\ "VerificationNumber").text mustBe "V1234567890A"
+    }
+
+    "for partnership with no partnershipTradingName, fall back to tradingName" in {
+      val sub = baseSub.copy(subcontractorType = Partnership, tradingName = Some("ACME"), partnershipTradingName = None)
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      (xml \\ "TradingName").map(_.text) mustBe Seq("ACME")
+    }
+
+    "throw when neither a Name nor a TradingName can be produced" in {
+      val sub =
+        baseSub.copy(subcontractorType = Company, name = None, tradingName = None, partnershipTradingName = None)
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      intercept[IllegalArgumentException](CisReturnXmlBuilder.build(req)).getMessage must include("tradingName")
+    }
+
+    "for partnership, prefer partnershipTradingName over tradingName" in {
+      val sub = baseSub.copy(
+        subcontractorType = Partnership,
+        tradingName = Some("ACME"),
+        partnershipTradingName = Some("PARTNERS LTD")
+      )
+
+      val req = baseRequest(MonthlyReturnType.Standard, "no").copy(
+        standard = Some(
+          ChrisStandardMonthlyReturn(
+            subcontractors = Seq(sub),
+            declarations = ChrisStandardDeclarations("yes", "yes")
+          )
+        )
+      )
+
+      val xml = CisReturnXmlBuilder.build(req)
+
+      (xml \\ "TradingName").map(_.text) mustBe Seq("PARTNERS LTD")
     }
 
     "include middle name when present" in {
