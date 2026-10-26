@@ -527,6 +527,7 @@ class FormpProxyConnector @Inject() (
   )(implicit hc: HeaderCarrier): Future[DeleteVerificationResponse] =
     http
       .post(url"$base/cis/verification/delete")
+      .setHeader("Authorization" -> internalAuthToken)
       .withBody(Json.toJson(request))
       .execute[DeleteVerificationResponse]
 
