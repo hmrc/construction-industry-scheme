@@ -2305,6 +2305,7 @@ class FormpProxyConnectorIntegrationSpec
       stubFor(
         post(urlPathEqualTo("/formp-proxy/cis/verification/delete"))
           .withHeader("Content-Type", containing("application/json"))
+          .withHeader("Authorization", equalTo(internalAuthToken))
           .withRequestBody(equalToJson(Json.toJson(req).toString(), true, true))
           .willReturn(aResponse().withStatus(200).withBody(Json.toJson(response).toString()))
       )
