@@ -507,14 +507,14 @@ final class SubmissionServiceSpec extends SpecBase {
       )(any[HeaderCarrier])
     }
 
-    "sends verification email when verification poll response status is departmental error" in {
+    "sends verification email when verification poll response status is ACCEPTED " in {
       val s = setup
       import s._
 
       val response =
         stubVerificationPollScenario(
           s = s,
-          status = DEPARTMENTAL_ERROR,
+          status = ACCEPTED,
           emailRecipient = Some("user@example.com")
         )
 
@@ -533,7 +533,7 @@ final class SubmissionServiceSpec extends SpecBase {
 
       stubVerificationPollScenario(
         s = s,
-        status = ACCEPTED,
+        status = FATAL_ERROR,
         emailRecipient = Some("user@example.com")
       )
 
