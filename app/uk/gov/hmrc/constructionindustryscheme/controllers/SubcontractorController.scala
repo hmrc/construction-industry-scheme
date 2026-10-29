@@ -74,6 +74,12 @@ class SubcontractorController @Inject() (
       .getSubcontractorDeleteStatus(cisId, subbieResourceRef)
       .map(response => Ok(Json.toJson(response)))
       .recover {
+        case u: UpstreamErrorResponse if u.statusCode == NOT_FOUND =>
+          logger.warn(
+            s"[getSubcontractorDeleteStatus] subcontractor not found (cisId=$cisId, subbieResourceRef=$subbieResourceRef)"
+          )
+          NotFound(Json.obj("message" -> u.message))
+
         case u: UpstreamErrorResponse =>
           logger.error("[getSubcontractorDeleteStatus] failed", u)
           Status(u.statusCode)(Json.obj("message" -> u.message))

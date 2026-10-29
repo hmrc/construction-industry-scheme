@@ -618,6 +618,35 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
         )(any())
     }
 
+    "forward 404 when formp-proxy reports the subcontractor not found" in {
+
+      val service = mock[SubcontractorService]
+
+      when(
+        service.getSubcontractorDeleteStatus(
+          eqTo(cisId),
+          eqTo(subbieResourceRef)
+        )(any())
+      ).thenReturn(
+        Future.failed(UpstreamErrorResponse("Subcontractor not found", NOT_FOUND, NOT_FOUND))
+      )
+
+      val controller =
+        mockController(service)
+
+      val result =
+        controller.getSubcontractorDeleteStatus(
+          cisId,
+          subbieResourceRef
+        )(FakeRequest(GET, url))
+
+      status(result) mustBe NOT_FOUND
+
+      contentAsJson(result) mustBe Json.obj(
+        "message" -> "Subcontractor not found"
+      )
+    }
+
     "return BadGateway when service fails" in {
 
       val service = mock[SubcontractorService]
