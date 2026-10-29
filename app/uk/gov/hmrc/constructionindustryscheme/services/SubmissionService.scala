@@ -544,7 +544,7 @@ class SubmissionService @Inject() (
     submissionId: String
   )(implicit hc: HeaderCarrier): Future[Unit] =
     (journey, status) match {
-      case (ChrisPollJourney.Verification, SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR) =>
+      case (ChrisPollJourney.Verification, SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR | FATAL_ERROR) =>
         emailRecipient match {
           case Some(email) =>
             logger.info(

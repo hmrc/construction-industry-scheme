@@ -389,7 +389,7 @@ class MonthlyReturnPollingProcessService @Inject() (
     submissionId: String
   )(implicit hc: HeaderCarrier): Future[Unit] =
     status match {
-      case SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR =>
+      case SUBMITTED | SUBMITTED_NO_RECEIPT | DEPARTMENTAL_ERROR | FATAL_ERROR =>
         emailRecipient match {
           case Some(email) =>
             submissionService.sendSuccessfulEmail(
