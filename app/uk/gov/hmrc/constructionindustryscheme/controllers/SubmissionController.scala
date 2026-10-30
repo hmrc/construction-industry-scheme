@@ -539,7 +539,8 @@ class SubmissionController @Inject() (
               Verification,
               verificationContext,
               r => renderVerificationResponse(submissionId, payload)(r),
-              errorLabel = " verification"
+              errorLabel = " verification",
+              isResubmission = cvr.isResubmission
             )
           )
           .recoverWith { case NonFatal(ex) =>
@@ -553,7 +554,8 @@ class SubmissionController @Inject() (
               startedErrorText = "Chris verification failure",
               journey = Verification,
               verificationContext = Some(verificationContext),
-              failureStatus = FatalErrorStatus
+              failureStatus = FatalErrorStatus,
+              isResubmission = cvr.isResubmission
             )
           }
     }

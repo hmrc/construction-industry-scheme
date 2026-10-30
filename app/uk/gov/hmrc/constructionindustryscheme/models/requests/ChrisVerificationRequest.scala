@@ -31,7 +31,8 @@ case class ChrisVerificationRequest(
   emailRecipient: Option[String],
   language: Option[String] = None,
   subcontractors: Seq[SubcontractorCurrentVerification],
-  verifications: Seq[VerificationDetails]
+  verifications: Seq[VerificationDetails],
+  isResubmission: Boolean = false
 )
 
 case class VerificationDetails(

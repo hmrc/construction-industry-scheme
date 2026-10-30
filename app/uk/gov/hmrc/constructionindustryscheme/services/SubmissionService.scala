@@ -162,38 +162,36 @@ class SubmissionService @Inject() (
       val instanceId = taxpayer.uniqueId
       val getReq     = GetGovTalkStatusRequest(instanceId, submissionId)
 
-      getInitialGovTalkStatus(getReq).flatMap {
-        case Some(response) if isResubmission =>
-          response.govtalk_status.headOption match {
-            case Some(existingRecord) =>
-              resetGovTalkStatus(
-                ResetGovTalkStatusRequest(
-                  existingRecord.userIdentifier,
-                  existingRecord.formResultID,
-                  existingRecord.protocolStatus,
-                  appConfig.chrisGatewayUrl
-                )
-              ).map(_ => instanceId)
+      getInitialGovTalkStatus(getReq).flatMap { responseOpt =>
+        responseOpt.flatMap(_.govtalk_status.headOption) match {
+          case Some(existingRecord) if isResubmission =>
+            logger.info(s"[SubmissionService] Resetting existing GovTalkStatus for submissionId=$submissionId")
+            resetGovTalkStatus(
+              ResetGovTalkStatusRequest(
+                existingRecord.userIdentifier,
+                existingRecord.formResultID,
+                existingRecord.protocolStatus,
+                appConfig.chrisGatewayUrl
+              )
+            ).map(_ => instanceId)
 
-            case None =>
-              Future.failed(new RuntimeException("Expected govTalkStatus record for resubmission but none found"))
-          }
+          case Some(_) =>
+            Future.failed(new RuntimeException("govtalk status already exists"))
 
-        case Some(_) =>
-          Future.failed(new RuntimeException("govtalk status already exists"))
+          case None =>
+            logger.info(
+              s"[SubmissionService] Creating GovTalkStatus for submissionId=$submissionId, isResubmission=$isResubmission"
+            )
 
-        case None if isResubmission =>
-          Future.failed(new RuntimeException("Expected govTalkStatus record for resubmission but none found"))
+            val createReq = CreateGovTalkStatusRecordRequest(
+              userIdentifier = instanceId,
+              formResultID = submissionId,
+              correlationID = correlationId,
+              gatewayURL = gatewayURL
+            )
 
-        case None =>
-          val createReq = CreateGovTalkStatusRecordRequest(
-            userIdentifier = instanceId,
-            formResultID = submissionId,
-            correlationID = correlationId,
-            gatewayURL = gatewayURL
-          )
-
-          createGovTalkStatusRecord(createReq).map(_ => instanceId)
+            createGovTalkStatusRecord(createReq).map(_ => instanceId)
+        }
       }
     }
 
