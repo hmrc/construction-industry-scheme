@@ -73,6 +73,7 @@ class ChrisVerificationRequestSpec extends SpecBase {
         verificationBatchId = "batch-1",
         verificationBatchResourceRef = "batch-ref",
         emailRecipient = Some("test@test.com"),
+        language = Some("en"),
         subcontractors = Seq(subcontractor),
         verifications = Seq(
           VerificationDetails(
@@ -80,7 +81,8 @@ class ChrisVerificationRequestSpec extends SpecBase {
             verificationResourceRef = "ref-1",
             proceedVerification = true
           )
-        )
+        ),
+        isResubmission = true
       )
 
       val json = Json.toJson(model)
@@ -94,6 +96,8 @@ class ChrisVerificationRequestSpec extends SpecBase {
       (json \ "verificationBatchId").as[String] mustBe "batch-1"
       (json \ "verificationBatchResourceRef").as[String] mustBe "batch-ref"
       (json \ "emailRecipient").as[String] mustBe "test@test.com"
+      (json \ "language").as[String] mustBe "en"
+      (json \ "isResubmission").as[Boolean] mustBe true
 
       val subcontractorJson = (json \ "subcontractors")(0)
 
@@ -129,6 +133,7 @@ class ChrisVerificationRequestSpec extends SpecBase {
           |  "verificationBatchId": "batch-1",
           |  "verificationBatchResourceRef": "batch-ref",
           |  "emailRecipient": "test@test.com",
+          |  "language": "en",
           |  "subcontractors": [
           |    {
           |      "subcontractorId": 1,
@@ -159,6 +164,7 @@ class ChrisVerificationRequestSpec extends SpecBase {
           |      "proceedVerification": true
           |    }
           |  ],
+          |  "isResubmission": true,
           |  "action": "verify",
           |  "declaration": "yes"
           |}
@@ -176,6 +182,8 @@ class ChrisVerificationRequestSpec extends SpecBase {
       result.verificationBatchId mustBe "batch-1"
       result.verificationBatchResourceRef mustBe "batch-ref"
       result.emailRecipient mustBe Some("test@test.com")
+      result.language mustBe Some("en")
+      result.isResubmission mustBe true
 
       result.subcontractors must contain only subcontractor
 
@@ -204,6 +212,8 @@ class ChrisVerificationRequestSpec extends SpecBase {
       val json   = Json.toJson(model)
       val result = json.as[ChrisVerificationRequest]
 
+      (json \ "isResubmission").as[Boolean] mustBe false
+      result.isResubmission mustBe false
       result mustBe model
     }
 
@@ -222,6 +232,7 @@ class ChrisVerificationRequestSpec extends SpecBase {
           |  "verificationBatchResourceRef": "batch-ref",
           |  "subcontractors": [],
           |  "verifications": [],
+          |  "isResubmission": false,
           |  "action": "verify",
           |  "declaration": "yes"
           |}
@@ -231,6 +242,8 @@ class ChrisVerificationRequestSpec extends SpecBase {
       val result = json.as[ChrisVerificationRequest]
 
       result.emailRecipient mustBe None
+      result.language mustBe None
+      result.isResubmission mustBe false
       result.subcontractors mustBe empty
       result.verifications mustBe empty
     }

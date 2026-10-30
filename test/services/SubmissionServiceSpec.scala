@@ -1765,51 +1765,6 @@ final class SubmissionServiceSpec extends SpecBase {
       )
     }
 
-    "fails when FormP returns an empty GovTalk status response and this is not a resubmission" in {
-      val s = setup
-      import s._
-
-      val employerRef   = EmployerReference("", "")
-      val submissionId  = "sub-123"
-      val correlationId = "CORR-123"
-      val gatewayUrl    = chrisGatewayUrl
-
-      val taxpayer = mkTaxpayer("instance-123")
-
-      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(taxpayer))
-
-      when(
-        formpProxyConnector.getGovTalkStatus(
-          eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
-          eqTo(Initial)
-        )(any[HeaderCarrier])
-      ).thenReturn(
-        Future.successful(
-          Some(GetGovTalkStatusResponse(govtalk_status = Seq.empty))
-        )
-      )
-
-      service
-        .initialiseGovTalkStatus(
-          employerRef,
-          submissionId,
-          correlationId,
-          gatewayUrl
-        )
-        .failed
-        .futureValue
-        .getMessage mustBe "govtalk status already exists"
-
-      verify(formpProxyConnector, never()).createGovTalkStatusRecord(any[CreateGovTalkStatusRecordRequest])(
-        any[HeaderCarrier]
-      )
-
-      verify(formpProxyConnector, never()).resetGovTalkStatus(any[ResetGovTalkStatusRequest])(
-        any[HeaderCarrier]
-      )
-    }
-
     "resets existing GovTalk status when this is a resubmission" in {
       val s = setup
       import s._
@@ -1867,7 +1822,7 @@ final class SubmissionServiceSpec extends SpecBase {
       )
     }
 
-    "fails when this is a resubmission but no GovTalk status record exists" in {
+    "creates GovTalk status when this is a resubmission but no GovTalk status record exists" in {
       val s = setup
       import s._
 
@@ -1877,6 +1832,13 @@ final class SubmissionServiceSpec extends SpecBase {
       val gatewayUrl    = chrisGatewayUrl
 
       val taxpayer = mkTaxpayer("instance-123")
+
+      val expectedCreateReq = CreateGovTalkStatusRecordRequest(
+        userIdentifier = taxpayer.uniqueId,
+        formResultID = submissionId,
+        correlationID = correlationId,
+        gatewayURL = gatewayUrl
+      )
 
       when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
         .thenReturn(Future.successful(taxpayer))
@@ -1888,51 +1850,8 @@ final class SubmissionServiceSpec extends SpecBase {
         )(any[HeaderCarrier])
       ).thenReturn(Future.successful(None))
 
-      service
-        .initialiseGovTalkStatus(
-          employerRef,
-          submissionId,
-          correlationId,
-          gatewayUrl,
-          isResubmission = true
-        )
-        .failed
-        .futureValue
-        .getMessage mustBe "Expected govTalkStatus record for resubmission but none found"
-
-      verify(formpProxyConnector, never()).createGovTalkStatusRecord(any[CreateGovTalkStatusRecordRequest])(
-        any[HeaderCarrier]
-      )
-
-      verify(formpProxyConnector, never()).resetGovTalkStatus(any[ResetGovTalkStatusRequest])(
-        any[HeaderCarrier]
-      )
-    }
-
-    "fails when FormP returns an empty GovTalk status response for resubmission" in {
-      val s = setup
-      import s._
-
-      val employerRef   = EmployerReference("", "")
-      val submissionId  = "sub-123"
-      val correlationId = "CORR-123"
-      val gatewayUrl    = chrisGatewayUrl
-
-      val taxpayer = mkTaxpayer("instance-123")
-
-      when(monthlyReturnService.getCisTaxpayer(eqTo(employerRef))(any[HeaderCarrier]))
-        .thenReturn(Future.successful(taxpayer))
-
-      when(
-        formpProxyConnector.getGovTalkStatus(
-          eqTo(GetGovTalkStatusRequest(taxpayer.uniqueId, submissionId)),
-          eqTo(Initial)
-        )(any[HeaderCarrier])
-      ).thenReturn(
-        Future.successful(
-          Some(GetGovTalkStatusResponse(govtalk_status = Seq.empty))
-        )
-      )
+      when(formpProxyConnector.createGovTalkStatusRecord(eqTo(expectedCreateReq))(any[HeaderCarrier]))
+        .thenReturn(Future.unit)
 
       service
         .initialiseGovTalkStatus(
@@ -1942,13 +1861,9 @@ final class SubmissionServiceSpec extends SpecBase {
           gatewayUrl,
           isResubmission = true
         )
-        .failed
-        .futureValue
-        .getMessage mustBe "Expected govTalkStatus record for resubmission but none found"
+        .futureValue mustBe taxpayer.uniqueId
 
-      verify(formpProxyConnector, never()).createGovTalkStatusRecord(any[CreateGovTalkStatusRecordRequest])(
-        any[HeaderCarrier]
-      )
+      verify(formpProxyConnector).createGovTalkStatusRecord(eqTo(expectedCreateReq))(any[HeaderCarrier])
 
       verify(formpProxyConnector, never()).resetGovTalkStatus(any[ResetGovTalkStatusRequest])(
         any[HeaderCarrier]

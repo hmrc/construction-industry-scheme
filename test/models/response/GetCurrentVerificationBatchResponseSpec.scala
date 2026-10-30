@@ -34,7 +34,8 @@ class GetCurrentVerificationBatchResponseSpec extends AnyWordSpec with Matchers 
           |{
           |  "subcontractors": [],
           |  "verificationBatch": null,
-          |  "verifications": []
+          |  "verifications": [],
+          |  "submission": null
           |}
           |""".stripMargin
       )
@@ -46,6 +47,59 @@ class GetCurrentVerificationBatchResponseSpec extends AnyWordSpec with Matchers 
       out.subcontractors mustBe empty
       out.verificationBatch mustBe None
       out.verifications mustBe empty
+      out.submission mustBe None
+    }
+
+    "read FormP response JSON with an existing submission" in {
+      val json = Json.parse(
+        """
+          |{
+          |  "subcontractors": [],
+          |  "verificationBatch": {
+          |    "verificationBatchId": 99,
+          |    "verifBatchResourceRef": 999
+          |  },
+          |  "verifications": [],
+          |  "submission": {
+          |    "submissionId": 13602,
+          |    "submissionType": "VERIFICATIONS",
+          |    "activeObjectId": 99,
+          |    "status": "STARTED",
+          |    "hmrcMarkGenerated": null,
+          |    "hmrcMarkGgis": null,
+          |    "emailRecipient": null,
+          |    "acceptedTime": null,
+          |    "createDate": "2026-07-23T10:15:30",
+          |    "lastUpdate": null,
+          |    "schemeId": 123,
+          |    "agentId": null,
+          |    "l_Migrated": null,
+          |    "submissionRequestDate": null,
+          |    "govTalkErrorCode": null,
+          |    "govTalkErrorType": null,
+          |    "govTalkErrorMessage": null
+          |  }
+          |}
+          |""".stripMargin
+      )
+
+      val result = json.validate[GetCurrentVerificationBatchResponse]
+      result mustBe a[JsSuccess[?]]
+
+      val out = result.get
+      out.subcontractors mustBe empty
+      out.verificationBatch.map(_.verificationBatchId) mustBe Some(99L)
+      out.verifications mustBe empty
+
+      val submission = out.submission.get
+
+      submission.submissionId mustBe 13602L
+      submission.submissionType mustBe "VERIFICATIONS"
+      submission.activeObjectId mustBe Some(99L)
+      submission.status mustBe Some("STARTED")
+      submission.createDate mustBe Some(LocalDateTime.parse("2026-07-23T10:15:30"))
+      submission.schemeId mustBe 123L
+      submission.submissionRequestDate mustBe None
     }
 
     "write a response to JSON" in {
@@ -105,6 +159,27 @@ class GetCurrentVerificationBatchResponseSpec extends AnyWordSpec with Matchers 
             proceed = Some("Y"),
             matched = Some("Y")
           )
+        ),
+        submission = Some(
+          Submission(
+            submissionId = 13602L,
+            submissionType = "VERIFICATIONS",
+            activeObjectId = Some(99L),
+            status = Some("STARTED"),
+            hmrcMarkGenerated = None,
+            hmrcMarkGgis = None,
+            emailRecipient = Some("john.smith@test.com"),
+            acceptedTime = None,
+            createDate = Some(LocalDateTime.parse("2026-07-23T10:15:30")),
+            lastUpdate = None,
+            schemeId = 123L,
+            agentId = None,
+            l_Migrated = None,
+            submissionRequestDate = None,
+            govTalkErrorCode = None,
+            govTalkErrorType = None,
+            govTalkErrorMessage = None
+          )
         )
       )
 
@@ -144,6 +219,7 @@ class GetCurrentVerificationBatchResponseSpec extends AnyWordSpec with Matchers 
       (sub0 \ "updatedTaxTreatment").as[String] mustBe "1"
       (sub0 \ "lastMonthlyReturnDate").as[String] mustBe "2026-06-30T00:00:00"
       (sub0 \ "pendingVerifications").as[Int] mustBe 2
+
       val vb0 = json \ "verificationBatch"
 
       (vb0 \ "verificationBatchId").as[Long] mustBe 99L
@@ -161,13 +237,62 @@ class GetCurrentVerificationBatchResponseSpec extends AnyWordSpec with Matchers 
       (v0 \ "actionIndicator").as[String] mustBe "A"
       (v0 \ "proceed").as[String] mustBe "Y"
       (v0 \ "matched").as[String] mustBe "Y"
+
+      val submission = json \ "submission"
+
+      (submission \ "submissionId").as[Long] mustBe 13602L
+      (submission \ "submissionType").as[String] mustBe "VERIFICATIONS"
+      (submission \ "activeObjectId").as[Long] mustBe 99L
+      (submission \ "status").as[String] mustBe "STARTED"
+      (submission \ "emailRecipient").as[String] mustBe "john.smith@test.com"
+      (submission \ "createDate").as[String] mustBe "2026-07-23T10:15:30"
+      (submission \ "schemeId").as[Long] mustBe 123L
+      (submission \ "submissionRequestDate").asOpt[LocalDateTime] mustBe None
     }
 
     "round-trip (model -> json -> model) without losing data" in {
       val model = GetCurrentVerificationBatchResponse(
         subcontractors = Seq.empty,
         verificationBatch = None,
-        verifications = Seq.empty
+        verifications = Seq.empty,
+        submission = None
+      )
+
+      val json = Json.toJson(model)
+      json.validate[GetCurrentVerificationBatchResponse] mustBe JsSuccess(model)
+    }
+
+    "round-trip (model -> json -> model) with an existing submission" in {
+      val model = GetCurrentVerificationBatchResponse(
+        subcontractors = Seq.empty,
+        verificationBatch = Some(
+          VerificationBatchCurrentVerification(
+            verificationBatchId = 99L,
+            verifBatchResourceRef = Some(999L)
+          )
+        ),
+        verifications = Seq.empty,
+        submission = Some(
+          Submission(
+            submissionId = 13602L,
+            submissionType = "VERIFICATIONS",
+            activeObjectId = Some(99L),
+            status = Some("STARTED"),
+            hmrcMarkGenerated = None,
+            hmrcMarkGgis = None,
+            emailRecipient = None,
+            acceptedTime = None,
+            createDate = Some(LocalDateTime.parse("2026-07-23T10:15:30")),
+            lastUpdate = None,
+            schemeId = 123L,
+            agentId = None,
+            l_Migrated = None,
+            submissionRequestDate = None,
+            govTalkErrorCode = None,
+            govTalkErrorType = None,
+            govTalkErrorMessage = None
+          )
+        )
       )
 
       val json = Json.toJson(model)

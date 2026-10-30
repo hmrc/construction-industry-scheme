@@ -22,7 +22,8 @@ import uk.gov.hmrc.constructionindustryscheme.models.*
 final case class GetCurrentVerificationBatchResponse(
   subcontractors: Seq[SubcontractorCurrentVerification],
   verificationBatch: Option[VerificationBatchCurrentVerification],
-  verifications: Seq[VerificationCurrentVerification]
+  verifications: Seq[VerificationCurrentVerification],
+  submission: Option[Submission] = None
 )
 
 object GetCurrentVerificationBatchResponse {
