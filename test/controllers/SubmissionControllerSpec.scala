@@ -1860,8 +1860,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
 
     "passes isResubmission true when ChRIS verification submission fails" in {
-      val submissionService = mock[SubmissionService]
-      val xmlValidator = mock[XmlValidator]
+      val submissionService  = mock[SubmissionService]
+      val xmlValidator       = mock[XmlValidator]
       val verificationSchema = mock[Schema]
 
       when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
@@ -2071,8 +2071,8 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
     }
 
     "passes isResubmission true when ChRIS verification acknowledgement is received" in {
-      val submissionService = mock[SubmissionService]
-      val xmlValidator = mock[XmlValidator]
+      val submissionService  = mock[SubmissionService]
+      val xmlValidator       = mock[XmlValidator]
       val verificationSchema = mock[Schema]
 
       when(appConfig.cisVerificationSchema).thenReturn(verificationSchema)
@@ -2090,7 +2090,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       when(submissionService.submitVerificationToChris(any[CisVerificationSubmission])(any[HeaderCarrier]))
         .thenAnswer { invocation =>
           val payload = invocation.getArgument(0, classOf[CisVerificationSubmission])
-          val result = mkSubmissionResult(ACCEPTED)
+          val result  = mkSubmissionResult(ACCEPTED)
 
           Future.successful(
             result.copy(meta = result.meta.copy(correlationId = payload.correlationId))
