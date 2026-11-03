@@ -557,7 +557,10 @@ class SubmissionService @Inject() (
             Future.unit
         }
 
-      case _ =>
+      case (ChrisPollJourney.MonthlyReturn, _) =>
+        Future.unit
+
+      case (ChrisPollJourney.Verification, _) =>
         logger.warn(
           s"[SubmissionService][sendVerificationEmailIfRequired] Not sending email; status $status is ineligible for sending email"
         )
