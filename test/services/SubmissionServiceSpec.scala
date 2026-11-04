@@ -667,6 +667,24 @@ final class SubmissionServiceSpec extends SpecBase {
       verify(chrisSubmissionSessionRepository, never()).upsert(any[ChrisSubmissionSessionData])
       verifyNoInteractions(chrisConnector)
     }
+
+    "does not send verification email when monthly return poll response status is submitted" in {
+      val s = setup
+      import s._
+
+      val response =
+        stubPollScenario(
+          s = s,
+          status = SUBMITTED,
+          deleteResult = Some(Future.unit)
+        )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatus("sub-123", "/poll/123", ChrisPollJourney.MonthlyReturn)
+        .futureValue mustBe response
+
+      verify(emailConnector, never()).sendEmail(any[SendEmailRequest])(any[HeaderCarrier])
+    }
   }
 
   "pollSubmissionAndUpdateGovTalkStatusForBatch" - {
@@ -949,6 +967,36 @@ final class SubmissionServiceSpec extends SpecBase {
           _.gatewayURL == expectedPollUrl
         )
       )(any[HeaderCarrier])
+    }
+
+    "must not send verification email when polling a monthly return batch" in {
+      val s = setup
+      import s._
+
+      val pollUrl =
+        "https://sa.chris.hmrc.gov.uk/ChRIS/CISR/Filing/action/CISR"
+
+      when(appConfig.chrisHost)
+        .thenReturn(Seq("sa.chris.hmrc.gov.uk"))
+
+      when(appConfig.useOverridePollResponseEndPoint)
+        .thenReturn(false)
+
+      stubBatchPollScenario(
+        s = s,
+        originalPollUrl = pollUrl,
+        expectedPollUrl = pollUrl
+      )
+
+      service
+        .pollSubmissionAndUpdateGovTalkStatusForBatch(
+          "sub-123",
+          pollUrl,
+          ChrisPollJourney.MonthlyReturn
+        )
+        .futureValue
+
+      verify(emailConnector, never()).sendEmail(any[SendEmailRequest])(any[HeaderCarrier])
     }
   }
 
