@@ -785,6 +785,51 @@ class MonthlyReturnsControllerSpec extends SpecBase {
         contentAsJson(result) mustBe Json.obj("message" -> "formp proxy failure")
       }
 
+      "return 204 NoContent when formp-proxy reports the item is not found (already deleted)" in new SetupAuthOnly {
+        val reqBody = DeleteMonthlyReturnItemRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          subcontractorId = 123L,
+          amendment = "N"
+        )
+
+        when(mockMonthlyReturnService.deleteMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("No Monthly Return Item record", NOT_FOUND)))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result: Future[Result] = call(controller.deleteMonthlyReturnItem(), request)
+
+        status(result) mustBe NO_CONTENT
+      }
+
+      "pass through other 4xx upstream statuses with the upstream message" in new SetupAuthOnly {
+        val reqBody = DeleteMonthlyReturnItemRequest(
+          instanceId = "abc-123",
+          taxYear = 2025,
+          taxMonth = 1,
+          subcontractorId = 123L,
+          amendment = "N"
+        )
+
+        when(mockMonthlyReturnService.deleteMonthlyReturnItem(eqTo(reqBody))(any[HeaderCarrier]))
+          .thenReturn(Future.failed(UpstreamErrorResponse("conflict", CONFLICT)))
+
+        val request =
+          FakeRequest(POST, "/")
+            .withHeaders("Content-Type" -> "application/json")
+            .withBody(Json.toJson(reqBody))
+
+        val result: Future[Result] = call(controller.deleteMonthlyReturnItem(), request)
+
+        status(result) mustBe CONFLICT
+        contentAsJson(result) mustBe Json.obj("message" -> "conflict")
+      }
+
       "return 502 BadGateway with fixed message when service fails with NonFatal" in new SetupAuthOnly {
         val reqBody = DeleteMonthlyReturnItemRequest(
           instanceId = "abc-123",
