@@ -28,7 +28,7 @@ import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, YearMonth, ZoneOffset}
 import java.util.UUID
 import scala.util.Try
-import scala.xml.{Elem, PrettyPrinter}
+import scala.xml.Elem
 
 case class ChRISSubmission(
   envelope: Elem,

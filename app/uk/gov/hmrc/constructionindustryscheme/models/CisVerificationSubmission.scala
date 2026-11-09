@@ -27,7 +27,7 @@ import uk.gov.hmrc.constructionindustryscheme.utils.IrMarkProcessor.UpdatedPaylo
 import java.time.format.DateTimeFormatter
 import java.time.{Clock, LocalDate, LocalDateTime, YearMonth, ZoneId}
 import java.util.UUID
-import scala.xml.{Elem, PrettyPrinter}
+import scala.xml.Elem
 
 case class CisVerificationSubmission(
   envelope: Elem,
@@ -40,7 +40,6 @@ object CisVerificationSubmission extends Logging {
 
   private val gatewayTimestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
   private val isoDateFmt                = DateTimeFormatter.ISO_LOCAL_DATE
-  private val prettyPrinter             = new PrettyPrinter(120, 4)
 
   def buildPayload(
     request: ChrisVerificationRequest,
