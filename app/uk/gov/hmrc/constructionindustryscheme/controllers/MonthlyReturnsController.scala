@@ -263,10 +263,16 @@ class MonthlyReturnsController @Inject() (
         .deleteMonthlyReturnItem(request.body)
         .map(_ => NoContent)
         .recover {
-          case u: UpstreamErrorResponse =>
+          case u: UpstreamErrorResponse if u.statusCode == NOT_FOUND =>
+            logger.warn("[deleteMonthlyReturnItem] item not found in formp-proxy, treating as already deleted")
+            NoContent
+          case u: UpstreamErrorResponse if u.statusCode / 100 == 4   =>
+            logger.warn(s"[deleteMonthlyReturnItem] formp-proxy rejected delete: ${u.statusCode} ${u.message}")
+            Status(u.statusCode)(Json.obj("message" -> u.message))
+          case u: UpstreamErrorResponse                              =>
             logger.error("[deleteMonthlyReturnItem] formp-proxy delete failed", u)
             Status(u.statusCode)(Json.obj("message" -> u.message))
-          case NonFatal(t)              =>
+          case NonFatal(t)                                           =>
             logger.error("[deleteMonthlyReturnItem] formp-proxy delete failed", t)
             BadGateway(Json.obj("message" -> "delete-monthly-return-item-failed"))
         }

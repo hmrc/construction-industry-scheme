@@ -17,7 +17,7 @@
 package models.requests
 
 import base.SpecBase
-import play.api.libs.json.Json
+import play.api.libs.json.{JsSuccess, Json}
 import uk.gov.hmrc.constructionindustryscheme.models.Subcontractor
 import uk.gov.hmrc.constructionindustryscheme.models.requests.{UpdateSubcontractorForEditRequest, UpdateVerificationForEditRequest}
 
@@ -118,8 +118,7 @@ class UpdateSubcontractorForEditRequestSpec extends SpecBase {
 
       val json = Json.toJson(request)
 
-      val result = Json.fromJson[UpdateSubcontractorForEditRequest](json)
-
+      Json.fromJson[UpdateSubcontractorForEditRequest](json) mustBe JsSuccess(request)
     }
 
     "must fail to deserialise when cisId is missing" in {

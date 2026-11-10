@@ -24,22 +24,60 @@ import javax.inject.Singleton
 import javax.xml.transform.stream.StreamSource
 import javax.xml.validation.Schema
 
+/** Logs schema validation problems without exposing personal data.
+  *
+  * Xerces messages for value errors embed the offending value (e.g. "Value 'AB123456C' is not facet-valid ..."), which
+  * in a CIS return could be a name, UTR, NINO or bank detail. So the raw message is never logged. Only the `cvc-...`
+  * error code, the position and the element/attribute names (which come from the schema, not user data) are recorded.
+  */
+object ValidationHandler {
+
+  private val ErrorCode             = """^([A-Za-z0-9._-]{1,60}):""".r
+  private val XmlName               = "[A-Za-z_][A-Za-z0-9_.-]{0,63}"
+  private val ElementName           = s"""(?i)element '($XmlName)'""".r
+  private val AttributeName         = s"""(?i)attribute '($XmlName)'""".r
+  // Only these message families name the element/attribute outside of a quoted user value.
+  private val CodesThatNameElements = Seq("cvc-complex-type", "cvc-type", "cvc-attribute", "cvc-elt")
+
+  def describe(e: SAXParseException): String = {
+    val message = Option(e.getMessage).getOrElse("")
+    val code    = ErrorCode.findFirstMatchIn(message).map(_.group(1)).getOrElse("unknown")
+
+    // Use the last match: in "The value '<user value>' of element 'E' is not valid" the real name comes last
+    val (element, attribute) =
+      if (CodesThatNameElements.exists(code.startsWith))
+        (
+          ElementName.findAllMatchIn(message).map(_.group(1)).toSeq.lastOption,
+          AttributeName.findAllMatchIn(message).map(_.group(1)).toSeq.lastOption
+        )
+      else (None, None)
+
+    Seq(
+      Some(s"code=$code"),
+      element.map(n => s"element=$n"),
+      attribute.map(n => s"attribute=$n"),
+      Some(s"line=${e.getLineNumber}"),
+      Some(s"col=${e.getColumnNumber}")
+    ).flatten.mkString(" ")
+  }
+}
+
 class ValidationHandler extends ErrorHandler with Logging {
 
   var error = false
 
   override def warning(e: SAXParseException): Unit = {
-    logger.warn(s"[ValidationHandler] SAX Warning $e")
+    logger.warn(s"[ValidationHandler] SAX Warning ${ValidationHandler.describe(e)}")
     error = true
   }
 
   override def error(e: SAXParseException): Unit = {
-    logger.error(s"[ValidationHandler] SAX Error $e")
+    logger.error(s"[ValidationHandler] SAX Error ${ValidationHandler.describe(e)}")
     error = true
   }
 
   override def fatalError(e: SAXParseException): Unit = {
-    logger.error(s"[ValidationHandler] SAX Fatal Error $e")
+    logger.error(s"[ValidationHandler] SAX Fatal Error ${ValidationHandler.describe(e)}")
     error = true
   }
 }
@@ -54,8 +92,12 @@ class SchemaValidator extends Logging {
       validator.validate(new StreamSource(new StringReader(xml)))
       !handler.error
     } catch {
-      case e: Exception =>
-        logger.error(s"[SchemaValidator] Schema validation exception: ${e.getMessage}", e)
+      case e: SAXParseException =>
+        logger.error(s"[SchemaValidator] Schema validation exception: ${ValidationHandler.describe(e)}")
+        false
+      case e: Exception         =>
+        // the message and stack trace are not logged as they can echo parts of the submitted XML
+        logger.error(s"[SchemaValidator] Schema validation exception: ${e.getClass.getName}")
         false
     }
   }

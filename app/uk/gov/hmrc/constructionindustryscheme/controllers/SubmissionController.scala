@@ -95,9 +95,13 @@ class SubmissionController @Inject() (
               .map { _ =>
                 NoContent
               }
-              .recover { case ex =>
-                logger.error("[updateSubmission] formp-proxy update failed", ex)
-                BadGateway(Json.obj("submissionId" -> submissionId, "message" -> "update-submission-failed"))
+              .recover {
+                case u: UpstreamErrorResponse if u.statusCode / 100 == 4 =>
+                  logger.warn(s"[updateSubmission] formp-proxy rejected update: ${u.statusCode} ${u.message}")
+                  BadGateway(Json.obj("submissionId" -> submissionId, "message" -> "update-submission-failed"))
+                case ex                                                  =>
+                  logger.error("[updateSubmission] formp-proxy update failed", ex)
+                  BadGateway(Json.obj("submissionId" -> submissionId, "message" -> "update-submission-failed"))
               }
         )
     }

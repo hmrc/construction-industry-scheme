@@ -1007,6 +1007,29 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
       verifyNoInteractions(submissionService)
     }
 
+    "returns 502 BadGateway when formp-proxy responds with a 4xx" in {
+      val submissionService = mock[SubmissionService]
+      val xmlValidator      = mock[XmlValidator]
+      val controller        = mkController(
+        submissionService = submissionService,
+        xmlValidator = xmlValidator
+      )
+
+      when(submissionService.updateSubmission(any[UpdateSubmissionRequest])(any[HeaderCarrier]))
+        .thenReturn(Future.failed(UpstreamErrorResponse("No MONTHLY_RETURN", 404)))
+
+      val req = FakeRequest(POST, s"/cis/submissions/$submissionId/update")
+        .withBody(minimalUpdateJson)
+        .withHeaders(CONTENT_TYPE -> JSON)
+
+      val result = controller.updateSubmission(submissionId)(req)
+
+      status(result) mustBe BAD_GATEWAY
+      val js = contentAsJson(result)
+      (js \ "submissionId").as[String] mustBe submissionId
+      (js \ "message").as[String] mustBe "update-submission-failed"
+    }
+
     "returns 502 BadGateway when service fails" in {
       val submissionService = mock[SubmissionService]
       val xmlValidator      = mock[XmlValidator]
