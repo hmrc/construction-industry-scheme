@@ -173,6 +173,16 @@ class MonthlyReturnService @Inject() (
       toCreate = selectedResourceRefs.toSet.diff(existingResourceRefs.toSet).toSeq.sorted
       toDelete = existingResourceRefs.toSet.diff(selectedResourceRefs.toSet).toSeq.sorted
 
+      _ =
+        if (toDelete.nonEmpty)
+          logger.warn(
+            s"[MonthlyReturnService][syncMonthlyReturnItems] instanceId=${request.instanceId}, taxYear=${request.taxYear}, " +
+              s"taxMonth=${request.taxMonth}, amendment=${request.amendment}: deleting ${toDelete.size} of ${existingResourceRefs.size} " +
+              s"existing items, creating ${toCreate.size}, selected=${selectedIds.size}, " +
+              s"deleteResourceRefs=${toDelete.mkString(",")}, createResourceRefs=${toCreate.mkString(",")}, " +
+              s"selectedSubcontractorIds=${selectedIds.mkString(",")}"
+          )
+
       _ <- formp.syncMonthlyReturnItems(
              SyncMonthlyReturnItemsRequest(
                instanceId = request.instanceId,
