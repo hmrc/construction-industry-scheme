@@ -100,7 +100,8 @@ class ChrisSubmissionSessionDataFormatsSpec extends AnyFreeSpec with Matchers {
     }
 
     "fail when the date is invalid" in {
-      Json.obj("hmrcMarkGenerated" -> "m", "submissionRequestDate" -> "bad")
+      Json
+        .obj("hmrcMarkGenerated" -> "m", "submissionRequestDate" -> "bad")
         .validate[StoredMonthlyReturnContext]
         .isError mustBe true
     }
