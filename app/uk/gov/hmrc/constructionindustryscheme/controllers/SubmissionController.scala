@@ -290,18 +290,41 @@ class SubmissionController @Inject() (
     )
 
     xmlValidator.validate(payload.irEnvelope, appConfig.cisReturnSchema) match {
-      case Failure(e) =>
-        logger.error(
-          s"ChRIS monthly return XML validation failed, but continuing with ChRIS submission for correlationId=${payload.correlationId}: ${e.getMessage}",
-          e
+      case Failure(_) =>
+        // Block the return: it is not sent to ChRIS and nothing is persisted, so the submission stays in STARTED.
+        // A non-2xx response makes cis-frontend skip its own writes and show the system error page (helpdesk
+        // contact and reference number). 422 rather than 5xx so it does not raise 5xx alerts.
+        // Details of the failing elements/codes are logged by ValidationHandler (no personal data).
+        logger.warn(
+          s"[SchemaValidationBlocked] ChRIS monthly return failed schema validation and was NOT sent to ChRIS. " +
+            s"submissionId=$submissionId correlationId=${payload.correlationId} returnType=${csr.returnType} " +
+            s"isResubmission=${csr.isResubmission}. Submission remains STARTED."
+        )
+        Future.successful(
+          UnprocessableEntity(
+            Json.obj(
+              "code"          -> "SCHEMA_VALIDATION_FAILED",
+              "submissionId"  -> submissionId,
+              "correlationId" -> payload.correlationId,
+              "message"       -> "Return failed schema validation and was not submitted"
+            )
+          )
         )
 
       case Success(_) =>
         logger.info(
           s"ChRIS monthly return XML validation successful. Sending ChRIS submission for correlationId=${payload.correlationId}."
         )
+        sendReturnToChris(submissionId, csr, payload, monthlyReturnContext)
     }
+  }
 
+  private def sendReturnToChris(
+    submissionId: String,
+    csr: ChrisSubmissionRequest,
+    payload: ChRISSubmission,
+    monthlyReturnContext: MonthlyReturnSubmissionContext
+  )(implicit req: AuthenticatedRequest[JsValue]): Future[Result] = {
     val employerRef = EmployerReference(csr.clientTaxOfficeNumber, csr.clientTaxOfficeRef)
 
     submissionService

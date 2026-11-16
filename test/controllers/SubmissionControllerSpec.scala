@@ -536,7 +536,7 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
         .submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
     }
 
-    "allow the user to continue if xmlValidator.validate fails" in {
+    "returns 422, does not call ChRIS and leaves it STARTED if xmlValidator.validate fails" in {
       val submissionService = mock[SubmissionService]
       val xmlValidator      = mock[XmlValidator]
       val controller        = mkController(
@@ -546,11 +546,6 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       when(mockAuditService.monthlyReturnRequestEvent(any(), any(), any())(any()))
         .thenReturn(Future.successful(AuditResult.Success))
-      when(mockAuditService.monthlyReturnResponseEvent(any(), any())(any()))
-        .thenReturn(Future.successful(AuditResult.Success))
-      mockProcessInitialChrisAckSuccess(submissionService)
-      when(submissionService.submitToChris(any[ChRISSubmission])(any[HeaderCarrier]))
-        .thenReturn(Future.successful(mkSubmissionResult(DEPARTMENTAL_ERROR)))
       when(xmlValidator.validate(any(), any())).thenReturn(Failure(new Exception("invalid!")))
 
       val req = FakeRequest(POST, s"/cis/submissions/$submissionId/submit-to-chris")
@@ -559,12 +554,14 @@ final class SubmissionControllerSpec extends SpecBase with EitherValues {
 
       val result = controller.submitToChris(submissionId)(req)
 
-      status(result) mustBe OK
+      status(result) mustBe 422
       val js = contentAsJson(result)
+      (js \ "code").as[String] mustBe "SCHEMA_VALIDATION_FAILED"
       (js \ "submissionId").as[String] mustBe submissionId
-      (js \ "status").as[String] mustBe "DEPARTMENTAL_ERROR"
+      (js \ "correlationId").asOpt[String] must not be empty
 
-      verify(submissionService).submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
+      verify(submissionService, never()).submitToChris(any[ChRISSubmission])(any[HeaderCarrier])
+      verifyNoInteractions(submissionService)
     }
 
     "returns 500 InternalServerError when GovTalk initialisation/update fails in recoverable ChRIS failure flow" in {
