@@ -3,7 +3,7 @@ import sbt.*
 
 object AppDependencies {
 
-  private val bootstrapVersion       = "10.8.0"
+  private val bootstrapVersion       = "10.9.0"
   private val hmrcMongoVersion       = "2.14.0"
   private val quartzSchedulerVersion = "1.2.2-pekko-1.0.x"
 
