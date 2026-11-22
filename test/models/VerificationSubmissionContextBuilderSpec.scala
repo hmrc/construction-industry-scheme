@@ -78,7 +78,7 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
         ),
         verifications = Seq(
           VerificationDetails(
-            subcontractorName = "John Smith",
+            subcontractorName = "Smith, John",
             verificationResourceRef = "13",
             proceedVerification = true
           )
@@ -105,7 +105,7 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
               verificationResourceRef = 13L,
               subcontractorId = 1L,
               subbieResourceRef = Some(13L),
-              subcontractorName = "John Smith",
+              subcontractorName = "Smith, John",
               actionIndicator = "verify",
               proceedVerification = true,
               foreName = Some("John"),
@@ -249,7 +249,7 @@ class VerificationSubmissionContextBuilderSpec extends SpecBase {
               verificationResourceRef = 13L,
               subcontractorId = 10L,
               subbieResourceRef = Some(13L),
-              subcontractorName = "John Smith",
+              subcontractorName = "Smith, John",
               actionIndicator = "verify",
               proceedVerification = true,
               foreName = Some("John"),

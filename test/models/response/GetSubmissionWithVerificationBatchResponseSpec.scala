@@ -125,7 +125,7 @@ class GetSubmissionWithVerificationBatchResponseSpec extends SpecBase {
       val json = Json.toJson(model)
 
       json.as[GetSubmissionWithVerificationBatchResponse] mustBe model
-      (json \ "subcontractors" \ 0 \ "displayName").as[String] mustBe "John Smith"
+      (json \ "subcontractors" \ 0 \ "displayName").as[String] mustBe "Smith, John"
     }
   }
 }

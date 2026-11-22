@@ -205,7 +205,7 @@ final class GetSubmittedVerificationsResponseSpec extends PlaySpec {
           |      "updatedTaxTreatment": "NET",
           |      "lastMonthlyReturnDate": "2026-05-15T10:05:00",
           |      "pendingVerifications": 0,
-          |      "displayName": "John Smith"
+          |      "displayName": "Smith, John"
           |    }
           |  ],
           |  "verificationBatches": [

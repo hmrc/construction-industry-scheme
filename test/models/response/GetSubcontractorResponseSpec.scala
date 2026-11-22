@@ -98,7 +98,7 @@ final class GetSubcontractorResponseSpec extends PlaySpec {
       (json \ "subcontractor" \ "subbieResourceRef").as[Long] mustBe 456L
       (json \ "subcontractor" \ "utr").as[String] mustBe "0987654321"
       (json \ "subcontractor" \ "subcontractorType").as[String] mustBe "soletrader"
-      (json \ "subcontractor" \ "displayName").as[String] mustBe "John Smith"
+      (json \ "subcontractor" \ "displayName").as[String] mustBe "Smith, John"
     }
 
     "deserialize from JSON" in {
