@@ -64,7 +64,7 @@ case class Subcontractor(
       surname,
       tradingName
     ) match {
-      case (Some("soletrader"), Some(firstName), Some(surname), _)             => s"$firstName $surname"
+      case (Some("soletrader"), Some(firstName), Some(surname), _)             => s"$surname, $firstName"
       case (Some("soletrader"), None, Some(surname), _)                        => surname
       case (Some("soletrader" | "company" | "trust"), _, _, Some(tradingName)) => tradingName
       case (Some("partnership"), _, _, Some(tradingName))                      =>
