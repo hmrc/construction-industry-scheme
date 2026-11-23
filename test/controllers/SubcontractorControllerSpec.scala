@@ -734,7 +734,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
 
       (contentAsJson(result) \ "subcontractors")(0).\("subcontractorId").as[Long] mustBe 999L
       (contentAsJson(result) \ "subcontractors")(0).\("utr").as[String] mustBe "1234567890"
-      (contentAsJson(result) \ "subcontractors")(0).\("displayName").as[String] mustBe "John Smith"
+      (contentAsJson(result) \ "subcontractors")(0).\("displayName").as[String] mustBe "Smith, John"
 
       verify(service).getSubcontractorList(eqTo(cisId))(any[HeaderCarrier])
     }
@@ -841,7 +841,7 @@ final class SubcontractorControllerSpec extends SpecBase with EitherValues {
       (contentAsJson(result) \ "scheme" \ "schemeId").as[Int] mustBe 123
       (contentAsJson(result) \ "subcontractor" \ "subcontractorId").as[Long] mustBe 999L
       (contentAsJson(result) \ "subcontractor" \ "utr").as[String] mustBe "0987654321"
-      (contentAsJson(result) \ "subcontractor" \ "displayName").as[String] mustBe "John Smith"
+      (contentAsJson(result) \ "subcontractor" \ "displayName").as[String] mustBe "Smith, John"
 
       verify(service).getSubcontractor(eqTo(cisId), eqTo(subbieResourceRef))(any[HeaderCarrier])
     }

@@ -2056,7 +2056,7 @@ final class SubmissionServiceSpec extends SpecBase {
               verificationResourceRef = 13L,
               subcontractorId = 10L,
               subbieResourceRef = Some(13L),
-              subcontractorName = "John Smith",
+              subcontractorName = "Smith, John",
               actionIndicator = "verify",
               proceedVerification = true,
               foreName = Some("John"),

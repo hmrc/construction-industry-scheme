@@ -1864,7 +1864,7 @@ class FormpProxyConnectorIntegrationSpec
          |      "totalPayments": "5000.00",
          |      "costOfMaterials": "1000.00",
          |      "totalDeducted": "800.00",
-         |      "subcontractorName": "John Smith"
+         |      "subcontractorName": "Smith, John",
          |    }
          |  ],
          |  "submission": [
@@ -2871,7 +2871,7 @@ class FormpProxyConnectorIntegrationSpec
       subcontractor.subcontractorType mustBe Some("soletrader")
       subcontractor.taxTreatment mustBe Some("NET")
       subcontractor.verificationNumber mustBe Some("V123456")
-      subcontractor.displayName mustBe "John Smith"
+      subcontractor.displayName mustBe "Smith, John"
 
       verify(
         getRequestedFor(urlPathEqualTo(s"/formp-proxy/cis/subcontractors/$cisId"))
@@ -2994,7 +2994,7 @@ class FormpProxyConnectorIntegrationSpec
       out.scheme.head.instanceId mustBe instanceId
       out.scheme.head.name mustBe Some("Test Contractor")
       out.subcontractors.head.subcontractorId mustBe 999L
-      out.subcontractors.head.displayName mustBe "John Smith"
+      out.subcontractors.head.displayName mustBe "Smith, John"
       out.verificationBatches.head.verificationBatchId mustBe 99L
       out.verifications.head.verificationId mustBe 1001L
       out.submissions.head.submissionId mustBe 555L
@@ -3242,7 +3242,7 @@ class FormpProxyConnectorIntegrationSpec
       response.subcontractor.value.subcontractorId mustBe 999L
       response.subcontractor.value.subbieResourceRef mustBe Some(456L)
       response.subcontractor.value.utr mustBe Some("0987654321")
-      response.subcontractor.value.displayName mustBe "John Smith"
+      response.subcontractor.value.displayName mustBe "Smith, John"
       verify(
         getRequestedFor(urlPathEqualTo(s"/formp-proxy/cis/subcontractor/$cisId/$subbieResourceRef"))
       )

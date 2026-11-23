@@ -75,7 +75,7 @@ class SubcontractorSpec extends AnyFreeSpec with Matchers {
           subcontractorType = Some("soletrader"),
           firstName = Some("John"),
           surname = Some("Smith")
-        ).displayName shouldBe "John Smith"
+        ).displayName shouldBe "Smith, John"
       }
 
       "should return surname when firstName is not present" in {
@@ -97,7 +97,7 @@ class SubcontractorSpec extends AnyFreeSpec with Matchers {
           subcontractorType = Some("SOLETRADER"),
           firstName = Some("John"),
           surname = Some("Smith")
-        ).displayName shouldBe "John Smith"
+        ).displayName shouldBe "Smith, John"
       }
     }
 
