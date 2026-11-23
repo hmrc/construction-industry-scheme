@@ -227,7 +227,7 @@ class SubcontractorControllerIntegrationSpec
       (resp.json \ "subcontractors").as[Seq[JsValue]].size mustBe 1
       (resp.json \ "subcontractors" \ 0 \ "subcontractorId").as[Long] mustBe 999L
       (resp.json \ "subcontractors" \ 0 \ "utr").as[String] mustBe "1234567890"
-      (resp.json \ "subcontractors" \ 0 \ "displayName").as[String] mustBe "John Smith"
+      (resp.json \ "subcontractors" \ 0 \ "displayName").as[String] mustBe "Smith, John"
 
       verify(
         getRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractors/123"))
@@ -338,7 +338,7 @@ class SubcontractorControllerIntegrationSpec
       (resp.json \ "scheme" \ "schemeId").as[Int] mustBe 123
       (resp.json \ "subcontractor" \ "subcontractorId").as[Long] mustBe 999L
       (resp.json \ "subcontractor" \ "utr").as[String] mustBe "0987654321"
-      (resp.json \ "subcontractor" \ "displayName").as[String] mustBe "John Smith"
+      (resp.json \ "subcontractor" \ "displayName").as[String] mustBe "Smith, John"
 
       verify(
         getRequestedFor(urlPathEqualTo("/formp-proxy/cis/subcontractor/123/456"))

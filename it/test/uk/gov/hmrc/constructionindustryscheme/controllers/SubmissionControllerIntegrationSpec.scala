@@ -87,7 +87,7 @@ class SubmissionControllerIntegrationSpec
     ),
     "verifications"                -> Json.arr(
       Json.obj(
-        "subcontractorName"       -> "John Smith",
+        "subcontractorName"       -> "Smith, John",
         "verificationResourceRef" -> "10",
         "proceedVerification"     -> true
       )
